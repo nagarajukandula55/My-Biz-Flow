@@ -203,8 +203,14 @@ original set:
 `src/components/RecordForm.tsx` is a `"use client"` config-driven form: it
 takes a `fields: FormFieldDef[]` (`{key,label,type,required,options?}`,
 `type` one of `text | number | date | select | currency | boolean |
-textarea | relation`) and an optional `initialValues`, and renders the
-right input per field. Every module's create page passes it the module's
+textarea | relation | multi-select`) and an optional `initialValues`, and
+renders the right input per field. `multi-select` (added for Access
+Groups/Roles/Plans' module-slug pickers) renders `options` as a scrollable
+checkbox list and stores the value as `string[]`; `DataTable`'s matching
+`multi-chip` column type and `RecordDetail`'s matching `multi-select` field
+type render that same `string[]` shape as a row of `StatusChip`s — all
+three stay in sync by construction, extend them together if a fourth
+multi-value consumer is ever added. Every module's create page passes it the module's
 field set with `submitLabel="Create <record type>"`; every edit page passes
 the same fields with `initialValues` from the record and
 `submitLabel="Save changes"`. Do not hand-roll a bespoke form per module —

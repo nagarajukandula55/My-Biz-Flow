@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { StatusChip, type StatusVariant } from "./StatusChip";
 import { formatCurrencyINR, formatDate } from "@/lib/format";
 
-export type FieldType = "text" | "relation" | "currency" | "date" | "boolean" | "select";
+export type FieldType = "text" | "relation" | "currency" | "date" | "boolean" | "select" | "multi-select";
 
 export type RecordField = {
   label: string;
@@ -32,6 +32,17 @@ function renderFieldValue(field: RecordField) {
       );
     case "select":
       return <StatusChip label={String(field.value)} variant={field.chipVariant ?? "neutral"} />;
+    case "multi-select": {
+      const items = Array.isArray(field.value) ? (field.value as string[]) : [];
+      if (items.length === 0) return <span className="text-text-muted">—</span>;
+      return (
+        <div className="flex flex-wrap gap-1.5">
+          {items.map((item) => (
+            <StatusChip key={item} label={item} variant={field.chipVariant ?? "teal"} />
+          ))}
+        </div>
+      );
+    }
     case "text":
     default:
       return <span className="text-text">{String(field.value ?? "—")}</span>;

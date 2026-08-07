@@ -10,7 +10,8 @@ export type FormFieldType =
   | "currency"
   | "boolean"
   | "textarea"
-  | "relation";
+  | "relation"
+  | "multi-select";
 
 export type FormFieldDef = {
   key: string;
@@ -40,7 +41,9 @@ export function RecordForm({ fields, initialValues, submitLabel, onSubmitDemo }:
   const [values, setValues] = useState<Record<string, unknown>>(() => {
     const base: Record<string, unknown> = {};
     for (const f of fields) {
-      base[f.key] = initialValues?.[f.key] ?? (f.type === "boolean" ? false : "");
+      base[f.key] =
+        initialValues?.[f.key] ??
+        (f.type === "boolean" ? false : f.type === "multi-select" ? [] : "");
     }
     return base;
   });
@@ -145,6 +148,29 @@ function renderInput(
           ))}
         </select>
       );
+    case "multi-select": {
+      const selected = Array.isArray(value) ? (value as string[]) : [];
+      return (
+        <div className="flex max-h-48 flex-col gap-1.5 overflow-y-auto rounded-md border border-border bg-bg p-3">
+          {field.options?.map((opt) => (
+            <label key={opt} className="flex items-center gap-2 text-sm text-text">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-border accent-current text-teal"
+                checked={selected.includes(opt)}
+                onChange={(e) => {
+                  const next = e.target.checked
+                    ? [...selected, opt]
+                    : selected.filter((v) => v !== opt);
+                  setValue(field.key, next);
+                }}
+              />
+              {opt}
+            </label>
+          ))}
+        </div>
+      );
+    }
     case "number":
     case "currency":
       return (
