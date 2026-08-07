@@ -3,6 +3,8 @@ import { buildVendorNavGroups, getModule } from "@/lib/designer/modules";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { RentalsClientTable } from "./RentalsClientTable";
+import { applyCustomizations } from "@/lib/designer/customizations";
+import { rentalsColumns } from "@/lib/sample-data/rentals";
 
 registerPage({
   id: "rentals.list",
@@ -22,6 +24,7 @@ registerPage({
 
 export default function RentalsPage({ params }: { params: { vendorId: string } }) {
   const mod = getModule("rentals");
+  const columns = applyCustomizations("rentals.list", rentalsColumns);
 
   return (
     <AppShell
@@ -37,7 +40,7 @@ export default function RentalsPage({ params }: { params: { vendorId: string } }
         <h1 className="font-display text-2xl font-bold text-text">{mod?.label}</h1>
         <p className="mt-1 text-sm text-text-muted">{mod?.description}</p>
         <div className="mt-6">
-          <RentalsClientTable vendorId={params.vendorId} />
+          <RentalsClientTable vendorId={params.vendorId} columns={columns} />
         </div>
       </div>
     </AppShell>

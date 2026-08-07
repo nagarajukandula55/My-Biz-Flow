@@ -3,6 +3,7 @@ import { buildVendorNavGroups, getModule } from "@/lib/designer/modules";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { amcFieldServiceFormFields } from "@/lib/sample-data/amc-field-service";
+import { applyCustomizations } from "@/lib/designer/customizations";
 
 registerPage({
   id: "amc-field-service.create",
@@ -22,6 +23,7 @@ registerPage({
 
 export default function NewAmcFieldServicePage() {
   const mod = getModule("amc-field-service");
+  const fields = applyCustomizations("amc-field-service.create", amcFieldServiceFormFields);
 
   return (
     <AppShell navGroups={buildVendorNavGroups("amc-field-service")} topbarTitle={`New Contract — ${mod?.label ?? "AMC / Field Service"}`}>
@@ -29,7 +31,7 @@ export default function NewAmcFieldServicePage() {
         <h1 className="font-display text-2xl font-bold text-text">New Contract</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new contract record for AMC / Field Service.</p>
         <div className="mt-6">
-          <RecordForm fields={amcFieldServiceFormFields} submitLabel="Create Contract" />
+          <RecordForm fields={fields} submitLabel="Create Contract" />
         </div>
       </div>
     </AppShell>

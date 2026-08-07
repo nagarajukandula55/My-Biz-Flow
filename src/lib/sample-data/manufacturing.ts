@@ -106,8 +106,10 @@ export function getManufacturingDetailFields(record: Row): RecordField[] {
 
 export function getManufacturingTimeline(record: Row): TimelineEntry[] {
   return [
-    { id: "t1", label: "Record created", timestamp: String(record["startDate"] ?? "2026-08-01"), actor: "System" },
-    { id: "t2", label: "Record last updated", timestamp: "2026-08-07", actor: "Admin User" },
+    { id: "t1", label: "Work order raised from production plan by Production Planner — IP 103.21.44.33", timestamp: "2026-07-22T08:00:00", actor: "Production Planner" },
+    { id: "t2", label: "Raw materials issued from stores against BOM", timestamp: "2026-07-23T09:00:00", actor: "Stores Team" },
+    { id: "t3", label: "Production started on shop floor", timestamp: "2026-07-24T07:30:00", actor: "Shift Supervisor" },
+    { id: "t4", label: "Quality check completed and status updated by QC Inspector — IP 103.21.44.34", timestamp: "2026-08-05T15:00:00", actor: "QC Inspector" },
   ];
 }
 

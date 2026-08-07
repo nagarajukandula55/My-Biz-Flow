@@ -4,7 +4,8 @@ import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { RecordDetail } from "@/components/RecordDetail";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
-import { getAccountingGstRecord, getAccountingGstDetailFields, getAccountingGstTimeline, accountingGstRelated } from "@/lib/sample-data/accounting-gst";
+import { getAccountingGstRecord, getAccountingGstDetailFields, getAccountingGstTimeline, accountingGstRelated, accountingGstColumns } from "@/lib/sample-data/accounting-gst";
+import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
 
 registerPage({
   id: "accounting-gst.detail",
@@ -29,7 +30,7 @@ export default function AccountingGstDetailPage({
 }) {
   const mod = getModule("accounting-gst");
   const record = getAccountingGstRecord(params.recordId);
-  const fields = getAccountingGstDetailFields(record);
+  const fields = applyCustomizationsToDetailFields("accounting-gst.detail", getAccountingGstDetailFields(record), accountingGstColumns);
   const timeline = getAccountingGstTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
 

@@ -3,6 +3,7 @@ import { buildVendorNavGroups, getModule } from "@/lib/designer/modules";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { manufacturingFormFields } from "@/lib/sample-data/manufacturing";
+import { applyCustomizations } from "@/lib/designer/customizations";
 
 registerPage({
   id: "manufacturing.create",
@@ -22,6 +23,7 @@ registerPage({
 
 export default function NewManufacturingPage() {
   const mod = getModule("manufacturing");
+  const fields = applyCustomizations("manufacturing.create", manufacturingFormFields);
 
   return (
     <AppShell navGroups={buildVendorNavGroups("manufacturing")} topbarTitle={`New Work Order — ${mod?.label ?? "Manufacturing / Production"}`}>
@@ -29,7 +31,7 @@ export default function NewManufacturingPage() {
         <h1 className="font-display text-2xl font-bold text-text">New Work Order</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new work order record for Manufacturing / Production.</p>
         <div className="mt-6">
-          <RecordForm fields={manufacturingFormFields} submitLabel="Create Work Order" />
+          <RecordForm fields={fields} submitLabel="Create Work Order" />
         </div>
       </div>
     </AppShell>

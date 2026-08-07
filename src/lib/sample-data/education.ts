@@ -104,8 +104,10 @@ export function getEducationDetailFields(record: Row): RecordField[] {
 
 export function getEducationTimeline(record: Row): TimelineEntry[] {
   return [
-    { id: "t1", label: "Record created", timestamp: String(record["enrollmentDate"] ?? "2026-08-01"), actor: "System" },
-    { id: "t2", label: "Record last updated", timestamp: "2026-08-07", actor: "Admin User" },
+    { id: "t1", label: "Student enrolled by admissions counsellor Divya S. — IP 103.21.44.16", timestamp: "2026-06-10T11:00:00", actor: "Divya S." },
+    { id: "t2", label: "First fee installment collected by Divya S. — IP 103.21.44.16", timestamp: "2026-06-10T11:15:00", actor: "Divya S." },
+    { id: "t3", label: "Attendance percentage recalculated after latest batch session", timestamp: "2026-08-06T18:00:00", actor: "System" },
+    { id: "t4", label: "Enrollment status reviewed at term checkpoint", timestamp: "2026-08-07T09:30:00", actor: "Academic Coordinator" },
   ];
 }
 

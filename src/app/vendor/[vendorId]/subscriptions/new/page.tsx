@@ -3,6 +3,7 @@ import { buildVendorNavGroups, getModule } from "@/lib/designer/modules";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { subscriptionsFormFields } from "@/lib/sample-data/subscriptions";
+import { applyCustomizations } from "@/lib/designer/customizations";
 
 registerPage({
   id: "subscriptions.create",
@@ -22,6 +23,7 @@ registerPage({
 
 export default function NewSubscriptionsPage() {
   const mod = getModule("subscriptions");
+  const fields = applyCustomizations("subscriptions.create", subscriptionsFormFields);
 
   return (
     <AppShell navGroups={buildVendorNavGroups("subscriptions")} topbarTitle={`New Membership — ${mod?.label ?? "Subscriptions / Membership"}`}>
@@ -29,7 +31,7 @@ export default function NewSubscriptionsPage() {
         <h1 className="font-display text-2xl font-bold text-text">New Membership</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new membership record for Subscriptions / Membership.</p>
         <div className="mt-6">
-          <RecordForm fields={subscriptionsFormFields} submitLabel="Create Membership" />
+          <RecordForm fields={fields} submitLabel="Create Membership" />
         </div>
       </div>
     </AppShell>

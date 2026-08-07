@@ -4,7 +4,8 @@ import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { RecordDetail } from "@/components/RecordDetail";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
-import { getRestaurantPosRecord, getRestaurantPosDetailFields, getRestaurantPosTimeline, restaurantPosRelated } from "@/lib/sample-data/restaurant-pos";
+import { getRestaurantPosRecord, getRestaurantPosDetailFields, getRestaurantPosTimeline, restaurantPosRelated, restaurantPosColumns } from "@/lib/sample-data/restaurant-pos";
+import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
 
 registerPage({
   id: "restaurant-pos.detail",
@@ -29,7 +30,7 @@ export default function RestaurantPosDetailPage({
 }) {
   const mod = getModule("restaurant-pos");
   const record = getRestaurantPosRecord(params.recordId);
-  const fields = getRestaurantPosDetailFields(record);
+  const fields = applyCustomizationsToDetailFields("restaurant-pos.detail", getRestaurantPosDetailFields(record), restaurantPosColumns);
   const timeline = getRestaurantPosTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
 

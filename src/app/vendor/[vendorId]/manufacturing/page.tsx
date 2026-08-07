@@ -3,6 +3,8 @@ import { buildVendorNavGroups, getModule } from "@/lib/designer/modules";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { ManufacturingClientTable } from "./ManufacturingClientTable";
+import { applyCustomizations } from "@/lib/designer/customizations";
+import { manufacturingColumns } from "@/lib/sample-data/manufacturing";
 
 registerPage({
   id: "manufacturing.list",
@@ -22,6 +24,7 @@ registerPage({
 
 export default function ManufacturingPage({ params }: { params: { vendorId: string } }) {
   const mod = getModule("manufacturing");
+  const columns = applyCustomizations("manufacturing.list", manufacturingColumns);
 
   return (
     <AppShell
@@ -37,7 +40,7 @@ export default function ManufacturingPage({ params }: { params: { vendorId: stri
         <h1 className="font-display text-2xl font-bold text-text">{mod?.label}</h1>
         <p className="mt-1 text-sm text-text-muted">{mod?.description}</p>
         <div className="mt-6">
-          <ManufacturingClientTable vendorId={params.vendorId} />
+          <ManufacturingClientTable vendorId={params.vendorId} columns={columns} />
         </div>
       </div>
     </AppShell>

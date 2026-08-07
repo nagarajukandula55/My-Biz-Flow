@@ -3,6 +3,7 @@ import { buildVendorNavGroups, getModule } from "@/lib/designer/modules";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { educationFormFields, getEducationRecord } from "@/lib/sample-data/education";
+import { applyCustomizations } from "@/lib/designer/customizations";
 
 registerPage({
   id: "education.edit",
@@ -23,6 +24,7 @@ registerPage({
 export default function EditEducationPage({ params }: { params: { recordId: string } }) {
   const mod = getModule("education");
   const record = getEducationRecord(params.recordId);
+  const fields = applyCustomizations("education.edit", educationFormFields);
 
   return (
     <AppShell navGroups={buildVendorNavGroups("education")} topbarTitle={`Edit Enrollment — ${mod?.label ?? "Education / Coaching"}`}>
@@ -30,7 +32,7 @@ export default function EditEducationPage({ params }: { params: { recordId: stri
         <h1 className="font-display text-2xl font-bold text-text">Edit Enrollment</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>
         <div className="mt-6">
-          <RecordForm fields={educationFormFields} initialValues={record} submitLabel="Save changes" />
+          <RecordForm fields={fields} initialValues={record} submitLabel="Save changes" />
         </div>
       </div>
     </AppShell>

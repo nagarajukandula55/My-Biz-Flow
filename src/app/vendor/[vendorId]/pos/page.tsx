@@ -3,6 +3,8 @@ import { buildVendorNavGroups, getModule } from "@/lib/designer/modules";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { PosClientTable } from "./PosClientTable";
+import { applyCustomizations } from "@/lib/designer/customizations";
+import { posColumns } from "@/lib/sample-data/pos";
 
 registerPage({
   id: "pos.list",
@@ -22,6 +24,7 @@ registerPage({
 
 export default function PosPage({ params }: { params: { vendorId: string } }) {
   const mod = getModule("pos");
+  const columns = applyCustomizations("pos.list", posColumns);
 
   return (
     <AppShell
@@ -37,7 +40,7 @@ export default function PosPage({ params }: { params: { vendorId: string } }) {
         <h1 className="font-display text-2xl font-bold text-text">{mod?.label}</h1>
         <p className="mt-1 text-sm text-text-muted">{mod?.description}</p>
         <div className="mt-6">
-          <PosClientTable vendorId={params.vendorId} />
+          <PosClientTable vendorId={params.vendorId} columns={columns} />
         </div>
       </div>
     </AppShell>

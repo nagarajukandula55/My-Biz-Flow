@@ -3,6 +3,8 @@ import { buildVendorNavGroups, getModule } from "@/lib/designer/modules";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { WholesaleB2bClientTable } from "./WholesaleB2bClientTable";
+import { applyCustomizations } from "@/lib/designer/customizations";
+import { wholesaleB2bColumns } from "@/lib/sample-data/wholesale-b2b";
 
 registerPage({
   id: "wholesale-b2b.list",
@@ -22,6 +24,7 @@ registerPage({
 
 export default function WholesaleB2bPage({ params }: { params: { vendorId: string } }) {
   const mod = getModule("wholesale-b2b");
+  const columns = applyCustomizations("wholesale-b2b.list", wholesaleB2bColumns);
 
   return (
     <AppShell
@@ -37,7 +40,7 @@ export default function WholesaleB2bPage({ params }: { params: { vendorId: strin
         <h1 className="font-display text-2xl font-bold text-text">{mod?.label}</h1>
         <p className="mt-1 text-sm text-text-muted">{mod?.description}</p>
         <div className="mt-6">
-          <WholesaleB2bClientTable vendorId={params.vendorId} />
+          <WholesaleB2bClientTable vendorId={params.vendorId} columns={columns} />
         </div>
       </div>
     </AppShell>

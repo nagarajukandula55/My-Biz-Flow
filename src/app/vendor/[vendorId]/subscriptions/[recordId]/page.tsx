@@ -4,7 +4,8 @@ import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { RecordDetail } from "@/components/RecordDetail";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
-import { getSubscriptionsRecord, getSubscriptionsDetailFields, getSubscriptionsTimeline, subscriptionsRelated } from "@/lib/sample-data/subscriptions";
+import { getSubscriptionsRecord, getSubscriptionsDetailFields, getSubscriptionsTimeline, subscriptionsRelated, subscriptionsColumns } from "@/lib/sample-data/subscriptions";
+import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
 
 registerPage({
   id: "subscriptions.detail",
@@ -29,7 +30,7 @@ export default function SubscriptionsDetailPage({
 }) {
   const mod = getModule("subscriptions");
   const record = getSubscriptionsRecord(params.recordId);
-  const fields = getSubscriptionsDetailFields(record);
+  const fields = applyCustomizationsToDetailFields("subscriptions.detail", getSubscriptionsDetailFields(record), subscriptionsColumns);
   const timeline = getSubscriptionsTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
 

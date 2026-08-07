@@ -99,8 +99,10 @@ export function getWholesaleB2bDetailFields(record: Row): RecordField[] {
 
 export function getWholesaleB2bTimeline(record: Row): TimelineEntry[] {
   return [
-    { id: "t1", label: "Record created", timestamp: String(record["orderDate"] ?? "2026-08-01"), actor: "System" },
-    { id: "t2", label: "Record last updated", timestamp: "2026-08-07", actor: "Admin User" },
+    { id: "t1", label: "Bulk order placed by dealer via B2B portal — IP 103.21.44.24", timestamp: "2026-08-01T09:00:00", actor: "Dealer" },
+    { id: "t2", label: "Credit limit checked and order approved by Credit Control — IP 103.21.44.24", timestamp: "2026-08-01T09:20:00", actor: "Credit Control" },
+    { id: "t3", label: "Order dispatched from warehouse", timestamp: "2026-08-03T08:00:00", actor: "Dispatch Team" },
+    { id: "t4", label: "Delivery confirmed and status updated", timestamp: "2026-08-05T15:00:00", actor: "Dispatch Team" },
   ];
 }
 

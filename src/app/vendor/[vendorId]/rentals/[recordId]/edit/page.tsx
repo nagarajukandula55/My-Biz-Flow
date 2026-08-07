@@ -3,6 +3,7 @@ import { buildVendorNavGroups, getModule } from "@/lib/designer/modules";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { rentalsFormFields, getRentalsRecord } from "@/lib/sample-data/rentals";
+import { applyCustomizations } from "@/lib/designer/customizations";
 
 registerPage({
   id: "rentals.edit",
@@ -23,6 +24,7 @@ registerPage({
 export default function EditRentalsPage({ params }: { params: { recordId: string } }) {
   const mod = getModule("rentals");
   const record = getRentalsRecord(params.recordId);
+  const fields = applyCustomizations("rentals.edit", rentalsFormFields);
 
   return (
     <AppShell navGroups={buildVendorNavGroups("rentals")} topbarTitle={`Edit Booking — ${mod?.label ?? "Rentals / Booking"}`}>
@@ -30,7 +32,7 @@ export default function EditRentalsPage({ params }: { params: { recordId: string
         <h1 className="font-display text-2xl font-bold text-text">Edit Booking</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>
         <div className="mt-6">
-          <RecordForm fields={rentalsFormFields} initialValues={record} submitLabel="Save changes" />
+          <RecordForm fields={fields} initialValues={record} submitLabel="Save changes" />
         </div>
       </div>
     </AppShell>

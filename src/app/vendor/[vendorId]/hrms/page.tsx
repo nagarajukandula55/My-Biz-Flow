@@ -3,6 +3,8 @@ import { buildVendorNavGroups, getModule } from "@/lib/designer/modules";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { HrmsClientTable } from "./HrmsClientTable";
+import { applyCustomizations } from "@/lib/designer/customizations";
+import { hrmsColumns } from "@/lib/sample-data/hrms";
 
 registerPage({
   id: "hrms.list",
@@ -22,6 +24,7 @@ registerPage({
 
 export default function HrmsPage({ params }: { params: { vendorId: string } }) {
   const mod = getModule("hrms");
+  const columns = applyCustomizations("hrms.list", hrmsColumns);
 
   return (
     <AppShell
@@ -37,7 +40,7 @@ export default function HrmsPage({ params }: { params: { vendorId: string } }) {
         <h1 className="font-display text-2xl font-bold text-text">{mod?.label}</h1>
         <p className="mt-1 text-sm text-text-muted">{mod?.description}</p>
         <div className="mt-6">
-          <HrmsClientTable vendorId={params.vendorId} />
+          <HrmsClientTable vendorId={params.vendorId} columns={columns} />
         </div>
       </div>
     </AppShell>

@@ -4,7 +4,8 @@ import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { RecordDetail } from "@/components/RecordDetail";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
-import { getEducationRecord, getEducationDetailFields, getEducationTimeline, educationRelated } from "@/lib/sample-data/education";
+import { getEducationRecord, getEducationDetailFields, getEducationTimeline, educationRelated, educationColumns } from "@/lib/sample-data/education";
+import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
 
 registerPage({
   id: "education.detail",
@@ -29,7 +30,7 @@ export default function EducationDetailPage({
 }) {
   const mod = getModule("education");
   const record = getEducationRecord(params.recordId);
-  const fields = getEducationDetailFields(record);
+  const fields = applyCustomizationsToDetailFields("education.detail", getEducationDetailFields(record), educationColumns);
   const timeline = getEducationTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
 

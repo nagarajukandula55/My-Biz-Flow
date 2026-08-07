@@ -3,6 +3,7 @@ import { buildVendorNavGroups, getModule } from "@/lib/designer/modules";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { legalFormFields } from "@/lib/sample-data/legal";
+import { applyCustomizations } from "@/lib/designer/customizations";
 
 registerPage({
   id: "legal.create",
@@ -22,6 +23,7 @@ registerPage({
 
 export default function NewLegalPage() {
   const mod = getModule("legal");
+  const fields = applyCustomizations("legal.create", legalFormFields);
 
   return (
     <AppShell navGroups={buildVendorNavGroups("legal")} topbarTitle={`New Matter — ${mod?.label ?? "Legal / Case Management"}`}>
@@ -29,7 +31,7 @@ export default function NewLegalPage() {
         <h1 className="font-display text-2xl font-bold text-text">New Matter</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new matter record for Legal / Case Management.</p>
         <div className="mt-6">
-          <RecordForm fields={legalFormFields} submitLabel="Create Matter" />
+          <RecordForm fields={fields} submitLabel="Create Matter" />
         </div>
       </div>
     </AppShell>

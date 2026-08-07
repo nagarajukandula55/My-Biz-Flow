@@ -3,6 +3,7 @@ import { buildVendorNavGroups, getModule } from "@/lib/designer/modules";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { hrmsFormFields, getHrmsRecord } from "@/lib/sample-data/hrms";
+import { applyCustomizations } from "@/lib/designer/customizations";
 
 registerPage({
   id: "hrms.edit",
@@ -23,6 +24,7 @@ registerPage({
 export default function EditHrmsPage({ params }: { params: { recordId: string } }) {
   const mod = getModule("hrms");
   const record = getHrmsRecord(params.recordId);
+  const fields = applyCustomizations("hrms.edit", hrmsFormFields);
 
   return (
     <AppShell navGroups={buildVendorNavGroups("hrms")} topbarTitle={`Edit Employee — ${mod?.label ?? "HRMS / Payroll"}`}>
@@ -30,7 +32,7 @@ export default function EditHrmsPage({ params }: { params: { recordId: string } 
         <h1 className="font-display text-2xl font-bold text-text">Edit Employee</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>
         <div className="mt-6">
-          <RecordForm fields={hrmsFormFields} initialValues={record} submitLabel="Save changes" />
+          <RecordForm fields={fields} initialValues={record} submitLabel="Save changes" />
         </div>
       </div>
     </AppShell>

@@ -4,7 +4,8 @@ import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { RecordDetail } from "@/components/RecordDetail";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
-import { getPosRecord, getPosDetailFields, getPosTimeline, posRelated } from "@/lib/sample-data/pos";
+import { getPosRecord, getPosDetailFields, getPosTimeline, posRelated, posColumns } from "@/lib/sample-data/pos";
+import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
 
 registerPage({
   id: "pos.detail",
@@ -29,7 +30,7 @@ export default function PosDetailPage({
 }) {
   const mod = getModule("pos");
   const record = getPosRecord(params.recordId);
-  const fields = getPosDetailFields(record);
+  const fields = applyCustomizationsToDetailFields("pos.detail", getPosDetailFields(record), posColumns);
   const timeline = getPosTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
 

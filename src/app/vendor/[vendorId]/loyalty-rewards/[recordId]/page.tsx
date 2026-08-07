@@ -4,7 +4,8 @@ import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { RecordDetail } from "@/components/RecordDetail";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
-import { getLoyaltyRewardsRecord, getLoyaltyRewardsDetailFields, getLoyaltyRewardsTimeline, loyaltyRewardsRelated } from "@/lib/sample-data/loyalty-rewards";
+import { getLoyaltyRewardsRecord, getLoyaltyRewardsDetailFields, getLoyaltyRewardsTimeline, loyaltyRewardsRelated, loyaltyRewardsColumns } from "@/lib/sample-data/loyalty-rewards";
+import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
 
 registerPage({
   id: "loyalty-rewards.detail",
@@ -29,7 +30,7 @@ export default function LoyaltyRewardsDetailPage({
 }) {
   const mod = getModule("loyalty-rewards");
   const record = getLoyaltyRewardsRecord(params.recordId);
-  const fields = getLoyaltyRewardsDetailFields(record);
+  const fields = applyCustomizationsToDetailFields("loyalty-rewards.detail", getLoyaltyRewardsDetailFields(record), loyaltyRewardsColumns);
   const timeline = getLoyaltyRewardsTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
 

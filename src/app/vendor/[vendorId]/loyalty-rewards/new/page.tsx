@@ -3,6 +3,7 @@ import { buildVendorNavGroups, getModule } from "@/lib/designer/modules";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { loyaltyRewardsFormFields } from "@/lib/sample-data/loyalty-rewards";
+import { applyCustomizations } from "@/lib/designer/customizations";
 
 registerPage({
   id: "loyalty-rewards.create",
@@ -22,6 +23,7 @@ registerPage({
 
 export default function NewLoyaltyRewardsPage() {
   const mod = getModule("loyalty-rewards");
+  const fields = applyCustomizations("loyalty-rewards.create", loyaltyRewardsFormFields);
 
   return (
     <AppShell navGroups={buildVendorNavGroups("loyalty-rewards")} topbarTitle={`New Member — ${mod?.label ?? "Loyalty & Rewards"}`}>
@@ -29,7 +31,7 @@ export default function NewLoyaltyRewardsPage() {
         <h1 className="font-display text-2xl font-bold text-text">New Member</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new member record for Loyalty & Rewards.</p>
         <div className="mt-6">
-          <RecordForm fields={loyaltyRewardsFormFields} submitLabel="Create Member" />
+          <RecordForm fields={fields} submitLabel="Create Member" />
         </div>
       </div>
     </AppShell>

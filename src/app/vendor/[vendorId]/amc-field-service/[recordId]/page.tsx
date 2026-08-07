@@ -4,7 +4,8 @@ import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { RecordDetail } from "@/components/RecordDetail";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
-import { getAmcFieldServiceRecord, getAmcFieldServiceDetailFields, getAmcFieldServiceTimeline, amcFieldServiceRelated } from "@/lib/sample-data/amc-field-service";
+import { getAmcFieldServiceRecord, getAmcFieldServiceDetailFields, getAmcFieldServiceTimeline, amcFieldServiceRelated, amcFieldServiceColumns } from "@/lib/sample-data/amc-field-service";
+import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
 
 registerPage({
   id: "amc-field-service.detail",
@@ -29,7 +30,7 @@ export default function AmcFieldServiceDetailPage({
 }) {
   const mod = getModule("amc-field-service");
   const record = getAmcFieldServiceRecord(params.recordId);
-  const fields = getAmcFieldServiceDetailFields(record);
+  const fields = applyCustomizationsToDetailFields("amc-field-service.detail", getAmcFieldServiceDetailFields(record), amcFieldServiceColumns);
   const timeline = getAmcFieldServiceTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
 

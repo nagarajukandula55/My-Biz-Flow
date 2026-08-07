@@ -3,6 +3,7 @@ import { buildVendorNavGroups, getModule } from "@/lib/designer/modules";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { serviceCentreFormFields } from "@/lib/sample-data/service-centre";
+import { applyCustomizations } from "@/lib/designer/customizations";
 
 registerPage({
   id: "service-centre.create",
@@ -22,6 +23,7 @@ registerPage({
 
 export default function NewServiceCentrePage() {
   const mod = getModule("service-centre");
+  const fields = applyCustomizations("service-centre.create", serviceCentreFormFields);
 
   return (
     <AppShell navGroups={buildVendorNavGroups("service-centre")} topbarTitle={`New Workorder — ${mod?.label ?? "Service Centre"}`}>
@@ -29,7 +31,7 @@ export default function NewServiceCentrePage() {
         <h1 className="font-display text-2xl font-bold text-text">New Workorder</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new workorder record for Service Centre.</p>
         <div className="mt-6">
-          <RecordForm fields={serviceCentreFormFields} submitLabel="Create Workorder" />
+          <RecordForm fields={fields} submitLabel="Create Workorder" />
         </div>
       </div>
     </AppShell>

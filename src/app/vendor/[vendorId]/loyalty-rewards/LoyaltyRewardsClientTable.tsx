@@ -1,14 +1,14 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { DataTable, type Row } from "@/components/DataTable";
+import { DataTable, type Row, type Column } from "@/components/DataTable";
 import { loyaltyRewardsColumns, loyaltyRewardsRows } from "@/lib/sample-data/loyalty-rewards";
 
-export function LoyaltyRewardsClientTable({ vendorId }: { vendorId: string }) {
+export function LoyaltyRewardsClientTable({ vendorId, columns }: { vendorId: string; columns?: Column[] }) {
   const router = useRouter();
   return (
     <DataTable
-      columns={loyaltyRewardsColumns}
+      columns={columns ?? loyaltyRewardsColumns}
       rows={loyaltyRewardsRows}
       onRowClick={(row: Row) => router.push(`/vendor/${vendorId}/loyalty-rewards/${row["id"]}`)}
     />

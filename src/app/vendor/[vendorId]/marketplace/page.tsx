@@ -3,6 +3,8 @@ import { buildVendorNavGroups, getModule } from "@/lib/designer/modules";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { MarketplaceClientTable } from "./MarketplaceClientTable";
+import { applyCustomizations } from "@/lib/designer/customizations";
+import { marketplaceColumns } from "@/lib/sample-data/marketplace";
 
 registerPage({
   id: "marketplace.list",
@@ -22,6 +24,7 @@ registerPage({
 
 export default function MarketplacePage({ params }: { params: { vendorId: string } }) {
   const mod = getModule("marketplace");
+  const columns = applyCustomizations("marketplace.list", marketplaceColumns);
 
   return (
     <AppShell
@@ -37,7 +40,7 @@ export default function MarketplacePage({ params }: { params: { vendorId: string
         <h1 className="font-display text-2xl font-bold text-text">{mod?.label}</h1>
         <p className="mt-1 text-sm text-text-muted">{mod?.description}</p>
         <div className="mt-6">
-          <MarketplaceClientTable vendorId={params.vendorId} />
+          <MarketplaceClientTable vendorId={params.vendorId} columns={columns} />
         </div>
       </div>
     </AppShell>

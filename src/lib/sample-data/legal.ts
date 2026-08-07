@@ -99,8 +99,10 @@ export function getLegalDetailFields(record: Row): RecordField[] {
 
 export function getLegalTimeline(record: Row): TimelineEntry[] {
   return [
-    { id: "t1", label: "Record created", timestamp: String(record["nextHearingDate"] ?? "2026-08-01"), actor: "System" },
-    { id: "t2", label: "Record last updated", timestamp: "2026-08-07", actor: "Admin User" },
+    { id: "t1", label: "Matter opened and assigned to attorney by Legal Ops — IP 103.21.44.27", timestamp: "2026-05-20T09:00:00", actor: "Legal Ops" },
+    { id: "t2", label: "Billable hours logged by Assigned Attorney — IP 103.21.44.27", timestamp: "2026-07-10T17:00:00", actor: "Assigned Attorney" },
+    { id: "t3", label: "Next hearing date scheduled and calendared", timestamp: "2026-08-01T09:30:00", actor: "Legal Ops" },
+    { id: "t4", label: "Case status updated after latest court proceeding", timestamp: "2026-08-06T18:00:00", actor: "Assigned Attorney" },
   ];
 }
 

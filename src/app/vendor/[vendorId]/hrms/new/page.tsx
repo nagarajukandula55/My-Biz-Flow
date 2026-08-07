@@ -3,6 +3,7 @@ import { buildVendorNavGroups, getModule } from "@/lib/designer/modules";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { hrmsFormFields } from "@/lib/sample-data/hrms";
+import { applyCustomizations } from "@/lib/designer/customizations";
 
 registerPage({
   id: "hrms.create",
@@ -22,6 +23,7 @@ registerPage({
 
 export default function NewHrmsPage() {
   const mod = getModule("hrms");
+  const fields = applyCustomizations("hrms.create", hrmsFormFields);
 
   return (
     <AppShell navGroups={buildVendorNavGroups("hrms")} topbarTitle={`New Employee — ${mod?.label ?? "HRMS / Payroll"}`}>
@@ -29,7 +31,7 @@ export default function NewHrmsPage() {
         <h1 className="font-display text-2xl font-bold text-text">New Employee</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new employee record for HRMS / Payroll.</p>
         <div className="mt-6">
-          <RecordForm fields={hrmsFormFields} submitLabel="Create Employee" />
+          <RecordForm fields={fields} submitLabel="Create Employee" />
         </div>
       </div>
     </AppShell>

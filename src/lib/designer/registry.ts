@@ -72,3 +72,7 @@ export function getRegisteredPages(): PageDefinition[] {
 export function getPagesForModule(moduleSlug: string): PageDefinition[] {
   return getRegisteredPages().filter((p) => p.moduleSlug === moduleSlug);
 }
+
+export function getPage(pageId: string): PageDefinition | undefined {
+  return registry.get(pageId);
+}

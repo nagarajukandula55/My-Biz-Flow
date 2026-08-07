@@ -4,7 +4,8 @@ import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { RecordDetail } from "@/components/RecordDetail";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
-import { getBrandRecord, getBrandDetailFields, getBrandTimeline, brandRelated } from "@/lib/sample-data/brand";
+import { getBrandRecord, getBrandDetailFields, getBrandTimeline, brandRelated, brandColumns } from "@/lib/sample-data/brand";
+import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
 
 registerPage({
   id: "brand.detail",
@@ -29,7 +30,7 @@ export default function BrandDetailPage({
 }) {
   const mod = getModule("brand");
   const record = getBrandRecord(params.recordId);
-  const fields = getBrandDetailFields(record);
+  const fields = applyCustomizationsToDetailFields("brand.detail", getBrandDetailFields(record), brandColumns);
   const timeline = getBrandTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
 

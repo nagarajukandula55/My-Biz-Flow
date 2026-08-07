@@ -97,8 +97,10 @@ export function getMarketplaceDetailFields(record: Row): RecordField[] {
 
 export function getMarketplaceTimeline(record: Row): TimelineEntry[] {
   return [
-    { id: "t1", label: "Record created", timestamp: String(record["onboardedDate"] ?? "2026-08-01"), actor: "System" },
-    { id: "t2", label: "Record last updated", timestamp: "2026-08-07", actor: "Admin User" },
+    { id: "t1", label: "Vendor listing onboarded and linked to Central-API vendor ID by Karthik N. — IP 103.21.44.25", timestamp: "2026-04-10T10:00:00", actor: "Karthik N." },
+    { id: "t2", label: "Commission rate configured for category", timestamp: "2026-04-10T10:15:00", actor: "Marketplace Admin" },
+    { id: "t3", label: "Monthly GMV figure recalculated from settled orders", timestamp: "2026-08-01T00:20:00", actor: "System" },
+    { id: "t4", label: "Listing status reviewed at quarterly vendor audit", timestamp: "2026-08-04T11:00:00", actor: "Marketplace Admin" },
   ];
 }
 

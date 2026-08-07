@@ -99,8 +99,10 @@ export function getRestaurantPosDetailFields(record: Row): RecordField[] {
 
 export function getRestaurantPosTimeline(record: Row): TimelineEntry[] {
   return [
-    { id: "t1", label: "Record created", timestamp: String(record["orderTime"] ?? "2026-08-01"), actor: "System" },
-    { id: "t2", label: "Record last updated", timestamp: "2026-08-07", actor: "Admin User" },
+    { id: "t1", label: "Order placed at table by Waiter — IP 103.21.44.13", timestamp: "2026-08-07T19:05:00", actor: "Waiter" },
+    { id: "t2", label: "KOT sent to kitchen display", timestamp: "2026-08-07T19:05:05", actor: "System" },
+    { id: "t3", label: "Order served to table by Waiter — IP 103.21.44.13", timestamp: "2026-08-07T19:22:00", actor: "Waiter" },
+    { id: "t4", label: "Bill generated and payment settled — IP 103.21.44.13", timestamp: "2026-08-07T19:48:00", actor: "Waiter" },
   ];
 }
 

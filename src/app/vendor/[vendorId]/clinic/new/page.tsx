@@ -3,6 +3,7 @@ import { buildVendorNavGroups, getModule } from "@/lib/designer/modules";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { clinicFormFields } from "@/lib/sample-data/clinic";
+import { applyCustomizations } from "@/lib/designer/customizations";
 
 registerPage({
   id: "clinic.create",
@@ -22,6 +23,7 @@ registerPage({
 
 export default function NewClinicPage() {
   const mod = getModule("clinic");
+  const fields = applyCustomizations("clinic.create", clinicFormFields);
 
   return (
     <AppShell navGroups={buildVendorNavGroups("clinic")} topbarTitle={`New Appointment — ${mod?.label ?? "Clinic"}`}>
@@ -29,7 +31,7 @@ export default function NewClinicPage() {
         <h1 className="font-display text-2xl font-bold text-text">New Appointment</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new appointment record for Clinic.</p>
         <div className="mt-6">
-          <RecordForm fields={clinicFormFields} submitLabel="Create Appointment" />
+          <RecordForm fields={fields} submitLabel="Create Appointment" />
         </div>
       </div>
     </AppShell>

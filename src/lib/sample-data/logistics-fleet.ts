@@ -106,8 +106,10 @@ export function getLogisticsFleetDetailFields(record: Row): RecordField[] {
 
 export function getLogisticsFleetTimeline(record: Row): TimelineEntry[] {
   return [
-    { id: "t1", label: "Record created", timestamp: String(record["deliveryEta"] ?? "2026-08-01"), actor: "System" },
-    { id: "t2", label: "Record last updated", timestamp: "2026-08-07", actor: "Admin User" },
+    { id: "t1", label: "Shipment dispatched from origin hub by Dispatch Team — IP 103.21.44.31", timestamp: "2026-08-05T08:00:00", actor: "Dispatch Team" },
+    { id: "t2", label: "Driver logged in and vehicle assigned — IP 103.21.44.31", timestamp: "2026-08-05T08:05:00", actor: "Dispatch Team" },
+    { id: "t3", label: "Live location ping received en route (12.9716, 77.5946)", timestamp: "2026-08-06T14:20:00", actor: "Fleet Tracking" },
+    { id: "t4", label: "Delivery status updated against ETA", timestamp: "2026-08-06T19:00:00", actor: "System" },
   ];
 }
 

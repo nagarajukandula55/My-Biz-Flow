@@ -113,8 +113,10 @@ export function getEventBookingDetailFields(record: Row): RecordField[] {
 
 export function getEventBookingTimeline(record: Row): TimelineEntry[] {
   return [
-    { id: "t1", label: "Record created", timestamp: String(record["eventDate"] ?? "2026-08-01"), actor: "System" },
-    { id: "t2", label: "Record last updated", timestamp: "2026-08-07", actor: "Admin User" },
+    { id: "t1", label: "Booking inquiry logged by organizer via portal — IP 103.21.44.28", timestamp: "2026-07-18T13:00:00", actor: "Organizer" },
+    { id: "t2", label: "Booking confirmed and venue location pinned (12.935, 77.6115) by Karthik N. — IP 103.21.44.25", timestamp: "2026-07-20T10:30:00", actor: "Karthik N." },
+    { id: "t3", label: "Catering add-on confirmed with organizer", timestamp: "2026-08-01T15:00:00", actor: "Events Team" },
+    { id: "t4", label: "Event status updated after on-ground execution review", timestamp: "2026-08-06T20:00:00", actor: "Events Team" },
   ];
 }
 

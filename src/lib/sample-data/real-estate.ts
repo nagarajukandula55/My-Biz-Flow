@@ -119,8 +119,10 @@ export function getRealEstateDetailFields(record: Row): RecordField[] {
 
 export function getRealEstateTimeline(record: Row): TimelineEntry[] {
   return [
-    { id: "t1", label: "Record created", timestamp: String(record["siteVisitDate"] ?? "2026-08-01"), actor: "System" },
-    { id: "t2", label: "Record last updated", timestamp: "2026-08-07", actor: "Admin User" },
+    { id: "t1", label: "Listing created and address geo-pinned (12.9716, 77.6084) by Agent — IP 103.21.44.29", timestamp: "2026-06-01T11:00:00", actor: "Agent" },
+    { id: "t2", label: "Price updated after market comparison review", timestamp: "2026-07-10T09:00:00", actor: "Agent" },
+    { id: "t3", label: "Site visit scheduled with prospective buyer", timestamp: "2026-08-03T14:00:00", actor: "Agent" },
+    { id: "t4", label: "Listing status updated after site visit feedback", timestamp: "2026-08-06T17:00:00", actor: "Agent" },
   ];
 }
 

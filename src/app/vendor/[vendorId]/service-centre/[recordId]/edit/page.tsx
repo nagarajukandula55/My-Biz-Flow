@@ -3,6 +3,7 @@ import { buildVendorNavGroups, getModule } from "@/lib/designer/modules";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { serviceCentreFormFields, getServiceCentreRecord } from "@/lib/sample-data/service-centre";
+import { applyCustomizations } from "@/lib/designer/customizations";
 
 registerPage({
   id: "service-centre.edit",
@@ -23,6 +24,7 @@ registerPage({
 export default function EditServiceCentrePage({ params }: { params: { recordId: string } }) {
   const mod = getModule("service-centre");
   const record = getServiceCentreRecord(params.recordId);
+  const fields = applyCustomizations("service-centre.edit", serviceCentreFormFields);
 
   return (
     <AppShell navGroups={buildVendorNavGroups("service-centre")} topbarTitle={`Edit Workorder — ${mod?.label ?? "Service Centre"}`}>
@@ -30,7 +32,7 @@ export default function EditServiceCentrePage({ params }: { params: { recordId: 
         <h1 className="font-display text-2xl font-bold text-text">Edit Workorder</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>
         <div className="mt-6">
-          <RecordForm fields={serviceCentreFormFields} initialValues={record} submitLabel="Save changes" />
+          <RecordForm fields={fields} initialValues={record} submitLabel="Save changes" />
         </div>
       </div>
     </AppShell>

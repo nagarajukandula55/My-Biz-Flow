@@ -104,8 +104,10 @@ export function getBrandDetailFields(record: Row): RecordField[] {
 
 export function getBrandTimeline(record: Row): TimelineEntry[] {
   return [
-    { id: "t1", label: "Record created", timestamp: String(record["openedDate"] ?? "2026-08-01"), actor: "System" },
-    { id: "t2", label: "Record last updated", timestamp: "2026-08-07", actor: "Admin User" },
+    { id: "t1", label: "Location onboarded to the brand account by Karthik N. (Brand Admin) — IP 103.21.44.25", timestamp: "2026-06-15T12:00:00", actor: "Karthik N." },
+    { id: "t2", label: "Module bundle enabled for this location by Karthik N. — IP 103.21.44.25", timestamp: "2026-06-15T12:10:00", actor: "Karthik N." },
+    { id: "t3", label: "Monthly revenue figure synced from POS/billing modules", timestamp: "2026-08-01T00:05:00", actor: "System" },
+    { id: "t4", label: "Location status reviewed at monthly ops check-in", timestamp: "2026-08-05T17:30:00", actor: "Karthik N." },
   ];
 }
 

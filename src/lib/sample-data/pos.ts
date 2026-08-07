@@ -126,8 +126,10 @@ export function getPosDetailFields(record: Row): RecordField[] {
 
 export function getPosTimeline(record: Row): TimelineEntry[] {
   return [
-    { id: "t1", label: "Record created", timestamp: String(record["transactionTimestamp"] ?? "2026-08-01"), actor: "System" },
-    { id: "t2", label: "Record last updated", timestamp: "2026-08-07", actor: "Admin User" },
+    { id: "t1", label: "Sale rung up at register by Meena R. — IP 103.21.44.10", timestamp: "2026-08-07T10:12:00", actor: "Meena R." },
+    { id: "t2", label: "Discount applied by cashier — IP 103.21.44.10", timestamp: "2026-08-07T10:12:10", actor: "Meena R." },
+    { id: "t3", label: "Payment captured via UPI, receipt generated — IP 103.21.44.10", timestamp: "2026-08-07T10:12:30", actor: "Meena R." },
+    { id: "t4", label: "Stock on hand decremented for sold SKU", timestamp: "2026-08-07T10:12:35", actor: "System" },
   ];
 }
 

@@ -3,6 +3,7 @@ import { buildVendorNavGroups, getModule } from "@/lib/designer/modules";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { manufacturingFormFields, getManufacturingRecord } from "@/lib/sample-data/manufacturing";
+import { applyCustomizations } from "@/lib/designer/customizations";
 
 registerPage({
   id: "manufacturing.edit",
@@ -23,6 +24,7 @@ registerPage({
 export default function EditManufacturingPage({ params }: { params: { recordId: string } }) {
   const mod = getModule("manufacturing");
   const record = getManufacturingRecord(params.recordId);
+  const fields = applyCustomizations("manufacturing.edit", manufacturingFormFields);
 
   return (
     <AppShell navGroups={buildVendorNavGroups("manufacturing")} topbarTitle={`Edit Work Order — ${mod?.label ?? "Manufacturing / Production"}`}>
@@ -30,7 +32,7 @@ export default function EditManufacturingPage({ params }: { params: { recordId: 
         <h1 className="font-display text-2xl font-bold text-text">Edit Work Order</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>
         <div className="mt-6">
-          <RecordForm fields={manufacturingFormFields} initialValues={record} submitLabel="Save changes" />
+          <RecordForm fields={fields} initialValues={record} submitLabel="Save changes" />
         </div>
       </div>
     </AppShell>

@@ -3,6 +3,7 @@ import { buildVendorNavGroups, getModule } from "@/lib/designer/modules";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { marketplaceFormFields } from "@/lib/sample-data/marketplace";
+import { applyCustomizations } from "@/lib/designer/customizations";
 
 registerPage({
   id: "marketplace.create",
@@ -22,6 +23,7 @@ registerPage({
 
 export default function NewMarketplacePage() {
   const mod = getModule("marketplace");
+  const fields = applyCustomizations("marketplace.create", marketplaceFormFields);
 
   return (
     <AppShell navGroups={buildVendorNavGroups("marketplace")} topbarTitle={`New Vendor Listing — ${mod?.label ?? "Marketplace / Vendor Aggregator"}`}>
@@ -29,7 +31,7 @@ export default function NewMarketplacePage() {
         <h1 className="font-display text-2xl font-bold text-text">New Vendor Listing</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new vendor listing record for Marketplace / Vendor Aggregator.</p>
         <div className="mt-6">
-          <RecordForm fields={marketplaceFormFields} submitLabel="Create Vendor Listing" />
+          <RecordForm fields={fields} submitLabel="Create Vendor Listing" />
         </div>
       </div>
     </AppShell>

@@ -4,7 +4,8 @@ import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { RecordDetail } from "@/components/RecordDetail";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
-import { getRentalsRecord, getRentalsDetailFields, getRentalsTimeline, rentalsRelated } from "@/lib/sample-data/rentals";
+import { getRentalsRecord, getRentalsDetailFields, getRentalsTimeline, rentalsRelated, rentalsColumns } from "@/lib/sample-data/rentals";
+import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
 
 registerPage({
   id: "rentals.detail",
@@ -29,7 +30,7 @@ export default function RentalsDetailPage({
 }) {
   const mod = getModule("rentals");
   const record = getRentalsRecord(params.recordId);
-  const fields = getRentalsDetailFields(record);
+  const fields = applyCustomizationsToDetailFields("rentals.detail", getRentalsDetailFields(record), rentalsColumns);
   const timeline = getRentalsTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
 

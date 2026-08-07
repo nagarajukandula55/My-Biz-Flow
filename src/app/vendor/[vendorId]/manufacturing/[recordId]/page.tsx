@@ -4,7 +4,8 @@ import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { RecordDetail } from "@/components/RecordDetail";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
-import { getManufacturingRecord, getManufacturingDetailFields, getManufacturingTimeline, manufacturingRelated } from "@/lib/sample-data/manufacturing";
+import { getManufacturingRecord, getManufacturingDetailFields, getManufacturingTimeline, manufacturingRelated, manufacturingColumns } from "@/lib/sample-data/manufacturing";
+import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
 
 registerPage({
   id: "manufacturing.detail",
@@ -29,7 +30,7 @@ export default function ManufacturingDetailPage({
 }) {
   const mod = getModule("manufacturing");
   const record = getManufacturingRecord(params.recordId);
-  const fields = getManufacturingDetailFields(record);
+  const fields = applyCustomizationsToDetailFields("manufacturing.detail", getManufacturingDetailFields(record), manufacturingColumns);
   const timeline = getManufacturingTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
 

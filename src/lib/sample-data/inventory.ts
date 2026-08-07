@@ -105,8 +105,10 @@ export function getInventoryDetailFields(record: Row): RecordField[] {
 
 export function getInventoryTimeline(record: Row): TimelineEntry[] {
   return [
-    { id: "t1", label: "Record created", timestamp: String(record["id"] ?? "2026-08-01"), actor: "System" },
-    { id: "t2", label: "Record last updated", timestamp: "2026-08-07", actor: "Admin User" },
+    { id: "t1", label: "Stock item created during warehouse onboarding by Meena R. — IP 103.21.44.10", timestamp: "2026-07-15T10:00:00", actor: "Meena R." },
+    { id: "t2", label: "Quantity on hand adjusted after purchase order receipt", timestamp: "2026-07-29T14:20:00", actor: "Warehouse Team" },
+    { id: "t3", label: "Reorder level breached, low-stock alert raised", timestamp: "2026-08-05T06:00:00", actor: "System" },
+    { id: "t4", label: "Stock status reviewed and purchase order raised by Meena R. — IP 103.21.44.10", timestamp: "2026-08-06T11:00:00", actor: "Meena R." },
   ];
 }
 

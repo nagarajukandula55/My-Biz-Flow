@@ -3,6 +3,7 @@ import { buildVendorNavGroups, getModule } from "@/lib/designer/modules";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { legalFormFields, getLegalRecord } from "@/lib/sample-data/legal";
+import { applyCustomizations } from "@/lib/designer/customizations";
 
 registerPage({
   id: "legal.edit",
@@ -23,6 +24,7 @@ registerPage({
 export default function EditLegalPage({ params }: { params: { recordId: string } }) {
   const mod = getModule("legal");
   const record = getLegalRecord(params.recordId);
+  const fields = applyCustomizations("legal.edit", legalFormFields);
 
   return (
     <AppShell navGroups={buildVendorNavGroups("legal")} topbarTitle={`Edit Matter — ${mod?.label ?? "Legal / Case Management"}`}>
@@ -30,7 +32,7 @@ export default function EditLegalPage({ params }: { params: { recordId: string }
         <h1 className="font-display text-2xl font-bold text-text">Edit Matter</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>
         <div className="mt-6">
-          <RecordForm fields={legalFormFields} initialValues={record} submitLabel="Save changes" />
+          <RecordForm fields={fields} initialValues={record} submitLabel="Save changes" />
         </div>
       </div>
     </AppShell>

@@ -4,7 +4,8 @@ import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { RecordDetail } from "@/components/RecordDetail";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
-import { getWholesaleB2bRecord, getWholesaleB2bDetailFields, getWholesaleB2bTimeline, wholesaleB2bRelated } from "@/lib/sample-data/wholesale-b2b";
+import { getWholesaleB2bRecord, getWholesaleB2bDetailFields, getWholesaleB2bTimeline, wholesaleB2bRelated, wholesaleB2bColumns } from "@/lib/sample-data/wholesale-b2b";
+import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
 
 registerPage({
   id: "wholesale-b2b.detail",
@@ -29,7 +30,7 @@ export default function WholesaleB2bDetailPage({
 }) {
   const mod = getModule("wholesale-b2b");
   const record = getWholesaleB2bRecord(params.recordId);
-  const fields = getWholesaleB2bDetailFields(record);
+  const fields = applyCustomizationsToDetailFields("wholesale-b2b.detail", getWholesaleB2bDetailFields(record), wholesaleB2bColumns);
   const timeline = getWholesaleB2bTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
 

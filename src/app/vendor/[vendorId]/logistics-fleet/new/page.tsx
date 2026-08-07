@@ -3,6 +3,7 @@ import { buildVendorNavGroups, getModule } from "@/lib/designer/modules";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { logisticsFleetFormFields } from "@/lib/sample-data/logistics-fleet";
+import { applyCustomizations } from "@/lib/designer/customizations";
 
 registerPage({
   id: "logistics-fleet.create",
@@ -22,6 +23,7 @@ registerPage({
 
 export default function NewLogisticsFleetPage() {
   const mod = getModule("logistics-fleet");
+  const fields = applyCustomizations("logistics-fleet.create", logisticsFleetFormFields);
 
   return (
     <AppShell navGroups={buildVendorNavGroups("logistics-fleet")} topbarTitle={`New Shipment — ${mod?.label ?? "Logistics / Fleet"}`}>
@@ -29,7 +31,7 @@ export default function NewLogisticsFleetPage() {
         <h1 className="font-display text-2xl font-bold text-text">New Shipment</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new shipment record for Logistics / Fleet.</p>
         <div className="mt-6">
-          <RecordForm fields={logisticsFleetFormFields} submitLabel="Create Shipment" />
+          <RecordForm fields={fields} submitLabel="Create Shipment" />
         </div>
       </div>
     </AppShell>

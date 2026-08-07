@@ -113,8 +113,10 @@ export function getBillingDetailFields(record: Row): RecordField[] {
 
 export function getBillingTimeline(record: Row): TimelineEntry[] {
   return [
-    { id: "t1", label: "Record created", timestamp: String(record["issueDate"] ?? "2026-08-01"), actor: "System" },
-    { id: "t2", label: "Record last updated", timestamp: "2026-08-07", actor: "Admin User" },
+    { id: "t1", label: "Invoice generated from billing run by Anita Rao — IP 103.21.44.22", timestamp: "2026-07-30T09:20:00", actor: "Anita Rao" },
+    { id: "t2", label: "Invoice sent to customer by email", timestamp: "2026-07-30T09:22:00", actor: "System" },
+    { id: "t3", label: "Payment recorded against invoice by Suresh M. — IP 103.21.44.18", timestamp: "2026-08-04T16:05:00", actor: "Suresh M." },
+    { id: "t4", label: "Payment status reconciled with bank statement", timestamp: "2026-08-06T10:00:00", actor: "Accounts Team" },
   ];
 }
 

@@ -3,6 +3,8 @@ import { buildVendorNavGroups, getModule } from "@/lib/designer/modules";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { ServiceCentreClientTable } from "./ServiceCentreClientTable";
+import { applyCustomizations } from "@/lib/designer/customizations";
+import { serviceCentreColumns } from "@/lib/sample-data/service-centre";
 
 registerPage({
   id: "service-centre.list",
@@ -22,6 +24,7 @@ registerPage({
 
 export default function ServiceCentrePage({ params }: { params: { vendorId: string } }) {
   const mod = getModule("service-centre");
+  const columns = applyCustomizations("service-centre.list", serviceCentreColumns);
 
   return (
     <AppShell
@@ -37,7 +40,7 @@ export default function ServiceCentrePage({ params }: { params: { vendorId: stri
         <h1 className="font-display text-2xl font-bold text-text">{mod?.label}</h1>
         <p className="mt-1 text-sm text-text-muted">{mod?.description}</p>
         <div className="mt-6">
-          <ServiceCentreClientTable vendorId={params.vendorId} />
+          <ServiceCentreClientTable vendorId={params.vendorId} columns={columns} />
         </div>
       </div>
     </AppShell>

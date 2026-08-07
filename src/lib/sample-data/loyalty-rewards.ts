@@ -98,8 +98,10 @@ export function getLoyaltyRewardsDetailFields(record: Row): RecordField[] {
 
 export function getLoyaltyRewardsTimeline(record: Row): TimelineEntry[] {
   return [
-    { id: "t1", label: "Record created", timestamp: String(record["lastRedemption"] ?? "2026-08-01"), actor: "System" },
-    { id: "t2", label: "Record last updated", timestamp: "2026-08-07", actor: "Admin User" },
+    { id: "t1", label: "Member enrolled at point of sale — IP 103.21.44.10", timestamp: "2026-05-01T12:00:00", actor: "Store Cashier" },
+    { id: "t2", label: "Points credited on qualifying purchase", timestamp: "2026-07-15T13:00:00", actor: "System" },
+    { id: "t3", label: "Reward redeemed by member at checkout — IP 103.21.44.12", timestamp: "2026-08-01T16:30:00", actor: "Store Cashier" },
+    { id: "t4", label: "Tier recalculated based on lifetime spend", timestamp: "2026-08-06T00:10:00", actor: "System" },
   ];
 }
 

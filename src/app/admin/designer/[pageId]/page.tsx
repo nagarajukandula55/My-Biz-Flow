@@ -7,6 +7,9 @@ import { StatusChip } from "@/components/StatusChip";
 import { LogoMark } from "@/components/LogoMark";
 import { getRegisteredPages, registerPage } from "@/lib/designer/registry";
 import "@/lib/designer/registerAll";
+import { getFieldSchema } from "@/lib/designer/fieldSchema";
+import { getPageCustomization } from "@/lib/designer/customizations";
+import { DesignerFieldEditor } from "@/components/DesignerFieldEditor";
 
 registerPage({
   id: "platform.designer.detail",
@@ -24,6 +27,9 @@ registerPage({
 export default function PageDetailPage({ params }: { params: { pageId: string } }) {
   const page = getRegisteredPages().find((p) => p.id === params.pageId);
   if (!page) notFound();
+
+  const baseFields = getFieldSchema(page.id);
+  const customization = getPageCustomization(page.id);
 
   let source: string | null = null;
   let readError: string | null = null;
@@ -85,6 +91,10 @@ export default function PageDetailPage({ params }: { params: { pageId: string } 
                 ))}
               </ul>
             </div>
+          )}
+
+          {baseFields && (
+            <DesignerFieldEditor pageId={page.id} baseFields={baseFields} customization={customization} />
           )}
 
           <div className="mt-6 rounded-lg border border-border bg-bg-raised p-5">

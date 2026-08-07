@@ -4,7 +4,8 @@ import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { RecordDetail } from "@/components/RecordDetail";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
-import { getServiceCentreRecord, getServiceCentreDetailFields, getServiceCentreTimeline, serviceCentreRelated } from "@/lib/sample-data/service-centre";
+import { getServiceCentreRecord, getServiceCentreDetailFields, getServiceCentreTimeline, serviceCentreRelated, serviceCentreColumns } from "@/lib/sample-data/service-centre";
+import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
 
 registerPage({
   id: "service-centre.detail",
@@ -29,7 +30,7 @@ export default function ServiceCentreDetailPage({
 }) {
   const mod = getModule("service-centre");
   const record = getServiceCentreRecord(params.recordId);
-  const fields = getServiceCentreDetailFields(record);
+  const fields = applyCustomizationsToDetailFields("service-centre.detail", getServiceCentreDetailFields(record), serviceCentreColumns);
   const timeline = getServiceCentreTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
 

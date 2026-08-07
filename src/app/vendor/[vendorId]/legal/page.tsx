@@ -3,6 +3,8 @@ import { buildVendorNavGroups, getModule } from "@/lib/designer/modules";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { LegalClientTable } from "./LegalClientTable";
+import { applyCustomizations } from "@/lib/designer/customizations";
+import { legalColumns } from "@/lib/sample-data/legal";
 
 registerPage({
   id: "legal.list",
@@ -22,6 +24,7 @@ registerPage({
 
 export default function LegalPage({ params }: { params: { vendorId: string } }) {
   const mod = getModule("legal");
+  const columns = applyCustomizations("legal.list", legalColumns);
 
   return (
     <AppShell
@@ -37,7 +40,7 @@ export default function LegalPage({ params }: { params: { vendorId: string } }) 
         <h1 className="font-display text-2xl font-bold text-text">{mod?.label}</h1>
         <p className="mt-1 text-sm text-text-muted">{mod?.description}</p>
         <div className="mt-6">
-          <LegalClientTable vendorId={params.vendorId} />
+          <LegalClientTable vendorId={params.vendorId} columns={columns} />
         </div>
       </div>
     </AppShell>

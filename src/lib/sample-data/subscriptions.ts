@@ -98,8 +98,10 @@ export function getSubscriptionsDetailFields(record: Row): RecordField[] {
 
 export function getSubscriptionsTimeline(record: Row): TimelineEntry[] {
   return [
-    { id: "t1", label: "Record created", timestamp: String(record["startDate"] ?? "2026-08-01"), actor: "System" },
-    { id: "t2", label: "Record last updated", timestamp: "2026-08-07", actor: "Admin User" },
+    { id: "t1", label: "Membership plan purchased and activated — IP 103.21.44.17", timestamp: "2026-06-01T10:00:00", actor: "Member" },
+    { id: "t2", label: "Plan payment auto-charged on renewal cycle", timestamp: "2026-07-01T00:00:00", actor: "System" },
+    { id: "t3", label: "Member checked in for facility usage", timestamp: "2026-08-05T18:00:00", actor: "Front Desk" },
+    { id: "t4", label: "Subscription status reviewed ahead of next renewal", timestamp: "2026-08-06T00:00:00", actor: "System" },
   ];
 }
 

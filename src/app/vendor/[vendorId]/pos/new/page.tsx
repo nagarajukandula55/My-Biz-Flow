@@ -3,6 +3,7 @@ import { buildVendorNavGroups, getModule } from "@/lib/designer/modules";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { posFormFields } from "@/lib/sample-data/pos";
+import { applyCustomizations } from "@/lib/designer/customizations";
 
 registerPage({
   id: "pos.create",
@@ -22,6 +23,7 @@ registerPage({
 
 export default function NewPosPage() {
   const mod = getModule("pos");
+  const fields = applyCustomizations("pos.create", posFormFields);
 
   return (
     <AppShell navGroups={buildVendorNavGroups("pos")} topbarTitle={`New Sale — ${mod?.label ?? "POS"}`}>
@@ -29,7 +31,7 @@ export default function NewPosPage() {
         <h1 className="font-display text-2xl font-bold text-text">New Sale</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new sale record for POS.</p>
         <div className="mt-6">
-          <RecordForm fields={posFormFields} submitLabel="Create Sale" />
+          <RecordForm fields={fields} submitLabel="Create Sale" />
         </div>
       </div>
     </AppShell>

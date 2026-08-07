@@ -1,14 +1,14 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { DataTable, type Row } from "@/components/DataTable";
+import { DataTable, type Row, type Column } from "@/components/DataTable";
 import { restaurantPosColumns, restaurantPosRows } from "@/lib/sample-data/restaurant-pos";
 
-export function RestaurantPosClientTable({ vendorId }: { vendorId: string }) {
+export function RestaurantPosClientTable({ vendorId, columns }: { vendorId: string; columns?: Column[] }) {
   const router = useRouter();
   return (
     <DataTable
-      columns={restaurantPosColumns}
+      columns={columns ?? restaurantPosColumns}
       rows={restaurantPosRows}
       onRowClick={(row: Row) => router.push(`/vendor/${vendorId}/restaurant-pos/${row["id"]}`)}
     />

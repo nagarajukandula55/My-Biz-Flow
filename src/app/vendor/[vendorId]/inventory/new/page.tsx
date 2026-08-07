@@ -3,6 +3,7 @@ import { buildVendorNavGroups, getModule } from "@/lib/designer/modules";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { inventoryFormFields } from "@/lib/sample-data/inventory";
+import { applyCustomizations } from "@/lib/designer/customizations";
 
 registerPage({
   id: "inventory.create",
@@ -22,6 +23,7 @@ registerPage({
 
 export default function NewInventoryPage() {
   const mod = getModule("inventory");
+  const fields = applyCustomizations("inventory.create", inventoryFormFields);
 
   return (
     <AppShell navGroups={buildVendorNavGroups("inventory")} topbarTitle={`New Stock Item — ${mod?.label ?? "Inventory / Warehouse"}`}>
@@ -29,7 +31,7 @@ export default function NewInventoryPage() {
         <h1 className="font-display text-2xl font-bold text-text">New Stock Item</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new stock item record for Inventory / Warehouse.</p>
         <div className="mt-6">
-          <RecordForm fields={inventoryFormFields} submitLabel="Create Stock Item" />
+          <RecordForm fields={fields} submitLabel="Create Stock Item" />
         </div>
       </div>
     </AppShell>

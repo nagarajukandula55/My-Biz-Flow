@@ -4,7 +4,8 @@ import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { RecordDetail } from "@/components/RecordDetail";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
-import { getHrmsRecord, getHrmsDetailFields, getHrmsTimeline, hrmsRelated } from "@/lib/sample-data/hrms";
+import { getHrmsRecord, getHrmsDetailFields, getHrmsTimeline, hrmsRelated, hrmsColumns } from "@/lib/sample-data/hrms";
+import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
 
 registerPage({
   id: "hrms.detail",
@@ -29,7 +30,7 @@ export default function HrmsDetailPage({
 }) {
   const mod = getModule("hrms");
   const record = getHrmsRecord(params.recordId);
-  const fields = getHrmsDetailFields(record);
+  const fields = applyCustomizationsToDetailFields("hrms.detail", getHrmsDetailFields(record), hrmsColumns);
   const timeline = getHrmsTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
 

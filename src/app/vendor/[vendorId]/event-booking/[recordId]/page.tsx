@@ -4,7 +4,8 @@ import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { RecordDetail } from "@/components/RecordDetail";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
-import { getEventBookingRecord, getEventBookingDetailFields, getEventBookingTimeline, eventBookingRelated } from "@/lib/sample-data/event-booking";
+import { getEventBookingRecord, getEventBookingDetailFields, getEventBookingTimeline, eventBookingRelated, eventBookingColumns } from "@/lib/sample-data/event-booking";
+import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
 
 registerPage({
   id: "event-booking.detail",
@@ -29,7 +30,7 @@ export default function EventBookingDetailPage({
 }) {
   const mod = getModule("event-booking");
   const record = getEventBookingRecord(params.recordId);
-  const fields = getEventBookingDetailFields(record);
+  const fields = applyCustomizationsToDetailFields("event-booking.detail", getEventBookingDetailFields(record), eventBookingColumns);
   const timeline = getEventBookingTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
 

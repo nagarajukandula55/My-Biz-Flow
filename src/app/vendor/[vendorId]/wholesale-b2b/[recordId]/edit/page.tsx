@@ -3,6 +3,7 @@ import { buildVendorNavGroups, getModule } from "@/lib/designer/modules";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { wholesaleB2bFormFields, getWholesaleB2bRecord } from "@/lib/sample-data/wholesale-b2b";
+import { applyCustomizations } from "@/lib/designer/customizations";
 
 registerPage({
   id: "wholesale-b2b.edit",
@@ -23,6 +24,7 @@ registerPage({
 export default function EditWholesaleB2bPage({ params }: { params: { recordId: string } }) {
   const mod = getModule("wholesale-b2b");
   const record = getWholesaleB2bRecord(params.recordId);
+  const fields = applyCustomizations("wholesale-b2b.edit", wholesaleB2bFormFields);
 
   return (
     <AppShell navGroups={buildVendorNavGroups("wholesale-b2b")} topbarTitle={`Edit Order — ${mod?.label ?? "Wholesale / Distributor B2B"}`}>
@@ -30,7 +32,7 @@ export default function EditWholesaleB2bPage({ params }: { params: { recordId: s
         <h1 className="font-display text-2xl font-bold text-text">Edit Order</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>
         <div className="mt-6">
-          <RecordForm fields={wholesaleB2bFormFields} initialValues={record} submitLabel="Save changes" />
+          <RecordForm fields={fields} initialValues={record} submitLabel="Save changes" />
         </div>
       </div>
     </AppShell>

@@ -4,7 +4,8 @@ import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { RecordDetail } from "@/components/RecordDetail";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
-import { getInventoryRecord, getInventoryDetailFields, getInventoryTimeline, inventoryRelated } from "@/lib/sample-data/inventory";
+import { getInventoryRecord, getInventoryDetailFields, getInventoryTimeline, inventoryRelated, inventoryColumns } from "@/lib/sample-data/inventory";
+import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
 
 registerPage({
   id: "inventory.detail",
@@ -29,7 +30,7 @@ export default function InventoryDetailPage({
 }) {
   const mod = getModule("inventory");
   const record = getInventoryRecord(params.recordId);
-  const fields = getInventoryDetailFields(record);
+  const fields = applyCustomizationsToDetailFields("inventory.detail", getInventoryDetailFields(record), inventoryColumns);
   const timeline = getInventoryTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
 

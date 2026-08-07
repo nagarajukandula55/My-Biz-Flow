@@ -4,7 +4,8 @@ import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { RecordDetail } from "@/components/RecordDetail";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
-import { getMarketplaceRecord, getMarketplaceDetailFields, getMarketplaceTimeline, marketplaceRelated } from "@/lib/sample-data/marketplace";
+import { getMarketplaceRecord, getMarketplaceDetailFields, getMarketplaceTimeline, marketplaceRelated, marketplaceColumns } from "@/lib/sample-data/marketplace";
+import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
 
 registerPage({
   id: "marketplace.detail",
@@ -29,7 +30,7 @@ export default function MarketplaceDetailPage({
 }) {
   const mod = getModule("marketplace");
   const record = getMarketplaceRecord(params.recordId);
-  const fields = getMarketplaceDetailFields(record);
+  const fields = applyCustomizationsToDetailFields("marketplace.detail", getMarketplaceDetailFields(record), marketplaceColumns);
   const timeline = getMarketplaceTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
 

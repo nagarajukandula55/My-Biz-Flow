@@ -4,7 +4,8 @@ import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { RecordDetail } from "@/components/RecordDetail";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
-import { getLogisticsFleetRecord, getLogisticsFleetDetailFields, getLogisticsFleetTimeline, logisticsFleetRelated } from "@/lib/sample-data/logistics-fleet";
+import { getLogisticsFleetRecord, getLogisticsFleetDetailFields, getLogisticsFleetTimeline, logisticsFleetRelated, logisticsFleetColumns } from "@/lib/sample-data/logistics-fleet";
+import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
 
 registerPage({
   id: "logistics-fleet.detail",
@@ -29,7 +30,7 @@ export default function LogisticsFleetDetailPage({
 }) {
   const mod = getModule("logistics-fleet");
   const record = getLogisticsFleetRecord(params.recordId);
-  const fields = getLogisticsFleetDetailFields(record);
+  const fields = applyCustomizationsToDetailFields("logistics-fleet.detail", getLogisticsFleetDetailFields(record), logisticsFleetColumns);
   const timeline = getLogisticsFleetTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
 

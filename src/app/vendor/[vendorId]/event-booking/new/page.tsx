@@ -3,6 +3,7 @@ import { buildVendorNavGroups, getModule } from "@/lib/designer/modules";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { eventBookingFormFields } from "@/lib/sample-data/event-booking";
+import { applyCustomizations } from "@/lib/designer/customizations";
 
 registerPage({
   id: "event-booking.create",
@@ -22,6 +23,7 @@ registerPage({
 
 export default function NewEventBookingPage() {
   const mod = getModule("event-booking");
+  const fields = applyCustomizations("event-booking.create", eventBookingFormFields);
 
   return (
     <AppShell navGroups={buildVendorNavGroups("event-booking")} topbarTitle={`New Event — ${mod?.label ?? "Event / Venue Booking"}`}>
@@ -29,7 +31,7 @@ export default function NewEventBookingPage() {
         <h1 className="font-display text-2xl font-bold text-text">New Event</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new event record for Event / Venue Booking.</p>
         <div className="mt-6">
-          <RecordForm fields={eventBookingFormFields} submitLabel="Create Event" />
+          <RecordForm fields={fields} submitLabel="Create Event" />
         </div>
       </div>
     </AppShell>

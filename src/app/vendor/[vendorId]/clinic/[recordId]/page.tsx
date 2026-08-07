@@ -4,7 +4,8 @@ import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { RecordDetail } from "@/components/RecordDetail";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
-import { getClinicRecord, getClinicDetailFields, getClinicTimeline, clinicRelated } from "@/lib/sample-data/clinic";
+import { getClinicRecord, getClinicDetailFields, getClinicTimeline, clinicRelated, clinicColumns } from "@/lib/sample-data/clinic";
+import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
 
 registerPage({
   id: "clinic.detail",
@@ -29,7 +30,7 @@ export default function ClinicDetailPage({
 }) {
   const mod = getModule("clinic");
   const record = getClinicRecord(params.recordId);
-  const fields = getClinicDetailFields(record);
+  const fields = applyCustomizationsToDetailFields("clinic.detail", getClinicDetailFields(record), clinicColumns);
   const timeline = getClinicTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
 

@@ -112,8 +112,10 @@ export function getHrmsDetailFields(record: Row): RecordField[] {
 
 export function getHrmsTimeline(record: Row): TimelineEntry[] {
   return [
-    { id: "t1", label: "Record created", timestamp: String(record["checkInTime"] ?? "2026-08-01"), actor: "System" },
-    { id: "t2", label: "Record last updated", timestamp: "2026-08-07", actor: "Admin User" },
+    { id: "t1", label: "Employee checked in for shift (12.9352, 77.6146) — IP 103.21.44.10", timestamp: "2026-08-07T09:00:00", actor: "Employee" },
+    { id: "t2", label: "Shift assignment confirmed by HR — IP 103.21.44.11", timestamp: "2026-08-07T09:02:00", actor: "HR Admin" },
+    { id: "t3", label: "Attendance status marked Present after check-in validation", timestamp: "2026-08-07T09:03:00", actor: "System" },
+    { id: "t4", label: "Employee checked out at end of shift", timestamp: "2026-08-07T18:10:00", actor: "Employee" },
   ];
 }
 

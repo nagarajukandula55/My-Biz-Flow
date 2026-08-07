@@ -3,6 +3,7 @@ import { buildVendorNavGroups, getModule } from "@/lib/designer/modules";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { rentalsFormFields } from "@/lib/sample-data/rentals";
+import { applyCustomizations } from "@/lib/designer/customizations";
 
 registerPage({
   id: "rentals.create",
@@ -22,6 +23,7 @@ registerPage({
 
 export default function NewRentalsPage() {
   const mod = getModule("rentals");
+  const fields = applyCustomizations("rentals.create", rentalsFormFields);
 
   return (
     <AppShell navGroups={buildVendorNavGroups("rentals")} topbarTitle={`New Booking — ${mod?.label ?? "Rentals / Booking"}`}>
@@ -29,7 +31,7 @@ export default function NewRentalsPage() {
         <h1 className="font-display text-2xl font-bold text-text">New Booking</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new booking record for Rentals / Booking.</p>
         <div className="mt-6">
-          <RecordForm fields={rentalsFormFields} submitLabel="Create Booking" />
+          <RecordForm fields={fields} submitLabel="Create Booking" />
         </div>
       </div>
     </AppShell>

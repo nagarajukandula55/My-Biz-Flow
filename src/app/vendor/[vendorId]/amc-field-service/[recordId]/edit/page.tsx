@@ -3,6 +3,7 @@ import { buildVendorNavGroups, getModule } from "@/lib/designer/modules";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { amcFieldServiceFormFields, getAmcFieldServiceRecord } from "@/lib/sample-data/amc-field-service";
+import { applyCustomizations } from "@/lib/designer/customizations";
 
 registerPage({
   id: "amc-field-service.edit",
@@ -23,6 +24,7 @@ registerPage({
 export default function EditAmcFieldServicePage({ params }: { params: { recordId: string } }) {
   const mod = getModule("amc-field-service");
   const record = getAmcFieldServiceRecord(params.recordId);
+  const fields = applyCustomizations("amc-field-service.edit", amcFieldServiceFormFields);
 
   return (
     <AppShell navGroups={buildVendorNavGroups("amc-field-service")} topbarTitle={`Edit Contract — ${mod?.label ?? "AMC / Field Service"}`}>
@@ -30,7 +32,7 @@ export default function EditAmcFieldServicePage({ params }: { params: { recordId
         <h1 className="font-display text-2xl font-bold text-text">Edit Contract</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>
         <div className="mt-6">
-          <RecordForm fields={amcFieldServiceFormFields} initialValues={record} submitLabel="Save changes" />
+          <RecordForm fields={fields} initialValues={record} submitLabel="Save changes" />
         </div>
       </div>
     </AppShell>

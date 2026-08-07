@@ -3,6 +3,7 @@ import { buildVendorNavGroups, getModule } from "@/lib/designer/modules";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { restaurantPosFormFields, getRestaurantPosRecord } from "@/lib/sample-data/restaurant-pos";
+import { applyCustomizations } from "@/lib/designer/customizations";
 
 registerPage({
   id: "restaurant-pos.edit",
@@ -23,6 +24,7 @@ registerPage({
 export default function EditRestaurantPosPage({ params }: { params: { recordId: string } }) {
   const mod = getModule("restaurant-pos");
   const record = getRestaurantPosRecord(params.recordId);
+  const fields = applyCustomizations("restaurant-pos.edit", restaurantPosFormFields);
 
   return (
     <AppShell navGroups={buildVendorNavGroups("restaurant-pos")} topbarTitle={`Edit Order — ${mod?.label ?? "Restaurant POS"}`}>
@@ -30,7 +32,7 @@ export default function EditRestaurantPosPage({ params }: { params: { recordId: 
         <h1 className="font-display text-2xl font-bold text-text">Edit Order</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>
         <div className="mt-6">
-          <RecordForm fields={restaurantPosFormFields} initialValues={record} submitLabel="Save changes" />
+          <RecordForm fields={fields} initialValues={record} submitLabel="Save changes" />
         </div>
       </div>
     </AppShell>

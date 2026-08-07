@@ -3,6 +3,7 @@ import { buildVendorNavGroups, getModule } from "@/lib/designer/modules";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { brandFormFields } from "@/lib/sample-data/brand";
+import { applyCustomizations } from "@/lib/designer/customizations";
 
 registerPage({
   id: "brand.create",
@@ -22,6 +23,7 @@ registerPage({
 
 export default function NewBrandPage() {
   const mod = getModule("brand");
+  const fields = applyCustomizations("brand.create", brandFormFields);
 
   return (
     <AppShell navGroups={buildVendorNavGroups("brand")} topbarTitle={`New Location — ${mod?.label ?? "Brand"}`}>
@@ -29,7 +31,7 @@ export default function NewBrandPage() {
         <h1 className="font-display text-2xl font-bold text-text">New Location</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new location record for Brand.</p>
         <div className="mt-6">
-          <RecordForm fields={brandFormFields} submitLabel="Create Location" />
+          <RecordForm fields={fields} submitLabel="Create Location" />
         </div>
       </div>
     </AppShell>

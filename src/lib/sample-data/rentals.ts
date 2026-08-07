@@ -113,8 +113,10 @@ export function getRentalsDetailFields(record: Row): RecordField[] {
 
 export function getRentalsTimeline(record: Row): TimelineEntry[] {
   return [
-    { id: "t1", label: "Record created", timestamp: String(record["bookingStart"] ?? "2026-08-01"), actor: "System" },
-    { id: "t2", label: "Record last updated", timestamp: "2026-08-07", actor: "Admin User" },
+    { id: "t1", label: "Booking requested by renter via portal — IP 103.21.44.26", timestamp: "2026-07-29T12:00:00", actor: "Renter" },
+    { id: "t2", label: "Booking confirmed and deposit collected by Rentals Desk — IP 103.21.44.26", timestamp: "2026-07-29T12:30:00", actor: "Rentals Desk" },
+    { id: "t3", label: "Asset handed over to renter at pickup location", timestamp: "2026-08-01T09:00:00", actor: "Rentals Desk" },
+    { id: "t4", label: "Booking status updated on return of asset", timestamp: "2026-08-06T18:00:00", actor: "Rentals Desk" },
   ];
 }
 

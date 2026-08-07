@@ -3,6 +3,7 @@ import { buildVendorNavGroups, getModule } from "@/lib/designer/modules";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { educationFormFields } from "@/lib/sample-data/education";
+import { applyCustomizations } from "@/lib/designer/customizations";
 
 registerPage({
   id: "education.create",
@@ -22,6 +23,7 @@ registerPage({
 
 export default function NewEducationPage() {
   const mod = getModule("education");
+  const fields = applyCustomizations("education.create", educationFormFields);
 
   return (
     <AppShell navGroups={buildVendorNavGroups("education")} topbarTitle={`New Enrollment — ${mod?.label ?? "Education / Coaching"}`}>
@@ -29,7 +31,7 @@ export default function NewEducationPage() {
         <h1 className="font-display text-2xl font-bold text-text">New Enrollment</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new enrollment record for Education / Coaching.</p>
         <div className="mt-6">
-          <RecordForm fields={educationFormFields} submitLabel="Create Enrollment" />
+          <RecordForm fields={fields} submitLabel="Create Enrollment" />
         </div>
       </div>
     </AppShell>

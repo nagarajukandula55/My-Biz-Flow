@@ -3,6 +3,7 @@ import { buildVendorNavGroups, getModule } from "@/lib/designer/modules";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { billingFormFields } from "@/lib/sample-data/billing";
+import { applyCustomizations } from "@/lib/designer/customizations";
 
 registerPage({
   id: "billing.create",
@@ -22,6 +23,7 @@ registerPage({
 
 export default function NewBillingPage() {
   const mod = getModule("billing");
+  const fields = applyCustomizations("billing.create", billingFormFields);
 
   return (
     <AppShell navGroups={buildVendorNavGroups("billing")} topbarTitle={`New Invoice — ${mod?.label ?? "Billing"}`}>
@@ -29,7 +31,7 @@ export default function NewBillingPage() {
         <h1 className="font-display text-2xl font-bold text-text">New Invoice</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new invoice record for Billing.</p>
         <div className="mt-6">
-          <RecordForm fields={billingFormFields} submitLabel="Create Invoice" />
+          <RecordForm fields={fields} submitLabel="Create Invoice" />
         </div>
       </div>
     </AppShell>

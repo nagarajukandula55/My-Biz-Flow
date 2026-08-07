@@ -105,8 +105,10 @@ export function getAccountingGstDetailFields(record: Row): RecordField[] {
 
 export function getAccountingGstTimeline(record: Row): TimelineEntry[] {
   return [
-    { id: "t1", label: "Record created", timestamp: String(record["dueDate"] ?? "2026-08-01"), actor: "System" },
-    { id: "t2", label: "Record last updated", timestamp: "2026-08-07", actor: "Admin User" },
+    { id: "t1", label: "GST return draft created from ledger sync by Priya Sharma — IP 103.21.44.12", timestamp: "2026-07-28T11:02:00", actor: "Priya Sharma" },
+    { id: "t2", label: "Taxable value and ITC figures recalculated after reconciliation by Suresh M. — IP 103.21.44.18", timestamp: "2026-08-02T15:40:00", actor: "Suresh M." },
+    { id: "t3", label: "Return submitted to GSTN portal by Priya Sharma — IP 103.21.44.12", timestamp: "2026-08-05T18:10:00", actor: "Priya Sharma" },
+    { id: "t4", label: "Filing status updated to reflect acknowledgement", timestamp: "2026-08-07T09:00:00", actor: "System" },
   ];
 }
 

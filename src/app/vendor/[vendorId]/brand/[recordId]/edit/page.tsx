@@ -3,6 +3,7 @@ import { buildVendorNavGroups, getModule } from "@/lib/designer/modules";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { brandFormFields, getBrandRecord } from "@/lib/sample-data/brand";
+import { applyCustomizations } from "@/lib/designer/customizations";
 
 registerPage({
   id: "brand.edit",
@@ -23,6 +24,7 @@ registerPage({
 export default function EditBrandPage({ params }: { params: { recordId: string } }) {
   const mod = getModule("brand");
   const record = getBrandRecord(params.recordId);
+  const fields = applyCustomizations("brand.edit", brandFormFields);
 
   return (
     <AppShell navGroups={buildVendorNavGroups("brand")} topbarTitle={`Edit Location — ${mod?.label ?? "Brand"}`}>
@@ -30,7 +32,7 @@ export default function EditBrandPage({ params }: { params: { recordId: string }
         <h1 className="font-display text-2xl font-bold text-text">Edit Location</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>
         <div className="mt-6">
-          <RecordForm fields={brandFormFields} initialValues={record} submitLabel="Save changes" />
+          <RecordForm fields={fields} initialValues={record} submitLabel="Save changes" />
         </div>
       </div>
     </AppShell>

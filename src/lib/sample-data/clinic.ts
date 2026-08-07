@@ -99,8 +99,10 @@ export function getClinicDetailFields(record: Row): RecordField[] {
 
 export function getClinicTimeline(record: Row): TimelineEntry[] {
   return [
-    { id: "t1", label: "Record created", timestamp: String(record["appointmentDateTime"] ?? "2026-08-01"), actor: "System" },
-    { id: "t2", label: "Record last updated", timestamp: "2026-08-07", actor: "Admin User" },
+    { id: "t1", label: "Appointment booked by front-desk staff — IP 103.21.44.14", timestamp: "2026-08-03T09:00:00", actor: "Reception" },
+    { id: "t2", label: "Patient checked in for consultation", timestamp: "2026-08-07T10:05:00", actor: "Reception" },
+    { id: "t3", label: "Diagnosis and prescription recorded by Dr. Nair — IP 103.21.44.19", timestamp: "2026-08-07T10:40:00", actor: "Dr. Nair" },
+    { id: "t4", label: "Consultation fee collected at counter — IP 103.21.44.14", timestamp: "2026-08-07T10:55:00", actor: "Reception" },
   ];
 }
 

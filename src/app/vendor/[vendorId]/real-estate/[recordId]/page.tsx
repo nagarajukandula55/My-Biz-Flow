@@ -4,7 +4,8 @@ import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { RecordDetail } from "@/components/RecordDetail";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
-import { getRealEstateRecord, getRealEstateDetailFields, getRealEstateTimeline, realEstateRelated } from "@/lib/sample-data/real-estate";
+import { getRealEstateRecord, getRealEstateDetailFields, getRealEstateTimeline, realEstateRelated, realEstateColumns } from "@/lib/sample-data/real-estate";
+import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
 
 registerPage({
   id: "real-estate.detail",
@@ -29,7 +30,7 @@ export default function RealEstateDetailPage({
 }) {
   const mod = getModule("real-estate");
   const record = getRealEstateRecord(params.recordId);
-  const fields = getRealEstateDetailFields(record);
+  const fields = applyCustomizationsToDetailFields("real-estate.detail", getRealEstateDetailFields(record), realEstateColumns);
   const timeline = getRealEstateTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
 

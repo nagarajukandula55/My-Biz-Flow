@@ -3,6 +3,7 @@ import { buildVendorNavGroups, getModule } from "@/lib/designer/modules";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { accountingGstFormFields, getAccountingGstRecord } from "@/lib/sample-data/accounting-gst";
+import { applyCustomizations } from "@/lib/designer/customizations";
 
 registerPage({
   id: "accounting-gst.edit",
@@ -23,6 +24,7 @@ registerPage({
 export default function EditAccountingGstPage({ params }: { params: { recordId: string } }) {
   const mod = getModule("accounting-gst");
   const record = getAccountingGstRecord(params.recordId);
+  const fields = applyCustomizations("accounting-gst.edit", accountingGstFormFields);
 
   return (
     <AppShell navGroups={buildVendorNavGroups("accounting-gst")} topbarTitle={`Edit GST Return — ${mod?.label ?? "Accounting / GST Compliance"}`}>
@@ -30,7 +32,7 @@ export default function EditAccountingGstPage({ params }: { params: { recordId: 
         <h1 className="font-display text-2xl font-bold text-text">Edit GST Return</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>
         <div className="mt-6">
-          <RecordForm fields={accountingGstFormFields} initialValues={record} submitLabel="Save changes" />
+          <RecordForm fields={fields} initialValues={record} submitLabel="Save changes" />
         </div>
       </div>
     </AppShell>

@@ -106,8 +106,10 @@ export function getAmcFieldServiceDetailFields(record: Row): RecordField[] {
 
 export function getAmcFieldServiceTimeline(record: Row): TimelineEntry[] {
   return [
-    { id: "t1", label: "Record created", timestamp: String(record["scheduledDate"] ?? "2026-08-01"), actor: "System" },
-    { id: "t2", label: "Record last updated", timestamp: "2026-08-07", actor: "Admin User" },
+    { id: "t1", label: "Contract created by Ramesh (Ops Admin) — IP 103.21.44.20", timestamp: "2026-07-20T10:00:00", actor: "Ramesh" },
+    { id: "t2", label: "Technician assigned and visit scheduled by Suresh M. — IP 103.21.44.18", timestamp: "2026-07-25T14:30:00", actor: "Suresh M." },
+    { id: "t3", label: "Technician checked in on-site (12.9611, 77.6387) — IP 103.21.44.30", timestamp: "2026-08-06T09:15:00", actor: "Field Technician" },
+    { id: "t4", label: "Service marked completed, contract value invoiced", timestamp: "2026-08-06T11:45:00", actor: "System" },
   ];
 }
 

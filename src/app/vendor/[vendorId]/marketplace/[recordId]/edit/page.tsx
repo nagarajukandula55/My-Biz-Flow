@@ -3,6 +3,7 @@ import { buildVendorNavGroups, getModule } from "@/lib/designer/modules";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { marketplaceFormFields, getMarketplaceRecord } from "@/lib/sample-data/marketplace";
+import { applyCustomizations } from "@/lib/designer/customizations";
 
 registerPage({
   id: "marketplace.edit",
@@ -23,6 +24,7 @@ registerPage({
 export default function EditMarketplacePage({ params }: { params: { recordId: string } }) {
   const mod = getModule("marketplace");
   const record = getMarketplaceRecord(params.recordId);
+  const fields = applyCustomizations("marketplace.edit", marketplaceFormFields);
 
   return (
     <AppShell navGroups={buildVendorNavGroups("marketplace")} topbarTitle={`Edit Vendor Listing — ${mod?.label ?? "Marketplace / Vendor Aggregator"}`}>
@@ -30,7 +32,7 @@ export default function EditMarketplacePage({ params }: { params: { recordId: st
         <h1 className="font-display text-2xl font-bold text-text">Edit Vendor Listing</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>
         <div className="mt-6">
-          <RecordForm fields={marketplaceFormFields} initialValues={record} submitLabel="Save changes" />
+          <RecordForm fields={fields} initialValues={record} submitLabel="Save changes" />
         </div>
       </div>
     </AppShell>

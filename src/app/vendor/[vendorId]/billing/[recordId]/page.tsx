@@ -4,7 +4,8 @@ import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { RecordDetail } from "@/components/RecordDetail";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
-import { getBillingRecord, getBillingDetailFields, getBillingTimeline, billingRelated } from "@/lib/sample-data/billing";
+import { getBillingRecord, getBillingDetailFields, getBillingTimeline, billingRelated, billingColumns } from "@/lib/sample-data/billing";
+import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
 
 registerPage({
   id: "billing.detail",
@@ -29,7 +30,7 @@ export default function BillingDetailPage({
 }) {
   const mod = getModule("billing");
   const record = getBillingRecord(params.recordId);
-  const fields = getBillingDetailFields(record);
+  const fields = applyCustomizationsToDetailFields("billing.detail", getBillingDetailFields(record), billingColumns);
   const timeline = getBillingTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
 

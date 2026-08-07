@@ -3,6 +3,8 @@ import { buildVendorNavGroups, getModule } from "@/lib/designer/modules";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { AccountingGstClientTable } from "./AccountingGstClientTable";
+import { applyCustomizations } from "@/lib/designer/customizations";
+import { accountingGstColumns } from "@/lib/sample-data/accounting-gst";
 
 registerPage({
   id: "accounting-gst.list",
@@ -22,6 +24,7 @@ registerPage({
 
 export default function AccountingGstPage({ params }: { params: { vendorId: string } }) {
   const mod = getModule("accounting-gst");
+  const columns = applyCustomizations("accounting-gst.list", accountingGstColumns);
 
   return (
     <AppShell
@@ -37,7 +40,7 @@ export default function AccountingGstPage({ params }: { params: { vendorId: stri
         <h1 className="font-display text-2xl font-bold text-text">{mod?.label}</h1>
         <p className="mt-1 text-sm text-text-muted">{mod?.description}</p>
         <div className="mt-6">
-          <AccountingGstClientTable vendorId={params.vendorId} />
+          <AccountingGstClientTable vendorId={params.vendorId} columns={columns} />
         </div>
       </div>
     </AppShell>

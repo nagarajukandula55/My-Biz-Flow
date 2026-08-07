@@ -4,7 +4,8 @@ import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { RecordDetail } from "@/components/RecordDetail";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
-import { getLegalRecord, getLegalDetailFields, getLegalTimeline, legalRelated } from "@/lib/sample-data/legal";
+import { getLegalRecord, getLegalDetailFields, getLegalTimeline, legalRelated, legalColumns } from "@/lib/sample-data/legal";
+import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
 
 registerPage({
   id: "legal.detail",
@@ -29,7 +30,7 @@ export default function LegalDetailPage({
 }) {
   const mod = getModule("legal");
   const record = getLegalRecord(params.recordId);
-  const fields = getLegalDetailFields(record);
+  const fields = applyCustomizationsToDetailFields("legal.detail", getLegalDetailFields(record), legalColumns);
   const timeline = getLegalTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
 
