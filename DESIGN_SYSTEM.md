@@ -181,3 +181,51 @@ missing there, the answer is currently no, and that's what to fix.
    PR first, a page PR second.
 4. No page-level PR skips `registerPage()` or leaves it out of
    `registerAll.ts`. Verify on `/admin/designer` before merging.
+
+### `PageDefinition` also carries `explanation` and `sourceFile`
+
+Every `registerPage()` call must include two additional fields beyond the
+original set:
+
+- `explanation: string` — a real plain-language paragraph on what the page
+  does and why it exists. Not a repeat of the title.
+- `sourceFile: string` — the file path relative to repo root, e.g.
+  `"src/app/vendor/[vendorId]/pos/page.tsx"`. `/admin/designer/[pageId]`
+  reads this file from disk server-side and renders it for inspection —
+  keep it accurate or that view breaks for that page.
+
+### `RecordForm` — the one approved create/edit form
+
+`src/components/RecordForm.tsx` is a `"use client"` config-driven form: it
+takes a `fields: FormFieldDef[]` (`{key,label,type,required,options?}`,
+`type` one of `text | number | date | select | currency | boolean |
+textarea | relation`) and an optional `initialValues`, and renders the
+right input per field. Every module's create page passes it the module's
+field set with `submitLabel="Create <record type>"`; every edit page passes
+the same fields with `initialValues` from the record and
+`submitLabel="Save changes"`. Do not hand-roll a bespoke form per module —
+if a field type doesn't fit, extend `FormFieldType` and `RecordForm`
+itself, not a one-off page.
+
+There is no backend/database wired up yet, so submission is a client-side
+demo stub: it logs the values and shows "Saved (demo — no backend yet)."
+Replace that stub, not the component's shape, once persistence lands.
+
+### `ConfirmDeleteDialog` — the one approved delete confirmation
+
+`src/components/ConfirmDeleteDialog.tsx` is a `"use client"` controlled
+modal (`useState` show/hide, not a headless-UI dependency) taking a
+`recordLabel` to name in the confirmation copy. It's used from every
+module's detail page Delete action (and optionally from list rows). Cancel
+closes it with no side effect; Delete is `btn-danger`-styled and, absent a
+backend, logs and shows a "Deleted (demo)" message.
+
+### Buttons
+
+`.btn-accent` (brand/primary action, `--accent` background with
+`--accent-contrast` text), `.btn-danger` (destructive action, `--danger`
+background), and `.btn-outline` (secondary action, bordered) are defined in
+`src/app/globals.css` as the only approved button treatments — don't
+hand-style a button with ad hoc Tailwind classes on a page. Any new button
+variant needs a token-driven class added here first, per the process rule
+above.

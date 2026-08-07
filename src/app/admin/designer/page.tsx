@@ -1,9 +1,23 @@
+import Link from "next/link";
 import { SuperAdminGate } from "@/components/SuperAdminGate";
 import { StatusChip } from "@/components/StatusChip";
 import { LogoMark } from "@/components/LogoMark";
 import { MODULES, taxonomyDotClass } from "@/lib/designer/modules";
-import { getPagesForModule } from "@/lib/designer/registry";
+import { getPagesForModule, getRegisteredPages, registerPage } from "@/lib/designer/registry";
 import "@/lib/designer/registerAll";
+
+registerPage({
+  id: "platform.designer.list",
+  moduleSlug: "platform",
+  title: "Designer — Page Registry",
+  path: "/admin/designer",
+  kind: "admin",
+  superAdminOnly: true,
+  customizableRegions: [],
+  explanation:
+    "Super-Admin-only view of every page registered in the product, grouped by module (plus a Platform section for non-vendor pages like this one and Help). It exists so nothing built in the app can go undiscoverable or uncustomizable — a page that never calls registerPage() is a bug, not an edge case.",
+  sourceFile: "src/app/admin/designer/page.tsx",
+});
 
 /**
  * Platform-level Super Admin tool — NOT vendor-scoped, so it deliberately
@@ -19,7 +33,11 @@ export default function DesignerPage() {
     pages: getPagesForModule(mod.slug),
   }));
 
-  const totalPages = pagesByModule.reduce((sum, m) => sum + m.pages.length, 0);
+  const moduleSlugs = new Set(MODULES.map((m) => m.slug));
+  const platformPages = getRegisteredPages().filter((p) => !moduleSlugs.has(p.moduleSlug));
+
+  const totalPages =
+    pagesByModule.reduce((sum, m) => sum + m.pages.length, 0) + platformPages.length;
 
   return (
     <SuperAdminGate>
@@ -88,7 +106,7 @@ export default function DesignerPage() {
                             {page.path}
                           </div>
                         </div>
-                        <div className="flex flex-wrap gap-1.5">
+                        <div className="flex flex-wrap items-center gap-1.5">
                           {page.customizableRegions.map((region) => (
                             <span
                               key={region.key}
@@ -98,6 +116,12 @@ export default function DesignerPage() {
                               {region.label}
                             </span>
                           ))}
+                          <Link
+                            href={`/admin/designer/${page.id}`}
+                            className="ml-1 text-xs font-semibold text-teal hover:underline"
+                          >
+                            View →
+                          </Link>
                         </div>
                       </li>
                     ))}
@@ -105,6 +129,46 @@ export default function DesignerPage() {
                 )}
               </section>
             ))}
+
+            <section className="rounded-lg border border-border bg-bg-raised">
+              <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-3">
+                <div className="flex items-center gap-2.5">
+                  <span className="h-2 w-2 flex-shrink-0 rounded-full bg-accent" />
+                  <h2 className="font-display text-base font-bold text-text">Platform</h2>
+                  <span className="text-xs text-text-muted">
+                    non-vendor pages — not part of any module&apos;s MODULES entry
+                  </span>
+                </div>
+                <span className="text-xs font-semibold text-text-muted">
+                  {platformPages.length} page{platformPages.length === 1 ? "" : "s"}
+                </span>
+              </div>
+              <ul className="divide-y divide-border">
+                {platformPages.map((page) => (
+                  <li
+                    key={page.id}
+                    className="flex flex-col gap-2 px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-text">{page.title}</span>
+                        {page.superAdminOnly && (
+                          <StatusChip variant="warning" label="Super Admin only" />
+                        )}
+                        <StatusChip variant="neutral" label={page.kind} />
+                      </div>
+                      <div className="mt-0.5 font-mono text-xs text-text-muted">{page.path}</div>
+                    </div>
+                    <Link
+                      href={`/admin/designer/${page.id}`}
+                      className="text-xs font-semibold text-teal hover:underline"
+                    >
+                      View →
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
           </div>
 
           <div className="mt-8 rounded-lg border border-border bg-bg-sunken p-5 text-sm text-text-muted">

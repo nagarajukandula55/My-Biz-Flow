@@ -1,12 +1,14 @@
 import { AppShell } from "@/components/AppShell";
 import { buildVendorNavGroups, getModule } from "@/lib/designer/modules";
 import { registerPage } from "@/lib/designer/registry";
+import Link from "next/link";
+import { RealEstateClientTable } from "./RealEstateClientTable";
 
 registerPage({
   id: "real-estate.list",
   moduleSlug: "real-estate",
   title: "Real Estate — List",
-  path: "src/app/vendor/[vendorId]/real-estate",
+  path: "/vendor/[vendorId]/real-estate",
   kind: "list",
   superAdminOnly: false,
   customizableRegions: [
@@ -14,23 +16,31 @@ registerPage({
     { key: "filters", label: "List filters" },
     { key: "view-toggle", label: "List / Kanban view options" },
   ],
+  explanation: "Lists every listing record for the real-estate module in a sortable table, with a \"+ New\" action to create one and row-click navigation into the record's detail view.",
+  sourceFile: "src/app/vendor/[vendorId]/real-estate/page.tsx",
 });
 
-export default function RealEstatePage() {
+export default function RealEstatePage({ params }: { params: { vendorId: string } }) {
   const mod = getModule("real-estate");
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("real-estate")} topbarTitle={mod?.label ?? "Real Estate"}>
+    <AppShell
+      navGroups={buildVendorNavGroups("real-estate")}
+      topbarTitle={mod?.label ?? "Real Estate"}
+      topbarActions={
+        <Link href={`/vendor/${params.vendorId}/real-estate/new`} className="btn-accent">
+          + New Listing
+        </Link>
+      }
+    >
       <div className="p-6">
         <h1 className="font-display text-2xl font-bold text-text">{mod?.label}</h1>
         <p className="mt-1 text-sm text-text-muted">{mod?.description}</p>
-        <div className="mt-6 rounded-lg border border-border bg-bg-raised p-6 text-sm text-text-muted">
-          Module scaffold registered in the Designer. Field definitions,
-          pipeline stages, and records for this module are config-driven via
-          the metadata engine — not yet wired to a data source in this pass.
-          See <code className="font-mono">/admin/designer</code>.
+        <div className="mt-6">
+          <RealEstateClientTable vendorId={params.vendorId} />
         </div>
       </div>
     </AppShell>
   );
 }
+

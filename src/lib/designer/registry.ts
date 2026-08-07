@@ -36,6 +36,10 @@ export interface PageDefinition {
   superAdminOnly: boolean;
   /** What a Super Admin can customize on this page via the Designer */
   customizableRegions: CustomizableRegion[];
+  /** Plain-language paragraph explaining what this page does and why it exists */
+  explanation: string;
+  /** File path relative to repo root, e.g. "src/app/vendor/[vendorId]/pos/page.tsx" */
+  sourceFile: string;
 }
 
 const registry = new Map<string, PageDefinition>();

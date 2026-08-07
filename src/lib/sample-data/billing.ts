@@ -1,0 +1,121 @@
+import type { Column, Row } from "@/components/DataTable";
+import type { RecordField, TimelineEntry, RelatedRecord } from "@/components/RecordDetail";
+import type { StatusVariant } from "@/components/StatusChip";
+import type { FormFieldDef } from "@/components/RecordForm";
+
+// Invoice sample data for the billing module — realistic field modeling,
+// no backend wired up in this pass (see CLAUDE.md).
+
+const STATUS_VARIANT: Record<string, StatusVariant> = {
+  "Draft": "neutral",
+  "Sent": "teal",
+  "Paid": "success",
+  "Overdue": "danger",
+  "Partially Paid": "warning"
+};
+
+export const billingColumns: Column[] = [
+  { key: "id", label: "Invoice Number", type: "text" },
+  { key: "customer", label: "Customer", type: "relation-link" },
+  { key: "issueDate", label: "Issue Date", type: "date" },
+  { key: "dueDate", label: "Due Date", type: "date" },
+  { key: "lineItemsSummary", label: "Line Items", type: "text" },
+  { key: "subtotal", label: "Subtotal", type: "currency" },
+  { key: "taxAmount", label: "Tax Amount", type: "currency" },
+  { key: "totalAmount", label: "Total Amount", type: "currency" },
+  { key: "paymentStatus", label: "Payment Status", type: "select-chip", chipVariantMap: STATUS_VARIANT },
+  { key: "paymentMode", label: "Payment Mode", type: "select-chip" },
+];
+
+export const billingRows: Row[] = [
+  {
+    id: "INV-3301",
+    customer: "Bluepeak Traders",
+    issueDate: "2026-07-28",
+    dueDate: "2026-08-11",
+    lineItemsSummary: "Consulting services — 12 hrs; Software license — 1 yr",
+    subtotal: 48000,
+    taxAmount: 8640,
+    totalAmount: 56640,
+    paymentStatus: "Sent",
+    paymentMode: "Bank Transfer",
+  },
+  {
+    id: "INV-3300",
+    customer: "Orchid Interiors",
+    issueDate: "2026-07-15",
+    dueDate: "2026-07-29",
+    lineItemsSummary: "Design consultation package",
+    subtotal: 22000,
+    taxAmount: 3960,
+    totalAmount: 25960,
+    paymentStatus: "Overdue",
+    paymentMode: "Cheque",
+  },
+  {
+    id: "INV-3299",
+    customer: "Nimbus Logistics",
+    issueDate: "2026-08-01",
+    dueDate: "2026-08-15",
+    lineItemsSummary: "Fleet maintenance retainer — Aug",
+    subtotal: 15000,
+    taxAmount: 2700,
+    totalAmount: 17700,
+    paymentStatus: "Paid",
+    paymentMode: "UPI",
+  },
+  {
+    id: "INV-3298",
+    customer: "Sunrise Bakery",
+    issueDate: "2026-08-03",
+    dueDate: "2026-08-17",
+    lineItemsSummary: "POS hardware install + setup",
+    subtotal: 9000,
+    taxAmount: 1620,
+    totalAmount: 10620,
+    paymentStatus: "Partially Paid",
+    paymentMode: "Cash",
+  },
+];
+
+export const billingFormFields: FormFieldDef[] = [
+  { key: "id", label: "Invoice Number", type: "text", required: true },
+  { key: "customer", label: "Customer", type: "relation", required: true },
+  { key: "issueDate", label: "Issue Date", type: "date", required: true },
+  { key: "dueDate", label: "Due Date", type: "date", required: true },
+  { key: "lineItemsSummary", label: "Line Items", type: "textarea", required: false },
+  { key: "subtotal", label: "Subtotal", type: "currency", required: false },
+  { key: "taxAmount", label: "Tax Amount", type: "currency", required: false },
+  { key: "totalAmount", label: "Total Amount", type: "currency", required: true },
+  { key: "paymentStatus", label: "Payment Status", type: "select", required: true, options: ["Draft","Sent","Paid","Overdue","Partially Paid"] },
+  { key: "paymentMode", label: "Payment Mode", type: "select", required: false, options: ["Bank Transfer","UPI","Cheque","Cash"] },
+];
+
+export function getBillingRecord(recordId: string): Row {
+  return billingRows.find((r) => String(r["id"]) === recordId) ?? billingRows[0];
+}
+
+export function getBillingDetailFields(record: Row): RecordField[] {
+  const r = record;
+  return [
+    { label: "Invoice Number", value: r["id"], type: "text" },
+    { label: "Customer", value: r["customer"], type: "relation" },
+    { label: "Issue Date", value: r["issueDate"], type: "date" },
+    { label: "Due Date", value: r["dueDate"], type: "date" },
+    { label: "Line Items", value: r["lineItemsSummary"], type: "text" },
+    { label: "Subtotal", value: r["subtotal"], type: "currency" },
+    { label: "Tax Amount", value: r["taxAmount"], type: "currency" },
+    { label: "Total Amount", value: r["totalAmount"], type: "currency" },
+    { label: "Payment Status", value: r["paymentStatus"], type: "select", chipVariant: STATUS_VARIANT[String(r["paymentStatus"])] ?? "neutral" },
+    { label: "Payment Mode", value: r["paymentMode"], type: "select", chipVariant: STATUS_VARIANT[String(r["paymentMode"])] ?? "neutral" },
+  ];
+}
+
+export function getBillingTimeline(record: Row): TimelineEntry[] {
+  return [
+    { id: "t1", label: "Record created", timestamp: String(record["issueDate"] ?? "2026-08-01"), actor: "System" },
+    { id: "t2", label: "Record last updated", timestamp: "2026-08-07", actor: "Admin User" },
+  ];
+}
+
+export const billingRelated: RelatedRecord[] = [];

@@ -15,6 +15,8 @@ registerPage({
     { key: "pipeline-stages", label: "Pipeline / workflow stages" },
     { key: "permissions", label: "Role permissions for this module" },
   ],
+  explanation: "No-code configuration screen for the brand module (Super Admin only): custom field definitions, pipeline/workflow stages, and role permissions for this module.",
+  sourceFile: "src/app/vendor/[vendorId]/brand/admin/page.tsx",
 });
 
 export default function BrandAdminPage() {

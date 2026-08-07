@@ -1,12 +1,14 @@
 import { AppShell } from "@/components/AppShell";
 import { buildVendorNavGroups, getModule } from "@/lib/designer/modules";
 import { registerPage } from "@/lib/designer/registry";
+import Link from "next/link";
+import { LoyaltyRewardsClientTable } from "./LoyaltyRewardsClientTable";
 
 registerPage({
   id: "loyalty-rewards.list",
   moduleSlug: "loyalty-rewards",
   title: "Loyalty & Rewards — List",
-  path: "src/app/vendor/[vendorId]/loyalty-rewards",
+  path: "/vendor/[vendorId]/loyalty-rewards",
   kind: "list",
   superAdminOnly: false,
   customizableRegions: [
@@ -14,23 +16,31 @@ registerPage({
     { key: "filters", label: "List filters" },
     { key: "view-toggle", label: "List / Kanban view options" },
   ],
+  explanation: "Lists every member record for the loyalty-rewards module in a sortable table, with a \"+ New\" action to create one and row-click navigation into the record's detail view.",
+  sourceFile: "src/app/vendor/[vendorId]/loyalty-rewards/page.tsx",
 });
 
-export default function LoyaltyRewardsPage() {
+export default function LoyaltyRewardsPage({ params }: { params: { vendorId: string } }) {
   const mod = getModule("loyalty-rewards");
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("loyalty-rewards")} topbarTitle={mod?.label ?? "Loyalty & Rewards"}>
+    <AppShell
+      navGroups={buildVendorNavGroups("loyalty-rewards")}
+      topbarTitle={mod?.label ?? "Loyalty & Rewards"}
+      topbarActions={
+        <Link href={`/vendor/${params.vendorId}/loyalty-rewards/new`} className="btn-accent">
+          + New Member
+        </Link>
+      }
+    >
       <div className="p-6">
         <h1 className="font-display text-2xl font-bold text-text">{mod?.label}</h1>
         <p className="mt-1 text-sm text-text-muted">{mod?.description}</p>
-        <div className="mt-6 rounded-lg border border-border bg-bg-raised p-6 text-sm text-text-muted">
-          Module scaffold registered in the Designer. Field definitions,
-          pipeline stages, and records for this module are config-driven via
-          the metadata engine — not yet wired to a data source in this pass.
-          See <code className="font-mono">/admin/designer</code>.
+        <div className="mt-6">
+          <LoyaltyRewardsClientTable vendorId={params.vendorId} />
         </div>
       </div>
     </AppShell>
   );
 }
+
