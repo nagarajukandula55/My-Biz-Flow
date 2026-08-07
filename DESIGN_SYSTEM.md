@@ -112,12 +112,72 @@ look, check this page — it is the live, buildable source of truth, not the
 earlier Artifact mockups (those were the proposal; this repo is the
 decision).
 
-## 7. Process for changing this system
+## 7. Folder convention and the Designer registry (binding)
+
+### Vendor terminology (locked)
+
+A signed-up company is called a **Vendor** internally — matching central-api's
+own vocabulary for this concept, deliberately, so our schema and central-api's
+`vendors` dataset speak the same language. There is no separate "sign up for
+My Biz Flow" flow; signup is **"register your business"**, and during signup
+the person picks which module type(s) they're registering for (Brand, SC,
+POS, AMC, Billing, Clinic, etc.) — that selection becomes the Vendor's
+enabled-modules set. A Vendor's "type" is just its enabled modules, not a
+separate enum; a Vendor can be typed by more than one module at once (e.g. a
+"POS + Inventory + Billing" Vendor).
+
+### Module folder structure
+
+Every module in `src/lib/designer/modules.ts` (the canonical module list —
+this is the only place a module's slug/label/taxonomy is defined) gets
+exactly one folder: `src/app/vendor/[vendorId]/<slug>/`. That folder holds:
+
+1. **Normal (vendor-facing) pages** directly inside it — `page.tsx` for the
+   list view, `[recordId]/page.tsx` for detail, etc.
+2. **One `admin/` subfolder**, gated to Super Admin only via the
+   `SuperAdminGate` component (`src/components/SuperAdminGate.tsx`) — this is
+   where a module's no-code configuration lives (field definitions, pipeline
+   stages, permissions).
+
+Nothing else goes in a module folder. If a page doesn't fit "normal" or
+"Super Admin admin," that's a sign it belongs in a different module, in
+`src/lib/engine/` as shared infrastructure, or is a sign the module list
+itself needs a new entry — not a reason to add a third kind of subfolder.
+
+Adding a module: add one entry to `MODULES` in
+`src/lib/designer/modules.ts` first, then scaffold its folder, then add its
+two page imports to `src/lib/designer/registerAll.ts`. In that order —
+never create a module folder that isn't in the registry.
+
+### The Designer registry (binding — nothing gets missed)
+
+Every single page in this app — without exception — must call
+`registerPage()` from `src/lib/designer/registry.ts` at module scope. This
+is not optional documentation-as-comment; it is how
+`/admin/designer` (Super Admin only) enumerates and will eventually make
+customizable every page in the product. A page that doesn't register is a
+page the Designer cannot find, and per this doc, that's a bug to fix before
+merge, not an acceptable gap.
+
+When you add a page:
+1. Call `registerPage({ id, moduleSlug, title, path, kind, superAdminOnly, customizableRegions })` at the top of the file, outside the component function.
+2. List every real customization surface on that page in `customizableRegions` — table columns, filters, pipeline stages, form fields, whatever a Super Admin should eventually be able to change without a code deploy. Don't under-list this; an empty or vague `customizableRegions` array defeats the entire point.
+3. Add a side-effect import of the new page file to `src/lib/designer/registerAll.ts` (grouped under its module), so `/admin/designer` reliably sees it regardless of which route Next.js happens to have already loaded in a given server process.
+4. Confirm it shows up on `/admin/designer` before merging.
+
+The `/admin/designer` page itself is the live source of truth for "is
+everything modular and customizable, nothing missed" — if a page is
+missing there, the answer is currently no, and that's what to fix.
+
+## 8. Process for changing this system
 
 1. This doc, `src/lib/fonts.ts`, `src/app/globals.css`, `tailwind.config.ts`,
-   and `src/components/` change together, in the same PR, or not at all.
+   `src/components/`, and `src/lib/designer/` (`modules.ts`, `registry.ts`,
+   `registerAll.ts`) change together, in the same PR, or not at all.
 2. Update the `/design-system` reference page in the same PR so it stays
    accurate.
 3. No page-level PR introduces a new color, font, spacing scale, or
    component pattern. If a page needs something new, that's a design-system
    PR first, a page PR second.
+4. No page-level PR skips `registerPage()` or leaves it out of
+   `registerAll.ts`. Verify on `/admin/designer` before merging.

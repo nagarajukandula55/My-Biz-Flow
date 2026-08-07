@@ -34,3 +34,14 @@ freelance on a page-level PR.
 - `tailwind.config.ts` — token → Tailwind class mapping
 - `src/components/` — the only approved shared UI components
 - `src/app/design-system/` — live reference page for the whole system
+- `src/lib/designer/modules.ts` — canonical module list (single source of
+  truth for every module slug/label/taxonomy — a Vendor's "type" is just
+  its enabled modules, see DESIGN_SYSTEM.md §7)
+- `src/lib/designer/registry.ts` — the Designer registry; every page must
+  call `registerPage()` here, no exceptions (DESIGN_SYSTEM.md §7)
+- `src/lib/designer/registerAll.ts` — side-effect imports of every module
+  page, keep in sync when adding a module
+- `src/app/vendor/[vendorId]/<module-slug>/` — one folder per module:
+  normal pages directly inside, one `admin/` subfolder gated to Super Admin
+- `src/app/admin/designer/` — the live Super Admin page listing every
+  registered page in the product

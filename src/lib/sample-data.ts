@@ -23,7 +23,7 @@ export const workorderColumns: Column[] = [
     key: "status",
     label: "Status",
     type: "select-chip",
-    chipVariant: (value) => STATUS_VARIANT[String(value)] ?? "neutral",
+    chipVariantMap: STATUS_VARIANT,
   },
   { key: "amount", label: "Amount", type: "currency" },
   { key: "dueDate", label: "Due Date", type: "date" },

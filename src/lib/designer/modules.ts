@@ -1,0 +1,120 @@
+/**
+ * Canonical module registry — the single source of truth for every module
+ * type in My Biz Flow. A Vendor's "type" is just the set of module slugs
+ * enabled on their account; there is no separate vendor-type enum anywhere
+ * else in the codebase. Adding a module means adding one entry here first,
+ * then scaffolding its folder under src/app/vendor/[vendorId]/<slug>/ —
+ * never the other way around.
+ */
+
+export type ModuleTaxonomy = "vertical" | "cross-cutting" | "brand";
+
+export interface ModuleDefinition {
+  /** URL-safe slug — matches the folder name under src/app/vendor/[vendorId]/ */
+  slug: string;
+  /** Human-facing name */
+  label: string;
+  /** One-line description of what the module is for */
+  description: string;
+  /**
+   * Sidebar dot color per DESIGN_SYSTEM.md:
+   * vertical = teal, cross-cutting = neutral, brand = amber
+   */
+  taxonomy: ModuleTaxonomy;
+}
+
+export const MODULES: ModuleDefinition[] = [
+  // --- Core four ---
+  { slug: "pos", label: "POS", description: "Sales, store-exclusive point of sale.", taxonomy: "vertical" },
+  { slug: "service-centre", label: "Service Centre", description: "Workorders and billing for repair/service shops.", taxonomy: "vertical" },
+  { slug: "billing", label: "Billing", description: "Standalone invoicing and billing.", taxonomy: "vertical" },
+  { slug: "brand", label: "Brand", description: "Multi-location / multi-partner hierarchy: Brand → Partners → Locations.", taxonomy: "brand" },
+
+  // --- Verticals ---
+  { slug: "clinic", label: "Clinic", description: "Patient/client records, appointment scheduling, consultation billing.", taxonomy: "vertical" },
+  { slug: "amc-field-service", label: "AMC / Field Service", description: "Recurring maintenance contracts, technician dispatch and scheduling.", taxonomy: "vertical" },
+  { slug: "restaurant-pos", label: "Restaurant POS", description: "KOT and table management — specialized POS variant.", taxonomy: "vertical" },
+  { slug: "subscriptions", label: "Subscriptions / Membership", description: "Gyms, coaching, clubs — recurring billing and check-in.", taxonomy: "vertical" },
+  { slug: "real-estate", label: "Real Estate", description: "Listings, site visits, leads, agreements.", taxonomy: "vertical" },
+  { slug: "rentals", label: "Rentals / Booking", description: "Equipment, venue, or asset booking calendar.", taxonomy: "vertical" },
+  { slug: "education", label: "Education / Coaching", description: "Student enrollment, batches, fees, attendance.", taxonomy: "vertical" },
+  { slug: "manufacturing", label: "Manufacturing / Production", description: "Bill of materials, production work orders, raw material consumption.", taxonomy: "vertical" },
+  { slug: "wholesale-b2b", label: "Wholesale / Distributor B2B", description: "Bulk pricing, dealer/distributor accounts, credit terms.", taxonomy: "vertical" },
+  { slug: "logistics-fleet", label: "Logistics / Fleet", description: "Delivery tracking, vehicle and driver management.", taxonomy: "vertical" },
+  { slug: "legal", label: "Legal / Case Management", description: "Client matters, billable hours, document tracking.", taxonomy: "vertical" },
+  { slug: "event-booking", label: "Event / Venue Booking", description: "Event scheduling, banquet halls, catering.", taxonomy: "vertical" },
+
+  // --- Cross-cutting (plug into any vertical, not standalone verticals) ---
+  { slug: "inventory", label: "Inventory / Warehouse", description: "Stock, purchase orders, suppliers — shared across POS/SC/Restaurant/etc.", taxonomy: "cross-cutting" },
+  { slug: "accounting-gst", label: "Accounting / GST Compliance", description: "Tax returns, e-invoicing — India-specific compliance layer.", taxonomy: "cross-cutting" },
+  { slug: "loyalty-rewards", label: "Loyalty & Rewards", description: "Points/cashback — usable across POS/Restaurant/Clinic/etc.", taxonomy: "cross-cutting" },
+  { slug: "hrms", label: "HRMS / Payroll", description: "Staff attendance, payroll — add-on to any module.", taxonomy: "cross-cutting" },
+
+  // --- Special case ---
+  { slug: "marketplace", label: "Marketplace / Vendor Aggregator", description: "Multiple vendors under one umbrella — coordinates with central-api's own vendor concept, does not duplicate it.", taxonomy: "cross-cutting" },
+];
+
+export function getModule(slug: string): ModuleDefinition | undefined {
+  return MODULES.find((m) => m.slug === slug);
+}
+
+export function taxonomyDotClass(taxonomy: ModuleTaxonomy): string {
+  switch (taxonomy) {
+    case "vertical":
+      return "bg-teal";
+    case "brand":
+      return "bg-accent";
+    case "cross-cutting":
+    default:
+      return "bg-text-muted";
+  }
+}
+
+/** AppShell's NavDotVariant, duplicated here (not imported) to keep this file
+ *  framework-agnostic — it's pure data, not a React module. */
+type NavDot = "teal" | "amber" | "neutral";
+
+function taxonomyToNavDot(taxonomy: ModuleTaxonomy): NavDot {
+  switch (taxonomy) {
+    case "vertical":
+      return "teal";
+    case "brand":
+      return "amber";
+    case "cross-cutting":
+    default:
+      return "neutral";
+  }
+}
+
+export interface VendorNavGroup {
+  title: string;
+  items: { key: string; label: string; dot: NavDot; active?: boolean }[];
+}
+
+/**
+ * Builds the vendor sidebar's nav groups from the canonical MODULES list —
+ * every module page uses this instead of hand-writing its own nav array,
+ * so the sidebar can never drift from the module registry above.
+ */
+export function buildVendorNavGroups(activeModuleSlug?: string): VendorNavGroup[] {
+  const groups: Record<ModuleTaxonomy, ModuleDefinition[]> = {
+    brand: [],
+    vertical: [],
+    "cross-cutting": [],
+  };
+  for (const m of MODULES) groups[m.taxonomy].push(m);
+
+  const toItems = (mods: ModuleDefinition[]) =>
+    mods.map((m) => ({
+      key: m.slug,
+      label: m.label,
+      dot: taxonomyToNavDot(m.taxonomy),
+      active: m.slug === activeModuleSlug,
+    }));
+
+  return [
+    { title: "Brand", items: toItems(groups.brand) },
+    { title: "Modules", items: toItems(groups.vertical) },
+    { title: "Cross-cutting", items: toItems(groups["cross-cutting"]) },
+  ];
+}

@@ -1,3 +1,5 @@
+"use client";
+
 import { StatusChip, type StatusVariant } from "./StatusChip";
 import { formatCurrencyINR, formatDate } from "@/lib/format";
 
@@ -7,8 +9,12 @@ export type Column = {
   key: string;
   label: string;
   type: ColumnType;
-  /** For select-chip columns: maps a raw value to a StatusChip variant. */
-  chipVariant?: (value: unknown) => StatusVariant;
+  /**
+   * For select-chip columns: maps a raw value (stringified) to a StatusChip
+   * variant. A plain lookup object, not a function — this crosses the
+   * server→client boundary as data, so it must stay JSON-serializable.
+   */
+  chipVariantMap?: Record<string, StatusVariant>;
 };
 
 export type Row = Record<string, unknown>;
@@ -32,7 +38,7 @@ function renderCell(column: Column, row: Row) {
     case "date":
       return <span className="text-text-muted">{formatDate(String(value))}</span>;
     case "select-chip": {
-      const variant = column.chipVariant ? column.chipVariant(value) : "neutral";
+      const variant = column.chipVariantMap?.[String(value)] ?? "neutral";
       return <StatusChip label={String(value)} variant={variant} />;
     }
     case "relation-link":
