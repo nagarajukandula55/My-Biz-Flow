@@ -1,0 +1,144 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ---------------------------------------------------------------------
+   MBF design tokens — "Ledger Ink" palette.
+   Light mode is the default on :root. Dark mode applies via
+   prefers-color-scheme (system) guarded so an explicit light override
+   wins, and via [data-theme="dark"] for an explicit toggle.
+--------------------------------------------------------------------- */
+:root {
+  --bg: #F0F1F4;
+  --bg-raised: #FFFFFF;
+  --bg-sunken: #E4E6EC;
+  --text: #14171F;
+  --text-muted: #5B6270;
+  --border: #D8DBE2;
+  --accent: #E8873A;
+  --accent-contrast: #14171F;
+  --accent-soft: #FBEADA;
+  --teal: #2F7A6D;
+  --teal-soft: #E4F0EC;
+  --danger: #C0432F;
+  --danger-soft: #F8E2DD;
+  --success: #2F7A55;
+  --success-soft: #E1F0E6;
+  --warning: #C98A1B;
+  --warning-soft: #F7EAD2;
+  --sidebar-bg: #181C25;
+  --sidebar-text: #C6CAD4;
+  --sidebar-text-dim: #7A8091;
+  --sidebar-active: #232838;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #14171F;
+    --bg-raised: #1C202B;
+    --bg-sunken: #10131A;
+    --text: #EDEFF3;
+    --text-muted: #9AA1B0;
+    --border: #2A2F3D;
+    --accent: #F0975A;
+    --accent-contrast: #14171F;
+    --accent-soft: #2E2015;
+    --teal: #56A897;
+    --teal-soft: #17282A;
+    --danger: #E1725C;
+    --danger-soft: #2E1D1A;
+    --success: #58BC8A;
+    --success-soft: #17281F;
+    --warning: #E0A83F;
+    --warning-soft: #2A2213;
+    --sidebar-bg: #0E1015;
+    --sidebar-text: #C6CAD4;
+    --sidebar-text-dim: #676D7C;
+    --sidebar-active: #1C202B;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #14171F;
+  --bg-raised: #1C202B;
+  --bg-sunken: #10131A;
+  --text: #EDEFF3;
+  --text-muted: #9AA1B0;
+  --border: #2A2F3D;
+  --accent: #F0975A;
+  --accent-contrast: #14171F;
+  --accent-soft: #2E2015;
+  --teal: #56A897;
+  --teal-soft: #17282A;
+  --danger: #E1725C;
+  --danger-soft: #2E1D1A;
+  --success: #58BC8A;
+  --success-soft: #17281F;
+  --warning: #E0A83F;
+  --warning-soft: #2A2213;
+  --sidebar-bg: #0E1015;
+  --sidebar-text: #C6CAD4;
+  --sidebar-text-dim: #676D7C;
+  --sidebar-active: #1C202B;
+}
+
+* {
+  border-color: var(--border);
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+body {
+  font-family: var(--font-sans), Arial, sans-serif;
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+.font-display {
+  font-family: var(--font-display), Arial, sans-serif;
+  font-weight: 700;
+}
+
+/* Full-width page shell: responsive safe-gutter padding, not a centered
+   max-width container. */
+.mbf-page {
+  padding: clamp(28px, 4vw, 64px) clamp(20px, 5vw, 72px) clamp(56px, 8vw, 112px);
+  width: 100%;
+}
+
+.mbf-prose {
+  max-width: 65ch;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Neon numeral treatment — static glow, dark mode only. In light mode it
+   must render as a plain solid accent color (glow-on-white looks muddy). */
+.neon-num {
+  color: var(--accent);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .neon-num {
+    text-shadow:
+      0 0 2px color-mix(in srgb, var(--accent) 70%, transparent),
+      0 0 10px color-mix(in srgb, var(--accent) 45%, transparent),
+      0 0 24px color-mix(in srgb, var(--accent) 25%, transparent);
+  }
+}
+
+:root[data-theme="dark"] .neon-num {
+  text-shadow:
+    0 0 2px color-mix(in srgb, var(--accent) 70%, transparent),
+    0 0 10px color-mix(in srgb, var(--accent) 45%, transparent),
+    0 0 24px color-mix(in srgb, var(--accent) 25%, transparent);
+}
