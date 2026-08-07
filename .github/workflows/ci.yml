@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "claude/**"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - run: npm ci
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Build
+        run: npm run build
+        env:
+          # Dummy values so the build doesn't fail on missing env vars for
+          # features that read them lazily (see src/lib/env.ts) — CI only
+          # needs the build to succeed, not to talk to a real database or
+          # central-api.
+          SUPER_ADMIN_SECRET: ci-placeholder-secret
+          DATABASE_URL: postgres://ci:ci@localhost:5432/ci
+          CENTRAL_API_URL: https://example.invalid
+          CENTRAL_API_KEY: ci-placeholder-key

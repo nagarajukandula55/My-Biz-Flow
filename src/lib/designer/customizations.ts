@@ -80,7 +80,15 @@ function readStore(): Store {
 function writeStore(store: Store) {
   try {
     fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true });
-    fs.writeFileSync(DATA_FILE, JSON.stringify(store, null, 2) + "\n", "utf-8");
+    // Atomic write: write to a temp file in the same directory, then
+    // rename over the real file. A plain writeFileSync to the final path
+    // is not atomic — a concurrent read (or a crash mid-write) can observe
+    // a truncated/partial JSON file. rename() on the same filesystem is
+    // atomic on POSIX, so readers only ever see the old complete file or
+    // the new complete file, never a half-written one.
+    const tmpFile = `${DATA_FILE}.${process.pid}.${Date.now()}.tmp`;
+    fs.writeFileSync(tmpFile, JSON.stringify(store, null, 2) + "\n", "utf-8");
+    fs.renameSync(tmpFile, DATA_FILE);
   } catch {
     // Read-only filesystem (e.g. Vercel serverless at runtime) — this is
     // the explicitly-documented tradeoff above. Swallow rather than crash
@@ -100,6 +108,14 @@ export function getPageCustomization(pageId: string): PageCustomization {
   };
 }
 
+/**
+ * Read-modify-write, not locked — two concurrent edits to the SAME pageId
+ * can still race and one can clobber the other (last-write-wins), even
+ * though each individual write is now atomic (no half-written file). Real
+ * locking is overkill for a stopgap file store; this is an accepted gap,
+ * not an oversight — it goes away entirely once this moves to a database
+ * transaction.
+ */
 function updatePage(pageId: string, mutate: (c: PageCustomization) => void) {
   const store = readStore();
   const current = store[pageId] ?? { fieldOverrides: {}, addedFields: [], deletedFieldKeys: [], optionOverrides: {} };

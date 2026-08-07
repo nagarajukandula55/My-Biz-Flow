@@ -181,6 +181,10 @@ missing there, the answer is currently no, and that's what to fix.
    PR first, a page PR second.
 4. No page-level PR skips `registerPage()` or leaves it out of
    `registerAll.ts`. Verify on `/admin/designer` before merging.
+5. A new required environment variable gets a getter in `src/lib/env.ts`
+   and a line in `.env.example` in the same PR — never read directly from
+   `process.env` elsewhere. A new data-access function gets tenant scoping
+   (`src/lib/tenant.ts`) in the same PR it's introduced in, not after.
 
 ### `PageDefinition` also carries `explanation` and `sourceFile`
 
@@ -229,3 +233,47 @@ background), and `.btn-outline` (secondary action, bordered) are defined in
 hand-style a button with ad hoc Tailwind classes on a page. Any new button
 variant needs a token-driven class added here first, per the process rule
 above.
+
+## 9. Access control and tenant scoping (binding)
+
+### Super Admin gate
+
+`src/middleware.ts` blocks any request under `/admin/*` or a module's
+`.../admin/*` subfolder unless a valid session cookie is present (see
+`src/lib/adminAuth.ts`). This is a **single shared secret**
+(`SUPER_ADMIN_SECRET`), not real per-user auth — there is no individual
+admin identity, no role granularity, and no audit trail of *who* made a
+change. `SuperAdminGate`'s on-page banner exists specifically to keep that
+gap visible. When NextAuth + per-user roles land (matching central-api's
+own `PlatformUser.businessAccess[].role` model), replace
+`src/lib/adminAuth.ts` and `src/middleware.ts` wholesale — don't try to
+evolve the shared-secret approach into real auth incrementally.
+
+### Environment variables
+
+`src/lib/env.ts` is the only place that reads `process.env` for required
+variables — don't reach for `process.env.X` directly elsewhere. Reads are
+lazy (checked when used, not at import time), so a variable for a feature
+that isn't wired up yet won't crash pages that don't touch it. New required
+variables get a getter added to `env.ts` and documented in `.env.example`
+in the same PR.
+
+### Tenant scoping
+
+Every route under `/vendor/[vendorId]/...` carries a vendorId, but nothing
+enforces yet that data returned actually belongs to that vendor — there's
+no database, so the gap is currently invisible. `src/lib/tenant.ts`
+establishes the convention now, before the first real query is written:
+every future data-access function must take a vendorId and call
+`assertVendorScope()` (or the Prisma-era equivalent, a `where: { vendorId }`
+clause) before returning anything. Fail closed, not open. This is not
+optional cleanup for later — retrofitting tenant scoping onto code written
+without the habit is how cross-tenant data leaks happen.
+
+### CI
+
+`.github/workflows/ci.yml` runs `tsc --noEmit` and `npm run build` on every
+push to `main`/`claude/**` and every PR into `main`. A change that breaks
+either does not merge — this exists because every regression caught so far
+in this project was found by manually re-running the build, which does not
+scale as the page count grows.

@@ -44,4 +44,16 @@ freelance on a page-level PR.
 - `src/app/vendor/[vendorId]/<module-slug>/` — one folder per module:
   normal pages directly inside, one `admin/` subfolder gated to Super Admin
 - `src/app/admin/designer/` — the live Super Admin page listing every
-  registered page in the product
+  registered page in the product; `/admin/designer/[pageId]` is a live
+  field editor (edit labels, hide/add/delete fields, edit dropdown
+  options) backed by `src/lib/designer/customizations.ts`
+- `src/lib/designer/customizations.ts` — the Designer's live-editing store.
+  JSON-file-backed (no database yet) — read the file header before
+  touching it, the Vercel-runtime tradeoff is explicit and load-bearing
+- `src/middleware.ts` + `src/lib/adminAuth.ts` — the Super Admin route
+  gate. A single shared secret, not real per-user auth — see
+  DESIGN_SYSTEM.md §9 before assuming this is a finished auth system
+- `src/lib/env.ts` — the only place required env vars are read; see
+  `.env.example`
+- `src/lib/tenant.ts` — the tenant-scoping convention every future
+  data-access function must follow, see DESIGN_SYSTEM.md §9

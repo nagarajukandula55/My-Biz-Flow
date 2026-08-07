@@ -5,21 +5,22 @@ import type { ReactNode } from "react";
  * §8, a module folder holds exactly two kinds of pages: normal (vendor-
  * facing) pages, and admin/ pages gated to Super Admin — nothing else.
  *
- * Auth is not wired up yet (no backend/session layer exists in this pass),
- * so this currently renders a visible "not yet enforced" notice instead of
- * silently allowing access — that's deliberate: it keeps the gap visible
- * in every admin page's output rather than letting an unguarded admin
- * screen look identical to a properly-protected one. Replace the body of
- * this component with a real session/role check when auth lands, and this
- * notice should disappear as part of that change.
+ * Route-level access IS now enforced — src/middleware.ts blocks any
+ * request under /admin or a module's admin subfolder without a valid
+ * session cookie, redirecting to /admin/login. But that's a single
+ * shared secret (see
+ * src/lib/adminAuth.ts), not real per-user auth: no individual admin
+ * identity, no role granularity, no audit trail of WHO made a change. This
+ * banner stays visible as a reminder of that gap until NextAuth + per-user
+ * roles replace it.
  */
 export function SuperAdminGate({ children }: { children: ReactNode }) {
   return (
     <div>
       <div className="mb-4 rounded-md border border-warning-soft bg-warning-soft px-4 py-2 text-xs font-semibold text-warning">
-        Super Admin access is not yet enforced — auth/session layer is not
-        wired up in this pass. This boundary exists in the folder structure
-        and must gate real access once auth is built.
+        Route access is gated by a shared Super Admin secret (middleware +
+        src/lib/adminAuth.ts) — not yet real per-user auth. No individual
+        admin identity or audit trail exists until NextAuth is wired up.
       </div>
       {children}
     </div>
