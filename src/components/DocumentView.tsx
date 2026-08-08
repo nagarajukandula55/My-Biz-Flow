@@ -37,6 +37,7 @@ export function DocumentView({
   record,
   columns,
   sequenceIndex,
+  lineItems,
 }: {
   pageId: string;
   /** The numbering system's document-type id, e.g. "billing.document" — see NUMBERED_DOCUMENT_TYPES. */
@@ -47,6 +48,10 @@ export function DocumentView({
   record: Row;
   columns: Column[];
   sequenceIndex: number;
+  /** Optional itemized breakdown (currently: Billing invoices) — rendered
+   * as its own table instead of the flat field grid when present and no
+   * custom template overrides the layout. */
+  lineItems?: { description: string; quantity: number; unit: string; unitPrice: number; taxRate: number }[];
 }) {
   const customTemplate = getDocumentTemplate(pageId);
   const scheme = getEffectiveScheme(documentType, vendorId);
@@ -83,24 +88,83 @@ export function DocumentView({
               dangerouslySetInnerHTML={{ __html: renderTemplate(customTemplate, templateRecord) }}
             />
           ) : (
-            <dl className="mt-6 grid grid-cols-2 gap-x-8 gap-y-4">
-              {columns
-                .filter((c) => c.key !== "id")
-                .map((col) => (
-                  <div key={col.key} className={col.type === "text" ? "col-span-2" : undefined}>
-                    <dt className="text-xs font-semibold uppercase tracking-wide text-text-muted">
-                      {col.label}
-                    </dt>
-                    <dd
-                      className={`mt-0.5 text-sm text-text ${
-                        col.type === "currency" ? "font-mono tabular-nums" : ""
-                      }`}
-                    >
-                      {formatFieldValue(col, record[col.key])}
-                    </dd>
+            <>
+              <dl className="mt-6 grid grid-cols-2 gap-x-8 gap-y-4">
+                {columns
+                  .filter((c) => c.key !== "id" && c.key !== "lineItemsSummary")
+                  .filter((c) => !(lineItems && lineItems.length > 0 && ["subtotal", "taxAmount", "totalAmount"].includes(c.key)))
+                  .map((col) => (
+                    <div key={col.key} className={col.type === "text" ? "col-span-2" : undefined}>
+                      <dt className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+                        {col.label}
+                      </dt>
+                      <dd
+                        className={`mt-0.5 text-sm text-text ${
+                          col.type === "currency" ? "font-mono tabular-nums" : ""
+                        }`}
+                      >
+                        {formatFieldValue(col, record[col.key])}
+                      </dd>
+                    </div>
+                  ))}
+              </dl>
+
+              {lineItems && lineItems.length > 0 && (
+                <div className="mt-6">
+                  <table className="w-full border-collapse text-sm">
+                    <thead>
+                      <tr className="border-b border-border text-left text-xs font-semibold uppercase tracking-wide text-text-muted">
+                        <th className="py-2">Description</th>
+                        <th className="py-2 text-right">Qty</th>
+                        <th className="py-2">Unit</th>
+                        <th className="py-2 text-right">Unit Price</th>
+                        <th className="py-2 text-right">Tax %</th>
+                        <th className="py-2 text-right">Line Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {lineItems.map((item, i) => (
+                        <tr key={i} className="border-b border-border last:border-b-0">
+                          <td className="py-2 text-text">{item.description}</td>
+                          <td className="py-2 text-right font-mono tabular-nums text-text">{item.quantity}</td>
+                          <td className="py-2 text-text">{item.unit}</td>
+                          <td className="py-2 text-right font-mono tabular-nums text-text">
+                            {formatCurrencyINR(item.unitPrice)}
+                          </td>
+                          <td className="py-2 text-right font-mono tabular-nums text-text">{item.taxRate}%</td>
+                          <td className="py-2 text-right font-mono tabular-nums font-semibold text-text">
+                            {formatCurrencyINR(item.quantity * item.unitPrice * (1 + item.taxRate / 100))}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+
+                  <div className="mt-4 flex justify-end">
+                    <div className="w-full max-w-xs text-sm">
+                      <div className="flex justify-between text-text-muted">
+                        <span>Subtotal</span>
+                        <span className="font-mono tabular-nums">
+                          {formatCurrencyINR(Number(record["subtotal"]) || 0)}
+                        </span>
+                      </div>
+                      <div className="mt-1.5 flex justify-between text-text-muted">
+                        <span>Tax</span>
+                        <span className="font-mono tabular-nums">
+                          {formatCurrencyINR(Number(record["taxAmount"]) || 0)}
+                        </span>
+                      </div>
+                      <div className="mt-2 flex justify-between border-t border-border pt-2 text-base font-bold text-text">
+                        <span>Total</span>
+                        <span className="font-mono tabular-nums">
+                          {formatCurrencyINR(Number(record["totalAmount"]) || 0)}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                ))}
-            </dl>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

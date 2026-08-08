@@ -26,6 +26,14 @@ freelance on a page-level PR.
   registration, platform auth/SSO, cross-tenant business mapping). Contract
   only — do not copy code or design from it or from other AN Group
   products (AN-CRM, ANgroup). This codebase is built from scratch.
+- **Documented, narrow exception**: general UX/layout *pattern* lookups
+  (e.g. "what shape does a multi-line-item invoice form take") are
+  allowed when the user explicitly asks for one, one lookup at a time —
+  never a standing license to browse AN-CRM/ANgroup for inspiration. No
+  code, component structure, copy, or visual design gets copied; only the
+  general interaction pattern (e.g. "line items in a table with an add
+  row", "tax computed live") may inform an independently-built
+  implementation using this repo's own design system.
 
 ## Repo layout
 

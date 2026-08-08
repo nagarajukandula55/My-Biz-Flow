@@ -1,9 +1,8 @@
 import { AppShell } from "@/components/AppShell";
 import { buildVendorNavGroups, getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
-import { RecordForm } from "@/components/RecordForm";
-import { billingFormFields, getBillingRecord } from "@/lib/sample-data/billing";
-import { applyCustomizations } from "@/lib/designer/customizations";
+import { BillingInvoiceForm } from "@/components/BillingInvoiceForm";
+import { getBillingRecord, billingLineItems } from "@/lib/sample-data/billing";
 
 registerPage({
   id: "billing.edit",
@@ -17,14 +16,14 @@ registerPage({
     { key: "validation-rules", label: "Validation rules" },
     { key: "default-values", label: "Default values" },
   ],
-  explanation: "The same config-driven RecordForm pre-populated with an existing invoice's sample data, letting a user edit and save changes (demo stub, no persistence yet).",
+  explanation: "The same BillingInvoiceForm pre-populated with an existing invoice's customer/date fields and line items, letting a user edit and save changes (demo stub, no persistence yet).",
   sourceFile: "src/app/vendor/[vendorId]/billing/[recordId]/edit/page.tsx",
 });
 
 export default function EditBillingPage({ params }: { params: { recordId: string } }) {
   const mod = getModule("billing");
   const record = getBillingRecord(params.recordId);
-  const fields = applyCustomizations("billing.edit", billingFormFields);
+  const items = billingLineItems[params.recordId] ?? [];
 
   return (
     <AppShell navGroups={buildVendorNavGroups("billing")} topbarTitle={`Edit Invoice — ${mod?.label ?? "Billing"}`}>
@@ -32,7 +31,17 @@ export default function EditBillingPage({ params }: { params: { recordId: string
         <h1 className="font-display text-2xl font-bold text-text">Edit Invoice</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>
         <div className="mt-6">
-          <RecordForm fields={fields} initialValues={record} submitLabel="Save changes" />
+          <BillingInvoiceForm
+            initialValues={{
+              customer: String(record["customer"] ?? ""),
+              issueDate: String(record["issueDate"] ?? ""),
+              dueDate: String(record["dueDate"] ?? ""),
+              paymentStatus: String(record["paymentStatus"] ?? "Draft"),
+              paymentMode: String(record["paymentMode"] ?? "Bank Transfer"),
+              items,
+            }}
+            submitLabel="Save changes"
+          />
         </div>
       </div>
     </AppShell>

@@ -14,6 +14,34 @@ const STATUS_VARIANT: Record<string, StatusVariant> = {
   "Partially Paid": "warning"
 };
 
+export type LineItem = {
+  description: string;
+  quantity: number;
+  unit: string;
+  unitPrice: number;
+  taxRate: number; // percent
+};
+
+/** invoice id -> its line items — kept separate from billingRows so the
+ * dense DataTable/detail-field views stay flat while the invoice
+ * creation form and printable document can pull the itemized breakdown. */
+export const billingLineItems: Record<string, LineItem[]> = {
+  "INV-3301": [
+    { description: "Consulting services", quantity: 12, unit: "hrs", unitPrice: 3000, taxRate: 18 },
+    { description: "Software license — 1 yr", quantity: 1, unit: "license", unitPrice: 12000, taxRate: 18 },
+  ],
+  "INV-3300": [
+    { description: "Design consultation package", quantity: 1, unit: "package", unitPrice: 22000, taxRate: 18 },
+  ],
+  "INV-3299": [
+    { description: "Fleet maintenance retainer — Aug", quantity: 1, unit: "month", unitPrice: 15000, taxRate: 18 },
+  ],
+  "INV-3298": [
+    { description: "POS hardware install", quantity: 1, unit: "job", unitPrice: 6000, taxRate: 18 },
+    { description: "Staff setup & training", quantity: 3, unit: "hrs", unitPrice: 1000, taxRate: 18 },
+  ],
+};
+
 export const billingColumns: Column[] = [
   { key: "id", label: "Invoice Number", type: "text" },
   { key: "customer", label: "Customer", type: "relation-link" },

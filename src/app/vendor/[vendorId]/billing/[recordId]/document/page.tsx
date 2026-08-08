@@ -1,5 +1,5 @@
 import { DocumentView } from "@/components/DocumentView";
-import { billingColumns, billingRows, getBillingRecord } from "@/lib/sample-data/billing";
+import { billingColumns, billingRows, billingLineItems, getBillingRecord } from "@/lib/sample-data/billing";
 import { registerPage } from "@/lib/designer/registry";
 
 registerPage({
@@ -34,6 +34,7 @@ export default function BillingDocumentPage({
       record={record}
       columns={billingColumns}
       sequenceIndex={sequenceIndex >= 0 ? sequenceIndex : 0}
+      lineItems={billingLineItems[params.recordId]}
     />
   );
 }
