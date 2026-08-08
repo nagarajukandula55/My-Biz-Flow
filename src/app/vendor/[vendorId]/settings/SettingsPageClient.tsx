@@ -26,6 +26,7 @@ export function SettingsPageClient() {
   const [enabled, setEnabled] = useState<Record<string, boolean>>(
     Object.fromEntries(MODULES.map((m) => [m.slug, true]))
   );
+  const [serializedInventory, setSerializedInventory] = useState(false);
 
   return (
     <div>
@@ -99,6 +100,39 @@ export function SettingsPageClient() {
           ))}
         </div>
       </div>
+
+      {enabled["inventory"] && (
+        <div className="mt-8 max-w-2xl">
+          <h2 className="font-display text-lg font-bold text-text">Serialized Inventory</h2>
+          <p className="mt-1 text-sm text-text-muted">
+            When enabled, materials can be tracked by Serial/IMEI number and workorders will validate
+            against Inventory/Warehouse stock before closing. Only shown here because the Inventory /
+            Warehouse module is enabled above — demo stub, does not persist yet.
+          </p>
+          <div className="mt-4 flex items-center justify-between rounded-md border border-border bg-bg-raised px-3 py-2.5">
+            <div>
+              <div className="text-sm font-semibold text-text">Serialized Inventory</div>
+              <div className="mt-0.5 text-xs text-text-muted">
+                Enables serial/IMEI tracking across the Inventory and Warehouse module.
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSerializedInventory((v) => !v)}
+              className={`h-6 w-11 flex-shrink-0 rounded-full transition-colors ${
+                serializedInventory ? "bg-accent" : "bg-bg-sunken"
+              }`}
+              aria-pressed={serializedInventory}
+            >
+              <span
+                className={`block h-5 w-5 rounded-full bg-bg-raised shadow transition-transform ${
+                  serializedInventory ? "translate-x-5" : "translate-x-0.5"
+                }`}
+              />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

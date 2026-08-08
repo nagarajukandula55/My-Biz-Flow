@@ -120,6 +120,12 @@ export const MODULE_SUB_NAV: Record<string, { key: string; label: string; href: 
     { key: "inventory.part-orders", label: "Part Orders", href: "inventory/part-orders" },
     { key: "inventory.admin", label: "Admin", href: "inventory/admin" },
   ],
+  "service-centre": [
+    { key: "service-centre.list", label: "Workorders", href: "service-centre" },
+    { key: "service-centre.new", label: "+ New Workorder", href: "service-centre/new" },
+    { key: "service-centre.solutions", label: "Solutions", href: "service-centre/solutions" },
+    { key: "service-centre.admin", label: "Admin", href: "service-centre/admin" },
+  ],
 };
 
 export interface VendorNavSubItem {
