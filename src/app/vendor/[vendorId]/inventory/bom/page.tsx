@@ -1,7 +1,8 @@
 import { AppShell } from "@/components/AppShell";
 import { registerPage } from "@/lib/designer/registry";
-import Link from "next/link";
 import { BomClientTable } from "./BomClientTable";
+import { BomNewButton } from "./BomNewButton";
+import { BomSearchButton } from "./BomSearchButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { bomColumns } from "@/lib/sample-data/bom";
 
@@ -27,9 +28,10 @@ export default async function BomPage({ params }: { params: { vendorId: string }
     <AppShell
       topbarTitle="Material Catalog (BOM)"
       topbarActions={
-        <Link href={`/vendor/${params.vendorId}/inventory/bom/new`} className="btn-accent">
-          + New Material
-        </Link>
+        <div className="flex items-center gap-3">
+          <BomSearchButton />
+          <BomNewButton />
+        </div>
       }
     >
       <div>

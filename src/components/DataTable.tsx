@@ -1,7 +1,10 @@
 "use client";
 
+import { useState } from "react";
+import { Eye } from "lucide-react";
 import { StatusChip, type StatusVariant } from "./StatusChip";
 import { formatCurrencyINR, formatDate } from "@/lib/format";
+import { QuickViewModal } from "./QuickViewModal";
 
 export type ColumnType =
   | "text"
@@ -40,9 +43,13 @@ type DataTableProps = {
   columns: Column[];
   rows: Row[];
   onRowClick?: (row: Row) => void;
+  /** Adds a per-row "quick view" eye icon that opens a field-grid modal
+   * (see QuickViewModal) instead of navigating — an alternative to
+   * onRowClick's full detail-page navigation, not a replacement for it. */
+  enableQuickView?: boolean;
 };
 
-function renderCell(column: Column, row: Row) {
+export function renderCell(column: Column, row: Row) {
   const value = row[column.key];
 
   switch (column.type) {
@@ -132,7 +139,9 @@ function renderCell(column: Column, row: Row) {
   }
 }
 
-export function DataTable({ columns, rows, onRowClick }: DataTableProps) {
+export function DataTable({ columns, rows, onRowClick, enableQuickView }: DataTableProps) {
+  const [quickViewRow, setQuickViewRow] = useState<Row | null>(null);
+
   return (
     <div className="w-full overflow-x-auto rounded-lg border border-border bg-bg-raised">
       <table className="w-full min-w-max border-collapse text-sm">
@@ -146,6 +155,7 @@ export function DataTable({ columns, rows, onRowClick }: DataTableProps) {
                 {column.label}
               </th>
             ))}
+            {enableQuickView && <th className="w-10 px-2 py-3" />}
           </tr>
         </thead>
         <tbody>
@@ -162,10 +172,35 @@ export function DataTable({ columns, rows, onRowClick }: DataTableProps) {
                   {renderCell(column, row)}
                 </td>
               ))}
+              {enableQuickView && (
+                <td className="px-2 py-3 text-center">
+                  <button
+                    type="button"
+                    aria-label="Quick view"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setQuickViewRow(row);
+                    }}
+                    className="rounded p-1 text-text-muted hover:bg-bg-sunken hover:text-text"
+                  >
+                    <Eye className="h-4 w-4" strokeWidth={2} />
+                  </button>
+                </td>
+              )}
             </tr>
           ))}
         </tbody>
       </table>
+
+      {enableQuickView && (
+        <QuickViewModal
+          open={quickViewRow !== null}
+          onClose={() => setQuickViewRow(null)}
+          columns={columns}
+          row={quickViewRow}
+          title={quickViewRow ? String(quickViewRow[columns[0]?.key] ?? "Quick view") : "Quick view"}
+        />
+      )}
     </div>
   );
 }

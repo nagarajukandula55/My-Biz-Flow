@@ -11,6 +11,7 @@ export function BomClientTable({ vendorId, columns }: { vendorId: string; column
       columns={columns ?? bomColumns}
       rows={bomRows}
       onRowClick={(row: Row) => router.push(`/vendor/${vendorId}/inventory/bom/${row["id"]}`)}
+      enableQuickView
     />
   );
 }
