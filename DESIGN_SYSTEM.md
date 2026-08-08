@@ -324,6 +324,21 @@ clause) before returning anything. Fail closed, not open. This is not
 optional cleanup for later — retrofitting tenant scoping onto code written
 without the habit is how cross-tenant data leaks happen.
 
+### "Make public" toggle
+
+`/admin/settings` lists every registered page with a public-access toggle
+(`src/lib/designer/pageAccess.ts`, same JSON-file pattern as everything
+else). This is **real** for pages `src/middleware.ts` already gates
+(`superAdminOnly: true` — `/admin/*`, module `admin/` subfolders): the
+Edge middleware can't read the store or import the full page registry
+directly (Edge runtime, Node-only code), so it calls a Node.js API route
+(`/api/page-access`, which safely imports `registerAll.ts` + the registry
+and pattern-matches the request path against each page's template via
+`pathMatchesTemplate`) to ask "is this public?" before falling back to
+the cookie check. It has **no effect** on ordinary vendor pages — they
+aren't gated at all yet — and the Settings UI says so explicitly per row
+rather than implying uniform protection that doesn't exist.
+
 ### CI
 
 `.github/workflows/ci.yml` runs `tsc --noEmit` and `npm run build` on every

@@ -21,6 +21,23 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // A Super Admin can mark an otherwise-gated page public from
+  // /admin/settings — checked via a Node.js API route (this middleware
+  // runs on the Edge runtime, which cannot read the pageAccess store or
+  // import the full page registry directly; see /api/page-access).
+  try {
+    const accessCheck = await fetch(
+      new URL(`/api/page-access?path=${encodeURIComponent(pathname)}`, request.url)
+    );
+    if (accessCheck.ok) {
+      const { isPublic } = (await accessCheck.json()) as { isPublic: boolean };
+      if (isPublic) return NextResponse.next();
+    }
+  } catch {
+    // If the access-check call itself fails, fail closed (fall through to
+    // the cookie check) rather than accidentally exposing a gated page.
+  }
+
   const cookie = request.cookies.get(ADMIN_COOKIE_NAME)?.value;
   if (await isValidAdminCookie(cookie)) {
     return NextResponse.next();

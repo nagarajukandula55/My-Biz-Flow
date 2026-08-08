@@ -160,3 +160,5 @@ import "@/app/vendor/[vendorId]/settings/numbering/page";
 import "@/app/terms/page";
 import "@/app/privacy/page";
 import "@/app/contact/page";
+
+import "@/app/admin/settings/page";
