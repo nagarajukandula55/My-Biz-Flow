@@ -25,7 +25,7 @@ export default function LogisticsFleetAdminPage() {
   return (
     <AppShell navGroups={buildVendorNavGroups("logistics-fleet")} topbarTitle={`${mod?.label ?? "Logistics / Fleet"} · Admin`}>
       <SuperAdminGate>
-        <div className="p-6">
+        <div>
           <h1 className="font-display text-2xl font-bold text-text">
             {mod?.label} — Admin
           </h1>

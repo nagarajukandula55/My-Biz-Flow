@@ -36,7 +36,7 @@ export default function WholesaleB2bDetailPage({
 
   return (
     <AppShell navGroups={buildVendorNavGroups("wholesale-b2b")} topbarTitle={mod?.label ?? "Wholesale / Distributor B2B"}>
-      <div className="p-6">
+      <div>
         <Link
           href={`/vendor/${params.vendorId}/wholesale-b2b`}
           className="text-sm font-semibold text-teal hover:underline"

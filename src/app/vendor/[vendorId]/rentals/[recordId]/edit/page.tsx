@@ -28,7 +28,7 @@ export default function EditRentalsPage({ params }: { params: { recordId: string
 
   return (
     <AppShell navGroups={buildVendorNavGroups("rentals")} topbarTitle={`Edit Booking — ${mod?.label ?? "Rentals / Booking"}`}>
-      <div className="p-6">
+      <div>
         <h1 className="font-display text-2xl font-bold text-text">Edit Booking</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>
         <div className="mt-6">

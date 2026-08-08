@@ -27,7 +27,7 @@ export default function NewEventBookingPage() {
 
   return (
     <AppShell navGroups={buildVendorNavGroups("event-booking")} topbarTitle={`New Event — ${mod?.label ?? "Event / Venue Booking"}`}>
-      <div className="p-6">
+      <div>
         <h1 className="font-display text-2xl font-bold text-text">New Event</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new event record for Event / Venue Booking.</p>
         <div className="mt-6">

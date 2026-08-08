@@ -27,7 +27,7 @@ export default function NewLoyaltyRewardsPage() {
 
   return (
     <AppShell navGroups={buildVendorNavGroups("loyalty-rewards")} topbarTitle={`New Member — ${mod?.label ?? "Loyalty & Rewards"}`}>
-      <div className="p-6">
+      <div>
         <h1 className="font-display text-2xl font-bold text-text">New Member</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new member record for Loyalty & Rewards.</p>
         <div className="mt-6">

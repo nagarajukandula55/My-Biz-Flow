@@ -28,7 +28,7 @@ export default function EditAmcFieldServicePage({ params }: { params: { recordId
 
   return (
     <AppShell navGroups={buildVendorNavGroups("amc-field-service")} topbarTitle={`Edit Contract — ${mod?.label ?? "AMC / Field Service"}`}>
-      <div className="p-6">
+      <div>
         <h1 className="font-display text-2xl font-bold text-text">Edit Contract</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>
         <div className="mt-6">

@@ -27,7 +27,7 @@ export default function NewInventoryPage() {
 
   return (
     <AppShell navGroups={buildVendorNavGroups("inventory")} topbarTitle={`New Stock Item — ${mod?.label ?? "Inventory / Warehouse"}`}>
-      <div className="p-6">
+      <div>
         <h1 className="font-display text-2xl font-bold text-text">New Stock Item</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new stock item record for Inventory / Warehouse.</p>
         <div className="mt-6">

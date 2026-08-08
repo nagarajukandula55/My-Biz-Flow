@@ -28,7 +28,7 @@ export default function EditManufacturingPage({ params }: { params: { recordId: 
 
   return (
     <AppShell navGroups={buildVendorNavGroups("manufacturing")} topbarTitle={`Edit Work Order — ${mod?.label ?? "Manufacturing / Production"}`}>
-      <div className="p-6">
+      <div>
         <h1 className="font-display text-2xl font-bold text-text">Edit Work Order</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>
         <div className="mt-6">

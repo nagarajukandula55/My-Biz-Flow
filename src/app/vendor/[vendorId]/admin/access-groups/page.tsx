@@ -30,7 +30,7 @@ export default function AccessGroupsPage({ params }: { params: { vendorId: strin
       }
     >
       <SuperAdminGate>
-        <div className="p-6">
+        <div>
           <h1 className="font-display text-2xl font-bold text-text">Access Groups</h1>
           <p className="mt-1 text-sm text-text-muted">
             A named bundle of module slugs. Roles are built by combining one

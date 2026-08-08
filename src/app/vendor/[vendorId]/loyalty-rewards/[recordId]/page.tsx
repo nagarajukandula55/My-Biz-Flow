@@ -36,7 +36,7 @@ export default function LoyaltyRewardsDetailPage({
 
   return (
     <AppShell navGroups={buildVendorNavGroups("loyalty-rewards")} topbarTitle={mod?.label ?? "Loyalty & Rewards"}>
-      <div className="p-6">
+      <div>
         <Link
           href={`/vendor/${params.vendorId}/loyalty-rewards`}
           className="text-sm font-semibold text-teal hover:underline"

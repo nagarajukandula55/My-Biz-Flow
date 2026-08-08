@@ -36,7 +36,7 @@ export default function PosDetailPage({
 
   return (
     <AppShell navGroups={buildVendorNavGroups("pos")} topbarTitle={mod?.label ?? "POS"}>
-      <div className="p-6">
+      <div>
         <Link
           href={`/vendor/${params.vendorId}/pos`}
           className="text-sm font-semibold text-teal hover:underline"

@@ -25,7 +25,7 @@ export default function MarketplaceAdminPage() {
   return (
     <AppShell navGroups={buildVendorNavGroups("marketplace")} topbarTitle={`${mod?.label ?? "Marketplace / Vendor Aggregator"} · Admin`}>
       <SuperAdminGate>
-        <div className="p-6">
+        <div>
           <h1 className="font-display text-2xl font-bold text-text">
             {mod?.label} — Admin
           </h1>

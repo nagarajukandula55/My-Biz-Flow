@@ -36,7 +36,7 @@ export default function MarketplaceDetailPage({
 
   return (
     <AppShell navGroups={buildVendorNavGroups("marketplace")} topbarTitle={mod?.label ?? "Marketplace / Vendor Aggregator"}>
-      <div className="p-6">
+      <div>
         <Link
           href={`/vendor/${params.vendorId}/marketplace`}
           className="text-sm font-semibold text-teal hover:underline"

@@ -27,7 +27,7 @@ export default function NewRentalsPage() {
 
   return (
     <AppShell navGroups={buildVendorNavGroups("rentals")} topbarTitle={`New Booking — ${mod?.label ?? "Rentals / Booking"}`}>
-      <div className="p-6">
+      <div>
         <h1 className="font-display text-2xl font-bold text-text">New Booking</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new booking record for Rentals / Booking.</p>
         <div className="mt-6">

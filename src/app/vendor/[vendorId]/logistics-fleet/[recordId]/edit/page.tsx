@@ -28,7 +28,7 @@ export default function EditLogisticsFleetPage({ params }: { params: { recordId:
 
   return (
     <AppShell navGroups={buildVendorNavGroups("logistics-fleet")} topbarTitle={`Edit Shipment — ${mod?.label ?? "Logistics / Fleet"}`}>
-      <div className="p-6">
+      <div>
         <h1 className="font-display text-2xl font-bold text-text">Edit Shipment</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>
         <div className="mt-6">

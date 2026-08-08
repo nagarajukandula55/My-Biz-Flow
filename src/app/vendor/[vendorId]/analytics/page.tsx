@@ -57,7 +57,7 @@ export default function AnalyticsPage({ params }: { params: { vendorId: string }
 
   return (
     <AppShell navGroups={buildVendorAdminNavGroups("analytics")} topbarTitle="Analytics">
-      <div className="p-6">
+      <div>
         <h1 className="font-display text-2xl font-bold text-text">Analytics</h1>
         <p className="mt-1 max-w-[65ch] text-sm text-text-muted">
           Viewing as <strong className="text-text">{viewerRole}</strong> — charts scoped to a

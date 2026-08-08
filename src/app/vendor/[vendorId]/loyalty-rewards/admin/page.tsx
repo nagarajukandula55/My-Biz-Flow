@@ -25,7 +25,7 @@ export default function LoyaltyRewardsAdminPage() {
   return (
     <AppShell navGroups={buildVendorNavGroups("loyalty-rewards")} topbarTitle={`${mod?.label ?? "Loyalty & Rewards"} · Admin`}>
       <SuperAdminGate>
-        <div className="p-6">
+        <div>
           <h1 className="font-display text-2xl font-bold text-text">
             {mod?.label} — Admin
           </h1>

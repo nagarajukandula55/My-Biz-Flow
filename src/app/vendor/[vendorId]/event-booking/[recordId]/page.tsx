@@ -36,7 +36,7 @@ export default function EventBookingDetailPage({
 
   return (
     <AppShell navGroups={buildVendorNavGroups("event-booking")} topbarTitle={mod?.label ?? "Event / Venue Booking"}>
-      <div className="p-6">
+      <div>
         <Link
           href={`/vendor/${params.vendorId}/event-booking`}
           className="text-sm font-semibold text-teal hover:underline"

@@ -30,7 +30,7 @@ export default function RolesPage({ params }: { params: { vendorId: string } }) 
       }
     >
       <SuperAdminGate>
-        <div className="p-6">
+        <div>
           <h1 className="font-display text-2xl font-bold text-text">Roles</h1>
           <p className="mt-1 text-sm text-text-muted">
             A bundle of Access Groups. Users are assigned a Role — see Users

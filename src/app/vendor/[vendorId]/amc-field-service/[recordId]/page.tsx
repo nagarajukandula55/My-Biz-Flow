@@ -36,7 +36,7 @@ export default function AmcFieldServiceDetailPage({
 
   return (
     <AppShell navGroups={buildVendorNavGroups("amc-field-service")} topbarTitle={mod?.label ?? "AMC / Field Service"}>
-      <div className="p-6">
+      <div>
         <Link
           href={`/vendor/${params.vendorId}/amc-field-service`}
           className="text-sm font-semibold text-teal hover:underline"

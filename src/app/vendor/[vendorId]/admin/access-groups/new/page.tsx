@@ -22,7 +22,7 @@ export default function NewAccessGroupPage() {
   return (
     <AppShell navGroups={buildVendorAdminNavGroups("access-groups")} topbarTitle="New Access Group">
       <SuperAdminGate>
-        <div className="p-6">
+        <div>
           <h1 className="font-display text-2xl font-bold text-text">New Access Group</h1>
           <p className="mt-1 text-sm text-text-muted">Select the modules this Access Group grants.</p>
           <div className="mt-6">

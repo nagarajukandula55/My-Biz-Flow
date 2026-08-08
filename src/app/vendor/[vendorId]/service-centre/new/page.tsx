@@ -27,7 +27,7 @@ export default function NewServiceCentrePage() {
 
   return (
     <AppShell navGroups={buildVendorNavGroups("service-centre")} topbarTitle={`New Workorder — ${mod?.label ?? "Service Centre"}`}>
-      <div className="p-6">
+      <div>
         <h1 className="font-display text-2xl font-bold text-text">New Workorder</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new workorder record for Service Centre.</p>
         <div className="mt-6">

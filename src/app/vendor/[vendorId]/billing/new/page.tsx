@@ -27,7 +27,7 @@ export default function NewBillingPage() {
 
   return (
     <AppShell navGroups={buildVendorNavGroups("billing")} topbarTitle={`New Invoice — ${mod?.label ?? "Billing"}`}>
-      <div className="p-6">
+      <div>
         <h1 className="font-display text-2xl font-bold text-text">New Invoice</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new invoice record for Billing.</p>
         <div className="mt-6">

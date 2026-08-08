@@ -27,7 +27,7 @@ export default function NewWholesaleB2bPage() {
 
   return (
     <AppShell navGroups={buildVendorNavGroups("wholesale-b2b")} topbarTitle={`New Order — ${mod?.label ?? "Wholesale / Distributor B2B"}`}>
-      <div className="p-6">
+      <div>
         <h1 className="font-display text-2xl font-bold text-text">New Order</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new order record for Wholesale / Distributor B2B.</p>
         <div className="mt-6">

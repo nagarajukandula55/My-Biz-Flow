@@ -25,7 +25,7 @@ export default function HrmsAdminPage() {
   return (
     <AppShell navGroups={buildVendorNavGroups("hrms")} topbarTitle={`${mod?.label ?? "HRMS / Payroll"} · Admin`}>
       <SuperAdminGate>
-        <div className="p-6">
+        <div>
           <h1 className="font-display text-2xl font-bold text-text">
             {mod?.label} — Admin
           </h1>

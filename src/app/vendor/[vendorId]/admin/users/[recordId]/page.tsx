@@ -32,7 +32,7 @@ export default function UserDetailPage({
   return (
     <AppShell navGroups={buildVendorAdminNavGroups("users")} topbarTitle="Users">
       <SuperAdminGate>
-        <div className="p-6">
+        <div>
           <Link href={`/vendor/${params.vendorId}/admin/users`} className="text-sm font-semibold text-teal hover:underline">
             &larr; Back to Users
           </Link>

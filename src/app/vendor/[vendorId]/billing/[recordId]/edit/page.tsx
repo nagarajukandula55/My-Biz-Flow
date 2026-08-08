@@ -28,7 +28,7 @@ export default function EditBillingPage({ params }: { params: { recordId: string
 
   return (
     <AppShell navGroups={buildVendorNavGroups("billing")} topbarTitle={`Edit Invoice — ${mod?.label ?? "Billing"}`}>
-      <div className="p-6">
+      <div>
         <h1 className="font-display text-2xl font-bold text-text">Edit Invoice</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>
         <div className="mt-6">

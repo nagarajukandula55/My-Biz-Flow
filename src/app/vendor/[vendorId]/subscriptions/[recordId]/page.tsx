@@ -36,7 +36,7 @@ export default function SubscriptionsDetailPage({
 
   return (
     <AppShell navGroups={buildVendorNavGroups("subscriptions")} topbarTitle={mod?.label ?? "Subscriptions / Membership"}>
-      <div className="p-6">
+      <div>
         <Link
           href={`/vendor/${params.vendorId}/subscriptions`}
           className="text-sm font-semibold text-teal hover:underline"

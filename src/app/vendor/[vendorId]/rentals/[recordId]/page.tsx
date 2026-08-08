@@ -36,7 +36,7 @@ export default function RentalsDetailPage({
 
   return (
     <AppShell navGroups={buildVendorNavGroups("rentals")} topbarTitle={mod?.label ?? "Rentals / Booking"}>
-      <div className="p-6">
+      <div>
         <Link
           href={`/vendor/${params.vendorId}/rentals`}
           className="text-sm font-semibold text-teal hover:underline"

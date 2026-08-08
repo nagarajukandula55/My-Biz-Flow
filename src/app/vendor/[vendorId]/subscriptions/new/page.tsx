@@ -27,7 +27,7 @@ export default function NewSubscriptionsPage() {
 
   return (
     <AppShell navGroups={buildVendorNavGroups("subscriptions")} topbarTitle={`New Membership — ${mod?.label ?? "Subscriptions / Membership"}`}>
-      <div className="p-6">
+      <div>
         <h1 className="font-display text-2xl font-bold text-text">New Membership</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new membership record for Subscriptions / Membership.</p>
         <div className="mt-6">

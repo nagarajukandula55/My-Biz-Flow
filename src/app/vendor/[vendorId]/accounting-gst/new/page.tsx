@@ -27,7 +27,7 @@ export default function NewAccountingGstPage() {
 
   return (
     <AppShell navGroups={buildVendorNavGroups("accounting-gst")} topbarTitle={`New GST Return — ${mod?.label ?? "Accounting / GST Compliance"}`}>
-      <div className="p-6">
+      <div>
         <h1 className="font-display text-2xl font-bold text-text">New GST Return</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new gst return record for Accounting / GST Compliance.</p>
         <div className="mt-6">

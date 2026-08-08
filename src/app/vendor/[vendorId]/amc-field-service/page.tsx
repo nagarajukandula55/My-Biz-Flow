@@ -36,9 +36,8 @@ export default function AmcFieldServicePage({ params }: { params: { vendorId: st
         </Link>
       }
     >
-      <div className="p-6">
-        <h1 className="font-display text-2xl font-bold text-text">{mod?.label}</h1>
-        <p className="mt-1 text-sm text-text-muted">{mod?.description}</p>
+      <div>
+        <p className="text-sm text-text-muted">{mod?.description}</p>
         <div className="mt-6">
           <AmcFieldServiceClientTable vendorId={params.vendorId} columns={columns} />
         </div>

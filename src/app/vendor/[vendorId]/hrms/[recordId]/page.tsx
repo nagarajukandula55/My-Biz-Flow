@@ -36,7 +36,7 @@ export default function HrmsDetailPage({
 
   return (
     <AppShell navGroups={buildVendorNavGroups("hrms")} topbarTitle={mod?.label ?? "HRMS / Payroll"}>
-      <div className="p-6">
+      <div>
         <Link
           href={`/vendor/${params.vendorId}/hrms`}
           className="text-sm font-semibold text-teal hover:underline"

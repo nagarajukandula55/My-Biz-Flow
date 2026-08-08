@@ -27,7 +27,7 @@ export default function NewMarketplacePage() {
 
   return (
     <AppShell navGroups={buildVendorNavGroups("marketplace")} topbarTitle={`New Vendor Listing — ${mod?.label ?? "Marketplace / Vendor Aggregator"}`}>
-      <div className="p-6">
+      <div>
         <h1 className="font-display text-2xl font-bold text-text">New Vendor Listing</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new vendor listing record for Marketplace / Vendor Aggregator.</p>
         <div className="mt-6">

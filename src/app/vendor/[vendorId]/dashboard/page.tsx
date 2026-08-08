@@ -27,7 +27,7 @@ export default function VendorDashboardPage({ params }: { params: { vendorId: st
 
   return (
     <AppShell navGroups={buildVendorAdminNavGroups("dashboard")} topbarTitle="Dashboard">
-      <div className="p-6">
+      <div>
         <h1 className="font-display text-2xl font-bold text-text">Dashboard</h1>
         <p className="mt-1 max-w-[65ch] text-sm text-text-muted">
           Composed from this Vendor&apos;s enabled modules —{" "}

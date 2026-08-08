@@ -27,7 +27,7 @@ export default function NewManufacturingPage() {
 
   return (
     <AppShell navGroups={buildVendorNavGroups("manufacturing")} topbarTitle={`New Work Order — ${mod?.label ?? "Manufacturing / Production"}`}>
-      <div className="p-6">
+      <div>
         <h1 className="font-display text-2xl font-bold text-text">New Work Order</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new work order record for Manufacturing / Production.</p>
         <div className="mt-6">

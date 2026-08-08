@@ -25,7 +25,7 @@ export default function BillingAdminPage() {
   return (
     <AppShell navGroups={buildVendorNavGroups("billing")} topbarTitle={`${mod?.label ?? "Billing"} · Admin`}>
       <SuperAdminGate>
-        <div className="p-6">
+        <div>
           <h1 className="font-display text-2xl font-bold text-text">
             {mod?.label} — Admin
           </h1>

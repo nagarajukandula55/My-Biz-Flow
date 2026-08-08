@@ -27,7 +27,7 @@ export default function NewLogisticsFleetPage() {
 
   return (
     <AppShell navGroups={buildVendorNavGroups("logistics-fleet")} topbarTitle={`New Shipment — ${mod?.label ?? "Logistics / Fleet"}`}>
-      <div className="p-6">
+      <div>
         <h1 className="font-display text-2xl font-bold text-text">New Shipment</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new shipment record for Logistics / Fleet.</p>
         <div className="mt-6">

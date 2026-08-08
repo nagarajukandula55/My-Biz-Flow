@@ -27,7 +27,7 @@ export default function NewBrandPage() {
 
   return (
     <AppShell navGroups={buildVendorNavGroups("brand")} topbarTitle={`New Location — ${mod?.label ?? "Brand"}`}>
-      <div className="p-6">
+      <div>
         <h1 className="font-display text-2xl font-bold text-text">New Location</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new location record for Brand.</p>
         <div className="mt-6">

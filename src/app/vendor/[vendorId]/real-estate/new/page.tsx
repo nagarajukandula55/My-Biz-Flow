@@ -27,7 +27,7 @@ export default function NewRealEstatePage() {
 
   return (
     <AppShell navGroups={buildVendorNavGroups("real-estate")} topbarTitle={`New Listing — ${mod?.label ?? "Real Estate"}`}>
-      <div className="p-6">
+      <div>
         <h1 className="font-display text-2xl font-bold text-text">New Listing</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new listing record for Real Estate.</p>
         <div className="mt-6">

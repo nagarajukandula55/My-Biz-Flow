@@ -36,7 +36,7 @@ export default function LegalDetailPage({
 
   return (
     <AppShell navGroups={buildVendorNavGroups("legal")} topbarTitle={mod?.label ?? "Legal / Case Management"}>
-      <div className="p-6">
+      <div>
         <Link
           href={`/vendor/${params.vendorId}/legal`}
           className="text-sm font-semibold text-teal hover:underline"

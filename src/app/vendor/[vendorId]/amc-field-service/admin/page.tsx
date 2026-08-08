@@ -25,7 +25,7 @@ export default function AmcFieldServiceAdminPage() {
   return (
     <AppShell navGroups={buildVendorNavGroups("amc-field-service")} topbarTitle={`${mod?.label ?? "AMC / Field Service"} · Admin`}>
       <SuperAdminGate>
-        <div className="p-6">
+        <div>
           <h1 className="font-display text-2xl font-bold text-text">
             {mod?.label} — Admin
           </h1>

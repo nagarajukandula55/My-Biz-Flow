@@ -22,7 +22,7 @@ export default function EditAccessGroupPage({ params }: { params: { recordId: st
   return (
     <AppShell navGroups={buildVendorAdminNavGroups("access-groups")} topbarTitle="Edit Access Group">
       <SuperAdminGate>
-        <div className="p-6">
+        <div>
           <h1 className="font-display text-2xl font-bold text-text">Edit Access Group</h1>
           <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>
           <div className="mt-6">

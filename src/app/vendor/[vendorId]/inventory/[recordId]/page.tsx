@@ -36,7 +36,7 @@ export default function InventoryDetailPage({
 
   return (
     <AppShell navGroups={buildVendorNavGroups("inventory")} topbarTitle={mod?.label ?? "Inventory / Warehouse"}>
-      <div className="p-6">
+      <div>
         <Link
           href={`/vendor/${params.vendorId}/inventory`}
           className="text-sm font-semibold text-teal hover:underline"

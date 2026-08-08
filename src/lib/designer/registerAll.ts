@@ -136,6 +136,7 @@ import "@/app/vendor/[vendorId]/analytics/page";
 import "@/app/help/page";
 import "@/app/page";
 import "@/app/login/page";
+import "@/app/forgot-password/page";
 import "@/app/signup/page";
 import "@/app/pricing/page";
 import "@/app/subscribe/[planId]/page";

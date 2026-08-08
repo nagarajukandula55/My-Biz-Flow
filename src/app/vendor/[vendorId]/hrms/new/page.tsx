@@ -27,7 +27,7 @@ export default function NewHrmsPage() {
 
   return (
     <AppShell navGroups={buildVendorNavGroups("hrms")} topbarTitle={`New Employee — ${mod?.label ?? "HRMS / Payroll"}`}>
-      <div className="p-6">
+      <div>
         <h1 className="font-display text-2xl font-bold text-text">New Employee</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new employee record for HRMS / Payroll.</p>
         <div className="mt-6">

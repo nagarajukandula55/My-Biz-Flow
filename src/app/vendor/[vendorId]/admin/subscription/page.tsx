@@ -29,7 +29,7 @@ export default function VendorSubscriptionPage({ params }: { params: { vendorId:
 
   return (
     <AppShell navGroups={buildVendorAdminNavGroups("billing")} topbarTitle="Subscription">
-      <div className="p-6">
+      <div>
         <h1 className="font-display text-2xl font-bold text-text">Subscription</h1>
         <p className="mt-1 text-sm text-text-muted">
           Your platform subscription — not to be confused with the Billing module (customer invoicing) in the

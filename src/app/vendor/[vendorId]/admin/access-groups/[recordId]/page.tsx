@@ -37,7 +37,7 @@ export default function AccessGroupDetailPage({
   return (
     <AppShell navGroups={buildVendorAdminNavGroups("access-groups")} topbarTitle="Access Groups">
       <SuperAdminGate>
-        <div className="p-6">
+        <div>
           <Link
             href={`/vendor/${params.vendorId}/admin/access-groups`}
             className="text-sm font-semibold text-teal hover:underline"

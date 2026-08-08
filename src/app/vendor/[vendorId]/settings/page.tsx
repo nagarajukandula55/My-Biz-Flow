@@ -46,7 +46,7 @@ export default function SettingsPage() {
 
   return (
     <AppShell navGroups={buildVendorAdminNavGroups("settings")} topbarTitle="Settings">
-      <div className="p-6">
+      <div>
         <h1 className="font-display text-2xl font-bold text-text">Settings</h1>
         <p className="mt-1 text-sm text-text-muted">
           Vendor profile, branding, and enabled modules. Demo stubs throughout — no backend persistence yet.

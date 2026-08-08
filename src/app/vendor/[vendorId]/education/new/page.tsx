@@ -27,7 +27,7 @@ export default function NewEducationPage() {
 
   return (
     <AppShell navGroups={buildVendorNavGroups("education")} topbarTitle={`New Enrollment — ${mod?.label ?? "Education / Coaching"}`}>
-      <div className="p-6">
+      <div>
         <h1 className="font-display text-2xl font-bold text-text">New Enrollment</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new enrollment record for Education / Coaching.</p>
         <div className="mt-6">

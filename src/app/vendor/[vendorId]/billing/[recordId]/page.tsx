@@ -36,7 +36,7 @@ export default function BillingDetailPage({
 
   return (
     <AppShell navGroups={buildVendorNavGroups("billing")} topbarTitle={mod?.label ?? "Billing"}>
-      <div className="p-6">
+      <div>
         <Link
           href={`/vendor/${params.vendorId}/billing`}
           className="text-sm font-semibold text-teal hover:underline"

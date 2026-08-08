@@ -21,7 +21,7 @@ export default function NewUserPage() {
   return (
     <AppShell navGroups={buildVendorAdminNavGroups("users")} topbarTitle="New User">
       <SuperAdminGate>
-        <div className="p-6">
+        <div>
           <h1 className="font-display text-2xl font-bold text-text">New User</h1>
           <p className="mt-1 text-sm text-text-muted">Invite a new team member and assign their Role.</p>
           <div className="mt-6">

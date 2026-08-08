@@ -25,7 +25,7 @@ export default function EventBookingAdminPage() {
   return (
     <AppShell navGroups={buildVendorNavGroups("event-booking")} topbarTitle={`${mod?.label ?? "Event / Venue Booking"} · Admin`}>
       <SuperAdminGate>
-        <div className="p-6">
+        <div>
           <h1 className="font-display text-2xl font-bold text-text">
             {mod?.label} — Admin
           </h1>

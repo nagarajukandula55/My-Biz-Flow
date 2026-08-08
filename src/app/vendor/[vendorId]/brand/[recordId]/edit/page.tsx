@@ -28,7 +28,7 @@ export default function EditBrandPage({ params }: { params: { recordId: string }
 
   return (
     <AppShell navGroups={buildVendorNavGroups("brand")} topbarTitle={`Edit Location — ${mod?.label ?? "Brand"}`}>
-      <div className="p-6">
+      <div>
         <h1 className="font-display text-2xl font-bold text-text">Edit Location</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>
         <div className="mt-6">

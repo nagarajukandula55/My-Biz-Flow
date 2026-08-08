@@ -36,7 +36,7 @@ export default function EducationDetailPage({
 
   return (
     <AppShell navGroups={buildVendorNavGroups("education")} topbarTitle={mod?.label ?? "Education / Coaching"}>
-      <div className="p-6">
+      <div>
         <Link
           href={`/vendor/${params.vendorId}/education`}
           className="text-sm font-semibold text-teal hover:underline"

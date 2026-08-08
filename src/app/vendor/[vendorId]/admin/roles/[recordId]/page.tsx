@@ -32,7 +32,7 @@ export default function RoleDetailPage({
   return (
     <AppShell navGroups={buildVendorAdminNavGroups("roles")} topbarTitle="Roles">
       <SuperAdminGate>
-        <div className="p-6">
+        <div>
           <Link href={`/vendor/${params.vendorId}/admin/roles`} className="text-sm font-semibold text-teal hover:underline">
             &larr; Back to Roles
           </Link>

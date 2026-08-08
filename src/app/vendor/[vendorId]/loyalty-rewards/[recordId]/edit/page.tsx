@@ -28,7 +28,7 @@ export default function EditLoyaltyRewardsPage({ params }: { params: { recordId:
 
   return (
     <AppShell navGroups={buildVendorNavGroups("loyalty-rewards")} topbarTitle={`Edit Member — ${mod?.label ?? "Loyalty & Rewards"}`}>
-      <div className="p-6">
+      <div>
         <h1 className="font-display text-2xl font-bold text-text">Edit Member</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>
         <div className="mt-6">

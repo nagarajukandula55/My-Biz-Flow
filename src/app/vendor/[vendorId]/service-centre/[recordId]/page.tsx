@@ -36,7 +36,7 @@ export default function ServiceCentreDetailPage({
 
   return (
     <AppShell navGroups={buildVendorNavGroups("service-centre")} topbarTitle={mod?.label ?? "Service Centre"}>
-      <div className="p-6">
+      <div>
         <Link
           href={`/vendor/${params.vendorId}/service-centre`}
           className="text-sm font-semibold text-teal hover:underline"

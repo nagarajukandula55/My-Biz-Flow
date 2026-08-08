@@ -28,7 +28,7 @@ registerPage({
 export default function VendorNumberingPage({ params }: { params: { vendorId: string } }) {
   return (
     <AppShell navGroups={buildVendorAdminNavGroups("numbering")} topbarTitle="Settings — Numbering">
-      <div className="p-6">
+      <div>
         <Link
           href={`/vendor/${params.vendorId}/settings`}
           className="text-sm font-semibold text-teal hover:underline"

@@ -36,7 +36,7 @@ export default function RealEstateDetailPage({
 
   return (
     <AppShell navGroups={buildVendorNavGroups("real-estate")} topbarTitle={mod?.label ?? "Real Estate"}>
-      <div className="p-6">
+      <div>
         <Link
           href={`/vendor/${params.vendorId}/real-estate`}
           className="text-sm font-semibold text-teal hover:underline"

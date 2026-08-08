@@ -36,7 +36,7 @@ export default function AccountingGstDetailPage({
 
   return (
     <AppShell navGroups={buildVendorNavGroups("accounting-gst")} topbarTitle={mod?.label ?? "Accounting / GST Compliance"}>
-      <div className="p-6">
+      <div>
         <Link
           href={`/vendor/${params.vendorId}/accounting-gst`}
           className="text-sm font-semibold text-teal hover:underline"

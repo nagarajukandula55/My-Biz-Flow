@@ -21,7 +21,7 @@ export default function NewRolePage() {
   return (
     <AppShell navGroups={buildVendorAdminNavGroups("roles")} topbarTitle="New Role">
       <SuperAdminGate>
-        <div className="p-6">
+        <div>
           <h1 className="font-display text-2xl font-bold text-text">New Role</h1>
           <p className="mt-1 text-sm text-text-muted">Select the Access Groups this Role includes.</p>
           <div className="mt-6">

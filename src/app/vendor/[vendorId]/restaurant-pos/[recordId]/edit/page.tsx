@@ -28,7 +28,7 @@ export default function EditRestaurantPosPage({ params }: { params: { recordId: 
 
   return (
     <AppShell navGroups={buildVendorNavGroups("restaurant-pos")} topbarTitle={`Edit Order — ${mod?.label ?? "Restaurant POS"}`}>
-      <div className="p-6">
+      <div>
         <h1 className="font-display text-2xl font-bold text-text">Edit Order</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>
         <div className="mt-6">

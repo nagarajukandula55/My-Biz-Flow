@@ -28,7 +28,7 @@ export default function EditEducationPage({ params }: { params: { recordId: stri
 
   return (
     <AppShell navGroups={buildVendorNavGroups("education")} topbarTitle={`Edit Enrollment — ${mod?.label ?? "Education / Coaching"}`}>
-      <div className="p-6">
+      <div>
         <h1 className="font-display text-2xl font-bold text-text">Edit Enrollment</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>
         <div className="mt-6">

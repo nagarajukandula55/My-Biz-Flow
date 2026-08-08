@@ -28,7 +28,7 @@ export default function EditLegalPage({ params }: { params: { recordId: string }
 
   return (
     <AppShell navGroups={buildVendorNavGroups("legal")} topbarTitle={`Edit Matter — ${mod?.label ?? "Legal / Case Management"}`}>
-      <div className="p-6">
+      <div>
         <h1 className="font-display text-2xl font-bold text-text">Edit Matter</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>
         <div className="mt-6">

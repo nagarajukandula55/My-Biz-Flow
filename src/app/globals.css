@@ -171,6 +171,7 @@ h3,
 .btn-accent {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.375rem;
   border-radius: 8px;
   background: var(--accent);
@@ -188,6 +189,7 @@ h3,
 .btn-danger {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.375rem;
   border-radius: 8px;
   background: var(--danger);
@@ -205,6 +207,7 @@ h3,
 .btn-outline {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.375rem;
   border-radius: 8px;
   background: transparent;

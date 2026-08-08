@@ -28,7 +28,7 @@ export default function EditInventoryPage({ params }: { params: { recordId: stri
 
   return (
     <AppShell navGroups={buildVendorNavGroups("inventory")} topbarTitle={`Edit Stock Item — ${mod?.label ?? "Inventory / Warehouse"}`}>
-      <div className="p-6">
+      <div>
         <h1 className="font-display text-2xl font-bold text-text">Edit Stock Item</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>
         <div className="mt-6">

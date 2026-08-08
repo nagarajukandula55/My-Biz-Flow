@@ -25,7 +25,7 @@ export default function RealEstateAdminPage() {
   return (
     <AppShell navGroups={buildVendorNavGroups("real-estate")} topbarTitle={`${mod?.label ?? "Real Estate"} · Admin`}>
       <SuperAdminGate>
-        <div className="p-6">
+        <div>
           <h1 className="font-display text-2xl font-bold text-text">
             {mod?.label} — Admin
           </h1>

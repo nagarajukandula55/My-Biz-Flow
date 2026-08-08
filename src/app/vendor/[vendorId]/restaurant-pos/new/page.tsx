@@ -27,7 +27,7 @@ export default function NewRestaurantPosPage() {
 
   return (
     <AppShell navGroups={buildVendorNavGroups("restaurant-pos")} topbarTitle={`New Order — ${mod?.label ?? "Restaurant POS"}`}>
-      <div className="p-6">
+      <div>
         <h1 className="font-display text-2xl font-bold text-text">New Order</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new order record for Restaurant POS.</p>
         <div className="mt-6">
