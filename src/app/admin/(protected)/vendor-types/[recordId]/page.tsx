@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 import { SuperAdminGate } from "@/components/SuperAdminGate";
 import { StatusChip } from "@/components/StatusChip";
 import { registerPage } from "@/lib/designer/registry";
-import { getVendorType } from "@/lib/designer/vendorTypesData";
+import { getVendorType, PLAN_TIERS } from "@/lib/designer/vendorTypesData";
+import { getAssignablePagesByModule } from "@/lib/designer/accessGroupPermissions";
 import { DeleteVendorTypeButton } from "./DeleteVendorTypeButton";
 
 export const dynamic = "force-dynamic";
@@ -20,9 +21,17 @@ registerPage({
   sourceFile: "src/app/admin/(protected)/vendor-types/[recordId]/page.tsx",
 });
 
+const TIER_LABEL: Record<string, string> = { basic: "Basic", pro: "Pro", ultimate: "Ultimate" };
+
 export default async function VendorTypeDetailPage({ params }: { params: { recordId: string } }) {
   const type = await getVendorType(params.recordId);
   if (!type) notFound();
+
+  const pageTitleById = new Map(
+    getAssignablePagesByModule()
+      .flatMap((m) => m.pages)
+      .map((p) => [p.id, p.title])
+  );
 
   return (
     <SuperAdminGate>
@@ -50,10 +59,38 @@ export default async function VendorTypeDetailPage({ params }: { params: { recor
             </div>
           </div>
 
-          <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <InfoCard title="Default Modules" items={type.defaultModules} />
             <InfoCard title="Assignable Roles" items={type.assignableRoleIds} />
-            <InfoCard title="Available Plans" items={type.planIds} />
+          </div>
+
+          <div className="mt-6 rounded-lg border border-border bg-bg-raised p-5">
+            <h2 className="font-display text-base font-bold text-text">Plan Tiers (this type's own breakdown)</h2>
+            {Object.keys(type.planTierByPage).length === 0 ? (
+              <p className="mt-2 text-sm text-text-muted">No pages assigned to a tier yet.</p>
+            ) : (
+              <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+                {PLAN_TIERS.map((tier) => {
+                  const pageIds = Object.entries(type.planTierByPage)
+                    .filter(([, t]) => t === tier)
+                    .map(([pid]) => pid);
+                  return (
+                    <div key={tier} className="rounded-md border border-border bg-bg p-4">
+                      <div className="text-sm font-semibold text-text">{TIER_LABEL[tier]}</div>
+                      {pageIds.length === 0 ? (
+                        <p className="mt-1 text-xs text-text-muted">No pages.</p>
+                      ) : (
+                        <ul className="mt-2 space-y-1 text-xs text-text-muted">
+                          {pageIds.map((pid) => (
+                            <li key={pid}>{pageTitleById.get(pid) ?? pid}</li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       </div>

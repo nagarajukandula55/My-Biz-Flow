@@ -15,7 +15,7 @@ registerPage({
   superAdminOnly: true,
   customizableRegions: [{ key: "columns", label: "Table columns" }],
   explanation:
-    "The top-level platform entity a vendor account is created against — POS Retailer, Service Centre, Clinic, etc. Each Vendor Type bundles a default module set, which platform Roles are assignable to that type's users, and which Plans apply. Real data — Prisma-backed (VendorType table).",
+    "The top-level platform entity a vendor account is created against — POS Retailer, Service Centre, Clinic, etc. Each Vendor Type bundles a default module set, which platform Roles are assignable to that type's users, and its own Basic/Pro/Ultimate page-tier breakdown. Real data — Prisma-backed (VendorType table).",
   sourceFile: "src/app/admin/(protected)/vendor-types/page.tsx",
 });
 
@@ -26,7 +26,7 @@ export default async function VendorTypesPage() {
     description: t.description,
     defaultModules: t.defaultModules,
     assignableRoleIds: t.assignableRoleIds,
-    planIds: t.planIds,
+    tieredPageCount: Object.keys(t.planTierByPage).length,
     status: t.status,
   }));
 

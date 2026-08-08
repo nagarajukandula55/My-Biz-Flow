@@ -2,14 +2,32 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createVendorType, updateVendorType, deleteVendorType, type VendorTypeInput } from "@/lib/designer/vendorTypesData";
+import {
+  createVendorType,
+  updateVendorType,
+  deleteVendorType,
+  type VendorTypeInput,
+  type PlanTier,
+} from "@/lib/designer/vendorTypesData";
 
 function parseInput(formData: FormData): VendorTypeInput {
+  const defaultModules = String(formData.get("defaultModules") ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  let planTierByPage: Record<string, PlanTier> = {};
+  try {
+    planTierByPage = JSON.parse(String(formData.get("planTierByPage") ?? "{}"));
+  } catch {
+    planTierByPage = {};
+  }
+
   return {
     description: String(formData.get("description") ?? "").trim(),
-    defaultModules: formData.getAll("defaultModules").map(String).filter(Boolean),
+    defaultModules,
     assignableRoleIds: formData.getAll("assignableRoleIds").map(String).filter(Boolean),
-    planIds: formData.getAll("planIds").map(String).filter(Boolean),
+    planTierByPage,
     status: String(formData.get("status") ?? "Active"),
   };
 }

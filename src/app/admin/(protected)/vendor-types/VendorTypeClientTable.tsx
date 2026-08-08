@@ -8,7 +8,7 @@ const columns: Column[] = [
   { key: "description", label: "Description", type: "text" },
   { key: "defaultModules", label: "Default Modules", type: "multi-chip" },
   { key: "assignableRoleIds", label: "Assignable Roles", type: "multi-chip" },
-  { key: "planIds", label: "Available Plans", type: "multi-chip" },
+  { key: "tieredPageCount", label: "Pages Tiered", type: "text" },
   { key: "status", label: "Status", type: "select-chip" },
 ];
 

@@ -128,17 +128,50 @@ model Role {
 }
 
 /// The top-level entity a vendor account is created against — see
-/// src/lib/designer/vendorTypesData.ts. defaultModules/assignableRoleIds/
-/// planIds are all JSON string arrays (module slugs / Role ids / Plan ids).
+/// src/lib/designer/vendorTypesData.ts. defaultModules/assignableRoleIds
+/// are JSON string arrays (module slugs / Role ids). planTierByPage is a
+/// JSON map of pageId -> "basic" | "pro" | "ultimate", scoped to ONLY this
+/// type's own defaultModules pages — every Vendor Type defines its own
+/// Basic/Pro/Ultimate breakdown independently, never a shared global Plan
+/// membership list (confirmed 2026-08-08: no type may just "include" one
+/// of a shared set of plans).
 model VendorType {
   id                 String   @id
   description        String?  @db.Text
   defaultModules     Json     @default("[]")
   assignableRoleIds  Json     @default("[]")
-  planIds            Json     @default("[]")
+  planTierByPage     Json     @default("{}")
   status             String   @default("Active")
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
   @@map("vendor_types")
+}
+
+/// A registered vendor account — see src/lib/vendorData.ts. `id` is the
+/// public VND#### id (used for login, invoices, support — everything the
+/// vendor themselves ever sees). `internalKey` (BIZ<business>-VND####) is
+/// for our own DB relations and the eventual central-api sync only, never
+/// shown to the vendor. businessId is fixed to "BIZ002" (this business's
+/// central-api id) until real cross-business support exists.
+model Vendor {
+  id              String   @id
+  internalKey     String   @unique
+  businessId      String   @default("BIZ002")
+  vendorTypeId    String
+  businessName    String
+  addressLine     String?
+  city            String
+  state           String
+  pincode         String
+  gstin           String?
+  businessEmail   String
+  businessContact String
+  loginContact    String   @unique
+  passwordHash    String
+  status          String   @default("Active")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("vendors")
 }

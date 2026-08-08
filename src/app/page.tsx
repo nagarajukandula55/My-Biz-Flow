@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { LogoMark } from "@/components/LogoMark";
 import { registerPage } from "@/lib/designer/registry";
-import { MODULES, type ModuleTaxonomy } from "@/lib/designer/modules";
+import { listActiveVendorTypes } from "@/lib/designer/vendorTypesData";
+
+export const dynamic = "force-dynamic";
 
 registerPage({
   id: "platform.home",
@@ -12,27 +14,9 @@ registerPage({
   superAdminOnly: false,
   customizableRegions: [],
   explanation:
-    "Public marketing home page (no AppShell). Hero, modular/no-code explanation, a module-category section pulling live from MODULES so it can't drift, and a screenshots section referencing /screenshots/*.png files that don't exist yet (graceful bg-bg-sunken fallback boxes) — real screenshots to be added in a follow-up pass. CTAs to /signup and /pricing.",
+    "Public marketing home page (no AppShell). Hero, a 'choose your business type' section pulling live Active Vendor Types from the VendorType Prisma table (each card links to /signup?type=<id>, so the home page can never drift from what Super Admin has actually configured), and a screenshots section referencing /screenshots/*.png files that don't exist yet (graceful bg-bg-sunken fallback boxes) — real screenshots to be added in a follow-up pass. CTAs to /signup and /pricing.",
   sourceFile: "src/app/page.tsx",
 });
-
-const TAXONOMY_LABEL: Record<ModuleTaxonomy, string> = {
-  brand: "Brand",
-  vertical: "Verticals",
-  "cross-cutting": "Cross-cutting",
-};
-
-const TAXONOMY_COPY: Record<ModuleTaxonomy, string> = {
-  brand: "Multi-location and multi-partner hierarchy — Brand → Partners → Locations.",
-  vertical: "Industry-specific modules — the core of what a business runs day to day.",
-  "cross-cutting": "Plug into any vertical — inventory, payroll, compliance, loyalty.",
-};
-
-function groupedModules() {
-  const groups: Record<ModuleTaxonomy, typeof MODULES> = { brand: [], vertical: [], "cross-cutting": [] };
-  for (const m of MODULES) groups[m.taxonomy].push(m);
-  return groups;
-}
 
 const SCREENSHOTS: { name: string; alt: string }[] = [
   { name: "dashboard", alt: "A vendor dashboard showing live stat tiles and recent activity" },
@@ -40,8 +24,8 @@ const SCREENSHOTS: { name: string; alt: string }[] = [
   { name: "designer", alt: "The Super Admin Designer listing every registered page in the product" },
 ];
 
-export default function RootPage() {
-  const groups = groupedModules();
+export default async function RootPage() {
+  const vendorTypes = await listActiveVendorTypes();
 
   return (
     <div className="mbf-page min-h-screen w-full bg-bg">
@@ -88,30 +72,28 @@ export default function RootPage() {
 
       <section className="border-t border-border px-6 py-16">
         <div className="mx-auto max-w-5xl">
-          <h2 className="text-center font-display text-2xl font-bold text-text">Built from one module registry</h2>
+          <h2 className="text-center font-display text-2xl font-bold text-text">Choose your business type</h2>
           <p className="mbf-prose mx-auto mt-2 text-center text-base text-text-muted">
-            No hardcoded business types — a Vendor&apos;s &quot;type&quot; is just the modules it enables.
+            Pick the type that matches how you run your business — everything else (modules, pricing tiers)
+            is configured for you.
           </p>
-          <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-3">
-            {(Object.keys(groups) as ModuleTaxonomy[]).map((tax) => (
-              <div key={tax} className="rounded-lg border border-border bg-bg-raised p-5">
-                <h3 className="font-display text-base font-bold text-text">{TAXONOMY_LABEL[tax]}</h3>
-                <p className="mt-1 text-sm text-text-muted">{TAXONOMY_COPY[tax]}</p>
-                <ul className="mt-4 space-y-1.5">
-                  {groups[tax].map((m) => (
-                    <li key={m.slug} className="flex items-center gap-2 text-sm text-text">
-                      <span
-                        className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${
-                          tax === "vertical" ? "bg-teal" : tax === "brand" ? "bg-accent" : "bg-text-muted"
-                        }`}
-                      />
-                      {m.label}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
+          {vendorTypes.length === 0 ? (
+            <p className="mx-auto mt-10 max-w-md rounded-lg border border-dashed border-border bg-bg-raised p-6 text-center text-sm text-text-muted">
+              No business types are available for signup yet — check back soon.
+            </p>
+          ) : (
+            <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-3">
+              {vendorTypes.map((t) => (
+                <div key={t.id} className="flex flex-col rounded-lg border border-border bg-bg-raised p-5">
+                  <h3 className="font-display text-base font-bold text-text">{t.id}</h3>
+                  <p className="mt-1 flex-1 text-sm text-text-muted">{t.description || "—"}</p>
+                  <Link href={`/signup?type=${encodeURIComponent(t.id)}`} className="btn-accent mt-4 text-center">
+                    Sign up as {t.id}
+                  </Link>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 

@@ -1,10 +1,10 @@
 import { notFound } from "next/navigation";
 import { SuperAdminGate } from "@/components/SuperAdminGate";
 import { registerPage } from "@/lib/designer/registry";
-import { MODULES } from "@/lib/designer/modules";
 import { getVendorType } from "@/lib/designer/vendorTypesData";
 import { listRoles } from "@/lib/designer/rolesData";
-import { planRows } from "@/lib/sample-data/plans";
+import { getAssignablePagesByModule } from "@/lib/designer/accessGroupPermissions";
+import { ModulesAndTiersEditor } from "../../ModulesAndTiersEditor";
 import { updateVendorTypeAction } from "../../actions";
 
 export const dynamic = "force-dynamic";
@@ -25,6 +25,7 @@ export default async function EditVendorTypePage({ params }: { params: { recordI
   const type = await getVendorType(params.recordId);
   if (!type) notFound();
   const roles = await listRoles();
+  const pagesByModule = getAssignablePagesByModule();
   const updateAction = updateVendorTypeAction.bind(null, type.id);
 
   return (
@@ -36,7 +37,7 @@ export default async function EditVendorTypePage({ params }: { params: { recordI
         <div className="p-6">
           <p className="mb-6 text-sm text-text-muted">{type.id}</p>
           <form action={updateAction}>
-            <div className="max-w-lg space-y-4">
+            <div className="max-w-2xl space-y-4">
               <div>
                 <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-text-muted">
                   Description
@@ -48,25 +49,13 @@ export default async function EditVendorTypePage({ params }: { params: { recordI
                   className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text outline-none focus:border-accent"
                 />
               </div>
-              <div>
-                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-text-muted">
-                  Default Modules
-                </label>
-                <div className="grid grid-cols-2 gap-1.5 rounded-md border border-border bg-bg p-3">
-                  {MODULES.map((m) => (
-                    <label key={m.slug} className="flex items-center gap-2 text-sm text-text">
-                      <input
-                        type="checkbox"
-                        name="defaultModules"
-                        value={m.slug}
-                        defaultChecked={type.defaultModules.includes(m.slug)}
-                        className="h-4 w-4 accent-accent"
-                      />
-                      {m.label}
-                    </label>
-                  ))}
-                </div>
-              </div>
+
+              <ModulesAndTiersEditor
+                pagesByModule={pagesByModule}
+                initialModules={type.defaultModules}
+                initialPlanTierByPage={type.planTierByPage}
+              />
+
               <div>
                 <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-text-muted">
                   Assignable Roles
@@ -82,25 +71,6 @@ export default async function EditVendorTypePage({ params }: { params: { recordI
                         className="h-4 w-4 accent-accent"
                       />
                       {r.id}
-                    </label>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-text-muted">
-                  Available Plans
-                </label>
-                <div className="space-y-1.5 rounded-md border border-border bg-bg p-3">
-                  {planRows.map((p) => (
-                    <label key={String(p["id"])} className="flex items-center gap-2 text-sm text-text">
-                      <input
-                        type="checkbox"
-                        name="planIds"
-                        value={String(p["id"])}
-                        defaultChecked={type.planIds.includes(String(p["id"]))}
-                        className="h-4 w-4 accent-accent"
-                      />
-                      {String(p["name"] ?? p["id"])}
                     </label>
                   ))}
                 </div>

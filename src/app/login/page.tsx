@@ -12,11 +12,15 @@ registerPage({
   superAdminOnly: false,
   customizableRegions: [],
   explanation:
-    "Public, non-vendor-scoped login page (no AppShell/sidebar — lightweight public page shell). Demo Server Action sets a lightweight mbf_vendor_session cookie (src/lib/vendorSession.ts) and redirects to a hardcoded demo vendor route (/vendor/demo/pos) — there is no real password check or vendor lookup yet, see src/app/login/actions.ts.",
+    "Public, non-vendor-scoped login page (no AppShell/sidebar — lightweight public page shell). Real vendor lookup by Vendor ID (VND####) or registered contact number, real password verification against the Vendor table (see src/app/login/actions.ts) — route-level session enforcement on /vendor/[vendorId]/* pages doesn't exist yet.",
   sourceFile: "src/app/login/page.tsx",
 });
 
-export default function LoginPage() {
+export default function LoginPage({
+  searchParams,
+}: {
+  searchParams: { welcomeVendorId?: string; error?: string };
+}) {
   return (
     <div className="flex min-h-screen w-full items-center justify-center bg-bg px-6">
       <div className="w-full max-w-sm rounded-lg border border-border bg-bg-raised p-8">
@@ -25,17 +29,29 @@ export default function LoginPage() {
           <span className="font-display text-lg font-extrabold text-text">My Biz Flow</span>
         </Link>
         <h1 className="font-display text-xl font-bold text-text">Sign in</h1>
-        <p className="mt-1 text-sm text-text-muted">
-          Demo login — no real backend yet. Any email/password combination signs you into a hardcoded demo vendor
-          account. See <code className="font-mono text-xs">src/app/login/actions.ts</code>.
-        </p>
+
+        {searchParams.welcomeVendorId && (
+          <p className="mt-3 rounded-md border border-success bg-success-soft px-3 py-2 text-sm text-success">
+            Account created — your Vendor ID is{" "}
+            <span className="font-mono font-bold">{searchParams.welcomeVendorId}</span>. Sign in with it (or your
+            registered contact number) below.
+          </p>
+        )}
+        {searchParams.error === "invalid_credentials" && (
+          <p className="mt-3 rounded-md border border-danger bg-danger-soft px-3 py-2 text-sm text-danger">
+            Vendor ID / contact number or password is incorrect.
+          </p>
+        )}
+
+        <p className="mt-2 text-sm text-text-muted">Sign in with your Vendor ID or registered contact number.</p>
 
         <form action={signInAsVendor} className="mt-6 flex flex-col gap-3">
           <label className="text-xs font-semibold uppercase tracking-wide text-text-muted">
-            Email
+            Vendor ID or Contact Number
             <input
-              type="email"
-              name="email"
+              type="text"
+              name="identifier"
+              placeholder="VND0001 or 98xxxxxxxx"
               required
               autoFocus
               className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text outline-none focus:border-teal"

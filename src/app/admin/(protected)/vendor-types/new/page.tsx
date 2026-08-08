@@ -1,8 +1,8 @@
 import { SuperAdminGate } from "@/components/SuperAdminGate";
 import { registerPage } from "@/lib/designer/registry";
-import { MODULES } from "@/lib/designer/modules";
 import { listRoles } from "@/lib/designer/rolesData";
-import { planRows } from "@/lib/sample-data/plans";
+import { getAssignablePagesByModule } from "@/lib/designer/accessGroupPermissions";
+import { ModulesAndTiersEditor } from "../ModulesAndTiersEditor";
 import { createVendorTypeAction } from "../actions";
 
 export const dynamic = "force-dynamic";
@@ -15,12 +15,14 @@ registerPage({
   kind: "form",
   superAdminOnly: true,
   customizableRegions: [{ key: "form-fields", label: "Form fields" }],
-  explanation: "Creation form for a new Vendor Type — default modules, assignable Roles, and available Plans. Writes to the VendorType Prisma table.",
+  explanation:
+    "Creation form for a new Vendor Type — default modules, its own Basic/Pro/Ultimate page-tier breakdown, and assignable Roles. Writes to the VendorType Prisma table.",
   sourceFile: "src/app/admin/(protected)/vendor-types/new/page.tsx",
 });
 
 export default async function NewVendorTypePage() {
   const roles = await listRoles();
+  const pagesByModule = getAssignablePagesByModule();
 
   return (
     <SuperAdminGate>
@@ -30,7 +32,7 @@ export default async function NewVendorTypePage() {
         </div>
         <div className="p-6">
           <form action={createVendorTypeAction}>
-            <div className="max-w-lg space-y-4">
+            <div className="max-w-2xl space-y-4">
               <div>
                 <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-text-muted">
                   Vendor Type Name
@@ -51,19 +53,9 @@ export default async function NewVendorTypePage() {
                   className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text outline-none focus:border-accent"
                 />
               </div>
-              <div>
-                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-text-muted">
-                  Default Modules
-                </label>
-                <div className="grid grid-cols-2 gap-1.5 rounded-md border border-border bg-bg p-3">
-                  {MODULES.map((m) => (
-                    <label key={m.slug} className="flex items-center gap-2 text-sm text-text">
-                      <input type="checkbox" name="defaultModules" value={m.slug} className="h-4 w-4 accent-accent" />
-                      {m.label}
-                    </label>
-                  ))}
-                </div>
-              </div>
+
+              <ModulesAndTiersEditor pagesByModule={pagesByModule} />
+
               <div>
                 <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-text-muted">
                   Assignable Roles
@@ -80,19 +72,6 @@ export default async function NewVendorTypePage() {
                     ))}
                   </div>
                 )}
-              </div>
-              <div>
-                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-text-muted">
-                  Available Plans
-                </label>
-                <div className="space-y-1.5 rounded-md border border-border bg-bg p-3">
-                  {planRows.map((p) => (
-                    <label key={String(p["id"])} className="flex items-center gap-2 text-sm text-text">
-                      <input type="checkbox" name="planIds" value={String(p["id"])} className="h-4 w-4 accent-accent" />
-                      {String(p["name"] ?? p["id"])}
-                    </label>
-                  ))}
-                </div>
               </div>
               <div>
                 <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-text-muted">
