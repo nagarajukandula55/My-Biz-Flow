@@ -10,6 +10,7 @@ import {
   Tooltip,
 } from "recharts";
 import { ChartCard } from "./ChartCard";
+import { formatCurrencyINR } from "@/lib/format";
 
 export type LineSeriesPoint = { x: string; y: number };
 
@@ -18,20 +19,26 @@ export type LineSeriesPoint = { x: string; y: number };
  * recharts' own defaults — see DESIGN_SYSTEM.md §5. SVG stroke/fill accept
  * CSS custom properties directly as attribute values in evergreen browsers,
  * so these tokens re-resolve automatically on theme change with no JS.
+ *
+ * `format` is a string, not a formatter function — a function prop cannot
+ * cross the Server->Client boundary (this is a Client Component, its
+ * props must be serializable). Same fix already applied to DataTable's
+ * chipVariant -> chipVariantMap; see DESIGN_SYSTEM.md.
  */
 export function LineChartCard({
   title,
   subtitle,
   data,
   color = "var(--chart-1)",
-  valueFormatter,
+  format = "number",
 }: {
   title: string;
   subtitle?: string;
   data: LineSeriesPoint[];
   color?: string;
-  valueFormatter?: (v: number) => string;
+  format?: "currency" | "number";
 }) {
+  const valueFormatter = (v: number) => (format === "currency" ? formatCurrencyINR(v) : String(v));
   return (
     <ChartCard title={title} subtitle={subtitle}>
       <ResponsiveContainer width="100%" height="100%">

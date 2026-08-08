@@ -76,7 +76,7 @@ export default function AnalyticsPage({ params }: { params: { vendorId: string }
               title="Revenue trend"
               subtitle="Last 7 days — Billing"
               data={revenueTrend}
-              valueFormatter={(v) => formatCurrencyINR(v)}
+              format="currency"
             />
           )}
           <BarChartCard

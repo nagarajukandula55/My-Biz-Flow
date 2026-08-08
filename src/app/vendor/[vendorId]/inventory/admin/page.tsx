@@ -7,7 +7,7 @@ registerPage({
   id: "inventory.admin",
   moduleSlug: "inventory",
   title: "Inventory — Admin",
-  path: "src/app/vendor/[vendorId]/inventory/admin",
+  path: "/vendor/[vendorId]/inventory/admin",
   kind: "admin",
   superAdminOnly: true,
   customizableRegions: [

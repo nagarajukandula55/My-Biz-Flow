@@ -7,7 +7,7 @@ registerPage({
   id: "wholesale-b2b.admin",
   moduleSlug: "wholesale-b2b",
   title: "Wholesale / Distributor B2B — Admin",
-  path: "src/app/vendor/[vendorId]/wholesale-b2b/admin",
+  path: "/vendor/[vendorId]/wholesale-b2b/admin",
   kind: "admin",
   superAdminOnly: true,
   customizableRegions: [

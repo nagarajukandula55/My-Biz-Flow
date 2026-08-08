@@ -7,7 +7,7 @@ registerPage({
   id: "event-booking.admin",
   moduleSlug: "event-booking",
   title: "Event / Venue Booking — Admin",
-  path: "src/app/vendor/[vendorId]/event-booking/admin",
+  path: "/vendor/[vendorId]/event-booking/admin",
   kind: "admin",
   superAdminOnly: true,
   customizableRegions: [

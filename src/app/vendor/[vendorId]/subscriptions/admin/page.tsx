@@ -7,7 +7,7 @@ registerPage({
   id: "subscriptions.admin",
   moduleSlug: "subscriptions",
   title: "Subscriptions / Membership — Admin",
-  path: "src/app/vendor/[vendorId]/subscriptions/admin",
+  path: "/vendor/[vendorId]/subscriptions/admin",
   kind: "admin",
   superAdminOnly: true,
   customizableRegions: [

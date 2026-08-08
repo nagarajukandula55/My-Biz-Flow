@@ -7,7 +7,7 @@ registerPage({
   id: "service-centre.admin",
   moduleSlug: "service-centre",
   title: "Service Centre — Admin",
-  path: "src/app/vendor/[vendorId]/service-centre/admin",
+  path: "/vendor/[vendorId]/service-centre/admin",
   kind: "admin",
   superAdminOnly: true,
   customizableRegions: [

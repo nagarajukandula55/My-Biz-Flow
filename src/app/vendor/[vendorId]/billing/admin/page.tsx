@@ -7,7 +7,7 @@ registerPage({
   id: "billing.admin",
   moduleSlug: "billing",
   title: "Billing — Admin",
-  path: "src/app/vendor/[vendorId]/billing/admin",
+  path: "/vendor/[vendorId]/billing/admin",
   kind: "admin",
   superAdminOnly: true,
   customizableRegions: [

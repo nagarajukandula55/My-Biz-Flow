@@ -7,7 +7,7 @@ registerPage({
   id: "amc-field-service.admin",
   moduleSlug: "amc-field-service",
   title: "AMC / Field Service — Admin",
-  path: "src/app/vendor/[vendorId]/amc-field-service/admin",
+  path: "/vendor/[vendorId]/amc-field-service/admin",
   kind: "admin",
   superAdminOnly: true,
   customizableRegions: [

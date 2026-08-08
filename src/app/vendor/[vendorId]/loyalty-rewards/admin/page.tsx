@@ -7,7 +7,7 @@ registerPage({
   id: "loyalty-rewards.admin",
   moduleSlug: "loyalty-rewards",
   title: "Loyalty & Rewards — Admin",
-  path: "src/app/vendor/[vendorId]/loyalty-rewards/admin",
+  path: "/vendor/[vendorId]/loyalty-rewards/admin",
   kind: "admin",
   superAdminOnly: true,
   customizableRegions: [

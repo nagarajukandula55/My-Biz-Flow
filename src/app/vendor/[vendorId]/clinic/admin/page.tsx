@@ -7,7 +7,7 @@ registerPage({
   id: "clinic.admin",
   moduleSlug: "clinic",
   title: "Clinic — Admin",
-  path: "src/app/vendor/[vendorId]/clinic/admin",
+  path: "/vendor/[vendorId]/clinic/admin",
   kind: "admin",
   superAdminOnly: true,
   customizableRegions: [

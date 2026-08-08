@@ -7,7 +7,7 @@ registerPage({
   id: "hrms.admin",
   moduleSlug: "hrms",
   title: "HRMS / Payroll — Admin",
-  path: "src/app/vendor/[vendorId]/hrms/admin",
+  path: "/vendor/[vendorId]/hrms/admin",
   kind: "admin",
   superAdminOnly: true,
   customizableRegions: [

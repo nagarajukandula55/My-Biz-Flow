@@ -7,7 +7,7 @@ registerPage({
   id: "legal.admin",
   moduleSlug: "legal",
   title: "Legal — Admin",
-  path: "src/app/vendor/[vendorId]/legal/admin",
+  path: "/vendor/[vendorId]/legal/admin",
   kind: "admin",
   superAdminOnly: true,
   customizableRegions: [

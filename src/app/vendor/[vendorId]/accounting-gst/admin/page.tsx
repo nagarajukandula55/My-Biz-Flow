@@ -7,7 +7,7 @@ registerPage({
   id: "accounting-gst.admin",
   moduleSlug: "accounting-gst",
   title: "Accounting / GST Compliance — Admin",
-  path: "src/app/vendor/[vendorId]/accounting-gst/admin",
+  path: "/vendor/[vendorId]/accounting-gst/admin",
   kind: "admin",
   superAdminOnly: true,
   customizableRegions: [

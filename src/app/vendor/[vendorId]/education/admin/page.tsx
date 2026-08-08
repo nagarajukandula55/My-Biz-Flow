@@ -7,7 +7,7 @@ registerPage({
   id: "education.admin",
   moduleSlug: "education",
   title: "Education / Coaching — Admin",
-  path: "src/app/vendor/[vendorId]/education/admin",
+  path: "/vendor/[vendorId]/education/admin",
   kind: "admin",
   superAdminOnly: true,
   customizableRegions: [

@@ -7,7 +7,7 @@ registerPage({
   id: "marketplace.admin",
   moduleSlug: "marketplace",
   title: "Marketplace / Vendor Aggregator — Admin",
-  path: "src/app/vendor/[vendorId]/marketplace/admin",
+  path: "/vendor/[vendorId]/marketplace/admin",
   kind: "admin",
   superAdminOnly: true,
   customizableRegions: [

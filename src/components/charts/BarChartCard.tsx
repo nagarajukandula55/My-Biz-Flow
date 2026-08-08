@@ -10,23 +10,28 @@ import {
   Tooltip,
 } from "recharts";
 import { ChartCard } from "./ChartCard";
+import { formatCurrencyINR } from "@/lib/format";
 
 export type BarPoint = { category: string; value: number };
 
-/** Comparison-across-categories chart — see LineChartCard for the token-color rationale. */
+/**
+ * Comparison-across-categories chart — see LineChartCard for the
+ * token-color rationale and why `format` is a string, not a function.
+ */
 export function BarChartCard({
   title,
   subtitle,
   data,
   color = "var(--chart-2)",
-  valueFormatter,
+  format = "number",
 }: {
   title: string;
   subtitle?: string;
   data: BarPoint[];
   color?: string;
-  valueFormatter?: (v: number) => string;
+  format?: "currency" | "number";
 }) {
+  const valueFormatter = (v: number) => (format === "currency" ? formatCurrencyINR(v) : String(v));
   return (
     <ChartCard title={title} subtitle={subtitle}>
       <ResponsiveContainer width="100%" height="100%">

@@ -7,7 +7,7 @@ registerPage({
   id: "pos.admin",
   moduleSlug: "pos",
   title: "POS — Admin",
-  path: "src/app/vendor/[vendorId]/pos/admin",
+  path: "/vendor/[vendorId]/pos/admin",
   kind: "admin",
   superAdminOnly: true,
   customizableRegions: [

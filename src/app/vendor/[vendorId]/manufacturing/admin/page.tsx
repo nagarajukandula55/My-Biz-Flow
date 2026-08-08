@@ -7,7 +7,7 @@ registerPage({
   id: "manufacturing.admin",
   moduleSlug: "manufacturing",
   title: "Manufacturing — Admin",
-  path: "src/app/vendor/[vendorId]/manufacturing/admin",
+  path: "/vendor/[vendorId]/manufacturing/admin",
   kind: "admin",
   superAdminOnly: true,
   customizableRegions: [

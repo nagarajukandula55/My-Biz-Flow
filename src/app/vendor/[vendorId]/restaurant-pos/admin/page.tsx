@@ -7,7 +7,7 @@ registerPage({
   id: "restaurant-pos.admin",
   moduleSlug: "restaurant-pos",
   title: "Restaurant POS — Admin",
-  path: "src/app/vendor/[vendorId]/restaurant-pos/admin",
+  path: "/vendor/[vendorId]/restaurant-pos/admin",
   kind: "admin",
   superAdminOnly: true,
   customizableRegions: [

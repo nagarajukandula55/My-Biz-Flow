@@ -7,7 +7,7 @@ registerPage({
   id: "rentals.admin",
   moduleSlug: "rentals",
   title: "Rentals / Booking — Admin",
-  path: "src/app/vendor/[vendorId]/rentals/admin",
+  path: "/vendor/[vendorId]/rentals/admin",
   kind: "admin",
   superAdminOnly: true,
   customizableRegions: [

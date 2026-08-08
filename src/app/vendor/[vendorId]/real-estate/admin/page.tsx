@@ -7,7 +7,7 @@ registerPage({
   id: "real-estate.admin",
   moduleSlug: "real-estate",
   title: "Real Estate — Admin",
-  path: "src/app/vendor/[vendorId]/real-estate/admin",
+  path: "/vendor/[vendorId]/real-estate/admin",
   kind: "admin",
   superAdminOnly: true,
   customizableRegions: [

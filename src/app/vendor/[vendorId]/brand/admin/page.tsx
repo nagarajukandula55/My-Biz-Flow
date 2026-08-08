@@ -7,7 +7,7 @@ registerPage({
   id: "brand.admin",
   moduleSlug: "brand",
   title: "Brand — Admin",
-  path: "src/app/vendor/[vendorId]/brand/admin",
+  path: "/vendor/[vendorId]/brand/admin",
   kind: "admin",
   superAdminOnly: true,
   customizableRegions: [

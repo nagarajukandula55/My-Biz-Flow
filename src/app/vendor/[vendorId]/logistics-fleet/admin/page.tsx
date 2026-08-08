@@ -7,7 +7,7 @@ registerPage({
   id: "logistics-fleet.admin",
   moduleSlug: "logistics-fleet",
   title: "Logistics / Fleet — Admin",
-  path: "src/app/vendor/[vendorId]/logistics-fleet/admin",
+  path: "/vendor/[vendorId]/logistics-fleet/admin",
   kind: "admin",
   superAdminOnly: true,
   customizableRegions: [
