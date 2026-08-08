@@ -146,3 +146,4 @@ import "@/app/admin/plans/new/page";
 import "@/app/admin/plans/[recordId]/page";
 import "@/app/admin/plans/[recordId]/edit/page";
 import "@/app/admin/subscribers/page";
+import "@/app/admin/errors/page";

@@ -2,11 +2,15 @@
 
 import { useEffect } from "react";
 import { LogoMark } from "@/components/LogoMark";
+import { reportClientError } from "@/app/admin/errors/actions";
 
 /**
  * App Router error boundary — required by Next.js to be a Client Component.
  * Without this file, any unhandled render/render-time error falls through
- * to Next's bare default error page instead of the design system.
+ * to Next's bare default error page instead of the design system. Also
+ * reports into the central error log (src/lib/errorLog.ts) via a Server
+ * Action, so "this has been logged" below is literally true, not just
+ * reassuring copy — visible at /admin/errors.
  */
 export default function GlobalError({
   error,
@@ -18,6 +22,11 @@ export default function GlobalError({
   useEffect(() => {
     // eslint-disable-next-line no-console
     console.error(error);
+    reportClientError({
+      message: error.message,
+      stack: error.stack,
+      source: typeof window !== "undefined" ? window.location.pathname : "unknown",
+    });
   }, [error]);
 
   return (
