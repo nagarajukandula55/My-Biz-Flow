@@ -130,6 +130,8 @@ import "@/app/vendor/[vendorId]/admin/users/[recordId]/page";
 import "@/app/vendor/[vendorId]/admin/users/[recordId]/edit/page";
 import "@/app/vendor/[vendorId]/settings/page";
 import "@/app/vendor/[vendorId]/admin/subscription/page";
+import "@/app/vendor/[vendorId]/dashboard/page";
+import "@/app/vendor/[vendorId]/analytics/page";
 
 import "@/app/help/page";
 import "@/app/page";

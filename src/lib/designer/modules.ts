@@ -118,3 +118,16 @@ export function buildVendorNavGroups(activeModuleSlug?: string): VendorNavGroup[
     { title: "Cross-cutting", items: toItems(groups["cross-cutting"]) },
   ];
 }
+
+/**
+ * A Vendor's "type" is just its enabled modules (see DESIGN_SYSTEM.md §7).
+ * There is no real per-vendor enabled-modules record yet — no database, no
+ * signup persistence — so this is a plausible DEMO set for the sample
+ * vendor, standing in for what would otherwise be a real lookup once a
+ * Vendor record exists. Everything downstream (the dynamic dashboard,
+ * analytics) is built to consume whatever this returns, so swapping this
+ * for a real query later requires no changes to the consumers.
+ */
+export function getDemoEnabledModules(_vendorId: string): string[] {
+  return ["pos", "service-centre", "billing", "inventory"];
+}
