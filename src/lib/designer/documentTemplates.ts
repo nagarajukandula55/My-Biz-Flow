@@ -13,6 +13,8 @@
 import fs from "node:fs";
 import path from "node:path";
 
+export { renderTemplate } from "./renderTemplate";
+
 const DATA_FILE = path.join(process.cwd(), "data", "document-templates.json");
 
 type Store = Record<string, { htmlTemplate: string }>;
@@ -47,25 +49,3 @@ export function saveDocumentTemplate(pageId: string, htmlTemplate: string): void
   writeStore(store);
 }
 
-/**
- * Simple {{key}} substitution — HTML-escapes every substituted value so a
- * record field containing "<" or "&" can't break the document markup or
- * inject arbitrary HTML. Deliberately not a full templating engine: no
- * loops/conditionals, just placeholder replacement, which is all a
- * mail-merge-style document needs.
- */
-export function renderTemplate(htmlTemplate: string, record: Record<string, unknown>): string {
-  return htmlTemplate.replace(/\{\{(\w+)\}\}/g, (_match, key: string) => {
-    const value = record[key];
-    return escapeHtml(value === undefined || value === null ? "" : String(value));
-  });
-}
-
-function escapeHtml(input: string): string {
-  return input
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}

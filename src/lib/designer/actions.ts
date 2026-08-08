@@ -18,6 +18,7 @@ import {
   type FieldSpec,
 } from "./customizations";
 import { getPage } from "./registry";
+import { saveDocumentTemplate as saveDocumentTemplateStore } from "./documentTemplates";
 
 function revalidateForPage(pageId: string) {
   revalidatePath(`/admin/designer/${pageId}`);
@@ -53,4 +54,14 @@ export async function deleteFieldAction(pageId: string, fieldKey: string, isCust
 export async function setDropdownOptionsAction(pageId: string, fieldKey: string, options: DropdownOption[]) {
   setDropdownOptionsStore(pageId, fieldKey, options);
   revalidateForPage(pageId);
+}
+
+export async function saveDocumentTemplateAction(pageId: string, htmlTemplate: string) {
+  saveDocumentTemplateStore(pageId, htmlTemplate);
+  revalidateForPage(pageId);
+  // Also revalidate the actual document route itself, not just the
+  // module's list/create/edit/detail tree, since it lives one segment
+  // deeper ([recordId]/document).
+  const def = getPage(pageId);
+  if (def) revalidatePath(def.path, "page");
 }

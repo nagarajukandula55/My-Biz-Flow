@@ -230,6 +230,31 @@ module's detail page Delete action (and optionally from list rows). Cancel
 closes it with no side effect; Delete is `btn-danger`-styled and, absent a
 backend, logs and shows a "Deleted (demo)" message.
 
+### Charts — `src/components/charts/`
+
+`LineChartCard`/`BarChartCard`/`PieChartCard` (all `"use client"`, built on
+`recharts`) plus the shared `ChartCard` shell. Colors come from the
+`--chart-1`..`--chart-4`/`--chart-grid` tokens (validated per-theme via the
+`dataviz` skill, not picked ad hoc) — passed straight through as SVG
+`stroke`/`fill` attribute values, so they re-resolve automatically on
+theme change with no JS. Don't introduce a second charting library or a
+chart with hardcoded colors.
+
+### Documents — `DocumentView` + the document template system
+
+A module's record can render as a real printable document (Invoice, Job
+Card, Receipt, etc. — not every module needs one, see §7's module folder
+convention for which ones currently do). `src/components/DocumentView.tsx`
+renders a letterhead + print-safe (`@media print`) layout, either from a
+Super-Admin-designed template (`src/lib/designer/documentTemplates.ts`,
+`{{fieldKey}}` placeholders, HTML-escaped on substitution — same
+JSON-file-store pattern as `customizations.ts`) or a sensible default
+generated from the module's columns. `src/components/PrintButton.tsx` is
+browser print-to-PDF — do not add a PDF-generation dependency. The
+template is authored from the Designer's `[pageId]` page via
+`DesignerDocumentEditor` (placeholder picker + live preview against a real
+sample record).
+
 ### Buttons
 
 `.btn-accent` (brand/primary action, `--accent` background with

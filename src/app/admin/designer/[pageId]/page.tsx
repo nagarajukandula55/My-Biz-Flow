@@ -9,7 +9,10 @@ import { getRegisteredPages, registerPage } from "@/lib/designer/registry";
 import "@/lib/designer/registerAll";
 import { getFieldSchema } from "@/lib/designer/fieldSchema";
 import { getPageCustomization } from "@/lib/designer/customizations";
+import { getDocumentTemplate } from "@/lib/designer/documentTemplates";
+import { MODULE_DATA } from "@/lib/moduleData";
 import { DesignerFieldEditor } from "@/components/DesignerFieldEditor";
+import { DesignerDocumentEditor } from "@/components/DesignerDocumentEditor";
 
 registerPage({
   id: "platform.designer.detail",
@@ -93,7 +96,16 @@ export default function PageDetailPage({ params }: { params: { pageId: string } 
             </div>
           )}
 
-          {baseFields && (
+          {page.kind === "document" && baseFields && (
+            <DesignerDocumentEditor
+              pageId={page.id}
+              availableFields={baseFields}
+              initialTemplate={getDocumentTemplate(page.id) ?? ""}
+              sampleRecord={MODULE_DATA[page.moduleSlug]?.rows[0] ?? {}}
+            />
+          )}
+
+          {page.kind !== "document" && baseFields && (
             <DesignerFieldEditor pageId={page.id} baseFields={baseFields} customization={customization} />
           )}
 
