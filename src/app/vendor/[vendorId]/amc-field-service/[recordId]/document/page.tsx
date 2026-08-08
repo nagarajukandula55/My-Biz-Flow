@@ -1,5 +1,5 @@
 import { DocumentView } from "@/components/DocumentView";
-import { amcFieldServiceColumns, getAmcFieldServiceRecord } from "@/lib/sample-data/amc-field-service";
+import { amcFieldServiceColumns, amcFieldServiceRows, getAmcFieldServiceRecord } from "@/lib/sample-data/amc-field-service";
 import { registerPage } from "@/lib/designer/registry";
 
 registerPage({
@@ -23,13 +23,17 @@ export default function AmcFieldServiceDocumentPage({
   params: { vendorId: string; recordId: string };
 }) {
   const record = getAmcFieldServiceRecord(params.recordId);
+  const sequenceIndex = amcFieldServiceRows.findIndex((r) => String(r["id"]) === params.recordId);
   return (
     <DocumentView
       pageId="amc-field-service.document"
+      documentType="amc-field-service.document"
       documentLabel="Service Report"
       vendorName="Chennai Auto Service"
+      vendorId={params.vendorId}
       record={record}
       columns={amcFieldServiceColumns}
+      sequenceIndex={sequenceIndex >= 0 ? sequenceIndex : 0}
     />
   );
 }

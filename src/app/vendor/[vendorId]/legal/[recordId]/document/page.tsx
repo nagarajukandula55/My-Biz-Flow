@@ -1,5 +1,5 @@
 import { DocumentView } from "@/components/DocumentView";
-import { legalColumns, getLegalRecord } from "@/lib/sample-data/legal";
+import { legalColumns, legalRows, getLegalRecord } from "@/lib/sample-data/legal";
 import { registerPage } from "@/lib/designer/registry";
 
 registerPage({
@@ -23,13 +23,17 @@ export default function LegalDocumentPage({
   params: { vendorId: string; recordId: string };
 }) {
   const record = getLegalRecord(params.recordId);
+  const sequenceIndex = legalRows.findIndex((r) => String(r["id"]) === params.recordId);
   return (
     <DocumentView
       pageId="legal.document"
+      documentType="legal.document"
       documentLabel="Engagement Letter"
       vendorName="Chennai Auto Service"
+      vendorId={params.vendorId}
       record={record}
       columns={legalColumns}
+      sequenceIndex={sequenceIndex >= 0 ? sequenceIndex : 0}
     />
   );
 }

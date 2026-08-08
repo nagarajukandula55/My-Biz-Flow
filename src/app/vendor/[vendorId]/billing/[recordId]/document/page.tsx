@@ -1,5 +1,5 @@
 import { DocumentView } from "@/components/DocumentView";
-import { billingColumns, getBillingRecord } from "@/lib/sample-data/billing";
+import { billingColumns, billingRows, getBillingRecord } from "@/lib/sample-data/billing";
 import { registerPage } from "@/lib/designer/registry";
 
 registerPage({
@@ -23,13 +23,17 @@ export default function BillingDocumentPage({
   params: { vendorId: string; recordId: string };
 }) {
   const record = getBillingRecord(params.recordId);
+  const sequenceIndex = billingRows.findIndex((r) => String(r["id"]) === params.recordId);
   return (
     <DocumentView
       pageId="billing.document"
+      documentType="billing.document"
       documentLabel="Invoice"
       vendorName="Chennai Auto Service"
+      vendorId={params.vendorId}
       record={record}
       columns={billingColumns}
+      sequenceIndex={sequenceIndex >= 0 ? sequenceIndex : 0}
     />
   );
 }

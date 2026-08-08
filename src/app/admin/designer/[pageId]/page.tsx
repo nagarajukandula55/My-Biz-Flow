@@ -10,6 +10,8 @@ import "@/lib/designer/registerAll";
 import { getFieldSchema } from "@/lib/designer/fieldSchema";
 import { getPageCustomization } from "@/lib/designer/customizations";
 import { getDocumentTemplate } from "@/lib/designer/documentTemplates";
+import { getEffectiveScheme } from "@/lib/designer/numbering";
+import { formatNumber } from "@/lib/designer/numberingFormat";
 import { MODULE_DATA } from "@/lib/moduleData";
 import { DesignerFieldEditor } from "@/components/DesignerFieldEditor";
 import { DesignerDocumentEditor } from "@/components/DesignerDocumentEditor";
@@ -99,9 +101,15 @@ export default function PageDetailPage({ params }: { params: { pageId: string } 
           {page.kind === "document" && baseFields && (
             <DesignerDocumentEditor
               pageId={page.id}
-              availableFields={baseFields}
+              availableFields={[
+                { key: "documentNumber", label: "Document Number (from Numbering system)", type: "text" },
+                ...baseFields,
+              ]}
               initialTemplate={getDocumentTemplate(page.id) ?? ""}
-              sampleRecord={MODULE_DATA[page.moduleSlug]?.rows[0] ?? {}}
+              sampleRecord={{
+                ...(MODULE_DATA[page.moduleSlug]?.rows[0] ?? {}),
+                documentNumber: formatNumber(getEffectiveScheme(page.id), getEffectiveScheme(page.id).sequenceStart),
+              }}
             />
           )}
 

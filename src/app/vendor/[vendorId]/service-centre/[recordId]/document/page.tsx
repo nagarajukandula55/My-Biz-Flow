@@ -1,5 +1,5 @@
 import { DocumentView } from "@/components/DocumentView";
-import { serviceCentreColumns, getServiceCentreRecord } from "@/lib/sample-data/service-centre";
+import { serviceCentreColumns, serviceCentreRows, getServiceCentreRecord } from "@/lib/sample-data/service-centre";
 import { registerPage } from "@/lib/designer/registry";
 
 registerPage({
@@ -23,13 +23,17 @@ export default function ServiceCentreDocumentPage({
   params: { vendorId: string; recordId: string };
 }) {
   const record = getServiceCentreRecord(params.recordId);
+  const sequenceIndex = serviceCentreRows.findIndex((r) => String(r["id"]) === params.recordId);
   return (
     <DocumentView
       pageId="service-centre.document"
+      documentType="service-centre.document"
       documentLabel="Job Card"
       vendorName="Chennai Auto Service"
+      vendorId={params.vendorId}
       record={record}
       columns={serviceCentreColumns}
+      sequenceIndex={sequenceIndex >= 0 ? sequenceIndex : 0}
     />
   );
 }

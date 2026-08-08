@@ -3,6 +3,8 @@ import { LogoMark } from "@/components/LogoMark";
 import { PrintButton } from "@/components/PrintButton";
 import { formatCurrencyINR, formatDate } from "@/lib/format";
 import { getDocumentTemplate, renderTemplate } from "@/lib/designer/documentTemplates";
+import { getEffectiveScheme } from "@/lib/designer/numbering";
+import { formatNumber } from "@/lib/designer/numberingFormat";
 
 /**
  * Renders a record as a real printable document — letterhead, fields laid
@@ -15,21 +17,41 @@ import { getDocumentTemplate, renderTemplate } from "@/lib/designer/documentTemp
  * @media print hides the AppShell chrome and the print button itself —
  * this is meant to be printed/saved as PDF via the browser's native
  * print dialog, not a hand-built PDF pipeline.
+ *
+ * The document number shown is the NUMBERING SYSTEM's token (Main scheme,
+ * or this Vendor's override — src/lib/designer/numbering.ts), not the raw
+ * sample record's `id` field. `sequenceIndex` (the record's position among
+ * its module's sample rows, 0-based) is passed by the caller and used as
+ * the sequence — a deterministic peek via formatNumber(), NOT
+ * getNextNumber(): merely viewing a document must never consume/advance
+ * the live counter, only actually issuing one should (there is no
+ * "issue" action yet, since there's no database to persist which number
+ * a real record was assigned).
  */
 export function DocumentView({
   pageId,
+  documentType,
   documentLabel,
   vendorName,
+  vendorId,
   record,
   columns,
+  sequenceIndex,
 }: {
   pageId: string;
+  /** The numbering system's document-type id, e.g. "billing.document" — see NUMBERED_DOCUMENT_TYPES. */
+  documentType: string;
   documentLabel: string;
   vendorName: string;
+  vendorId: string;
   record: Row;
   columns: Column[];
+  sequenceIndex: number;
 }) {
   const customTemplate = getDocumentTemplate(pageId);
+  const scheme = getEffectiveScheme(documentType, vendorId);
+  const documentNumber = formatNumber(scheme, scheme.sequenceStart + sequenceIndex);
+  const templateRecord = { ...record, documentNumber };
 
   return (
     <div className="mbf-page bg-bg-sunken">
@@ -46,9 +68,7 @@ export function DocumentView({
             </div>
             <div className="text-right">
               <div className="font-display text-xl font-bold text-text">{documentLabel}</div>
-              <div className="mt-0.5 font-mono text-xs text-text-muted">
-                {String(record["id"] ?? "")}
-              </div>
+              <div className="mt-0.5 font-mono text-xs text-text-muted">{documentNumber}</div>
             </div>
           </div>
 
@@ -57,8 +77,10 @@ export function DocumentView({
               className="mt-6"
               // Template is Super-Admin-authored and every substituted
               // value is HTML-escaped by renderTemplate() — see that
-              // function's docs for why this is safe.
-              dangerouslySetInnerHTML={{ __html: renderTemplate(customTemplate, record) }}
+              // function's docs for why this is safe. templateRecord adds
+              // {{documentNumber}} as an available placeholder alongside
+              // the record's own fields.
+              dangerouslySetInnerHTML={{ __html: renderTemplate(customTemplate, templateRecord) }}
             />
           ) : (
             <dl className="mt-6 grid grid-cols-2 gap-x-8 gap-y-4">
