@@ -3,8 +3,11 @@ import type { VendorNavGroup } from "./modules";
 
 /**
  * The full vendor sidebar's nav groups: Common (Dashboard/Analytics) +
- * Vendor Admin (Settings/Numbering/Subscription/Users/Roles/Access Groups)
- * + every module group from buildVendorNavGroups(). Called ONCE from
+ * Vendor Admin (Settings/Numbering/Subscription/Users) + every module
+ * group from buildVendorNavGroups(). Roles and Access Groups moved to
+ * the Super Admin panel (src/app/admin/(protected)/roles,
+ * .../access-groups) — defined once there, reused across every vendor.
+ * Called ONCE from
  * src/app/vendor/[vendorId]/layout.tsx (a shared layout, so this doesn't
  * re-run on every client-side navigation) — active-item highlighting is
  * computed client-side in Sidebar.tsx from the current pathname, not
@@ -25,8 +28,6 @@ export async function buildVendorAdminNavGroups(): Promise<VendorNavGroup[]> {
       { key: "numbering", label: "Numbering", dot: "amber", href: "settings/numbering" },
       { key: "billing", label: "Subscription", dot: "amber", href: "admin/subscription" },
       { key: "users", label: "Users", dot: "amber", href: "admin/users" },
-      { key: "roles", label: "Roles", dot: "amber", href: "admin/roles" },
-      { key: "access-groups", label: "Access Groups", dot: "amber", href: "admin/access-groups" },
     ],
   };
   return [commonGroup, vendorAdminGroup, ...(await buildVendorNavGroups())];

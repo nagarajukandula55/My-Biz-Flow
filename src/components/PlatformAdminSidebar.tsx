@@ -11,6 +11,8 @@ import {
   AlertTriangle,
   CreditCard,
   Users,
+  ShieldCheck,
+  KeyRound,
 } from "lucide-react";
 import { LogoMark } from "./LogoMark";
 import { signOutAdminAction } from "@/app/admin/login/actions";
@@ -30,6 +32,8 @@ const NAV_ITEMS: PlatformNavItem[] = [
   { key: "errors", label: "Error Log", href: "/admin/errors", icon: AlertTriangle },
   { key: "plans", label: "Plans", href: "/admin/plans", icon: CreditCard },
   { key: "subscribers", label: "Subscribers", href: "/admin/subscribers", icon: Users },
+  { key: "access-groups", label: "Access Groups", href: "/admin/access-groups", icon: KeyRound },
+  { key: "roles", label: "Roles", href: "/admin/roles", icon: ShieldCheck },
 ];
 
 /**
