@@ -26,10 +26,11 @@ export const DEFAULT_SCHEME: NumberingScheme = {
   suffix: "",
 };
 
-/** The 5 document types that currently have a document page — see DESIGN_SYSTEM.md §5. */
+/** The document types that currently have a document page — see DESIGN_SYSTEM.md §5. */
 export const NUMBERED_DOCUMENT_TYPES = [
   { id: "billing.document", label: "Invoice (Billing)" },
   { id: "service-centre.document", label: "Job Card (Service Centre)" },
+  { id: "service-centre.invoice", label: "Sales Invoice (Service Centre)" },
   { id: "pos.document", label: "Receipt (POS)" },
   { id: "amc-field-service.document", label: "Service Report (AMC/Field Service)" },
   { id: "legal.document", label: "Engagement Letter (Legal)" },

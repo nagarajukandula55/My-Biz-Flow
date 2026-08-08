@@ -1,6 +1,7 @@
 import type { Column, Row } from "@/components/DataTable";
 import { LogoMark } from "@/components/LogoMark";
 import { PrintButton } from "@/components/PrintButton";
+import { PrintFrame, type PrintSize } from "@/components/PrintFrame";
 import { formatCurrencyINR, formatDate } from "@/lib/format";
 import { getDocumentTemplate, renderTemplate } from "@/lib/designer/documentTemplates";
 import { getEffectiveScheme } from "@/lib/designer/numbering";
@@ -38,6 +39,7 @@ export async function DocumentView({
   columns,
   sequenceIndex,
   lineItems,
+  printSizes = ["a4"],
 }: {
   pageId: string;
   /** The numbering system's document-type id, e.g. "billing.document" — see NUMBERED_DOCUMENT_TYPES. */
@@ -52,6 +54,9 @@ export async function DocumentView({
    * as its own table instead of the flat field grid when present and no
    * custom template overrides the layout. */
   lineItems?: { description: string; quantity: number; unit: string; unitPrice: number; taxRate: number }[];
+  /** Which page sizes this document offers a screen toggle for — e.g. Service Centre's
+   * Sales Invoice is A4/A5 only, POS additionally offers Thermal. Defaults to A4 only. */
+  printSizes?: PrintSize[];
 }) {
   const customTemplate = await getDocumentTemplate(pageId);
   const scheme = await getEffectiveScheme(documentType, vendorId);
@@ -65,6 +70,7 @@ export async function DocumentView({
           <PrintButton />
         </div>
 
+        <PrintFrame sizes={printSizes}>
         <div className="rounded-lg border border-border bg-bg-raised p-10 shadow-sm print:rounded-none print:border-0 print:shadow-none">
           <div className="flex items-center justify-between border-b border-border pb-6">
             <div className="flex items-center gap-2.5">
@@ -167,6 +173,7 @@ export async function DocumentView({
             </>
           )}
         </div>
+        </PrintFrame>
       </div>
     </div>
   );

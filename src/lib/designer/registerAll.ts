@@ -180,6 +180,7 @@ import "@/app/admin/(protected)/errors/page";
 
 import "@/app/vendor/[vendorId]/billing/[recordId]/document/page";
 import "@/app/vendor/[vendorId]/service-centre/[recordId]/document/page";
+import "@/app/vendor/[vendorId]/service-centre/[recordId]/invoice/page";
 import "@/app/vendor/[vendorId]/pos/[recordId]/document/page";
 import "@/app/vendor/[vendorId]/amc-field-service/[recordId]/document/page";
 import "@/app/vendor/[vendorId]/legal/[recordId]/document/page";

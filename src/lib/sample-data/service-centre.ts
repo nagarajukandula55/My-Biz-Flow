@@ -92,6 +92,21 @@ export function getWorkorderLifecycle(workorderId: string) {
   );
 }
 
+/** Sales Invoice line items derived from a closed workorder's Parts & Service Lines — A4/A5 print only. */
+export function getWorkorderInvoiceLineItems(
+  workorderId: string
+): { description: string; quantity: number; unit: string; unitPrice: number; taxRate: number }[] {
+  const lifecycle = getWorkorderLifecycle(workorderId);
+  const items: { description: string; quantity: number; unit: string; unitPrice: number; taxRate: number }[] = [];
+  for (const line of lifecycle.serviceLines) {
+    items.push({ description: line.solutionLabel, quantity: 1, unit: "service", unitPrice: line.laborCharge, taxRate: 18 });
+  }
+  for (const line of lifecycle.partLines) {
+    items.push({ description: line.materialLabel, quantity: line.qty, unit: "unit", unitPrice: 0, taxRate: 18 });
+  }
+  return items;
+}
+
 export const serviceCentreColumns: Column[] = [
   { key: "id", label: "Job ID", type: "text" },
   { key: "customer", label: "Customer", type: "relation-link" },
