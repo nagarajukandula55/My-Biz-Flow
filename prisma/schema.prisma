@@ -13,8 +13,14 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  // Pooled connection (via Neon's PgBouncer endpoint) for normal app
+  // queries — see Vercel's Neon integration, which sets this automatically.
+  url       = env("DATABASE_URL")
+  // Direct (unpooled) connection for migrations — `prisma migrate deploy`
+  // needs a session-mode connection for advisory locks, which PgBouncer's
+  // transaction-mode pooling doesn't support.
+  directUrl = env("DATABASE_URL_UNPOOLED")
 }
 
 /// Mirrors data/customizations.json — keyed by pageId (src/lib/designer/customizations.ts).
