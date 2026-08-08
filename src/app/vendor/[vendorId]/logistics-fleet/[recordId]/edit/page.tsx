@@ -21,13 +21,13 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/logistics-fleet/[recordId]/edit/page.tsx",
 });
 
-export default function EditLogisticsFleetPage({ params }: { params: { recordId: string } }) {
-  const mod = getModule("logistics-fleet");
+export default async function EditLogisticsFleetPage({ params }: { params: { recordId: string } }) {
+  const mod = await getModule("logistics-fleet");
   const record = getLogisticsFleetRecord(params.recordId);
-  const fields = applyCustomizations("logistics-fleet.edit", logisticsFleetFormFields);
+  const fields = await applyCustomizations("logistics-fleet.edit", logisticsFleetFormFields);
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("logistics-fleet")} topbarTitle={`Edit Shipment — ${mod?.label ?? "Logistics / Fleet"}`}>
+    <AppShell navGroups={await buildVendorNavGroups("logistics-fleet")} topbarTitle={`Edit Shipment — ${mod?.label ?? "Logistics / Fleet"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">Edit Shipment</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>

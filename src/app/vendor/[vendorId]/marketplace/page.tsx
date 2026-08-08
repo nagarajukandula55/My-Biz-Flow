@@ -22,13 +22,13 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/marketplace/page.tsx",
 });
 
-export default function MarketplacePage({ params }: { params: { vendorId: string } }) {
-  const mod = getModule("marketplace");
-  const columns = applyCustomizations("marketplace.list", marketplaceColumns);
+export default async function MarketplacePage({ params }: { params: { vendorId: string } }) {
+  const mod = await getModule("marketplace");
+  const columns = await applyCustomizations("marketplace.list", marketplaceColumns);
 
   return (
     <AppShell
-      navGroups={buildVendorNavGroups("marketplace")}
+      navGroups={await buildVendorNavGroups("marketplace")}
       topbarTitle={mod?.label ?? "Marketplace / Vendor Aggregator"}
       topbarActions={
         <Link href={`/vendor/${params.vendorId}/marketplace/new`} className="btn-accent">

@@ -19,11 +19,11 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/billing/new/page.tsx",
 });
 
-export default function NewBillingPage() {
-  const mod = getModule("billing");
+export default async function NewBillingPage() {
+  const mod = await getModule("billing");
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("billing")} topbarTitle={`New Invoice — ${mod?.label ?? "Billing"}`}>
+    <AppShell navGroups={await buildVendorNavGroups("billing")} topbarTitle={`New Invoice — ${mod?.label ?? "Billing"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">New Invoice</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new invoice record for Billing.</p>

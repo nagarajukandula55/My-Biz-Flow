@@ -23,19 +23,19 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/subscriptions/[recordId]/page.tsx",
 });
 
-export default function SubscriptionsDetailPage({
+export default async function SubscriptionsDetailPage({
   params,
 }: {
   params: { vendorId: string; recordId: string };
 }) {
-  const mod = getModule("subscriptions");
+  const mod = await getModule("subscriptions");
   const record = getSubscriptionsRecord(params.recordId);
-  const fields = applyCustomizationsToDetailFields("subscriptions.detail", getSubscriptionsDetailFields(record), subscriptionsColumns);
+  const fields = await applyCustomizationsToDetailFields("subscriptions.detail", getSubscriptionsDetailFields(record), subscriptionsColumns);
   const timeline = getSubscriptionsTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("subscriptions")} topbarTitle={mod?.label ?? "Subscriptions / Membership"}>
+    <AppShell navGroups={await buildVendorNavGroups("subscriptions")} topbarTitle={mod?.label ?? "Subscriptions / Membership"}>
       <div>
         <Link
           href={`/vendor/${params.vendorId}/subscriptions`}

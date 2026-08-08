@@ -23,19 +23,19 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/clinic/[recordId]/page.tsx",
 });
 
-export default function ClinicDetailPage({
+export default async function ClinicDetailPage({
   params,
 }: {
   params: { vendorId: string; recordId: string };
 }) {
-  const mod = getModule("clinic");
+  const mod = await getModule("clinic");
   const record = getClinicRecord(params.recordId);
-  const fields = applyCustomizationsToDetailFields("clinic.detail", getClinicDetailFields(record), clinicColumns);
+  const fields = await applyCustomizationsToDetailFields("clinic.detail", getClinicDetailFields(record), clinicColumns);
   const timeline = getClinicTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("clinic")} topbarTitle={mod?.label ?? "Clinic"}>
+    <AppShell navGroups={await buildVendorNavGroups("clinic")} topbarTitle={mod?.label ?? "Clinic"}>
       <div>
         <Link
           href={`/vendor/${params.vendorId}/clinic`}

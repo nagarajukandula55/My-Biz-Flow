@@ -22,13 +22,13 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/real-estate/page.tsx",
 });
 
-export default function RealEstatePage({ params }: { params: { vendorId: string } }) {
-  const mod = getModule("real-estate");
-  const columns = applyCustomizations("real-estate.list", realEstateColumns);
+export default async function RealEstatePage({ params }: { params: { vendorId: string } }) {
+  const mod = await getModule("real-estate");
+  const columns = await applyCustomizations("real-estate.list", realEstateColumns);
 
   return (
     <AppShell
-      navGroups={buildVendorNavGroups("real-estate")}
+      navGroups={await buildVendorNavGroups("real-estate")}
       topbarTitle={mod?.label ?? "Real Estate"}
       topbarActions={
         <Link href={`/vendor/${params.vendorId}/real-estate/new`} className="btn-accent">

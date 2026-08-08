@@ -23,19 +23,19 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/brand/[recordId]/page.tsx",
 });
 
-export default function BrandDetailPage({
+export default async function BrandDetailPage({
   params,
 }: {
   params: { vendorId: string; recordId: string };
 }) {
-  const mod = getModule("brand");
+  const mod = await getModule("brand");
   const record = getBrandRecord(params.recordId);
-  const fields = applyCustomizationsToDetailFields("brand.detail", getBrandDetailFields(record), brandColumns);
+  const fields = await applyCustomizationsToDetailFields("brand.detail", getBrandDetailFields(record), brandColumns);
   const timeline = getBrandTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("brand")} topbarTitle={mod?.label ?? "Brand"}>
+    <AppShell navGroups={await buildVendorNavGroups("brand")} topbarTitle={mod?.label ?? "Brand"}>
       <div>
         <Link
           href={`/vendor/${params.vendorId}/brand`}

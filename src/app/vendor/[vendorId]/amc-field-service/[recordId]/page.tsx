@@ -23,19 +23,19 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/amc-field-service/[recordId]/page.tsx",
 });
 
-export default function AmcFieldServiceDetailPage({
+export default async function AmcFieldServiceDetailPage({
   params,
 }: {
   params: { vendorId: string; recordId: string };
 }) {
-  const mod = getModule("amc-field-service");
+  const mod = await getModule("amc-field-service");
   const record = getAmcFieldServiceRecord(params.recordId);
-  const fields = applyCustomizationsToDetailFields("amc-field-service.detail", getAmcFieldServiceDetailFields(record), amcFieldServiceColumns);
+  const fields = await applyCustomizationsToDetailFields("amc-field-service.detail", getAmcFieldServiceDetailFields(record), amcFieldServiceColumns);
   const timeline = getAmcFieldServiceTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("amc-field-service")} topbarTitle={mod?.label ?? "AMC / Field Service"}>
+    <AppShell navGroups={await buildVendorNavGroups("amc-field-service")} topbarTitle={mod?.label ?? "AMC / Field Service"}>
       <div>
         <Link
           href={`/vendor/${params.vendorId}/amc-field-service`}

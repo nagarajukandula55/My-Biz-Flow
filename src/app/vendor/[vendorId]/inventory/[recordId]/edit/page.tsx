@@ -21,13 +21,13 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/inventory/[recordId]/edit/page.tsx",
 });
 
-export default function EditInventoryPage({ params }: { params: { recordId: string } }) {
-  const mod = getModule("inventory");
+export default async function EditInventoryPage({ params }: { params: { recordId: string } }) {
+  const mod = await getModule("inventory");
   const record = getInventoryRecord(params.recordId);
-  const fields = applyCustomizations("inventory.edit", inventoryFormFields);
+  const fields = await applyCustomizations("inventory.edit", inventoryFormFields);
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("inventory")} topbarTitle={`Edit Stock Item — ${mod?.label ?? "Inventory / Warehouse"}`}>
+    <AppShell navGroups={await buildVendorNavGroups("inventory")} topbarTitle={`Edit Stock Item — ${mod?.label ?? "Inventory / Warehouse"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">Edit Stock Item</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>

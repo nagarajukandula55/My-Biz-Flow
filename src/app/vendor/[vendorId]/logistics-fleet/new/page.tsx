@@ -21,12 +21,12 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/logistics-fleet/new/page.tsx",
 });
 
-export default function NewLogisticsFleetPage() {
-  const mod = getModule("logistics-fleet");
-  const fields = applyCustomizations("logistics-fleet.create", logisticsFleetFormFields);
+export default async function NewLogisticsFleetPage() {
+  const mod = await getModule("logistics-fleet");
+  const fields = await applyCustomizations("logistics-fleet.create", logisticsFleetFormFields);
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("logistics-fleet")} topbarTitle={`New Shipment — ${mod?.label ?? "Logistics / Fleet"}`}>
+    <AppShell navGroups={await buildVendorNavGroups("logistics-fleet")} topbarTitle={`New Shipment — ${mod?.label ?? "Logistics / Fleet"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">New Shipment</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new shipment record for Logistics / Fleet.</p>

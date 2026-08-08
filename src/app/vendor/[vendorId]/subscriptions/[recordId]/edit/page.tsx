@@ -21,13 +21,13 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/subscriptions/[recordId]/edit/page.tsx",
 });
 
-export default function EditSubscriptionsPage({ params }: { params: { recordId: string } }) {
-  const mod = getModule("subscriptions");
+export default async function EditSubscriptionsPage({ params }: { params: { recordId: string } }) {
+  const mod = await getModule("subscriptions");
   const record = getSubscriptionsRecord(params.recordId);
-  const fields = applyCustomizations("subscriptions.edit", subscriptionsFormFields);
+  const fields = await applyCustomizations("subscriptions.edit", subscriptionsFormFields);
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("subscriptions")} topbarTitle={`Edit Membership — ${mod?.label ?? "Subscriptions / Membership"}`}>
+    <AppShell navGroups={await buildVendorNavGroups("subscriptions")} topbarTitle={`Edit Membership — ${mod?.label ?? "Subscriptions / Membership"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">Edit Membership</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>

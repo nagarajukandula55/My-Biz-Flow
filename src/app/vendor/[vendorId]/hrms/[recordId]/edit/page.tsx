@@ -21,13 +21,13 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/hrms/[recordId]/edit/page.tsx",
 });
 
-export default function EditHrmsPage({ params }: { params: { recordId: string } }) {
-  const mod = getModule("hrms");
+export default async function EditHrmsPage({ params }: { params: { recordId: string } }) {
+  const mod = await getModule("hrms");
   const record = getHrmsRecord(params.recordId);
-  const fields = applyCustomizations("hrms.edit", hrmsFormFields);
+  const fields = await applyCustomizations("hrms.edit", hrmsFormFields);
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("hrms")} topbarTitle={`Edit Employee — ${mod?.label ?? "HRMS / Payroll"}`}>
+    <AppShell navGroups={await buildVendorNavGroups("hrms")} topbarTitle={`Edit Employee — ${mod?.label ?? "HRMS / Payroll"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">Edit Employee</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>

@@ -21,12 +21,12 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/marketplace/new/page.tsx",
 });
 
-export default function NewMarketplacePage() {
-  const mod = getModule("marketplace");
-  const fields = applyCustomizations("marketplace.create", marketplaceFormFields);
+export default async function NewMarketplacePage() {
+  const mod = await getModule("marketplace");
+  const fields = await applyCustomizations("marketplace.create", marketplaceFormFields);
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("marketplace")} topbarTitle={`New Vendor Listing — ${mod?.label ?? "Marketplace / Vendor Aggregator"}`}>
+    <AppShell navGroups={await buildVendorNavGroups("marketplace")} topbarTitle={`New Vendor Listing — ${mod?.label ?? "Marketplace / Vendor Aggregator"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">New Vendor Listing</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new vendor listing record for Marketplace / Vendor Aggregator.</p>

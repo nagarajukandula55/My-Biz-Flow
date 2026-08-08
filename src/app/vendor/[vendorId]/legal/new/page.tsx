@@ -21,12 +21,12 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/legal/new/page.tsx",
 });
 
-export default function NewLegalPage() {
-  const mod = getModule("legal");
-  const fields = applyCustomizations("legal.create", legalFormFields);
+export default async function NewLegalPage() {
+  const mod = await getModule("legal");
+  const fields = await applyCustomizations("legal.create", legalFormFields);
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("legal")} topbarTitle={`New Matter — ${mod?.label ?? "Legal / Case Management"}`}>
+    <AppShell navGroups={await buildVendorNavGroups("legal")} topbarTitle={`New Matter — ${mod?.label ?? "Legal / Case Management"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">New Matter</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new matter record for Legal / Case Management.</p>

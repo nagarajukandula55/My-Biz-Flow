@@ -1,7 +1,8 @@
 /**
  * Super Admin overrides for a module's display label and sidebar icon.
- * Same honest JSON-file pattern as every other Designer store: atomic
- * writes, local-dev-only persistence, migrate to a Prisma table later.
+ * Backed by the `ModuleAppearance` Prisma table (see prisma/schema.prisma).
+ * Was a JSON-file store; migrated to Postgres with the same function
+ * names/behavior, now async to match Prisma's I/O.
  *
  * Keyed by module slug (not pageId) — a module's label/icon is shared
  * across every one of its pages (list/create/edit/detail/admin all show
@@ -9,47 +10,32 @@
  * from the per-page customization store.
  */
 
-import fs from "node:fs";
-import path from "node:path";
+import { prisma } from "@/lib/prisma";
 
 export type ModuleAppearance = {
   label?: string;
   icon?: string; // key into src/lib/designer/icons.ts's ICONS map
 };
 
-const DATA_FILE = path.join(process.cwd(), "data", "module-appearance.json");
+export async function getModuleAppearance(slug: string): Promise<ModuleAppearance> {
+  const row = await prisma.moduleAppearance.findUnique({ where: { slug } });
+  if (!row) return {};
+  return { label: row.label ?? undefined, icon: row.icon ?? undefined };
+}
 
-type Store = Record<string, ModuleAppearance>;
-
-function readStore(): Store {
-  try {
-    return JSON.parse(fs.readFileSync(DATA_FILE, "utf-8"));
-  } catch {
-    return {};
+export async function getAllModuleAppearances(): Promise<Record<string, ModuleAppearance>> {
+  const rows = await prisma.moduleAppearance.findMany();
+  const out: Record<string, ModuleAppearance> = {};
+  for (const row of rows) {
+    out[row.slug] = { label: row.label ?? undefined, icon: row.icon ?? undefined };
   }
+  return out;
 }
 
-function writeStore(store: Store) {
-  try {
-    fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true });
-    const tmpFile = `${DATA_FILE}.${process.pid}.${Date.now()}.tmp`;
-    fs.writeFileSync(tmpFile, JSON.stringify(store, null, 2) + "\n", "utf-8");
-    fs.renameSync(tmpFile, DATA_FILE);
-  } catch {
-    // Read-only filesystem (Vercel runtime) — documented tradeoff above.
-  }
-}
-
-export function getModuleAppearance(slug: string): ModuleAppearance {
-  return readStore()[slug] ?? {};
-}
-
-export function getAllModuleAppearances(): Store {
-  return readStore();
-}
-
-export function setModuleAppearance(slug: string, appearance: ModuleAppearance): void {
-  const store = readStore();
-  store[slug] = appearance;
-  writeStore(store);
+export async function setModuleAppearance(slug: string, appearance: ModuleAppearance): Promise<void> {
+  await prisma.moduleAppearance.upsert({
+    where: { slug },
+    create: { slug, label: appearance.label, icon: appearance.icon },
+    update: { label: appearance.label, icon: appearance.icon },
+  });
 }

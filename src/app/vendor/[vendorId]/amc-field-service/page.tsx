@@ -22,13 +22,13 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/amc-field-service/page.tsx",
 });
 
-export default function AmcFieldServicePage({ params }: { params: { vendorId: string } }) {
-  const mod = getModule("amc-field-service");
-  const columns = applyCustomizations("amc-field-service.list", amcFieldServiceColumns);
+export default async function AmcFieldServicePage({ params }: { params: { vendorId: string } }) {
+  const mod = await getModule("amc-field-service");
+  const columns = await applyCustomizations("amc-field-service.list", amcFieldServiceColumns);
 
   return (
     <AppShell
-      navGroups={buildVendorNavGroups("amc-field-service")}
+      navGroups={await buildVendorNavGroups("amc-field-service")}
       topbarTitle={mod?.label ?? "AMC / Field Service"}
       topbarActions={
         <Link href={`/vendor/${params.vendorId}/amc-field-service/new`} className="btn-accent">

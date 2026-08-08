@@ -25,9 +25,16 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/settings/numbering/page.tsx",
 });
 
-export default function VendorNumberingPage({ params }: { params: { vendorId: string } }) {
+export default async function VendorNumberingPage({ params }: { params: { vendorId: string } }) {
+  const schemeRows = await Promise.all(
+    NUMBERED_DOCUMENT_TYPES.map(async (doc) => ({
+      doc,
+      override: await getVendorScheme(params.vendorId, doc.id),
+      effective: await getEffectiveScheme(doc.id, params.vendorId),
+    }))
+  );
   return (
-    <AppShell navGroups={buildVendorAdminNavGroups("numbering")} topbarTitle="Settings — Numbering">
+    <AppShell navGroups={await buildVendorAdminNavGroups("numbering")} topbarTitle="Settings — Numbering">
       <div>
         <Link
           href={`/vendor/${params.vendorId}/settings`}
@@ -42,20 +49,16 @@ export default function VendorNumberingPage({ params }: { params: { vendorId: st
         </p>
 
         <div className="mt-6 flex flex-col gap-4">
-          {NUMBERED_DOCUMENT_TYPES.map((doc) => {
-            const override = getVendorScheme(params.vendorId, doc.id);
-            const effective = getEffectiveScheme(doc.id, params.vendorId);
-            return (
-              <NumberingSchemeEditor
-                key={doc.id}
-                documentType={doc.id}
-                documentTypeLabel={doc.label}
-                initialScheme={override ?? effective}
-                vendorId={params.vendorId}
-                isVendorOverride={Boolean(override)}
-              />
-            );
-          })}
+          {schemeRows.map(({ doc, override, effective }) => (
+            <NumberingSchemeEditor
+              key={doc.id}
+              documentType={doc.id}
+              documentTypeLabel={doc.label}
+              initialScheme={override ?? effective}
+              vendorId={params.vendorId}
+              isVendorOverride={Boolean(override)}
+            />
+          ))}
         </div>
       </div>
     </AppShell>

@@ -22,13 +22,13 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/service-centre/page.tsx",
 });
 
-export default function ServiceCentrePage({ params }: { params: { vendorId: string } }) {
-  const mod = getModule("service-centre");
-  const columns = applyCustomizations("service-centre.list", serviceCentreColumns);
+export default async function ServiceCentrePage({ params }: { params: { vendorId: string } }) {
+  const mod = await getModule("service-centre");
+  const columns = await applyCustomizations("service-centre.list", serviceCentreColumns);
 
   return (
     <AppShell
-      navGroups={buildVendorNavGroups("service-centre")}
+      navGroups={await buildVendorNavGroups("service-centre")}
       topbarTitle={mod?.label ?? "Service Centre"}
       topbarActions={
         <Link href={`/vendor/${params.vendorId}/service-centre/new`} className="btn-accent">

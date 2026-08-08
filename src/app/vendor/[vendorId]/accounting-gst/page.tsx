@@ -22,13 +22,13 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/accounting-gst/page.tsx",
 });
 
-export default function AccountingGstPage({ params }: { params: { vendorId: string } }) {
-  const mod = getModule("accounting-gst");
-  const columns = applyCustomizations("accounting-gst.list", accountingGstColumns);
+export default async function AccountingGstPage({ params }: { params: { vendorId: string } }) {
+  const mod = await getModule("accounting-gst");
+  const columns = await applyCustomizations("accounting-gst.list", accountingGstColumns);
 
   return (
     <AppShell
-      navGroups={buildVendorNavGroups("accounting-gst")}
+      navGroups={await buildVendorNavGroups("accounting-gst")}
       topbarTitle={mod?.label ?? "Accounting / GST Compliance"}
       topbarActions={
         <Link href={`/vendor/${params.vendorId}/accounting-gst/new`} className="btn-accent">

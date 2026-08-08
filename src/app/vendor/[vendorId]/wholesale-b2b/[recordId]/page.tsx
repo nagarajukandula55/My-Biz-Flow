@@ -23,19 +23,19 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/wholesale-b2b/[recordId]/page.tsx",
 });
 
-export default function WholesaleB2bDetailPage({
+export default async function WholesaleB2bDetailPage({
   params,
 }: {
   params: { vendorId: string; recordId: string };
 }) {
-  const mod = getModule("wholesale-b2b");
+  const mod = await getModule("wholesale-b2b");
   const record = getWholesaleB2bRecord(params.recordId);
-  const fields = applyCustomizationsToDetailFields("wholesale-b2b.detail", getWholesaleB2bDetailFields(record), wholesaleB2bColumns);
+  const fields = await applyCustomizationsToDetailFields("wholesale-b2b.detail", getWholesaleB2bDetailFields(record), wholesaleB2bColumns);
   const timeline = getWholesaleB2bTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("wholesale-b2b")} topbarTitle={mod?.label ?? "Wholesale / Distributor B2B"}>
+    <AppShell navGroups={await buildVendorNavGroups("wholesale-b2b")} topbarTitle={mod?.label ?? "Wholesale / Distributor B2B"}>
       <div>
         <Link
           href={`/vendor/${params.vendorId}/wholesale-b2b`}

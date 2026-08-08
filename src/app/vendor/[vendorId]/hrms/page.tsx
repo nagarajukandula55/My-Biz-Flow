@@ -22,13 +22,13 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/hrms/page.tsx",
 });
 
-export default function HrmsPage({ params }: { params: { vendorId: string } }) {
-  const mod = getModule("hrms");
-  const columns = applyCustomizations("hrms.list", hrmsColumns);
+export default async function HrmsPage({ params }: { params: { vendorId: string } }) {
+  const mod = await getModule("hrms");
+  const columns = await applyCustomizations("hrms.list", hrmsColumns);
 
   return (
     <AppShell
-      navGroups={buildVendorNavGroups("hrms")}
+      navGroups={await buildVendorNavGroups("hrms")}
       topbarTitle={mod?.label ?? "HRMS / Payroll"}
       topbarActions={
         <Link href={`/vendor/${params.vendorId}/hrms/new`} className="btn-accent">

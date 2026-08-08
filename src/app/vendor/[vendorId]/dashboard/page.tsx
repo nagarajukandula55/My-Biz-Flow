@@ -23,22 +23,23 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/dashboard/page.tsx",
 });
 
-export default function VendorDashboardPage({ params }: { params: { vendorId: string } }) {
+export default async function VendorDashboardPage({ params }: { params: { vendorId: string } }) {
   const enabledSlugs = getDemoEnabledModules(params.vendorId);
+  const modules = await Promise.all(enabledSlugs.map((slug) => getModule(slug)));
 
   return (
-    <AppShell navGroups={buildVendorAdminNavGroups("dashboard")} topbarTitle="Dashboard">
+    <AppShell navGroups={await buildVendorAdminNavGroups("dashboard")} topbarTitle="Dashboard">
       <div>
         <h1 className="font-display text-2xl font-bold text-text">Dashboard</h1>
         <p className="mt-1 max-w-[65ch] text-sm text-text-muted">
           Composed from this Vendor&apos;s enabled modules —{" "}
-          {enabledSlugs.map((s) => getModule(s)?.label).join(", ")}. Enable a different set of
+          {modules.map((m) => m?.label).join(", ")}. Enable a different set of
           modules and this grid changes shape with no code change.
         </p>
 
         <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {enabledSlugs.map((slug, i) => {
-            const mod = getModule(slug);
+            const mod = modules[i];
             const stat = computeModuleStat(slug);
             const value =
               stat.currencySum !== undefined

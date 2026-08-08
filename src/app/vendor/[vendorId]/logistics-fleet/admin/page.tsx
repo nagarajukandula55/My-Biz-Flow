@@ -19,11 +19,11 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/logistics-fleet/admin/page.tsx",
 });
 
-export default function LogisticsFleetAdminPage() {
-  const mod = getModule("logistics-fleet");
+export default async function LogisticsFleetAdminPage() {
+  const mod = await getModule("logistics-fleet");
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("logistics-fleet")} topbarTitle={`${mod?.label ?? "Logistics / Fleet"} · Admin`}>
+    <AppShell navGroups={await buildVendorNavGroups("logistics-fleet")} topbarTitle={`${mod?.label ?? "Logistics / Fleet"} · Admin`}>
       <SuperAdminGate>
         <div>
           <h1 className="font-display text-2xl font-bold text-text">

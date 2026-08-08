@@ -21,13 +21,13 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/accounting-gst/[recordId]/edit/page.tsx",
 });
 
-export default function EditAccountingGstPage({ params }: { params: { recordId: string } }) {
-  const mod = getModule("accounting-gst");
+export default async function EditAccountingGstPage({ params }: { params: { recordId: string } }) {
+  const mod = await getModule("accounting-gst");
   const record = getAccountingGstRecord(params.recordId);
-  const fields = applyCustomizations("accounting-gst.edit", accountingGstFormFields);
+  const fields = await applyCustomizations("accounting-gst.edit", accountingGstFormFields);
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("accounting-gst")} topbarTitle={`Edit GST Return — ${mod?.label ?? "Accounting / GST Compliance"}`}>
+    <AppShell navGroups={await buildVendorNavGroups("accounting-gst")} topbarTitle={`Edit GST Return — ${mod?.label ?? "Accounting / GST Compliance"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">Edit GST Return</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>

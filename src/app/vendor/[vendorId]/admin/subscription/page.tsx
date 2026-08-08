@@ -21,14 +21,19 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/admin/subscription/page.tsx",
 });
 
-export default function VendorSubscriptionPage({ params }: { params: { vendorId: string } }) {
+export default async function VendorSubscriptionPage({ params }: { params: { vendorId: string } }) {
   const subscriber = getSubscriber(params.vendorId);
   const plan = getPlan(String(subscriber["plan"])) ?? getPlan("pro")!;
   const seatsUsed = Number(subscriber["seats"] ?? 0);
   const seatPct = Math.min(100, Math.round((seatsUsed / plan.maxUsers) * 100));
+  const moduleLabels = new Map(
+    await Promise.all(
+      plan.includedModuleSlugs.map(async (slug) => [slug, (await getModule(slug))?.label ?? slug] as const)
+    )
+  );
 
   return (
-    <AppShell navGroups={buildVendorAdminNavGroups("billing")} topbarTitle="Subscription">
+    <AppShell navGroups={await buildVendorAdminNavGroups("billing")} topbarTitle="Subscription">
       <div>
         <h1 className="font-display text-2xl font-bold text-text">Subscription</h1>
         <p className="mt-1 text-sm text-text-muted">
@@ -74,7 +79,7 @@ export default function VendorSubscriptionPage({ params }: { params: { vendorId:
             </div>
             <div className="flex flex-wrap gap-1.5">
               {plan.includedModuleSlugs.map((slug) => (
-                <StatusChip key={slug} label={getModule(slug)?.label ?? slug} variant="teal" />
+                <StatusChip key={slug} label={moduleLabels.get(slug) ?? slug} variant="teal" />
               ))}
             </div>
           </div>

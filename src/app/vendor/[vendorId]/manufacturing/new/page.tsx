@@ -21,12 +21,12 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/manufacturing/new/page.tsx",
 });
 
-export default function NewManufacturingPage() {
-  const mod = getModule("manufacturing");
-  const fields = applyCustomizations("manufacturing.create", manufacturingFormFields);
+export default async function NewManufacturingPage() {
+  const mod = await getModule("manufacturing");
+  const fields = await applyCustomizations("manufacturing.create", manufacturingFormFields);
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("manufacturing")} topbarTitle={`New Work Order — ${mod?.label ?? "Manufacturing / Production"}`}>
+    <AppShell navGroups={await buildVendorNavGroups("manufacturing")} topbarTitle={`New Work Order — ${mod?.label ?? "Manufacturing / Production"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">New Work Order</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new work order record for Manufacturing / Production.</p>

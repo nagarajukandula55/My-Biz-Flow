@@ -21,12 +21,12 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/pos/new/page.tsx",
 });
 
-export default function NewPosPage() {
-  const mod = getModule("pos");
-  const fields = applyCustomizations("pos.create", posFormFields);
+export default async function NewPosPage() {
+  const mod = await getModule("pos");
+  const fields = await applyCustomizations("pos.create", posFormFields);
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("pos")} topbarTitle={`New Sale — ${mod?.label ?? "POS"}`}>
+    <AppShell navGroups={await buildVendorNavGroups("pos")} topbarTitle={`New Sale — ${mod?.label ?? "POS"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">New Sale</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new sale record for POS.</p>

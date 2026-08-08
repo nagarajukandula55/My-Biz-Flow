@@ -22,13 +22,13 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/loyalty-rewards/page.tsx",
 });
 
-export default function LoyaltyRewardsPage({ params }: { params: { vendorId: string } }) {
-  const mod = getModule("loyalty-rewards");
-  const columns = applyCustomizations("loyalty-rewards.list", loyaltyRewardsColumns);
+export default async function LoyaltyRewardsPage({ params }: { params: { vendorId: string } }) {
+  const mod = await getModule("loyalty-rewards");
+  const columns = await applyCustomizations("loyalty-rewards.list", loyaltyRewardsColumns);
 
   return (
     <AppShell
-      navGroups={buildVendorNavGroups("loyalty-rewards")}
+      navGroups={await buildVendorNavGroups("loyalty-rewards")}
       topbarTitle={mod?.label ?? "Loyalty & Rewards"}
       topbarActions={
         <Link href={`/vendor/${params.vendorId}/loyalty-rewards/new`} className="btn-accent">

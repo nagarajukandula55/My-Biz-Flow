@@ -18,8 +18,8 @@ registerPage({
   sourceFile: "src/app/admin/errors/page.tsx",
 });
 
-export default function ErrorsPage() {
-  const errors = getLoggedErrors();
+export default async function ErrorsPage() {
+  const errors = await getLoggedErrors();
 
   return (
     <SuperAdminGate>

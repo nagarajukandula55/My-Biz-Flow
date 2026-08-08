@@ -21,13 +21,13 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/brand/[recordId]/edit/page.tsx",
 });
 
-export default function EditBrandPage({ params }: { params: { recordId: string } }) {
-  const mod = getModule("brand");
+export default async function EditBrandPage({ params }: { params: { recordId: string } }) {
+  const mod = await getModule("brand");
   const record = getBrandRecord(params.recordId);
-  const fields = applyCustomizations("brand.edit", brandFormFields);
+  const fields = await applyCustomizations("brand.edit", brandFormFields);
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("brand")} topbarTitle={`Edit Location — ${mod?.label ?? "Brand"}`}>
+    <AppShell navGroups={await buildVendorNavGroups("brand")} topbarTitle={`Edit Location — ${mod?.label ?? "Brand"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">Edit Location</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>

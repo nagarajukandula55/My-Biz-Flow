@@ -21,13 +21,13 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/event-booking/[recordId]/edit/page.tsx",
 });
 
-export default function EditEventBookingPage({ params }: { params: { recordId: string } }) {
-  const mod = getModule("event-booking");
+export default async function EditEventBookingPage({ params }: { params: { recordId: string } }) {
+  const mod = await getModule("event-booking");
   const record = getEventBookingRecord(params.recordId);
-  const fields = applyCustomizations("event-booking.edit", eventBookingFormFields);
+  const fields = await applyCustomizations("event-booking.edit", eventBookingFormFields);
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("event-booking")} topbarTitle={`Edit Event — ${mod?.label ?? "Event / Venue Booking"}`}>
+    <AppShell navGroups={await buildVendorNavGroups("event-booking")} topbarTitle={`Edit Event — ${mod?.label ?? "Event / Venue Booking"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">Edit Event</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>

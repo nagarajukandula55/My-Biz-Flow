@@ -22,13 +22,13 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/education/page.tsx",
 });
 
-export default function EducationPage({ params }: { params: { vendorId: string } }) {
-  const mod = getModule("education");
-  const columns = applyCustomizations("education.list", educationColumns);
+export default async function EducationPage({ params }: { params: { vendorId: string } }) {
+  const mod = await getModule("education");
+  const columns = await applyCustomizations("education.list", educationColumns);
 
   return (
     <AppShell
-      navGroups={buildVendorNavGroups("education")}
+      navGroups={await buildVendorNavGroups("education")}
       topbarTitle={mod?.label ?? "Education / Coaching"}
       topbarActions={
         <Link href={`/vendor/${params.vendorId}/education/new`} className="btn-accent">

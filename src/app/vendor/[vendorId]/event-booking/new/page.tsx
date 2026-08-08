@@ -21,12 +21,12 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/event-booking/new/page.tsx",
 });
 
-export default function NewEventBookingPage() {
-  const mod = getModule("event-booking");
-  const fields = applyCustomizations("event-booking.create", eventBookingFormFields);
+export default async function NewEventBookingPage() {
+  const mod = await getModule("event-booking");
+  const fields = await applyCustomizations("event-booking.create", eventBookingFormFields);
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("event-booking")} topbarTitle={`New Event — ${mod?.label ?? "Event / Venue Booking"}`}>
+    <AppShell navGroups={await buildVendorNavGroups("event-booking")} topbarTitle={`New Event — ${mod?.label ?? "Event / Venue Booking"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">New Event</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new event record for Event / Venue Booking.</p>

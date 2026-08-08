@@ -19,11 +19,11 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/education/admin/page.tsx",
 });
 
-export default function EducationAdminPage() {
-  const mod = getModule("education");
+export default async function EducationAdminPage() {
+  const mod = await getModule("education");
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("education")} topbarTitle={`${mod?.label ?? "Education / Coaching"} · Admin`}>
+    <AppShell navGroups={await buildVendorNavGroups("education")} topbarTitle={`${mod?.label ?? "Education / Coaching"} · Admin`}>
       <SuperAdminGate>
         <div>
           <h1 className="font-display text-2xl font-bold text-text">

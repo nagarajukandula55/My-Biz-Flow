@@ -21,13 +21,13 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/legal/[recordId]/edit/page.tsx",
 });
 
-export default function EditLegalPage({ params }: { params: { recordId: string } }) {
-  const mod = getModule("legal");
+export default async function EditLegalPage({ params }: { params: { recordId: string } }) {
+  const mod = await getModule("legal");
   const record = getLegalRecord(params.recordId);
-  const fields = applyCustomizations("legal.edit", legalFormFields);
+  const fields = await applyCustomizations("legal.edit", legalFormFields);
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("legal")} topbarTitle={`Edit Matter — ${mod?.label ?? "Legal / Case Management"}`}>
+    <AppShell navGroups={await buildVendorNavGroups("legal")} topbarTitle={`Edit Matter — ${mod?.label ?? "Legal / Case Management"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">Edit Matter</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>

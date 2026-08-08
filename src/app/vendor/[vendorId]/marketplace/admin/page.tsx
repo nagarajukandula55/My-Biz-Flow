@@ -19,11 +19,11 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/marketplace/admin/page.tsx",
 });
 
-export default function MarketplaceAdminPage() {
-  const mod = getModule("marketplace");
+export default async function MarketplaceAdminPage() {
+  const mod = await getModule("marketplace");
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("marketplace")} topbarTitle={`${mod?.label ?? "Marketplace / Vendor Aggregator"} · Admin`}>
+    <AppShell navGroups={await buildVendorNavGroups("marketplace")} topbarTitle={`${mod?.label ?? "Marketplace / Vendor Aggregator"} · Admin`}>
       <SuperAdminGate>
         <div>
           <h1 className="font-display text-2xl font-bold text-text">

@@ -23,19 +23,19 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/legal/[recordId]/page.tsx",
 });
 
-export default function LegalDetailPage({
+export default async function LegalDetailPage({
   params,
 }: {
   params: { vendorId: string; recordId: string };
 }) {
-  const mod = getModule("legal");
+  const mod = await getModule("legal");
   const record = getLegalRecord(params.recordId);
-  const fields = applyCustomizationsToDetailFields("legal.detail", getLegalDetailFields(record), legalColumns);
+  const fields = await applyCustomizationsToDetailFields("legal.detail", getLegalDetailFields(record), legalColumns);
   const timeline = getLegalTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("legal")} topbarTitle={mod?.label ?? "Legal / Case Management"}>
+    <AppShell navGroups={await buildVendorNavGroups("legal")} topbarTitle={mod?.label ?? "Legal / Case Management"}>
       <div>
         <Link
           href={`/vendor/${params.vendorId}/legal`}

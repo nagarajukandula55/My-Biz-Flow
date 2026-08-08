@@ -6,3 +6,11 @@ out
 *.tsbuildinfo
 next-env.d.ts
 .DS_Store
+
+/src/generated/prisma
+
+# Auto-pulled by `prisma init`/skills tooling — not part of the app.
+/.agents
+/.claude
+/.windsurf
+/skills-lock.json

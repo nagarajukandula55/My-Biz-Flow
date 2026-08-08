@@ -23,19 +23,19 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/education/[recordId]/page.tsx",
 });
 
-export default function EducationDetailPage({
+export default async function EducationDetailPage({
   params,
 }: {
   params: { vendorId: string; recordId: string };
 }) {
-  const mod = getModule("education");
+  const mod = await getModule("education");
   const record = getEducationRecord(params.recordId);
-  const fields = applyCustomizationsToDetailFields("education.detail", getEducationDetailFields(record), educationColumns);
+  const fields = await applyCustomizationsToDetailFields("education.detail", getEducationDetailFields(record), educationColumns);
   const timeline = getEducationTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("education")} topbarTitle={mod?.label ?? "Education / Coaching"}>
+    <AppShell navGroups={await buildVendorNavGroups("education")} topbarTitle={mod?.label ?? "Education / Coaching"}>
       <div>
         <Link
           href={`/vendor/${params.vendorId}/education`}

@@ -23,19 +23,19 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/inventory/[recordId]/page.tsx",
 });
 
-export default function InventoryDetailPage({
+export default async function InventoryDetailPage({
   params,
 }: {
   params: { vendorId: string; recordId: string };
 }) {
-  const mod = getModule("inventory");
+  const mod = await getModule("inventory");
   const record = getInventoryRecord(params.recordId);
-  const fields = applyCustomizationsToDetailFields("inventory.detail", getInventoryDetailFields(record), inventoryColumns);
+  const fields = await applyCustomizationsToDetailFields("inventory.detail", getInventoryDetailFields(record), inventoryColumns);
   const timeline = getInventoryTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("inventory")} topbarTitle={mod?.label ?? "Inventory / Warehouse"}>
+    <AppShell navGroups={await buildVendorNavGroups("inventory")} topbarTitle={mod?.label ?? "Inventory / Warehouse"}>
       <div>
         <Link
           href={`/vendor/${params.vendorId}/inventory`}

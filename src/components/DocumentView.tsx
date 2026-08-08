@@ -23,12 +23,12 @@ import { formatNumber } from "@/lib/designer/numberingFormat";
  * sample record's `id` field. `sequenceIndex` (the record's position among
  * its module's sample rows, 0-based) is passed by the caller and used as
  * the sequence — a deterministic peek via formatNumber(), NOT
- * getNextNumber(): merely viewing a document must never consume/advance
+ * await getNextNumber(): merely viewing a document must never consume/advance
  * the live counter, only actually issuing one should (there is no
  * "issue" action yet, since there's no database to persist which number
  * a real record was assigned).
  */
-export function DocumentView({
+export async function DocumentView({
   pageId,
   documentType,
   documentLabel,
@@ -53,8 +53,8 @@ export function DocumentView({
    * custom template overrides the layout. */
   lineItems?: { description: string; quantity: number; unit: string; unitPrice: number; taxRate: number }[];
 }) {
-  const customTemplate = getDocumentTemplate(pageId);
-  const scheme = getEffectiveScheme(documentType, vendorId);
+  const customTemplate = await getDocumentTemplate(pageId);
+  const scheme = await getEffectiveScheme(documentType, vendorId);
   const documentNumber = formatNumber(scheme, scheme.sequenceStart + sequenceIndex);
   const templateRecord = { ...record, documentNumber };
 

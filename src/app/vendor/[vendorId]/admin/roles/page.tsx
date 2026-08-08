@@ -18,10 +18,10 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/admin/roles/page.tsx",
 });
 
-export default function RolesPage({ params }: { params: { vendorId: string } }) {
+export default async function RolesPage({ params }: { params: { vendorId: string } }) {
   return (
     <AppShell
-      navGroups={buildVendorAdminNavGroups("roles")}
+      navGroups={await buildVendorAdminNavGroups("roles")}
       topbarTitle="Roles"
       topbarActions={
         <Link href={`/vendor/${params.vendorId}/admin/roles/new`} className="btn-accent">

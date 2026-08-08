@@ -23,19 +23,19 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/real-estate/[recordId]/page.tsx",
 });
 
-export default function RealEstateDetailPage({
+export default async function RealEstateDetailPage({
   params,
 }: {
   params: { vendorId: string; recordId: string };
 }) {
-  const mod = getModule("real-estate");
+  const mod = await getModule("real-estate");
   const record = getRealEstateRecord(params.recordId);
-  const fields = applyCustomizationsToDetailFields("real-estate.detail", getRealEstateDetailFields(record), realEstateColumns);
+  const fields = await applyCustomizationsToDetailFields("real-estate.detail", getRealEstateDetailFields(record), realEstateColumns);
   const timeline = getRealEstateTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("real-estate")} topbarTitle={mod?.label ?? "Real Estate"}>
+    <AppShell navGroups={await buildVendorNavGroups("real-estate")} topbarTitle={mod?.label ?? "Real Estate"}>
       <div>
         <Link
           href={`/vendor/${params.vendorId}/real-estate`}

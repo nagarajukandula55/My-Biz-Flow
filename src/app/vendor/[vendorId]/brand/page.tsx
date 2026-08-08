@@ -22,13 +22,13 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/brand/page.tsx",
 });
 
-export default function BrandPage({ params }: { params: { vendorId: string } }) {
-  const mod = getModule("brand");
-  const columns = applyCustomizations("brand.list", brandColumns);
+export default async function BrandPage({ params }: { params: { vendorId: string } }) {
+  const mod = await getModule("brand");
+  const columns = await applyCustomizations("brand.list", brandColumns);
 
   return (
     <AppShell
-      navGroups={buildVendorNavGroups("brand")}
+      navGroups={await buildVendorNavGroups("brand")}
       topbarTitle={mod?.label ?? "Brand"}
       topbarActions={
         <Link href={`/vendor/${params.vendorId}/brand/new`} className="btn-accent">

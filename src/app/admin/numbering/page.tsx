@@ -20,7 +20,8 @@ registerPage({
   sourceFile: "src/app/admin/numbering/page.tsx",
 });
 
-export default function MainNumberingPage() {
+export default async function MainNumberingPage() {
+  const schemes = await Promise.all(NUMBERED_DOCUMENT_TYPES.map((doc) => getMainScheme(doc.id)));
   return (
     <SuperAdminGate>
       <div className="min-h-screen w-full bg-bg">
@@ -39,12 +40,12 @@ export default function MainNumberingPage() {
         </header>
 
         <div className="flex flex-col gap-4 p-6">
-          {NUMBERED_DOCUMENT_TYPES.map((doc) => (
+          {NUMBERED_DOCUMENT_TYPES.map((doc, i) => (
             <NumberingSchemeEditor
               key={doc.id}
               documentType={doc.id}
               documentTypeLabel={doc.label}
-              initialScheme={getMainScheme(doc.id)}
+              initialScheme={schemes[i]}
             />
           ))}
         </div>

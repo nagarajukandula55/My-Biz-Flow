@@ -19,11 +19,11 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/loyalty-rewards/admin/page.tsx",
 });
 
-export default function LoyaltyRewardsAdminPage() {
-  const mod = getModule("loyalty-rewards");
+export default async function LoyaltyRewardsAdminPage() {
+  const mod = await getModule("loyalty-rewards");
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("loyalty-rewards")} topbarTitle={`${mod?.label ?? "Loyalty & Rewards"} · Admin`}>
+    <AppShell navGroups={await buildVendorNavGroups("loyalty-rewards")} topbarTitle={`${mod?.label ?? "Loyalty & Rewards"} · Admin`}>
       <SuperAdminGate>
         <div>
           <h1 className="font-display text-2xl font-bold text-text">

@@ -21,13 +21,13 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/clinic/[recordId]/edit/page.tsx",
 });
 
-export default function EditClinicPage({ params }: { params: { recordId: string } }) {
-  const mod = getModule("clinic");
+export default async function EditClinicPage({ params }: { params: { recordId: string } }) {
+  const mod = await getModule("clinic");
   const record = getClinicRecord(params.recordId);
-  const fields = applyCustomizations("clinic.edit", clinicFormFields);
+  const fields = await applyCustomizations("clinic.edit", clinicFormFields);
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("clinic")} topbarTitle={`Edit Appointment — ${mod?.label ?? "Clinic"}`}>
+    <AppShell navGroups={await buildVendorNavGroups("clinic")} topbarTitle={`Edit Appointment — ${mod?.label ?? "Clinic"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">Edit Appointment</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>

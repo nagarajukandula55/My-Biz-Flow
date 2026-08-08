@@ -21,13 +21,13 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/pos/[recordId]/edit/page.tsx",
 });
 
-export default function EditPosPage({ params }: { params: { recordId: string } }) {
-  const mod = getModule("pos");
+export default async function EditPosPage({ params }: { params: { recordId: string } }) {
+  const mod = await getModule("pos");
   const record = getPosRecord(params.recordId);
-  const fields = applyCustomizations("pos.edit", posFormFields);
+  const fields = await applyCustomizations("pos.edit", posFormFields);
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("pos")} topbarTitle={`Edit Sale — ${mod?.label ?? "POS"}`}>
+    <AppShell navGroups={await buildVendorNavGroups("pos")} topbarTitle={`Edit Sale — ${mod?.label ?? "POS"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">Edit Sale</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>

@@ -7,7 +7,7 @@ import type { VendorNavGroup } from "./modules";
  * not a single module, so they get their own "Vendor Admin" group prepended
  * ahead of the regular module groups built from MODULES.
  */
-export function buildVendorAdminNavGroups(activeKey?: string): VendorNavGroup[] {
+export async function buildVendorAdminNavGroups(activeKey?: string): Promise<VendorNavGroup[]> {
   const commonGroup: VendorNavGroup = {
     title: "Common",
     items: [
@@ -26,5 +26,5 @@ export function buildVendorAdminNavGroups(activeKey?: string): VendorNavGroup[] 
       { key: "access-groups", label: "Access Groups", dot: "amber", active: activeKey === "access-groups" },
     ],
   };
-  return [commonGroup, vendorAdminGroup, ...buildVendorNavGroups()];
+  return [commonGroup, vendorAdminGroup, ...(await buildVendorNavGroups())];
 }

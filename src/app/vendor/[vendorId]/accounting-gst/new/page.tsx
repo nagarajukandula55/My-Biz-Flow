@@ -21,12 +21,12 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/accounting-gst/new/page.tsx",
 });
 
-export default function NewAccountingGstPage() {
-  const mod = getModule("accounting-gst");
-  const fields = applyCustomizations("accounting-gst.create", accountingGstFormFields);
+export default async function NewAccountingGstPage() {
+  const mod = await getModule("accounting-gst");
+  const fields = await applyCustomizations("accounting-gst.create", accountingGstFormFields);
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("accounting-gst")} topbarTitle={`New GST Return — ${mod?.label ?? "Accounting / GST Compliance"}`}>
+    <AppShell navGroups={await buildVendorNavGroups("accounting-gst")} topbarTitle={`New GST Return — ${mod?.label ?? "Accounting / GST Compliance"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">New GST Return</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new gst return record for Accounting / GST Compliance.</p>

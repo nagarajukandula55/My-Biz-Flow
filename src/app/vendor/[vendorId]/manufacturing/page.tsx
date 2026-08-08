@@ -22,13 +22,13 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/manufacturing/page.tsx",
 });
 
-export default function ManufacturingPage({ params }: { params: { vendorId: string } }) {
-  const mod = getModule("manufacturing");
-  const columns = applyCustomizations("manufacturing.list", manufacturingColumns);
+export default async function ManufacturingPage({ params }: { params: { vendorId: string } }) {
+  const mod = await getModule("manufacturing");
+  const columns = await applyCustomizations("manufacturing.list", manufacturingColumns);
 
   return (
     <AppShell
-      navGroups={buildVendorNavGroups("manufacturing")}
+      navGroups={await buildVendorNavGroups("manufacturing")}
       topbarTitle={mod?.label ?? "Manufacturing / Production"}
       topbarActions={
         <Link href={`/vendor/${params.vendorId}/manufacturing/new`} className="btn-accent">

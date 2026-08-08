@@ -4,7 +4,7 @@ import { StatusChip } from "@/components/StatusChip";
 import { PageAccessToggle } from "@/components/PageAccessToggle";
 import { getRegisteredPages, registerPage } from "@/lib/designer/registry";
 import "@/lib/designer/registerAll";
-import { isPagePublic } from "@/lib/designer/pageAccess";
+import { getAllPublicPageIds } from "@/lib/designer/pageAccess";
 
 registerPage({
   id: "platform.settings",
@@ -19,8 +19,9 @@ registerPage({
   sourceFile: "src/app/admin/settings/page.tsx",
 });
 
-export default function PlatformSettingsPage() {
+export default async function PlatformSettingsPage() {
   const pages = getRegisteredPages();
+  const publicPageIds = await getAllPublicPageIds();
 
   return (
     <SuperAdminGate>
@@ -58,7 +59,7 @@ export default function PlatformSettingsPage() {
                   </div>
                   <PageAccessToggle
                     pageId={page.id}
-                    initialPublic={isPagePublic(page.id)}
+                    initialPublic={publicPageIds.has(page.id)}
                     isRealGate={page.superAdminOnly}
                   />
                 </li>

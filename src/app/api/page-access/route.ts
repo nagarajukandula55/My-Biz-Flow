@@ -15,6 +15,6 @@ import { isPagePublic } from "@/lib/designer/pageAccess";
 export async function GET(request: NextRequest) {
   const pathname = request.nextUrl.searchParams.get("path") ?? "";
   const page = findPageByPathname(getRegisteredPages(), pathname);
-  const isPublic = page ? isPagePublic(page.id) : false;
+  const isPublic = page ? await isPagePublic(page.id) : false;
   return NextResponse.json({ isPublic, pageId: page?.id ?? null });
 }

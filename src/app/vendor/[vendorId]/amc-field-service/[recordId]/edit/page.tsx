@@ -21,13 +21,13 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/amc-field-service/[recordId]/edit/page.tsx",
 });
 
-export default function EditAmcFieldServicePage({ params }: { params: { recordId: string } }) {
-  const mod = getModule("amc-field-service");
+export default async function EditAmcFieldServicePage({ params }: { params: { recordId: string } }) {
+  const mod = await getModule("amc-field-service");
   const record = getAmcFieldServiceRecord(params.recordId);
-  const fields = applyCustomizations("amc-field-service.edit", amcFieldServiceFormFields);
+  const fields = await applyCustomizations("amc-field-service.edit", amcFieldServiceFormFields);
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("amc-field-service")} topbarTitle={`Edit Contract — ${mod?.label ?? "AMC / Field Service"}`}>
+    <AppShell navGroups={await buildVendorNavGroups("amc-field-service")} topbarTitle={`Edit Contract — ${mod?.label ?? "AMC / Field Service"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">Edit Contract</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>

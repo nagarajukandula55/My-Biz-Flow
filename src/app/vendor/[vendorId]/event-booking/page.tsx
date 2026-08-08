@@ -22,13 +22,13 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/event-booking/page.tsx",
 });
 
-export default function EventBookingPage({ params }: { params: { vendorId: string } }) {
-  const mod = getModule("event-booking");
-  const columns = applyCustomizations("event-booking.list", eventBookingColumns);
+export default async function EventBookingPage({ params }: { params: { vendorId: string } }) {
+  const mod = await getModule("event-booking");
+  const columns = await applyCustomizations("event-booking.list", eventBookingColumns);
 
   return (
     <AppShell
-      navGroups={buildVendorNavGroups("event-booking")}
+      navGroups={await buildVendorNavGroups("event-booking")}
       topbarTitle={mod?.label ?? "Event / Venue Booking"}
       topbarActions={
         <Link href={`/vendor/${params.vendorId}/event-booking/new`} className="btn-accent">

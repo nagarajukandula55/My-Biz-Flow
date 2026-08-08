@@ -22,13 +22,13 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/inventory/page.tsx",
 });
 
-export default function InventoryPage({ params }: { params: { vendorId: string } }) {
-  const mod = getModule("inventory");
-  const columns = applyCustomizations("inventory.list", inventoryColumns);
+export default async function InventoryPage({ params }: { params: { vendorId: string } }) {
+  const mod = await getModule("inventory");
+  const columns = await applyCustomizations("inventory.list", inventoryColumns);
 
   return (
     <AppShell
-      navGroups={buildVendorNavGroups("inventory")}
+      navGroups={await buildVendorNavGroups("inventory")}
       topbarTitle={mod?.label ?? "Inventory / Warehouse"}
       topbarActions={
         <Link href={`/vendor/${params.vendorId}/inventory/new`} className="btn-accent">

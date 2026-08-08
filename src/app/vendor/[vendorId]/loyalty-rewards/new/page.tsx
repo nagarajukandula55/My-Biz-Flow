@@ -21,12 +21,12 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/loyalty-rewards/new/page.tsx",
 });
 
-export default function NewLoyaltyRewardsPage() {
-  const mod = getModule("loyalty-rewards");
-  const fields = applyCustomizations("loyalty-rewards.create", loyaltyRewardsFormFields);
+export default async function NewLoyaltyRewardsPage() {
+  const mod = await getModule("loyalty-rewards");
+  const fields = await applyCustomizations("loyalty-rewards.create", loyaltyRewardsFormFields);
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("loyalty-rewards")} topbarTitle={`New Member — ${mod?.label ?? "Loyalty & Rewards"}`}>
+    <AppShell navGroups={await buildVendorNavGroups("loyalty-rewards")} topbarTitle={`New Member — ${mod?.label ?? "Loyalty & Rewards"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">New Member</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new member record for Loyalty & Rewards.</p>

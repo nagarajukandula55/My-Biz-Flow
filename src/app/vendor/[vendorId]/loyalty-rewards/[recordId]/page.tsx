@@ -23,19 +23,19 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/loyalty-rewards/[recordId]/page.tsx",
 });
 
-export default function LoyaltyRewardsDetailPage({
+export default async function LoyaltyRewardsDetailPage({
   params,
 }: {
   params: { vendorId: string; recordId: string };
 }) {
-  const mod = getModule("loyalty-rewards");
+  const mod = await getModule("loyalty-rewards");
   const record = getLoyaltyRewardsRecord(params.recordId);
-  const fields = applyCustomizationsToDetailFields("loyalty-rewards.detail", getLoyaltyRewardsDetailFields(record), loyaltyRewardsColumns);
+  const fields = await applyCustomizationsToDetailFields("loyalty-rewards.detail", getLoyaltyRewardsDetailFields(record), loyaltyRewardsColumns);
   const timeline = getLoyaltyRewardsTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("loyalty-rewards")} topbarTitle={mod?.label ?? "Loyalty & Rewards"}>
+    <AppShell navGroups={await buildVendorNavGroups("loyalty-rewards")} topbarTitle={mod?.label ?? "Loyalty & Rewards"}>
       <div>
         <Link
           href={`/vendor/${params.vendorId}/loyalty-rewards`}

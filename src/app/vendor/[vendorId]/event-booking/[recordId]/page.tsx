@@ -23,19 +23,19 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/event-booking/[recordId]/page.tsx",
 });
 
-export default function EventBookingDetailPage({
+export default async function EventBookingDetailPage({
   params,
 }: {
   params: { vendorId: string; recordId: string };
 }) {
-  const mod = getModule("event-booking");
+  const mod = await getModule("event-booking");
   const record = getEventBookingRecord(params.recordId);
-  const fields = applyCustomizationsToDetailFields("event-booking.detail", getEventBookingDetailFields(record), eventBookingColumns);
+  const fields = await applyCustomizationsToDetailFields("event-booking.detail", getEventBookingDetailFields(record), eventBookingColumns);
   const timeline = getEventBookingTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("event-booking")} topbarTitle={mod?.label ?? "Event / Venue Booking"}>
+    <AppShell navGroups={await buildVendorNavGroups("event-booking")} topbarTitle={mod?.label ?? "Event / Venue Booking"}>
       <div>
         <Link
           href={`/vendor/${params.vendorId}/event-booking`}

@@ -33,32 +33,32 @@ function revalidateForPage(pageId: string) {
 }
 
 export async function setFieldLabelAction(pageId: string, fieldKey: string, label: string) {
-  setFieldLabelStore(pageId, fieldKey, label);
+  await setFieldLabelStore(pageId, fieldKey, label);
   revalidateForPage(pageId);
 }
 
 export async function setFieldHiddenAction(pageId: string, fieldKey: string, hidden: boolean) {
-  setFieldHiddenStore(pageId, fieldKey, hidden);
+  await setFieldHiddenStore(pageId, fieldKey, hidden);
   revalidateForPage(pageId);
 }
 
 export async function addFieldAction(pageId: string, field: FieldSpec) {
-  addFieldStore(pageId, field);
+  await addFieldStore(pageId, field);
   revalidateForPage(pageId);
 }
 
 export async function deleteFieldAction(pageId: string, fieldKey: string, isCustomField: boolean) {
-  deleteFieldStore(pageId, fieldKey, isCustomField);
+  await deleteFieldStore(pageId, fieldKey, isCustomField);
   revalidateForPage(pageId);
 }
 
 export async function setDropdownOptionsAction(pageId: string, fieldKey: string, options: DropdownOption[]) {
-  setDropdownOptionsStore(pageId, fieldKey, options);
+  await setDropdownOptionsStore(pageId, fieldKey, options);
   revalidateForPage(pageId);
 }
 
 export async function saveDocumentTemplateAction(pageId: string, htmlTemplate: string) {
-  saveDocumentTemplateStore(pageId, htmlTemplate);
+  await saveDocumentTemplateStore(pageId, htmlTemplate);
   revalidateForPage(pageId);
   // Also revalidate the actual document route itself, not just the
   // module's list/create/edit/detail tree, since it lives one segment
@@ -68,7 +68,7 @@ export async function saveDocumentTemplateAction(pageId: string, htmlTemplate: s
 }
 
 export async function setModuleAppearanceAction(slug: string, appearance: ModuleAppearance) {
-  setModuleAppearanceStore(slug, appearance);
+  await setModuleAppearanceStore(slug, appearance);
   revalidatePath("/admin/designer", "layout");
   revalidatePath(`/vendor/[vendorId]/${slug}`, "layout");
 }

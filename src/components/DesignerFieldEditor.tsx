@@ -67,8 +67,8 @@ export function DesignerFieldEditor({ pageId, baseFields, customization }: Props
       </h2>
       <p className="mt-1 text-sm text-text-muted">
         Edit labels, hide fields, delete custom fields, and manage dropdown options. Changes are
-        stored in <code className="font-mono text-xs">data/customizations.json</code> and apply
-        live to this page's list/form/detail rendering across the app.
+        stored in the database and apply live to this page's list/form/detail rendering across the
+        app.
       </p>
 
       <div className="mt-4 space-y-3">

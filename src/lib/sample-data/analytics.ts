@@ -20,11 +20,13 @@ export const revenueTrend: LineSeriesPoint[] = [
   { x: "Sun", y: 24600 },
 ];
 
-export function getRecordsByModuleBarData(moduleSlugs: string[]): BarPoint[] {
-  return moduleSlugs.map((slug) => ({
-    category: getModule(slug)?.label ?? slug,
-    value: computeModuleStat(slug).count,
-  }));
+export async function getRecordsByModuleBarData(moduleSlugs: string[]): Promise<BarPoint[]> {
+  return Promise.all(
+    moduleSlugs.map(async (slug) => ({
+      category: (await getModule(slug))?.label ?? slug,
+      value: computeModuleStat(slug).count,
+    }))
+  );
 }
 
 export const workorderStatusBreakdown: PieSlice[] = [

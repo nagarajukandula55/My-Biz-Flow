@@ -22,13 +22,13 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/rentals/page.tsx",
 });
 
-export default function RentalsPage({ params }: { params: { vendorId: string } }) {
-  const mod = getModule("rentals");
-  const columns = applyCustomizations("rentals.list", rentalsColumns);
+export default async function RentalsPage({ params }: { params: { vendorId: string } }) {
+  const mod = await getModule("rentals");
+  const columns = await applyCustomizations("rentals.list", rentalsColumns);
 
   return (
     <AppShell
-      navGroups={buildVendorNavGroups("rentals")}
+      navGroups={await buildVendorNavGroups("rentals")}
       topbarTitle={mod?.label ?? "Rentals / Booking"}
       topbarActions={
         <Link href={`/vendor/${params.vendorId}/rentals/new`} className="btn-accent">

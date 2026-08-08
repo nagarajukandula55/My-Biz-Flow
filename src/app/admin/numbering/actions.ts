@@ -10,17 +10,17 @@ import {
 } from "@/lib/designer/numbering";
 
 export async function saveMainSchemeAction(documentType: string, scheme: NumberingScheme) {
-  saveMainScheme(documentType, scheme);
+  await saveMainScheme(documentType, scheme);
   revalidatePath("/admin/numbering");
 }
 
 export async function saveVendorSchemeAction(vendorId: string, documentType: string, scheme: NumberingScheme) {
-  saveVendorScheme(vendorId, documentType, scheme);
+  await saveVendorScheme(vendorId, documentType, scheme);
   revalidatePath(`/vendor/${vendorId}/settings/numbering`);
 }
 
 export async function clearVendorSchemeAction(vendorId: string, documentType: string) {
-  clearVendorScheme(vendorId, documentType);
+  await clearVendorScheme(vendorId, documentType);
   revalidatePath(`/vendor/${vendorId}/settings/numbering`);
 }
 

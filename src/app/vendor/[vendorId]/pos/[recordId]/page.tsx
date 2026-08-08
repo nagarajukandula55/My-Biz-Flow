@@ -23,19 +23,19 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/pos/[recordId]/page.tsx",
 });
 
-export default function PosDetailPage({
+export default async function PosDetailPage({
   params,
 }: {
   params: { vendorId: string; recordId: string };
 }) {
-  const mod = getModule("pos");
+  const mod = await getModule("pos");
   const record = getPosRecord(params.recordId);
-  const fields = applyCustomizationsToDetailFields("pos.detail", getPosDetailFields(record), posColumns);
+  const fields = await applyCustomizationsToDetailFields("pos.detail", getPosDetailFields(record), posColumns);
   const timeline = getPosTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("pos")} topbarTitle={mod?.label ?? "POS"}>
+    <AppShell navGroups={await buildVendorNavGroups("pos")} topbarTitle={mod?.label ?? "POS"}>
       <div>
         <Link
           href={`/vendor/${params.vendorId}/pos`}

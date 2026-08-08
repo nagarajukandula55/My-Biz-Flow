@@ -19,11 +19,11 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/hrms/admin/page.tsx",
 });
 
-export default function HrmsAdminPage() {
-  const mod = getModule("hrms");
+export default async function HrmsAdminPage() {
+  const mod = await getModule("hrms");
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("hrms")} topbarTitle={`${mod?.label ?? "HRMS / Payroll"} · Admin`}>
+    <AppShell navGroups={await buildVendorNavGroups("hrms")} topbarTitle={`${mod?.label ?? "HRMS / Payroll"} · Admin`}>
       <SuperAdminGate>
         <div>
           <h1 className="font-display text-2xl font-bold text-text">

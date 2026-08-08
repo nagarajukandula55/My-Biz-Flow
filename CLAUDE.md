@@ -17,7 +17,11 @@ freelance on a page-level PR.
 ## Stack
 
 - Next.js (App Router) + TypeScript + Tailwind CSS
-- Prisma + PostgreSQL (backend, not yet wired up)
+- Prisma + PostgreSQL — wired up (see `prisma/schema.prisma`, `src/lib/prisma.ts`).
+  Currently backs the Designer's config stores (page customizations,
+  document templates, module appearance, numbering, page access, error
+  log) — the actual business records (invoices, work orders, etc.) still
+  read from `src/lib/sample-data/*` and are the next migration target.
 - Deploy target: Vercel
 
 ## Integration constraints
@@ -56,8 +60,13 @@ freelance on a page-level PR.
   field editor (edit labels, hide/add/delete fields, edit dropdown
   options) backed by `src/lib/designer/customizations.ts`
 - `src/lib/designer/customizations.ts` — the Designer's live-editing store.
-  JSON-file-backed (no database yet) — read the file header before
-  touching it, the Vercel-runtime tradeoff is explicit and load-bearing
+  Prisma/Postgres-backed (`PageCustomization` table) — same pattern as
+  `documentTemplates.ts`, `moduleAppearance.ts`, `numbering.ts`,
+  `pageAccess.ts`, and `src/lib/errorLog.ts`, all migrated off the old
+  JSON-file stores onto real tables (see `prisma/schema.prisma`)
+- `prisma/schema.prisma` + `src/lib/prisma.ts` — the Prisma schema and the
+  singleton `PrismaClient` every data-access function imports; run
+  `npx prisma migrate dev` after changing the schema
 - `src/middleware.ts` + `src/lib/adminAuth.ts` — the Super Admin route
   gate. A single shared secret, not real per-user auth — see
   DESIGN_SYSTEM.md §9 before assuming this is a finished auth system

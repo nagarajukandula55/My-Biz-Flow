@@ -21,13 +21,13 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/marketplace/[recordId]/edit/page.tsx",
 });
 
-export default function EditMarketplacePage({ params }: { params: { recordId: string } }) {
-  const mod = getModule("marketplace");
+export default async function EditMarketplacePage({ params }: { params: { recordId: string } }) {
+  const mod = await getModule("marketplace");
   const record = getMarketplaceRecord(params.recordId);
-  const fields = applyCustomizations("marketplace.edit", marketplaceFormFields);
+  const fields = await applyCustomizations("marketplace.edit", marketplaceFormFields);
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("marketplace")} topbarTitle={`Edit Vendor Listing — ${mod?.label ?? "Marketplace / Vendor Aggregator"}`}>
+    <AppShell navGroups={await buildVendorNavGroups("marketplace")} topbarTitle={`Edit Vendor Listing — ${mod?.label ?? "Marketplace / Vendor Aggregator"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">Edit Vendor Listing</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>

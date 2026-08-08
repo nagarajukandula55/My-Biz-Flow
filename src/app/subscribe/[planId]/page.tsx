@@ -18,7 +18,7 @@ registerPage({
   sourceFile: "src/app/subscribe/[planId]/page.tsx",
 });
 
-export default function SubscribePage({ params }: { params: { planId: string } }) {
+export default async function SubscribePage({ params }: { params: { planId: string } }) {
   const plan = getPlan(params.planId);
 
   if (!plan) {
@@ -33,6 +33,11 @@ export default function SubscribePage({ params }: { params: { planId: string } }
       </div>
     );
   }
+
+  const shownSlugs = plan.includedModuleSlugs.slice(0, 6);
+  const moduleLabels = new Map(
+    await Promise.all(shownSlugs.map(async (slug) => [slug, (await getModule(slug))?.label ?? slug] as const))
+  );
 
   return (
     <div className="mbf-page flex min-h-screen w-full justify-center bg-bg px-6 py-12">
@@ -54,9 +59,9 @@ export default function SubscribePage({ params }: { params: { planId: string } }
             {plan.maxLocations} location{plan.maxLocations === 1 ? "" : "s"}
           </p>
           <div className="mt-3 flex flex-wrap gap-1.5">
-            {plan.includedModuleSlugs.slice(0, 6).map((slug) => (
+            {shownSlugs.map((slug) => (
               <span key={slug} className="rounded-full bg-teal-soft px-2 py-0.5 text-xs font-semibold text-teal">
-                {getModule(slug)?.label ?? slug}
+                {moduleLabels.get(slug) ?? slug}
               </span>
             ))}
             {plan.includedModuleSlugs.length > 6 && (

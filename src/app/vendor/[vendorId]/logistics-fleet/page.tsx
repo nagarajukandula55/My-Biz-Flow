@@ -22,13 +22,13 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/logistics-fleet/page.tsx",
 });
 
-export default function LogisticsFleetPage({ params }: { params: { vendorId: string } }) {
-  const mod = getModule("logistics-fleet");
-  const columns = applyCustomizations("logistics-fleet.list", logisticsFleetColumns);
+export default async function LogisticsFleetPage({ params }: { params: { vendorId: string } }) {
+  const mod = await getModule("logistics-fleet");
+  const columns = await applyCustomizations("logistics-fleet.list", logisticsFleetColumns);
 
   return (
     <AppShell
-      navGroups={buildVendorNavGroups("logistics-fleet")}
+      navGroups={await buildVendorNavGroups("logistics-fleet")}
       topbarTitle={mod?.label ?? "Logistics / Fleet"}
       topbarActions={
         <Link href={`/vendor/${params.vendorId}/logistics-fleet/new`} className="btn-accent">

@@ -24,7 +24,7 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/admin/access-groups/[recordId]/page.tsx",
 });
 
-export default function AccessGroupDetailPage({
+export default async function AccessGroupDetailPage({
   params,
 }: {
   params: { vendorId: string; recordId: string };
@@ -35,7 +35,7 @@ export default function AccessGroupDetailPage({
   const recordLabel = String(record["id"] ?? params.recordId);
 
   return (
-    <AppShell navGroups={buildVendorAdminNavGroups("access-groups")} topbarTitle="Access Groups">
+    <AppShell navGroups={await buildVendorAdminNavGroups("access-groups")} topbarTitle="Access Groups">
       <SuperAdminGate>
         <div>
           <Link

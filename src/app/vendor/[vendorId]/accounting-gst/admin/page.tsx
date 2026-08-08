@@ -19,11 +19,11 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/accounting-gst/admin/page.tsx",
 });
 
-export default function AccountingGstAdminPage() {
-  const mod = getModule("accounting-gst");
+export default async function AccountingGstAdminPage() {
+  const mod = await getModule("accounting-gst");
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("accounting-gst")} topbarTitle={`${mod?.label ?? "Accounting / GST Compliance"} · Admin`}>
+    <AppShell navGroups={await buildVendorNavGroups("accounting-gst")} topbarTitle={`${mod?.label ?? "Accounting / GST Compliance"} · Admin`}>
       <SuperAdminGate>
         <div>
           <h1 className="font-display text-2xl font-bold text-text">

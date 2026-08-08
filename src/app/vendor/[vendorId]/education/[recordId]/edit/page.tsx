@@ -21,13 +21,13 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/education/[recordId]/edit/page.tsx",
 });
 
-export default function EditEducationPage({ params }: { params: { recordId: string } }) {
-  const mod = getModule("education");
+export default async function EditEducationPage({ params }: { params: { recordId: string } }) {
+  const mod = await getModule("education");
   const record = getEducationRecord(params.recordId);
-  const fields = applyCustomizations("education.edit", educationFormFields);
+  const fields = await applyCustomizations("education.edit", educationFormFields);
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("education")} topbarTitle={`Edit Enrollment — ${mod?.label ?? "Education / Coaching"}`}>
+    <AppShell navGroups={await buildVendorNavGroups("education")} topbarTitle={`Edit Enrollment — ${mod?.label ?? "Education / Coaching"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">Edit Enrollment</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>

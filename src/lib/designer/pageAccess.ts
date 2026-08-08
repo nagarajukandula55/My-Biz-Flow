@@ -1,7 +1,9 @@
 /**
- * The "make any page public" toggle store. Same honest JSON-file pattern
- * as every other Designer store: atomic writes, local-dev-only
- * persistence, migrate to a Prisma table later.
+ * The "make any page public" toggle store — backed by the `PageAccess`
+ * Prisma table (see prisma/schema.prisma). Was a JSON-file store; migrated
+ * to Postgres with the same function names/behavior so callers didn't
+ * need to change shape, only add `await` (Prisma I/O is inherently async,
+ * unlike the old synchronous fs reads).
  *
  * IMPORTANT SCOPE NOTE (see DESIGN_SYSTEM.md §9): this is only REAL
  * enforcement for pages currently gated by src/middleware.ts — /admin/*
@@ -13,44 +15,28 @@
  * next to ungated pages rather than implying uniform protection.
  */
 
-import fs from "node:fs";
-import path from "node:path";
+import { prisma } from "@/lib/prisma";
 
-const DATA_FILE = path.join(process.cwd(), "data", "page-access.json");
+export async function isPagePublic(pageId: string): Promise<boolean> {
+  const row = await prisma.pageAccess.findUnique({ where: { pageId } });
+  return row?.isPublic === true;
+}
 
-type Store = Record<string, boolean>; // pageId -> isPublic
-
-function readStore(): Store {
-  try {
-    return JSON.parse(fs.readFileSync(DATA_FILE, "utf-8"));
-  } catch {
-    return {};
+export async function setPagePublic(pageId: string, isPublic: boolean): Promise<void> {
+  if (isPublic) {
+    await prisma.pageAccess.upsert({
+      where: { pageId },
+      create: { pageId, isPublic: true },
+      update: { isPublic: true },
+    });
+  } else {
+    await prisma.pageAccess.delete({ where: { pageId } }).catch(() => {
+      // Already absent — deleting a non-existent row is a no-op, not an error.
+    });
   }
 }
 
-function writeStore(store: Store) {
-  try {
-    fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true });
-    const tmpFile = `${DATA_FILE}.${process.pid}.${Date.now()}.tmp`;
-    fs.writeFileSync(tmpFile, JSON.stringify(store, null, 2) + "\n", "utf-8");
-    fs.renameSync(tmpFile, DATA_FILE);
-  } catch {
-    // Read-only filesystem (Vercel runtime) — documented tradeoff above.
-  }
-}
-
-export function isPagePublic(pageId: string): boolean {
-  return readStore()[pageId] === true;
-}
-
-export function setPagePublic(pageId: string, isPublic: boolean): void {
-  const store = readStore();
-  if (isPublic) store[pageId] = true;
-  else delete store[pageId];
-  writeStore(store);
-}
-
-export function getAllPublicPageIds(): Set<string> {
-  const store = readStore();
-  return new Set(Object.keys(store).filter((id) => store[id]));
+export async function getAllPublicPageIds(): Promise<Set<string>> {
+  const rows = await prisma.pageAccess.findMany({ where: { isPublic: true }, select: { pageId: true } });
+  return new Set(rows.map((r) => r.pageId));
 }

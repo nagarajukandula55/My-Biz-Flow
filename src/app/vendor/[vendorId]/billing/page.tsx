@@ -22,13 +22,13 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/billing/page.tsx",
 });
 
-export default function BillingPage({ params }: { params: { vendorId: string } }) {
-  const mod = getModule("billing");
-  const columns = applyCustomizations("billing.list", billingColumns);
+export default async function BillingPage({ params }: { params: { vendorId: string } }) {
+  const mod = await getModule("billing");
+  const columns = await applyCustomizations("billing.list", billingColumns);
 
   return (
     <AppShell
-      navGroups={buildVendorNavGroups("billing")}
+      navGroups={await buildVendorNavGroups("billing")}
       topbarTitle={mod?.label ?? "Billing"}
       topbarActions={
         <Link href={`/vendor/${params.vendorId}/billing/new`} className="btn-accent">

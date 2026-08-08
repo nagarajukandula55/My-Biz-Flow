@@ -22,13 +22,13 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/wholesale-b2b/page.tsx",
 });
 
-export default function WholesaleB2bPage({ params }: { params: { vendorId: string } }) {
-  const mod = getModule("wholesale-b2b");
-  const columns = applyCustomizations("wholesale-b2b.list", wholesaleB2bColumns);
+export default async function WholesaleB2bPage({ params }: { params: { vendorId: string } }) {
+  const mod = await getModule("wholesale-b2b");
+  const columns = await applyCustomizations("wholesale-b2b.list", wholesaleB2bColumns);
 
   return (
     <AppShell
-      navGroups={buildVendorNavGroups("wholesale-b2b")}
+      navGroups={await buildVendorNavGroups("wholesale-b2b")}
       topbarTitle={mod?.label ?? "Wholesale / Distributor B2B"}
       topbarActions={
         <Link href={`/vendor/${params.vendorId}/wholesale-b2b/new`} className="btn-accent">

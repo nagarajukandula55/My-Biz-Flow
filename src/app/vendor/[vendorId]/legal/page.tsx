@@ -22,13 +22,13 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/legal/page.tsx",
 });
 
-export default function LegalPage({ params }: { params: { vendorId: string } }) {
-  const mod = getModule("legal");
-  const columns = applyCustomizations("legal.list", legalColumns);
+export default async function LegalPage({ params }: { params: { vendorId: string } }) {
+  const mod = await getModule("legal");
+  const columns = await applyCustomizations("legal.list", legalColumns);
 
   return (
     <AppShell
-      navGroups={buildVendorNavGroups("legal")}
+      navGroups={await buildVendorNavGroups("legal")}
       topbarTitle={mod?.label ?? "Legal / Case Management"}
       topbarActions={
         <Link href={`/vendor/${params.vendorId}/legal/new`} className="btn-accent">

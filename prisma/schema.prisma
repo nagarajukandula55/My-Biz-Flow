@@ -1,0 +1,98 @@
+// Prisma schema for My Biz Flow.
+//
+// Each model here is the documented migration target for one of the
+// JSON-file-backed Designer stores under src/lib/designer/ and
+// src/lib/errorLog.ts — see each store's file header for the "migrate to
+// a Prisma table with identical function signatures" note this schema
+// fulfills. Table/column names below intentionally mirror each store's
+// existing JSON shape so the migration is a mechanical fs -> db swap, not
+// a redesign.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Mirrors data/customizations.json — keyed by pageId (src/lib/designer/customizations.ts).
+model PageCustomization {
+  pageId            String   @id
+  fieldOverrides    Json     @default("{}")
+  addedFields       Json     @default("[]")
+  deletedFieldKeys  Json     @default("[]")
+  optionOverrides   Json     @default("{}")
+  updatedAt         DateTime @updatedAt
+
+  @@map("page_customizations")
+}
+
+/// Mirrors data/document-templates.json — keyed by pageId (src/lib/designer/documentTemplates.ts).
+model DocumentTemplate {
+  pageId       String   @id
+  htmlTemplate String   @db.Text
+  updatedAt    DateTime @updatedAt
+
+  @@map("document_templates")
+}
+
+/// Mirrors data/module-appearance.json — keyed by module slug (src/lib/designer/moduleAppearance.ts).
+model ModuleAppearance {
+  slug      String   @id
+  label     String?
+  icon      String?
+  updatedAt DateTime @updatedAt
+
+  @@map("module_appearances")
+}
+
+/// Mirrors data/numbering.json's `main` map — one row per document type (src/lib/designer/numbering.ts).
+model NumberingMainScheme {
+  documentType String @id
+  scheme       Json
+
+  @@map("numbering_main_schemes")
+}
+
+/// Mirrors data/numbering.json's `vendor` map — one row per (vendorId, documentType) override.
+model NumberingVendorScheme {
+  vendorId     String
+  documentType String
+  scheme       Json
+
+  @@id([vendorId, documentType])
+  @@map("numbering_vendor_schemes")
+}
+
+/// Mirrors data/numbering.json's `counters` map — one row per scopeKey ("main:<type>" or "vendor:<id>:<type>").
+model NumberingCounter {
+  scopeKey String @id
+  value    Int
+
+  @@map("numbering_counters")
+}
+
+/// Mirrors data/page-access.json — pageId -> isPublic (src/lib/designer/pageAccess.ts).
+/// Only rows for pages actually marked public are stored (absence = private),
+/// same as the JSON store's "delete key when false" convention.
+model PageAccess {
+  pageId   String  @id
+  isPublic Boolean @default(true)
+
+  @@map("page_access")
+}
+
+/// Mirrors data/error-log.json (src/lib/errorLog.ts).
+model ErrorLogEntry {
+  id        String   @id
+  timestamp DateTime @default(now())
+  message   String   @db.Text
+  stack     String?  @db.Text
+  source    String
+  severity  String
+
+  @@index([timestamp])
+  @@map("error_log_entries")
+}

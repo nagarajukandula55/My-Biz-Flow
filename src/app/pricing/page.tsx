@@ -18,7 +18,11 @@ registerPage({
   sourceFile: "src/app/pricing/page.tsx",
 });
 
-export default function PricingPage() {
+export default async function PricingPage() {
+  const allSlugs = Array.from(new Set(PLANS.flatMap((p) => p.includedModuleSlugs)));
+  const moduleLabels = new Map(
+    await Promise.all(allSlugs.map(async (slug) => [slug, (await getModule(slug))?.label ?? slug] as const))
+  );
   return (
     <div className="mbf-page min-h-screen w-full bg-bg">
       <header className="flex items-center justify-between border-b border-border px-6 py-5">
@@ -74,7 +78,7 @@ export default function PricingPage() {
                 {plan.includedModuleSlugs.map((slug) => (
                   <li key={slug} className="flex items-center gap-2 text-sm text-text">
                     <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-teal" />
-                    {getModule(slug)?.label ?? slug}
+                    {moduleLabels.get(slug) ?? slug}
                   </li>
                 ))}
               </ul>

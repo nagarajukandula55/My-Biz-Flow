@@ -23,19 +23,19 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/accounting-gst/[recordId]/page.tsx",
 });
 
-export default function AccountingGstDetailPage({
+export default async function AccountingGstDetailPage({
   params,
 }: {
   params: { vendorId: string; recordId: string };
 }) {
-  const mod = getModule("accounting-gst");
+  const mod = await getModule("accounting-gst");
   const record = getAccountingGstRecord(params.recordId);
-  const fields = applyCustomizationsToDetailFields("accounting-gst.detail", getAccountingGstDetailFields(record), accountingGstColumns);
+  const fields = await applyCustomizationsToDetailFields("accounting-gst.detail", getAccountingGstDetailFields(record), accountingGstColumns);
   const timeline = getAccountingGstTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("accounting-gst")} topbarTitle={mod?.label ?? "Accounting / GST Compliance"}>
+    <AppShell navGroups={await buildVendorNavGroups("accounting-gst")} topbarTitle={mod?.label ?? "Accounting / GST Compliance"}>
       <div>
         <Link
           href={`/vendor/${params.vendorId}/accounting-gst`}

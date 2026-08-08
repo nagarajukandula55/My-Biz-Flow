@@ -19,11 +19,11 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/pos/admin/page.tsx",
 });
 
-export default function PosAdminPage() {
-  const mod = getModule("pos");
+export default async function PosAdminPage() {
+  const mod = await getModule("pos");
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("pos")} topbarTitle={`${mod?.label ?? "POS"} · Admin`}>
+    <AppShell navGroups={await buildVendorNavGroups("pos")} topbarTitle={`${mod?.label ?? "POS"} · Admin`}>
       <SuperAdminGate>
         <div>
           <h1 className="font-display text-2xl font-bold text-text">

@@ -17,10 +17,10 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/admin/roles/[recordId]/edit/page.tsx",
 });
 
-export default function EditRolePage({ params }: { params: { recordId: string } }) {
+export default async function EditRolePage({ params }: { params: { recordId: string } }) {
   const record = getRoleRecord(params.recordId);
   return (
-    <AppShell navGroups={buildVendorAdminNavGroups("roles")} topbarTitle="Edit Role">
+    <AppShell navGroups={await buildVendorAdminNavGroups("roles")} topbarTitle="Edit Role">
       <SuperAdminGate>
         <div>
           <h1 className="font-display text-2xl font-bold text-text">Edit Role</h1>

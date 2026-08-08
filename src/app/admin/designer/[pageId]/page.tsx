@@ -32,12 +32,15 @@ registerPage({
   sourceFile: "src/app/admin/designer/[pageId]/page.tsx",
 });
 
-export default function PageDetailPage({ params }: { params: { pageId: string } }) {
+export default async function PageDetailPage({ params }: { params: { pageId: string } }) {
   const page = getRegisteredPages().find((p) => p.id === params.pageId);
   if (!page) notFound();
 
   const baseFields = getFieldSchema(page.id);
-  const customization = getPageCustomization(page.id);
+  const customization = await getPageCustomization(page.id);
+  const moduleAppearance = await getModuleAppearance(page.moduleSlug);
+  const documentTemplate = await getDocumentTemplate(page.id);
+  const effectiveScheme = page.kind === "document" ? await getEffectiveScheme(page.id) : undefined;
 
   let source: string | null = null;
   let readError: string | null = null;
@@ -105,8 +108,8 @@ export default function PageDetailPage({ params }: { params: { pageId: string } 
             <ModuleAppearanceEditor
               slug={page.moduleSlug}
               defaultLabel={MODULES.find((m) => m.slug === page.moduleSlug)!.label}
-              initialLabel={getModuleAppearance(page.moduleSlug).label}
-              initialIcon={getModuleAppearance(page.moduleSlug).icon}
+              initialLabel={moduleAppearance.label}
+              initialIcon={moduleAppearance.icon}
             />
           )}
 
@@ -117,10 +120,10 @@ export default function PageDetailPage({ params }: { params: { pageId: string } 
                 { key: "documentNumber", label: "Document Number (from Numbering system)", type: "text" },
                 ...baseFields,
               ]}
-              initialTemplate={getDocumentTemplate(page.id) ?? ""}
+              initialTemplate={documentTemplate ?? ""}
               sampleRecord={{
                 ...(MODULE_DATA[page.moduleSlug]?.rows[0] ?? {}),
-                documentNumber: formatNumber(getEffectiveScheme(page.id), getEffectiveScheme(page.id).sequenceStart),
+                documentNumber: effectiveScheme ? formatNumber(effectiveScheme, effectiveScheme.sequenceStart) : "",
               }}
             />
           )}

@@ -23,19 +23,19 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/restaurant-pos/[recordId]/page.tsx",
 });
 
-export default function RestaurantPosDetailPage({
+export default async function RestaurantPosDetailPage({
   params,
 }: {
   params: { vendorId: string; recordId: string };
 }) {
-  const mod = getModule("restaurant-pos");
+  const mod = await getModule("restaurant-pos");
   const record = getRestaurantPosRecord(params.recordId);
-  const fields = applyCustomizationsToDetailFields("restaurant-pos.detail", getRestaurantPosDetailFields(record), restaurantPosColumns);
+  const fields = await applyCustomizationsToDetailFields("restaurant-pos.detail", getRestaurantPosDetailFields(record), restaurantPosColumns);
   const timeline = getRestaurantPosTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("restaurant-pos")} topbarTitle={mod?.label ?? "Restaurant POS"}>
+    <AppShell navGroups={await buildVendorNavGroups("restaurant-pos")} topbarTitle={mod?.label ?? "Restaurant POS"}>
       <div>
         <Link
           href={`/vendor/${params.vendorId}/restaurant-pos`}

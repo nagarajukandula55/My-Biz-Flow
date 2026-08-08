@@ -21,13 +21,13 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/service-centre/[recordId]/edit/page.tsx",
 });
 
-export default function EditServiceCentrePage({ params }: { params: { recordId: string } }) {
-  const mod = getModule("service-centre");
+export default async function EditServiceCentrePage({ params }: { params: { recordId: string } }) {
+  const mod = await getModule("service-centre");
   const record = getServiceCentreRecord(params.recordId);
-  const fields = applyCustomizations("service-centre.edit", serviceCentreFormFields);
+  const fields = await applyCustomizations("service-centre.edit", serviceCentreFormFields);
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("service-centre")} topbarTitle={`Edit Workorder — ${mod?.label ?? "Service Centre"}`}>
+    <AppShell navGroups={await buildVendorNavGroups("service-centre")} topbarTitle={`Edit Workorder — ${mod?.label ?? "Service Centre"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">Edit Workorder</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>

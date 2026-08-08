@@ -3,16 +3,12 @@
  * recorded here so it's visible to a Super Admin instead of only ever
  * reaching a browser console or a serverless function's ephemeral logs.
  *
- * Same honest JSON-file-store pattern as src/lib/designer/customizations.ts:
- * atomic writes (temp file + rename), works for local dev, does NOT
- * survive Vercel's read-only/ephemeral runtime filesystem — see that
- * file's header for the full explanation, which applies identically here.
- * Migrate to a Prisma `ErrorLog` table with the same function signatures
- * once a database exists; nothing that calls logError() needs to change.
+ * Backed by the `ErrorLogEntry` Prisma table (see prisma/schema.prisma).
+ * Was a JSON-file store; migrated to Postgres with the same function
+ * names/behavior, now async to match Prisma's I/O.
  */
 
-import fs from "node:fs";
-import path from "node:path";
+import { prisma } from "@/lib/prisma";
 
 export type LoggedError = {
   id: string;
@@ -24,29 +20,7 @@ export type LoggedError = {
   severity: "error" | "warning";
 };
 
-const DATA_FILE = path.join(process.cwd(), "data", "error-log.json");
-const MAX_ENTRIES = 200; // bounded so the file can't grow without limit
-
-function readLog(): LoggedError[] {
-  try {
-    const raw = fs.readFileSync(DATA_FILE, "utf-8");
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-function writeLog(entries: LoggedError[]) {
-  try {
-    fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true });
-    const tmpFile = `${DATA_FILE}.${process.pid}.${Date.now()}.tmp`;
-    fs.writeFileSync(tmpFile, JSON.stringify(entries, null, 2) + "\n", "utf-8");
-    fs.renameSync(tmpFile, DATA_FILE);
-  } catch {
-    // Read-only filesystem (Vercel runtime) — documented tradeoff above.
-  }
-}
+const MAX_ENTRIES = 200; // bounded so the table can't grow without limit
 
 /**
  * Call this from any catch block, Server Action failure, or error
@@ -54,28 +28,45 @@ function writeLog(entries: LoggedError[]) {
  * swallowed (a broken logger must never be the thing that crashes a
  * request that was already failing).
  */
-export function logError(input: {
+export async function logError(input: {
   message: string;
   stack?: string;
   source: string;
   severity?: "error" | "warning";
-}): void {
+}): Promise<void> {
   try {
-    const entries = readLog();
-    entries.unshift({
-      id: `err_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-      timestamp: new Date().toISOString(),
-      message: input.message,
-      stack: input.stack,
-      source: input.source,
-      severity: input.severity ?? "error",
+    await prisma.errorLogEntry.create({
+      data: {
+        id: `err_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        message: input.message,
+        stack: input.stack,
+        source: input.source,
+        severity: input.severity ?? "error",
+      },
     });
-    writeLog(entries.slice(0, MAX_ENTRIES));
+
+    const count = await prisma.errorLogEntry.count();
+    if (count > MAX_ENTRIES) {
+      const stale = await prisma.errorLogEntry.findMany({
+        orderBy: { timestamp: "asc" },
+        take: count - MAX_ENTRIES,
+        select: { id: true },
+      });
+      await prisma.errorLogEntry.deleteMany({ where: { id: { in: stale.map((s) => s.id) } } });
+    }
   } catch {
     // Never let logging itself throw.
   }
 }
 
-export function getLoggedErrors(): LoggedError[] {
-  return readLog();
+export async function getLoggedErrors(): Promise<LoggedError[]> {
+  const rows = await prisma.errorLogEntry.findMany({ orderBy: { timestamp: "desc" } });
+  return rows.map((r) => ({
+    id: r.id,
+    timestamp: r.timestamp.toISOString(),
+    message: r.message,
+    stack: r.stack ?? undefined,
+    source: r.source,
+    severity: r.severity as "error" | "warning",
+  }));
 }

@@ -23,19 +23,19 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/service-centre/[recordId]/page.tsx",
 });
 
-export default function ServiceCentreDetailPage({
+export default async function ServiceCentreDetailPage({
   params,
 }: {
   params: { vendorId: string; recordId: string };
 }) {
-  const mod = getModule("service-centre");
+  const mod = await getModule("service-centre");
   const record = getServiceCentreRecord(params.recordId);
-  const fields = applyCustomizationsToDetailFields("service-centre.detail", getServiceCentreDetailFields(record), serviceCentreColumns);
+  const fields = await applyCustomizationsToDetailFields("service-centre.detail", getServiceCentreDetailFields(record), serviceCentreColumns);
   const timeline = getServiceCentreTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("service-centre")} topbarTitle={mod?.label ?? "Service Centre"}>
+    <AppShell navGroups={await buildVendorNavGroups("service-centre")} topbarTitle={mod?.label ?? "Service Centre"}>
       <div>
         <Link
           href={`/vendor/${params.vendorId}/service-centre`}

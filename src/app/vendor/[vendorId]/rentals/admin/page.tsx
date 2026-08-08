@@ -19,11 +19,11 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/rentals/admin/page.tsx",
 });
 
-export default function RentalsAdminPage() {
-  const mod = getModule("rentals");
+export default async function RentalsAdminPage() {
+  const mod = await getModule("rentals");
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("rentals")} topbarTitle={`${mod?.label ?? "Rentals / Booking"} · Admin`}>
+    <AppShell navGroups={await buildVendorNavGroups("rentals")} topbarTitle={`${mod?.label ?? "Rentals / Booking"} · Admin`}>
       <SuperAdminGate>
         <div>
           <h1 className="font-display text-2xl font-bold text-text">

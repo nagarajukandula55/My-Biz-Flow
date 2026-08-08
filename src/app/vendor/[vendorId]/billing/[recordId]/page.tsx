@@ -23,19 +23,19 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/billing/[recordId]/page.tsx",
 });
 
-export default function BillingDetailPage({
+export default async function BillingDetailPage({
   params,
 }: {
   params: { vendorId: string; recordId: string };
 }) {
-  const mod = getModule("billing");
+  const mod = await getModule("billing");
   const record = getBillingRecord(params.recordId);
-  const fields = applyCustomizationsToDetailFields("billing.detail", getBillingDetailFields(record), billingColumns);
+  const fields = await applyCustomizationsToDetailFields("billing.detail", getBillingDetailFields(record), billingColumns);
   const timeline = getBillingTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("billing")} topbarTitle={mod?.label ?? "Billing"}>
+    <AppShell navGroups={await buildVendorNavGroups("billing")} topbarTitle={mod?.label ?? "Billing"}>
       <div>
         <Link
           href={`/vendor/${params.vendorId}/billing`}

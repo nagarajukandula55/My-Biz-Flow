@@ -20,13 +20,13 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/billing/[recordId]/edit/page.tsx",
 });
 
-export default function EditBillingPage({ params }: { params: { recordId: string } }) {
-  const mod = getModule("billing");
+export default async function EditBillingPage({ params }: { params: { recordId: string } }) {
+  const mod = await getModule("billing");
   const record = getBillingRecord(params.recordId);
   const items = billingLineItems[params.recordId] ?? [];
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("billing")} topbarTitle={`Edit Invoice — ${mod?.label ?? "Billing"}`}>
+    <AppShell navGroups={await buildVendorNavGroups("billing")} topbarTitle={`Edit Invoice — ${mod?.label ?? "Billing"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">Edit Invoice</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>

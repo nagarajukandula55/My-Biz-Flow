@@ -21,13 +21,13 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/loyalty-rewards/[recordId]/edit/page.tsx",
 });
 
-export default function EditLoyaltyRewardsPage({ params }: { params: { recordId: string } }) {
-  const mod = getModule("loyalty-rewards");
+export default async function EditLoyaltyRewardsPage({ params }: { params: { recordId: string } }) {
+  const mod = await getModule("loyalty-rewards");
   const record = getLoyaltyRewardsRecord(params.recordId);
-  const fields = applyCustomizations("loyalty-rewards.edit", loyaltyRewardsFormFields);
+  const fields = await applyCustomizations("loyalty-rewards.edit", loyaltyRewardsFormFields);
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("loyalty-rewards")} topbarTitle={`Edit Member — ${mod?.label ?? "Loyalty & Rewards"}`}>
+    <AppShell navGroups={await buildVendorNavGroups("loyalty-rewards")} topbarTitle={`Edit Member — ${mod?.label ?? "Loyalty & Rewards"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">Edit Member</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>

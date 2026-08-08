@@ -23,19 +23,19 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/logistics-fleet/[recordId]/page.tsx",
 });
 
-export default function LogisticsFleetDetailPage({
+export default async function LogisticsFleetDetailPage({
   params,
 }: {
   params: { vendorId: string; recordId: string };
 }) {
-  const mod = getModule("logistics-fleet");
+  const mod = await getModule("logistics-fleet");
   const record = getLogisticsFleetRecord(params.recordId);
-  const fields = applyCustomizationsToDetailFields("logistics-fleet.detail", getLogisticsFleetDetailFields(record), logisticsFleetColumns);
+  const fields = await applyCustomizationsToDetailFields("logistics-fleet.detail", getLogisticsFleetDetailFields(record), logisticsFleetColumns);
   const timeline = getLogisticsFleetTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("logistics-fleet")} topbarTitle={mod?.label ?? "Logistics / Fleet"}>
+    <AppShell navGroups={await buildVendorNavGroups("logistics-fleet")} topbarTitle={mod?.label ?? "Logistics / Fleet"}>
       <div>
         <Link
           href={`/vendor/${params.vendorId}/logistics-fleet`}

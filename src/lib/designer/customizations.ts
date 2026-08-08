@@ -1,30 +1,11 @@
 /**
- * The Designer's live-editing store.
- *
- * IMPORTANT / KNOWN TRADEOFF: there is no database wired up yet (Prisma +
- * Postgres are explicitly "not yet wired up" per CLAUDE.md), so this is a
- * JSON-file-backed store — `data/customizations.json` at the repo root —
- * used as an honest, clearly-flagged stand-in for real persistence.
- *
- * This works for local dev (Next.js Server Actions run on a long-lived
- * Node process, so `fs.writeFileSync` here really does persist across
- * requests on your machine). It does NOT survive a Vercel deploy the way a
- * database would:
- *   - Vercel's filesystem is read-only at runtime outside of `/tmp`, and
- *     even `/tmp` is ephemeral per-invocation/per-cold-start.
- *   - Serverless functions do not share a filesystem across instances, so
- *     a write from one invocation is not guaranteed to be visible to the
- *     next request at all, let alone durably.
- *   - On Vercel this store should be treated as effectively read-only,
- *     seeded from the committed `data/customizations.json` starter file.
- * When Prisma/Postgres is wired up, this whole module should be replaced
- * by a `PageCustomization` table keyed by `pageId`, with the exact same
- * function signatures below so callers (Server Actions, components) don't
- * need to change.
+ * The Designer's live-editing store — backed by the `PageCustomization`
+ * Prisma table (see prisma/schema.prisma). Was a JSON-file store; migrated
+ * to Postgres with the same function names/behavior, now async to match
+ * Prisma's I/O.
  */
 
-import fs from "node:fs";
-import path from "node:path";
+import { prisma } from "@/lib/prisma";
 
 export type FieldOverride = {
   label?: string;
@@ -55,10 +36,6 @@ export type PageCustomization = {
   optionOverrides: Record<string, DropdownOption[]>;
 };
 
-type Store = Record<string, PageCustomization>;
-
-const DATA_FILE = path.join(process.cwd(), "data", "customizations.json");
-
 const EMPTY: PageCustomization = {
   fieldOverrides: {},
   addedFields: [],
@@ -66,78 +43,48 @@ const EMPTY: PageCustomization = {
   optionOverrides: {},
 };
 
-function readStore(): Store {
-  try {
-    const raw = fs.readFileSync(DATA_FILE, "utf-8");
-    return JSON.parse(raw) as Store;
-  } catch {
-    // Missing/unreadable/corrupt file — fall back to an empty store rather
-    // than throwing, so a fresh checkout or a read-only deploy never 500s.
-    return {};
-  }
-}
-
-function writeStore(store: Store) {
-  try {
-    fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true });
-    // Atomic write: write to a temp file in the same directory, then
-    // rename over the real file. A plain writeFileSync to the final path
-    // is not atomic — a concurrent read (or a crash mid-write) can observe
-    // a truncated/partial JSON file. rename() on the same filesystem is
-    // atomic on POSIX, so readers only ever see the old complete file or
-    // the new complete file, never a half-written one.
-    const tmpFile = `${DATA_FILE}.${process.pid}.${Date.now()}.tmp`;
-    fs.writeFileSync(tmpFile, JSON.stringify(store, null, 2) + "\n", "utf-8");
-    fs.renameSync(tmpFile, DATA_FILE);
-  } catch {
-    // Read-only filesystem (e.g. Vercel serverless at runtime) — this is
-    // the explicitly-documented tradeoff above. Swallow rather than crash
-    // the request; the edit simply won't persist in that environment.
-  }
-}
-
-export function getPageCustomization(pageId: string): PageCustomization {
-  const store = readStore();
-  const existing = store[pageId];
-  if (!existing) return { ...EMPTY, fieldOverrides: {}, addedFields: [], deletedFieldKeys: [], optionOverrides: {} };
+export async function getPageCustomization(pageId: string): Promise<PageCustomization> {
+  const row = await prisma.pageCustomization.findUnique({ where: { pageId } });
+  if (!row) return { ...EMPTY };
   return {
-    fieldOverrides: existing.fieldOverrides ?? {},
-    addedFields: existing.addedFields ?? [],
-    deletedFieldKeys: existing.deletedFieldKeys ?? [],
-    optionOverrides: existing.optionOverrides ?? {},
+    fieldOverrides: (row.fieldOverrides as Record<string, FieldOverride>) ?? {},
+    addedFields: (row.addedFields as FieldSpec[]) ?? [],
+    deletedFieldKeys: (row.deletedFieldKeys as string[]) ?? [],
+    optionOverrides: (row.optionOverrides as Record<string, DropdownOption[]>) ?? {},
   };
 }
 
 /**
- * Read-modify-write, not locked — two concurrent edits to the SAME pageId
- * can still race and one can clobber the other (last-write-wins), even
- * though each individual write is now atomic (no half-written file). Real
- * locking is overkill for a stopgap file store; this is an accepted gap,
- * not an oversight — it goes away entirely once this moves to a database
- * transaction.
+ * Read-modify-write inside a single Prisma call isn't possible for JSON
+ * columns, so this reads then upserts — two concurrent edits to the SAME
+ * pageId can still race (last-write-wins), same accepted gap the old
+ * file-store had. Real conflict resolution is overkill for a Designer
+ * live-editing store.
  */
-function updatePage(pageId: string, mutate: (c: PageCustomization) => void) {
-  const store = readStore();
-  const current = store[pageId] ?? { fieldOverrides: {}, addedFields: [], deletedFieldKeys: [], optionOverrides: {} };
+async function updatePage(pageId: string, mutate: (c: PageCustomization) => void): Promise<void> {
+  const current = await getPageCustomization(pageId);
   mutate(current);
-  store[pageId] = current;
-  writeStore(store);
+  await prisma.pageCustomization.upsert({
+    where: { pageId },
+    create: { pageId, ...current },
+    update: { ...current },
+  });
 }
 
-export function setFieldLabel(pageId: string, fieldKey: string, label: string) {
-  updatePage(pageId, (c) => {
+export async function setFieldLabel(pageId: string, fieldKey: string, label: string): Promise<void> {
+  await updatePage(pageId, (c) => {
     c.fieldOverrides[fieldKey] = { ...c.fieldOverrides[fieldKey], label };
   });
 }
 
-export function setFieldHidden(pageId: string, fieldKey: string, hidden: boolean) {
-  updatePage(pageId, (c) => {
+export async function setFieldHidden(pageId: string, fieldKey: string, hidden: boolean): Promise<void> {
+  await updatePage(pageId, (c) => {
     c.fieldOverrides[fieldKey] = { ...c.fieldOverrides[fieldKey], hidden };
   });
 }
 
-export function addField(pageId: string, field: FieldSpec) {
-  updatePage(pageId, (c) => {
+export async function addField(pageId: string, field: FieldSpec): Promise<void> {
+  await updatePage(pageId, (c) => {
     c.addedFields = c.addedFields.filter((f) => f.key !== field.key);
     c.addedFields.push(field);
     c.deletedFieldKeys = c.deletedFieldKeys.filter((k) => k !== field.key);
@@ -151,19 +98,19 @@ export function addField(pageId: string, field: FieldSpec) {
  * a true removal. This function does both depending on which list the key
  * is found in.
  */
-export function deleteField(pageId: string, fieldKey: string, isCustomField: boolean) {
+export async function deleteField(pageId: string, fieldKey: string, isCustomField: boolean): Promise<void> {
   if (isCustomField) {
-    updatePage(pageId, (c) => {
+    await updatePage(pageId, (c) => {
       c.addedFields = c.addedFields.filter((f) => f.key !== fieldKey);
       if (!c.deletedFieldKeys.includes(fieldKey)) c.deletedFieldKeys.push(fieldKey);
     });
   } else {
-    setFieldHidden(pageId, fieldKey, true);
+    await setFieldHidden(pageId, fieldKey, true);
   }
 }
 
-export function setDropdownOptions(pageId: string, fieldKey: string, options: DropdownOption[]) {
-  updatePage(pageId, (c) => {
+export async function setDropdownOptions(pageId: string, fieldKey: string, options: DropdownOption[]): Promise<void> {
+  await updatePage(pageId, (c) => {
     c.optionOverrides[fieldKey] = options;
   });
 }
@@ -175,11 +122,11 @@ export function setDropdownOptions(pageId: string, fieldKey: string, options: Dr
  * has at least { key, label }; options (when present) are overridden too,
  * for select-type fields.
  */
-export function applyCustomizations<T extends { key: string; label: string; options?: string[] }>(
+export async function applyCustomizations<T extends { key: string; label: string; options?: string[] }>(
   pageId: string,
   baseFields: T[]
-): T[] {
-  const c = getPageCustomization(pageId);
+): Promise<T[]> {
+  const c = await getPageCustomization(pageId);
 
   const merged = baseFields
     .filter((f) => !c.fieldOverrides[f.key]?.hidden)
@@ -209,12 +156,12 @@ export function applyCustomizations<T extends { key: string; label: string; opti
  * getXDetailFields()). Custom `addedFields` are appended with a placeholder
  * "—" value since detail views have no live record data source for them.
  */
-export function applyCustomizationsToDetailFields<F extends { label: string }>(
+export async function applyCustomizationsToDetailFields<F extends { label: string }>(
   pageId: string,
   baseFields: F[],
   columns: { key: string; label: string }[]
-): F[] {
-  const c = getPageCustomization(pageId);
+): Promise<F[]> {
+  const c = await getPageCustomization(pageId);
   const labelToKey = new Map(columns.map((col) => [col.label, col.key]));
 
   const merged = baseFields

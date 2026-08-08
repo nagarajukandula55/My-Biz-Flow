@@ -1,14 +1,16 @@
 /**
  * Server-only layer on top of modules.ts's pure data: applies any
- * Super-Admin-set label/icon override (moduleAppearance.ts, fs-backed) to
- * getModule() and buildVendorNavGroups(). Split into its own file because
- * modules.ts is imported by a Client Component (vendor settings' module
- * toggle grid) and must stay free of node:fs — see modules.ts's header
- * and DESIGN_SYSTEM.md §8 for the pattern this follows.
+ * Super-Admin-set label/icon override (moduleAppearance.ts, Prisma-backed)
+ * to getModule() and buildVendorNavGroups(). Split into its own file
+ * because modules.ts is imported by a Client Component (vendor settings'
+ * module toggle grid) and must stay free of server-only imports — see
+ * modules.ts's header and DESIGN_SYSTEM.md §8 for the pattern this
+ * follows.
  *
- * Same function names/signatures as modules.ts's pure versions — Server
+ * Same function names/signatures as modules.ts's pure versions (now
+ * async, since moduleAppearance.ts's Prisma reads are async) — Server
  * Components that want overrides applied just point their import at this
- * file instead of "./modules".
+ * file instead of "./modules" and await the calls.
  */
 
 import {
@@ -20,10 +22,10 @@ import {
 } from "./modules";
 import { getModuleAppearance, getAllModuleAppearances } from "./moduleAppearance";
 
-export function getModule(slug: string): ModuleDefinition | undefined {
+export async function getModule(slug: string): Promise<ModuleDefinition | undefined> {
   const base = MODULES.find((m) => m.slug === slug);
   if (!base) return undefined;
-  const override = getModuleAppearance(slug);
+  const override = await getModuleAppearance(slug);
   return {
     ...base,
     label: override.label || base.label,
@@ -31,7 +33,7 @@ export function getModule(slug: string): ModuleDefinition | undefined {
   };
 }
 
-export function buildVendorNavGroups(activeModuleSlug?: string): VendorNavGroup[] {
+export async function buildVendorNavGroups(activeModuleSlug?: string): Promise<VendorNavGroup[]> {
   const groups: Record<ModuleTaxonomy, ModuleDefinition[]> = {
     brand: [],
     vertical: [],
@@ -39,7 +41,7 @@ export function buildVendorNavGroups(activeModuleSlug?: string): VendorNavGroup[
   };
   for (const m of MODULES) groups[m.taxonomy].push(m);
 
-  const appearances = getAllModuleAppearances();
+  const appearances = await getAllModuleAppearances();
 
   const toItems = (mods: ModuleDefinition[]) =>
     mods.map((m) => {

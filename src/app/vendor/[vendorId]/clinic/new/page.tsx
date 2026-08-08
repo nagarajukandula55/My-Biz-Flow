@@ -21,12 +21,12 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/clinic/new/page.tsx",
 });
 
-export default function NewClinicPage() {
-  const mod = getModule("clinic");
-  const fields = applyCustomizations("clinic.create", clinicFormFields);
+export default async function NewClinicPage() {
+  const mod = await getModule("clinic");
+  const fields = await applyCustomizations("clinic.create", clinicFormFields);
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("clinic")} topbarTitle={`New Appointment — ${mod?.label ?? "Clinic"}`}>
+    <AppShell navGroups={await buildVendorNavGroups("clinic")} topbarTitle={`New Appointment — ${mod?.label ?? "Clinic"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">New Appointment</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new appointment record for Clinic.</p>

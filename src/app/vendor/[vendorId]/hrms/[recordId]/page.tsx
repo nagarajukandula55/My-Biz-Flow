@@ -23,19 +23,19 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/hrms/[recordId]/page.tsx",
 });
 
-export default function HrmsDetailPage({
+export default async function HrmsDetailPage({
   params,
 }: {
   params: { vendorId: string; recordId: string };
 }) {
-  const mod = getModule("hrms");
+  const mod = await getModule("hrms");
   const record = getHrmsRecord(params.recordId);
-  const fields = applyCustomizationsToDetailFields("hrms.detail", getHrmsDetailFields(record), hrmsColumns);
+  const fields = await applyCustomizationsToDetailFields("hrms.detail", getHrmsDetailFields(record), hrmsColumns);
   const timeline = getHrmsTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("hrms")} topbarTitle={mod?.label ?? "HRMS / Payroll"}>
+    <AppShell navGroups={await buildVendorNavGroups("hrms")} topbarTitle={mod?.label ?? "HRMS / Payroll"}>
       <div>
         <Link
           href={`/vendor/${params.vendorId}/hrms`}

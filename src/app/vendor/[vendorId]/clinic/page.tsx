@@ -22,13 +22,13 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/clinic/page.tsx",
 });
 
-export default function ClinicPage({ params }: { params: { vendorId: string } }) {
-  const mod = getModule("clinic");
-  const columns = applyCustomizations("clinic.list", clinicColumns);
+export default async function ClinicPage({ params }: { params: { vendorId: string } }) {
+  const mod = await getModule("clinic");
+  const columns = await applyCustomizations("clinic.list", clinicColumns);
 
   return (
     <AppShell
-      navGroups={buildVendorNavGroups("clinic")}
+      navGroups={await buildVendorNavGroups("clinic")}
       topbarTitle={mod?.label ?? "Clinic"}
       topbarActions={
         <Link href={`/vendor/${params.vendorId}/clinic/new`} className="btn-accent">

@@ -19,11 +19,11 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/event-booking/admin/page.tsx",
 });
 
-export default function EventBookingAdminPage() {
-  const mod = getModule("event-booking");
+export default async function EventBookingAdminPage() {
+  const mod = await getModule("event-booking");
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("event-booking")} topbarTitle={`${mod?.label ?? "Event / Venue Booking"} · Admin`}>
+    <AppShell navGroups={await buildVendorNavGroups("event-booking")} topbarTitle={`${mod?.label ?? "Event / Venue Booking"} · Admin`}>
       <SuperAdminGate>
         <div>
           <h1 className="font-display text-2xl font-bold text-text">

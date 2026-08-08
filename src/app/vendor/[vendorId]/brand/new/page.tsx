@@ -21,12 +21,12 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/brand/new/page.tsx",
 });
 
-export default function NewBrandPage() {
-  const mod = getModule("brand");
-  const fields = applyCustomizations("brand.create", brandFormFields);
+export default async function NewBrandPage() {
+  const mod = await getModule("brand");
+  const fields = await applyCustomizations("brand.create", brandFormFields);
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("brand")} topbarTitle={`New Location — ${mod?.label ?? "Brand"}`}>
+    <AppShell navGroups={await buildVendorNavGroups("brand")} topbarTitle={`New Location — ${mod?.label ?? "Brand"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">New Location</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new location record for Brand.</p>

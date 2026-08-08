@@ -21,13 +21,13 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/restaurant-pos/[recordId]/edit/page.tsx",
 });
 
-export default function EditRestaurantPosPage({ params }: { params: { recordId: string } }) {
-  const mod = getModule("restaurant-pos");
+export default async function EditRestaurantPosPage({ params }: { params: { recordId: string } }) {
+  const mod = await getModule("restaurant-pos");
   const record = getRestaurantPosRecord(params.recordId);
-  const fields = applyCustomizations("restaurant-pos.edit", restaurantPosFormFields);
+  const fields = await applyCustomizations("restaurant-pos.edit", restaurantPosFormFields);
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("restaurant-pos")} topbarTitle={`Edit Order — ${mod?.label ?? "Restaurant POS"}`}>
+    <AppShell navGroups={await buildVendorNavGroups("restaurant-pos")} topbarTitle={`Edit Order — ${mod?.label ?? "Restaurant POS"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">Edit Order</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>

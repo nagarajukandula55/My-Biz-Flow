@@ -21,12 +21,12 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/education/new/page.tsx",
 });
 
-export default function NewEducationPage() {
-  const mod = getModule("education");
-  const fields = applyCustomizations("education.create", educationFormFields);
+export default async function NewEducationPage() {
+  const mod = await getModule("education");
+  const fields = await applyCustomizations("education.create", educationFormFields);
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("education")} topbarTitle={`New Enrollment — ${mod?.label ?? "Education / Coaching"}`}>
+    <AppShell navGroups={await buildVendorNavGroups("education")} topbarTitle={`New Enrollment — ${mod?.label ?? "Education / Coaching"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">New Enrollment</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new enrollment record for Education / Coaching.</p>

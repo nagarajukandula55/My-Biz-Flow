@@ -21,12 +21,12 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/wholesale-b2b/new/page.tsx",
 });
 
-export default function NewWholesaleB2bPage() {
-  const mod = getModule("wholesale-b2b");
-  const fields = applyCustomizations("wholesale-b2b.create", wholesaleB2bFormFields);
+export default async function NewWholesaleB2bPage() {
+  const mod = await getModule("wholesale-b2b");
+  const fields = await applyCustomizations("wholesale-b2b.create", wholesaleB2bFormFields);
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("wholesale-b2b")} topbarTitle={`New Order — ${mod?.label ?? "Wholesale / Distributor B2B"}`}>
+    <AppShell navGroups={await buildVendorNavGroups("wholesale-b2b")} topbarTitle={`New Order — ${mod?.label ?? "Wholesale / Distributor B2B"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">New Order</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new order record for Wholesale / Distributor B2B.</p>

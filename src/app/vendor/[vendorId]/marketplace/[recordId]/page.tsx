@@ -23,19 +23,19 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/marketplace/[recordId]/page.tsx",
 });
 
-export default function MarketplaceDetailPage({
+export default async function MarketplaceDetailPage({
   params,
 }: {
   params: { vendorId: string; recordId: string };
 }) {
-  const mod = getModule("marketplace");
+  const mod = await getModule("marketplace");
   const record = getMarketplaceRecord(params.recordId);
-  const fields = applyCustomizationsToDetailFields("marketplace.detail", getMarketplaceDetailFields(record), marketplaceColumns);
+  const fields = await applyCustomizationsToDetailFields("marketplace.detail", getMarketplaceDetailFields(record), marketplaceColumns);
   const timeline = getMarketplaceTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("marketplace")} topbarTitle={mod?.label ?? "Marketplace / Vendor Aggregator"}>
+    <AppShell navGroups={await buildVendorNavGroups("marketplace")} topbarTitle={mod?.label ?? "Marketplace / Vendor Aggregator"}>
       <div>
         <Link
           href={`/vendor/${params.vendorId}/marketplace`}

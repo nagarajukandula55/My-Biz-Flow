@@ -21,13 +21,13 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/rentals/[recordId]/edit/page.tsx",
 });
 
-export default function EditRentalsPage({ params }: { params: { recordId: string } }) {
-  const mod = getModule("rentals");
+export default async function EditRentalsPage({ params }: { params: { recordId: string } }) {
+  const mod = await getModule("rentals");
   const record = getRentalsRecord(params.recordId);
-  const fields = applyCustomizations("rentals.edit", rentalsFormFields);
+  const fields = await applyCustomizations("rentals.edit", rentalsFormFields);
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("rentals")} topbarTitle={`Edit Booking — ${mod?.label ?? "Rentals / Booking"}`}>
+    <AppShell navGroups={await buildVendorNavGroups("rentals")} topbarTitle={`Edit Booking — ${mod?.label ?? "Rentals / Booking"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">Edit Booking</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>

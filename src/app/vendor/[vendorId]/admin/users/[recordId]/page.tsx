@@ -19,7 +19,7 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/admin/users/[recordId]/page.tsx",
 });
 
-export default function UserDetailPage({
+export default async function UserDetailPage({
   params,
 }: {
   params: { vendorId: string; recordId: string };
@@ -30,7 +30,7 @@ export default function UserDetailPage({
   const recordLabel = String(record["id"] ?? params.recordId);
 
   return (
-    <AppShell navGroups={buildVendorAdminNavGroups("users")} topbarTitle="Users">
+    <AppShell navGroups={await buildVendorAdminNavGroups("users")} topbarTitle="Users">
       <SuperAdminGate>
         <div>
           <Link href={`/vendor/${params.vendorId}/admin/users`} className="text-sm font-semibold text-teal hover:underline">

@@ -19,11 +19,11 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/subscriptions/admin/page.tsx",
 });
 
-export default function SubscriptionsAdminPage() {
-  const mod = getModule("subscriptions");
+export default async function SubscriptionsAdminPage() {
+  const mod = await getModule("subscriptions");
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("subscriptions")} topbarTitle={`${mod?.label ?? "Subscriptions / Membership"} · Admin`}>
+    <AppShell navGroups={await buildVendorNavGroups("subscriptions")} topbarTitle={`${mod?.label ?? "Subscriptions / Membership"} · Admin`}>
       <SuperAdminGate>
         <div>
           <h1 className="font-display text-2xl font-bold text-text">

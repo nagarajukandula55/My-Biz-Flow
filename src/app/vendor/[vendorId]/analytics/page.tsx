@@ -40,7 +40,7 @@ const SCOPED_CHARTS: ScopedChart[] = [
   { id: "status-breakdown", moduleSlug: "service-centre" },
 ];
 
-export default function AnalyticsPage({ params }: { params: { vendorId: string } }) {
+export default async function AnalyticsPage({ params }: { params: { vendorId: string } }) {
   const enabledModules = getDemoEnabledModules(params.vendorId);
   const viewerRole = getDemoViewerRole();
   const accessibleModules = getAccessibleModuleSlugs(viewerRole);
@@ -49,14 +49,14 @@ export default function AnalyticsPage({ params }: { params: { vendorId: string }
   const showRevenueTrend = visibleScopedCharts.some((c) => c.id === "revenue-trend");
   const showStatusBreakdown = visibleScopedCharts.some((c) => c.id === "status-breakdown");
 
-  const barData = getRecordsByModuleBarData(
+  const barData = await getRecordsByModuleBarData(
     enabledModules.filter((slug) => accessibleModules.includes(slug))
   );
 
   const totalRevenue = revenueTrend.reduce((sum, p) => sum + p.y, 0);
 
   return (
-    <AppShell navGroups={buildVendorAdminNavGroups("analytics")} topbarTitle="Analytics">
+    <AppShell navGroups={await buildVendorAdminNavGroups("analytics")} topbarTitle="Analytics">
       <div>
         <h1 className="font-display text-2xl font-bold text-text">Analytics</h1>
         <p className="mt-1 max-w-[65ch] text-sm text-text-muted">

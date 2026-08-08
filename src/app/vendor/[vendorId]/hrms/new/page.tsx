@@ -21,12 +21,12 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/hrms/new/page.tsx",
 });
 
-export default function NewHrmsPage() {
-  const mod = getModule("hrms");
-  const fields = applyCustomizations("hrms.create", hrmsFormFields);
+export default async function NewHrmsPage() {
+  const mod = await getModule("hrms");
+  const fields = await applyCustomizations("hrms.create", hrmsFormFields);
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("hrms")} topbarTitle={`New Employee — ${mod?.label ?? "HRMS / Payroll"}`}>
+    <AppShell navGroups={await buildVendorNavGroups("hrms")} topbarTitle={`New Employee — ${mod?.label ?? "HRMS / Payroll"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">New Employee</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new employee record for HRMS / Payroll.</p>

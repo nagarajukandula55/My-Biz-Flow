@@ -18,10 +18,10 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/admin/users/page.tsx",
 });
 
-export default function UsersPage({ params }: { params: { vendorId: string } }) {
+export default async function UsersPage({ params }: { params: { vendorId: string } }) {
   return (
     <AppShell
-      navGroups={buildVendorAdminNavGroups("users")}
+      navGroups={await buildVendorAdminNavGroups("users")}
       topbarTitle="Users"
       topbarActions={
         <Link href={`/vendor/${params.vendorId}/admin/users/new`} className="btn-accent">

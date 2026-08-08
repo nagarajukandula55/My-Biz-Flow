@@ -23,19 +23,19 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/manufacturing/[recordId]/page.tsx",
 });
 
-export default function ManufacturingDetailPage({
+export default async function ManufacturingDetailPage({
   params,
 }: {
   params: { vendorId: string; recordId: string };
 }) {
-  const mod = getModule("manufacturing");
+  const mod = await getModule("manufacturing");
   const record = getManufacturingRecord(params.recordId);
-  const fields = applyCustomizationsToDetailFields("manufacturing.detail", getManufacturingDetailFields(record), manufacturingColumns);
+  const fields = await applyCustomizationsToDetailFields("manufacturing.detail", getManufacturingDetailFields(record), manufacturingColumns);
   const timeline = getManufacturingTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("manufacturing")} topbarTitle={mod?.label ?? "Manufacturing / Production"}>
+    <AppShell navGroups={await buildVendorNavGroups("manufacturing")} topbarTitle={mod?.label ?? "Manufacturing / Production"}>
       <div>
         <Link
           href={`/vendor/${params.vendorId}/manufacturing`}

@@ -7,5 +7,5 @@ import { logError } from "@/lib/errorLog";
  * touch the filesystem directly) into the server-side error log.
  */
 export async function reportClientError(input: { message: string; stack?: string; source: string }) {
-  logError({ ...input, severity: "error" });
+  await logError({ ...input, severity: "error" });
 }

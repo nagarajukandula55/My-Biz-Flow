@@ -21,12 +21,12 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/rentals/new/page.tsx",
 });
 
-export default function NewRentalsPage() {
-  const mod = getModule("rentals");
-  const fields = applyCustomizations("rentals.create", rentalsFormFields);
+export default async function NewRentalsPage() {
+  const mod = await getModule("rentals");
+  const fields = await applyCustomizations("rentals.create", rentalsFormFields);
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("rentals")} topbarTitle={`New Booking — ${mod?.label ?? "Rentals / Booking"}`}>
+    <AppShell navGroups={await buildVendorNavGroups("rentals")} topbarTitle={`New Booking — ${mod?.label ?? "Rentals / Booking"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">New Booking</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new booking record for Rentals / Booking.</p>

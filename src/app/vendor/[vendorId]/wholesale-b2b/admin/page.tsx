@@ -19,11 +19,11 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/wholesale-b2b/admin/page.tsx",
 });
 
-export default function WholesaleB2bAdminPage() {
-  const mod = getModule("wholesale-b2b");
+export default async function WholesaleB2bAdminPage() {
+  const mod = await getModule("wholesale-b2b");
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("wholesale-b2b")} topbarTitle={`${mod?.label ?? "Wholesale / Distributor B2B"} · Admin`}>
+    <AppShell navGroups={await buildVendorNavGroups("wholesale-b2b")} topbarTitle={`${mod?.label ?? "Wholesale / Distributor B2B"} · Admin`}>
       <SuperAdminGate>
         <div>
           <h1 className="font-display text-2xl font-bold text-text">

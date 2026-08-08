@@ -21,12 +21,12 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/inventory/new/page.tsx",
 });
 
-export default function NewInventoryPage() {
-  const mod = getModule("inventory");
-  const fields = applyCustomizations("inventory.create", inventoryFormFields);
+export default async function NewInventoryPage() {
+  const mod = await getModule("inventory");
+  const fields = await applyCustomizations("inventory.create", inventoryFormFields);
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("inventory")} topbarTitle={`New Stock Item — ${mod?.label ?? "Inventory / Warehouse"}`}>
+    <AppShell navGroups={await buildVendorNavGroups("inventory")} topbarTitle={`New Stock Item — ${mod?.label ?? "Inventory / Warehouse"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">New Stock Item</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new stock item record for Inventory / Warehouse.</p>

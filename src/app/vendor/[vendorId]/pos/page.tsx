@@ -22,13 +22,13 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/pos/page.tsx",
 });
 
-export default function PosPage({ params }: { params: { vendorId: string } }) {
-  const mod = getModule("pos");
-  const columns = applyCustomizations("pos.list", posColumns);
+export default async function PosPage({ params }: { params: { vendorId: string } }) {
+  const mod = await getModule("pos");
+  const columns = await applyCustomizations("pos.list", posColumns);
 
   return (
     <AppShell
-      navGroups={buildVendorNavGroups("pos")}
+      navGroups={await buildVendorNavGroups("pos")}
       topbarTitle={mod?.label ?? "POS"}
       topbarActions={
         <Link href={`/vendor/${params.vendorId}/pos/new`} className="btn-accent">

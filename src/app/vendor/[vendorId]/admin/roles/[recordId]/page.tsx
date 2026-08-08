@@ -19,7 +19,7 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/admin/roles/[recordId]/page.tsx",
 });
 
-export default function RoleDetailPage({
+export default async function RoleDetailPage({
   params,
 }: {
   params: { vendorId: string; recordId: string };
@@ -30,7 +30,7 @@ export default function RoleDetailPage({
   const recordLabel = String(record["id"] ?? params.recordId);
 
   return (
-    <AppShell navGroups={buildVendorAdminNavGroups("roles")} topbarTitle="Roles">
+    <AppShell navGroups={await buildVendorAdminNavGroups("roles")} topbarTitle="Roles">
       <SuperAdminGate>
         <div>
           <Link href={`/vendor/${params.vendorId}/admin/roles`} className="text-sm font-semibold text-teal hover:underline">

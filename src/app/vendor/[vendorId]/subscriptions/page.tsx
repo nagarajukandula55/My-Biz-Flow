@@ -22,13 +22,13 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/subscriptions/page.tsx",
 });
 
-export default function SubscriptionsPage({ params }: { params: { vendorId: string } }) {
-  const mod = getModule("subscriptions");
-  const columns = applyCustomizations("subscriptions.list", subscriptionsColumns);
+export default async function SubscriptionsPage({ params }: { params: { vendorId: string } }) {
+  const mod = await getModule("subscriptions");
+  const columns = await applyCustomizations("subscriptions.list", subscriptionsColumns);
 
   return (
     <AppShell
-      navGroups={buildVendorNavGroups("subscriptions")}
+      navGroups={await buildVendorNavGroups("subscriptions")}
       topbarTitle={mod?.label ?? "Subscriptions / Membership"}
       topbarActions={
         <Link href={`/vendor/${params.vendorId}/subscriptions/new`} className="btn-accent">

@@ -19,11 +19,11 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/inventory/admin/page.tsx",
 });
 
-export default function InventoryAdminPage() {
-  const mod = getModule("inventory");
+export default async function InventoryAdminPage() {
+  const mod = await getModule("inventory");
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("inventory")} topbarTitle={`${mod?.label ?? "Inventory"} · Admin`}>
+    <AppShell navGroups={await buildVendorNavGroups("inventory")} topbarTitle={`${mod?.label ?? "Inventory"} · Admin`}>
       <SuperAdminGate>
         <div>
           <h1 className="font-display text-2xl font-bold text-text">

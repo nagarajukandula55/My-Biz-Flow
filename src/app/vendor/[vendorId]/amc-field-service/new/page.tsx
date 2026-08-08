@@ -21,12 +21,12 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/amc-field-service/new/page.tsx",
 });
 
-export default function NewAmcFieldServicePage() {
-  const mod = getModule("amc-field-service");
-  const fields = applyCustomizations("amc-field-service.create", amcFieldServiceFormFields);
+export default async function NewAmcFieldServicePage() {
+  const mod = await getModule("amc-field-service");
+  const fields = await applyCustomizations("amc-field-service.create", amcFieldServiceFormFields);
 
   return (
-    <AppShell navGroups={buildVendorNavGroups("amc-field-service")} topbarTitle={`New Contract — ${mod?.label ?? "AMC / Field Service"}`}>
+    <AppShell navGroups={await buildVendorNavGroups("amc-field-service")} topbarTitle={`New Contract — ${mod?.label ?? "AMC / Field Service"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">New Contract</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new contract record for AMC / Field Service.</p>
