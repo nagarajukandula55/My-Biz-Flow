@@ -5,9 +5,11 @@ import { formatCurrencyINR } from "@/lib/format";
 
 const EMPTY_ITEM: LineItem = { description: "", quantity: 1, unit: "pcs", unitPrice: 0, taxRate: 18 };
 
-export function computeTotals(items: LineItem[]) {
+export function computeTotals(items: LineItem[], showTax = true) {
   const subtotal = items.reduce((sum, it) => sum + it.quantity * it.unitPrice, 0);
-  const taxTotal = items.reduce((sum, it) => sum + it.quantity * it.unitPrice * (it.taxRate / 100), 0);
+  const taxTotal = showTax
+    ? items.reduce((sum, it) => sum + it.quantity * it.unitPrice * (it.taxRate / 100), 0)
+    : 0;
   return { subtotal, taxTotal, grandTotal: subtotal + taxTotal };
 }
 
@@ -21,9 +23,14 @@ export function computeTotals(items: LineItem[]) {
 export function LineItemsEditor({
   items,
   onChange,
+  showTax = true,
 }: {
   items: LineItem[];
   onChange: (items: LineItem[]) => void;
+  /** Non-GST invoices don't carry a tax rate per line item — hides the
+   * Tax % column and the Tax row in the totals summary, and excludes tax
+   * from the computed line/grand totals. */
+  showTax?: boolean;
 }) {
   function updateItem(idx: number, patch: Partial<LineItem>) {
     onChange(items.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
@@ -37,7 +44,7 @@ export function LineItemsEditor({
     onChange([...items, { ...EMPTY_ITEM }]);
   }
 
-  const { subtotal, taxTotal, grandTotal } = computeTotals(items);
+  const { subtotal, taxTotal, grandTotal } = computeTotals(items, showTax);
 
   return (
     <div>
@@ -49,14 +56,14 @@ export function LineItemsEditor({
               <th className="w-20 px-3 py-2.5 text-right">Qty</th>
               <th className="w-24 px-3 py-2.5">Unit</th>
               <th className="w-32 px-3 py-2.5 text-right">Unit Price</th>
-              <th className="w-24 px-3 py-2.5 text-right">Tax %</th>
+              {showTax && <th className="w-24 px-3 py-2.5 text-right">Tax %</th>}
               <th className="w-32 px-3 py-2.5 text-right">Line Total</th>
               <th className="w-10 px-2 py-2.5" />
             </tr>
           </thead>
           <tbody>
             {items.map((item, i) => {
-              const lineTotal = item.quantity * item.unitPrice * (1 + item.taxRate / 100);
+              const lineTotal = item.quantity * item.unitPrice * (1 + (showTax ? item.taxRate : 0) / 100);
               return (
                 <tr key={i} className="border-b border-border last:border-b-0">
                   <td className="px-3 py-2">
@@ -92,16 +99,18 @@ export function LineItemsEditor({
                       className="w-full rounded-md border border-border bg-bg px-2.5 py-1.5 text-right text-sm text-text tabular-nums outline-none focus:border-accent"
                     />
                   </td>
-                  <td className="px-3 py-2">
-                    <input
-                      type="number"
-                      min={0}
-                      max={100}
-                      value={item.taxRate}
-                      onChange={(e) => updateItem(i, { taxRate: Number(e.target.value) || 0 })}
-                      className="w-full rounded-md border border-border bg-bg px-2.5 py-1.5 text-right text-sm text-text tabular-nums outline-none focus:border-accent"
-                    />
-                  </td>
+                  {showTax && (
+                    <td className="px-3 py-2">
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={item.taxRate}
+                        onChange={(e) => updateItem(i, { taxRate: Number(e.target.value) || 0 })}
+                        className="w-full rounded-md border border-border bg-bg px-2.5 py-1.5 text-right text-sm text-text tabular-nums outline-none focus:border-accent"
+                      />
+                    </td>
+                  )}
                   <td className="px-3 py-2 text-right font-mono text-sm font-semibold tabular-nums text-text">
                     {formatCurrencyINR(lineTotal)}
                   </td>
@@ -134,10 +143,12 @@ export function LineItemsEditor({
             <span>Subtotal</span>
             <span className="font-mono tabular-nums">{formatCurrencyINR(subtotal)}</span>
           </div>
-          <div className="mt-1.5 flex justify-between text-text-muted">
-            <span>Tax</span>
-            <span className="font-mono tabular-nums">{formatCurrencyINR(taxTotal)}</span>
-          </div>
+          {showTax && (
+            <div className="mt-1.5 flex justify-between text-text-muted">
+              <span>Tax</span>
+              <span className="font-mono tabular-nums">{formatCurrencyINR(taxTotal)}</span>
+            </div>
+          )}
           <div className="mt-2 flex justify-between border-t border-border pt-2 text-base font-bold text-text">
             <span>Total</span>
             <span className="font-mono tabular-nums">{formatCurrencyINR(grandTotal)}</span>

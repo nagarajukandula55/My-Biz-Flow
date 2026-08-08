@@ -4,8 +4,12 @@ import { useState } from "react";
 import { LineItemsEditor, computeTotals } from "./LineItemsEditor";
 import type { LineItem } from "@/lib/sample-data/billing";
 
+export type InvoiceType = "GST" | "Non-GST";
+
 export type BillingInvoiceValues = {
   customer: string;
+  invoiceType: InvoiceType;
+  customerGstin: string;
   issueDate: string;
   dueDate: string;
   paymentStatus: string;
@@ -29,6 +33,8 @@ export function BillingInvoiceForm({
   submitLabel: string;
 }) {
   const [customer, setCustomer] = useState(initialValues?.customer ?? "");
+  const [invoiceType, setInvoiceType] = useState<InvoiceType>(initialValues?.invoiceType ?? "GST");
+  const [customerGstin, setCustomerGstin] = useState(initialValues?.customerGstin ?? "");
   const [issueDate, setIssueDate] = useState(initialValues?.issueDate ?? "");
   const [dueDate, setDueDate] = useState(initialValues?.dueDate ?? "");
   const [paymentStatus, setPaymentStatus] = useState(initialValues?.paymentStatus ?? "Draft");
@@ -36,11 +42,31 @@ export function BillingInvoiceForm({
   const [items, setItems] = useState<LineItem[]>(initialValues?.items ?? [{ ...DEFAULT_ITEM }]);
   const [saved, setSaved] = useState(false);
 
-  const totals = computeTotals(items);
+  const showTax = invoiceType === "GST";
+  const totals = computeTotals(items, showTax);
+
+  function handleInvoiceTypeChange(next: InvoiceType) {
+    setInvoiceType(next);
+    // A Non-GST invoice never carries a tax rate — zero out any items
+    // that were entered while GST was selected, rather than just hiding
+    // a nonzero rate from the UI.
+    if (next === "Non-GST") {
+      setItems((prev) => prev.map((it) => ({ ...it, taxRate: 0 })));
+    }
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const values: BillingInvoiceValues = { customer, issueDate, dueDate, paymentStatus, paymentMode, items };
+    const values: BillingInvoiceValues = {
+      customer,
+      invoiceType,
+      customerGstin,
+      issueDate,
+      dueDate,
+      paymentStatus,
+      paymentMode,
+      items,
+    };
     // eslint-disable-next-line no-console
     console.log("BillingInvoiceForm submit (demo, no backend):", values, totals);
     setSaved(true);
@@ -48,6 +74,21 @@ export function BillingInvoiceForm({
 
   return (
     <form onSubmit={handleSubmit} className="max-w-4xl">
+      <div className="mb-5 flex gap-2 rounded-md border border-border bg-bg-raised p-1">
+        {(["GST", "Non-GST"] as const).map((type) => (
+          <button
+            key={type}
+            type="button"
+            onClick={() => handleInvoiceTypeChange(type)}
+            className={`flex-1 rounded px-3 py-1.5 text-sm font-semibold transition-colors ${
+              invoiceType === type ? "bg-accent text-white" : "text-text-muted hover:text-text"
+            }`}
+          >
+            {type} Invoice
+          </button>
+        ))}
+      </div>
+
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         <Field label="Customer" required>
           <input
@@ -58,6 +99,16 @@ export function BillingInvoiceForm({
             className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text outline-none focus:border-teal"
           />
         </Field>
+        {invoiceType === "GST" && (
+          <Field label="Customer GSTIN">
+            <input
+              value={customerGstin}
+              onChange={(e) => setCustomerGstin(e.target.value)}
+              placeholder="22AAAAA0000A1Z5"
+              className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text font-mono outline-none focus:border-teal"
+            />
+          </Field>
+        )}
         <Field label="Payment Status" required>
           <select
             value={paymentStatus}
@@ -108,7 +159,7 @@ export function BillingInvoiceForm({
         <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted">
           Line Items
         </div>
-        <LineItemsEditor items={items} onChange={setItems} />
+        <LineItemsEditor items={items} onChange={setItems} showTax={showTax} />
       </div>
 
       <div className="mt-6 flex items-center gap-3">

@@ -24,6 +24,7 @@ export default async function EditBillingPage({ params }: { params: { vendorId: 
   const mod = await getModule("billing");
   const record = getBillingRecord(params.recordId);
   const items = billingLineItems[params.recordId] ?? [];
+  const invoiceType = items.some((it) => it.taxRate > 0) ? "GST" : "Non-GST";
 
   return (
     <AppShell topbarTitle={`Edit Invoice — ${mod?.label ?? "Billing"}`}>
@@ -34,6 +35,7 @@ export default async function EditBillingPage({ params }: { params: { vendorId: 
           <BillingInvoiceForm
             initialValues={{
               customer: String(record["customer"] ?? ""),
+              invoiceType,
               issueDate: String(record["issueDate"] ?? ""),
               dueDate: String(record["dueDate"] ?? ""),
               paymentStatus: String(record["paymentStatus"] ?? "Draft"),
