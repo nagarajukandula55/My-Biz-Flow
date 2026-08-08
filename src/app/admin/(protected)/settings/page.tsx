@@ -4,6 +4,7 @@ import { PageAccessToggle } from "@/components/PageAccessToggle";
 import { getRegisteredPages, registerPage } from "@/lib/designer/registry";
 import "@/lib/designer/registerAll";
 import { getAllPublicPageIds } from "@/lib/designer/pageAccess";
+import { ResetDemoDataButton } from "./ResetDemoDataButton";
 
 // Reads live DB-backed page-access toggles — must not be baked into a
 // static build; every request should see the current state.
@@ -62,6 +63,19 @@ export default async function PlatformSettingsPage() {
                 </li>
               ))}
             </ul>
+          </div>
+
+          <div className="mt-8 rounded-lg border border-danger bg-danger-soft p-5">
+            <h2 className="font-display text-base font-bold text-text">Danger Zone</h2>
+            <p className="mt-1 max-w-[70ch] text-sm text-text-muted">
+              For the live demo: wipe every Designer customization, document template, module appearance
+              override, numbering scheme, page-access toggle, and error log back to defaults. Business
+              records (workorders, invoices, inventory, etc.) aren&apos;t persisted yet — they reset on every
+              deploy already — so this currently covers everything that does persist.
+            </p>
+            <div className="mt-4">
+              <ResetDemoDataButton />
+            </div>
           </div>
         </div>
       </div>
