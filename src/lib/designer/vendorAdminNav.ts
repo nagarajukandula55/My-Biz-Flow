@@ -7,15 +7,23 @@ import { buildVendorNavGroups, type VendorNavGroup } from "./modules";
  * ahead of the regular module groups built from MODULES.
  */
 export function buildVendorAdminNavGroups(activeKey?: string): VendorNavGroup[] {
+  const commonGroup: VendorNavGroup = {
+    title: "Common",
+    items: [
+      { key: "dashboard", label: "Dashboard", dot: "neutral", active: activeKey === "dashboard" },
+      { key: "analytics", label: "Analytics", dot: "neutral", active: activeKey === "analytics" },
+    ],
+  };
   const vendorAdminGroup: VendorNavGroup = {
     title: "Vendor Admin",
     items: [
       { key: "settings", label: "Settings", dot: "amber", active: activeKey === "settings" },
+      { key: "numbering", label: "Numbering", dot: "amber", active: activeKey === "numbering" },
       { key: "billing", label: "Subscription", dot: "amber", active: activeKey === "billing" },
       { key: "users", label: "Users", dot: "amber", active: activeKey === "users" },
       { key: "roles", label: "Roles", dot: "amber", active: activeKey === "roles" },
       { key: "access-groups", label: "Access Groups", dot: "amber", active: activeKey === "access-groups" },
     ],
   };
-  return [vendorAdminGroup, ...buildVendorNavGroups()];
+  return [commonGroup, vendorAdminGroup, ...buildVendorNavGroups()];
 }

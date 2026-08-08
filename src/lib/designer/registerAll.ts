@@ -153,3 +153,6 @@ import "@/app/vendor/[vendorId]/service-centre/[recordId]/document/page";
 import "@/app/vendor/[vendorId]/pos/[recordId]/document/page";
 import "@/app/vendor/[vendorId]/amc-field-service/[recordId]/document/page";
 import "@/app/vendor/[vendorId]/legal/[recordId]/document/page";
+
+import "@/app/admin/numbering/page";
+import "@/app/vendor/[vendorId]/settings/numbering/page";

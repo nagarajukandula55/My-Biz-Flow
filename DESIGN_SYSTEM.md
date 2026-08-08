@@ -255,6 +255,29 @@ template is authored from the Designer's `[pageId]` page via
 `DesignerDocumentEditor` (placeholder picker + live preview against a real
 sample record).
 
+### Document numbering — Main + per-Vendor
+
+`src/lib/designer/numbering.ts` (store) + `numberingFormat.ts` (pure
+formatting logic, split out for the same Client-Component/`node:fs`
+reason as `renderTemplate.ts`). Two tiers: the Super Admin's **Main**
+scheme per document type (`/admin/numbering`) is the platform default;
+any Vendor can override it for itself (`/vendor/[vendorId]/settings/numbering`)
+and a document type with no override just inherits Main. A scheme is
+`prefix + separator + financial-year-token + sequence + suffix`:
+- **Separator**: hyphen, slash, dot, or **`none`** — "no separator" is a
+  first-class option, not an omission.
+- **Financial year**: Indian FY (April–March), formats `YY-YY` (24-25),
+  `YYYY-YY` (2024-25), `YYYYYY` (2425), or `none`.
+- **Sequence**: zero-padded to a configurable width, configurable start.
+
+`getNextNumber()` is a real, working counter — every call reads the
+current persisted sequence for that scope (Main or a specific Vendor) and
+document type, increments it, and returns the new formatted number; two
+calls in a row return two different numbers. This is exposed as a "Fetch
+next live number" button in `NumberingSchemeEditor`, not just a static
+preview — the preview shown while editing (`formatNumber` at
+`sequenceStart`) is separate and does not consume the counter.
+
 ### Buttons
 
 `.btn-accent` (brand/primary action, `--accent` background with

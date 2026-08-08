@@ -1,6 +1,7 @@
 import { AppShell } from "@/components/AppShell";
 import { DashboardWidget } from "@/components/DashboardWidget";
-import { buildVendorNavGroups, getModule, getDemoEnabledModules } from "@/lib/designer/modules";
+import { getModule, getDemoEnabledModules } from "@/lib/designer/modules";
+import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { computeModuleStat } from "@/lib/moduleData";
 import { formatCurrencyINR } from "@/lib/format";
 import { registerPage } from "@/lib/designer/registry";
@@ -25,7 +26,7 @@ export default function VendorDashboardPage({ params }: { params: { vendorId: st
   const enabledSlugs = getDemoEnabledModules(params.vendorId);
 
   return (
-    <AppShell navGroups={buildVendorNavGroups()} topbarTitle="Dashboard">
+    <AppShell navGroups={buildVendorAdminNavGroups("dashboard")} topbarTitle="Dashboard">
       <div className="p-6">
         <h1 className="font-display text-2xl font-bold text-text">Dashboard</h1>
         <p className="mt-1 max-w-[65ch] text-sm text-text-muted">

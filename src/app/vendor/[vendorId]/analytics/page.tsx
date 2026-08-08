@@ -2,7 +2,8 @@ import { AppShell } from "@/components/AppShell";
 import { DashboardWidget } from "@/components/DashboardWidget";
 import { DataTable } from "@/components/DataTable";
 import { LineChartCard, BarChartCard, PieChartCard } from "@/components/charts";
-import { buildVendorNavGroups, getDemoEnabledModules } from "@/lib/designer/modules";
+import { getDemoEnabledModules } from "@/lib/designer/modules";
+import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { formatCurrencyINR } from "@/lib/format";
 import {
   revenueTrend,
@@ -55,7 +56,7 @@ export default function AnalyticsPage({ params }: { params: { vendorId: string }
   const totalRevenue = revenueTrend.reduce((sum, p) => sum + p.y, 0);
 
   return (
-    <AppShell navGroups={buildVendorNavGroups()} topbarTitle="Analytics">
+    <AppShell navGroups={buildVendorAdminNavGroups("analytics")} topbarTitle="Analytics">
       <div className="p-6">
         <h1 className="font-display text-2xl font-bold text-text">Analytics</h1>
         <p className="mt-1 max-w-[65ch] text-sm text-text-muted">
