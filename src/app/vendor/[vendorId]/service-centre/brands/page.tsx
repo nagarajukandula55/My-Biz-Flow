@@ -4,6 +4,7 @@ import { ScBrandClientTable } from "./ScBrandClientTable";
 import { ScBrandNewButton } from "./ScBrandNewButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { scBrandColumns } from "@/lib/sample-data/service-centre-brands";
+import { listBusinessRecords } from "@/lib/businessRecords";
 
 registerPage({
   id: "service-centre.brands.list",
@@ -20,14 +21,17 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/service-centre/brands/page.tsx",
 });
 
+export const dynamic = "force-dynamic";
+
 export default async function ScBrandListPage({ params }: { params: { vendorId: string } }) {
   const columns = await applyCustomizations("service-centre.brands.list", scBrandColumns);
+  const rows = await listBusinessRecords(params.vendorId, "service-centre-brands");
 
   return (
-    <AppShell topbarTitle="Device Brands" topbarActions={<ScBrandNewButton />}>
+    <AppShell topbarTitle="Device Brands" topbarActions={<ScBrandNewButton vendorId={params.vendorId} />}>
       <div>
         <div className="mt-2">
-          <ScBrandClientTable vendorId={params.vendorId} columns={columns} />
+          <ScBrandClientTable vendorId={params.vendorId} columns={columns} rows={rows} />
         </div>
       </div>
     </AppShell>

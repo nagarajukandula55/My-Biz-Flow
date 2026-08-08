@@ -1,6 +1,9 @@
 import { DocumentView } from "@/components/DocumentView";
-import { billingColumns, billingRows, billingLineItems, getBillingRecord } from "@/lib/sample-data/billing";
+import { billingColumns } from "@/lib/sample-data/billing";
+import type { LineItem } from "@/lib/sample-data/billing";
 import { registerPage } from "@/lib/designer/registry";
+import { notFound } from "next/navigation";
+import { getBusinessRecord, getBusinessRecordSequenceIndex } from "@/lib/businessRecords";
 
 registerPage({
   id: "billing.document",
@@ -13,17 +16,18 @@ registerPage({
     { key: "document-template", label: "Invoice HTML template (placeholders)" },
   ],
   explanation:
-    "Renders a Billing record as a real printable invoice — letterhead + fields as a document, not a re-skinned table — with a browser print-to-PDF button. If a Super Admin has designed a custom template in the Designer (src/lib/designer/documentTemplates.ts), it renders that with {{fieldKey}} placeholders substituted; otherwise falls back to a default layout generated from billingColumns.",
+    "Renders a Billing record as a real printable invoice — letterhead + fields as a document, not a re-skinned table — with a browser print-to-PDF button. If a Super Admin has designed a custom template in the Designer (src/lib/designer/documentTemplates.ts), it renders that with {{fieldKey}} placeholders substituted; otherwise falls back to a default layout generated from billingColumns. Real data — Prisma-backed (BusinessRecord table).",
   sourceFile: "src/app/vendor/[vendorId]/billing/[recordId]/document/page.tsx",
 });
 
-export default function BillingDocumentPage({
+export default async function BillingDocumentPage({
   params,
 }: {
   params: { vendorId: string; recordId: string };
 }) {
-  const record = getBillingRecord(params.recordId);
-  const sequenceIndex = billingRows.findIndex((r) => String(r["id"]) === params.recordId);
+  const record = await getBusinessRecord(params.vendorId, "billing", params.recordId);
+  if (!record) notFound();
+  const sequenceIndex = await getBusinessRecordSequenceIndex(params.vendorId, "billing", params.recordId);
   return (
     <DocumentView
       pageId="billing.document"
@@ -33,8 +37,8 @@ export default function BillingDocumentPage({
       vendorId={params.vendorId}
       record={record}
       columns={billingColumns}
-      sequenceIndex={sequenceIndex >= 0 ? sequenceIndex : 0}
-      lineItems={billingLineItems[params.recordId]}
+      sequenceIndex={sequenceIndex}
+      lineItems={record["items"] as LineItem[] | undefined}
     />
   );
 }

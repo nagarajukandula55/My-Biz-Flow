@@ -1,8 +1,11 @@
 import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
+import { notFound } from "next/navigation";
 import { BillingInvoiceForm } from "@/components/BillingInvoiceForm";
-import { getBillingRecord, billingLineItems } from "@/lib/sample-data/billing";
+import type { LineItem } from "@/lib/sample-data/billing";
+import { getBusinessRecord } from "@/lib/businessRecords";
+import { updateBusinessRecordAction } from "@/lib/businessRecordActions";
 
 registerPage({
   id: "billing.edit",
@@ -16,14 +19,15 @@ registerPage({
     { key: "validation-rules", label: "Validation rules" },
     { key: "default-values", label: "Default values" },
   ],
-  explanation: "The same BillingInvoiceForm pre-populated with an existing invoice's customer/date fields and line items, letting a user edit and save changes (demo stub, no persistence yet).",
+  explanation: "The same BillingInvoiceForm pre-populated with an existing invoice's real customer/date fields and line items, letting a user edit and save changes. Real persistence — writes to the BusinessRecord table.",
   sourceFile: "src/app/vendor/[vendorId]/billing/[recordId]/edit/page.tsx",
 });
 
 export default async function EditBillingPage({ params }: { params: { vendorId: string; recordId: string } }) {
   const mod = await getModule("billing");
-  const record = getBillingRecord(params.recordId);
-  const items = billingLineItems[params.recordId] ?? [];
+  const record = await getBusinessRecord(params.vendorId, "billing", params.recordId);
+  if (!record) notFound();
+  const items = (record["items"] as LineItem[] | undefined) ?? [];
   const invoiceType = items.some((it) => it.taxRate > 0) ? "GST" : "Non-GST";
 
   return (
@@ -43,6 +47,7 @@ export default async function EditBillingPage({ params }: { params: { vendorId: 
               items,
             }}
             submitLabel="Save changes"
+            action={updateBusinessRecordAction.bind(null, params.vendorId, "billing", params.recordId)}
           />
         </div>
       </div>

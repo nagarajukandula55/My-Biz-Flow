@@ -2,10 +2,10 @@ import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { RecordDetail } from "@/components/RecordDetail";
-import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
+import { DeleteBusinessRecordButton } from "@/components/DeleteBusinessRecordButton";
 import {
-  getServiceCentreRecord,
   getServiceCentreDetailFields,
   getServiceCentreTimeline,
   serviceCentreRelated,
@@ -13,6 +13,7 @@ import {
   getWorkorderLifecycle,
 } from "@/lib/sample-data/service-centre";
 import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
+import { getBusinessRecord } from "@/lib/businessRecords";
 import { WorkorderLifecycle } from "./WorkorderLifecycle";
 
 registerPage({
@@ -31,13 +32,16 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/service-centre/[recordId]/page.tsx",
 });
 
+export const dynamic = "force-dynamic";
+
 export default async function ServiceCentreDetailPage({
   params,
 }: {
   params: { vendorId: string; recordId: string };
 }) {
   const mod = await getModule("service-centre");
-  const record = getServiceCentreRecord(params.recordId);
+  const record = await getBusinessRecord(params.vendorId, "service-centre", params.recordId);
+  if (!record) notFound();
   const fields = await applyCustomizationsToDetailFields("service-centre.detail", getServiceCentreDetailFields(record), serviceCentreColumns);
   const timeline = getServiceCentreTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
@@ -83,7 +87,12 @@ export default async function ServiceCentreDetailPage({
                 >
                   Edit
                 </Link>
-                <ConfirmDeleteDialog recordLabel={recordLabel} />
+                <DeleteBusinessRecordButton
+                  vendorId={params.vendorId}
+                  moduleSlug="service-centre"
+                  recordKey={params.recordId}
+                  recordLabel={recordLabel}
+                />
               </div>
             </div>
           }

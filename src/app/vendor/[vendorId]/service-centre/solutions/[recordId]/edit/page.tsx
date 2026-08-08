@@ -1,8 +1,11 @@
 import { AppShell } from "@/components/AppShell";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
-import { solutionsFormFields, getSolutionRecord } from "@/lib/sample-data/solutions";
+import { solutionsFormFields } from "@/lib/sample-data/solutions";
 import { applyCustomizations } from "@/lib/designer/customizations";
+import { notFound } from "next/navigation";
+import { getBusinessRecord } from "@/lib/businessRecords";
+import { updateBusinessRecordAction } from "@/lib/businessRecordActions";
 
 registerPage({
   id: "service-centre.solutions.edit",
@@ -21,7 +24,8 @@ registerPage({
 });
 
 export default async function EditSolutionPage({ params }: { params: { vendorId: string; recordId: string } }) {
-  const record = getSolutionRecord(params.recordId);
+  const record = await getBusinessRecord(params.vendorId, "service-centre-solutions", params.recordId);
+  if (!record) notFound();
   const fields = await applyCustomizations("service-centre.solutions.edit", solutionsFormFields);
 
   return (
@@ -30,7 +34,12 @@ export default async function EditSolutionPage({ params }: { params: { vendorId:
         <h1 className="font-display text-xl font-bold text-text">Edit Solution</h1>
         <p className="mt-1 text-xs text-text-muted">{String(record["title"])}</p>
         <div className="mt-6">
-          <RecordForm fields={fields} initialValues={record} submitLabel="Save changes" />
+          <RecordForm
+            fields={fields}
+            initialValues={record}
+            submitLabel="Save changes"
+            action={updateBusinessRecordAction.bind(null, params.vendorId, "service-centre-solutions", params.recordId)}
+          />
         </div>
       </div>
     </AppShell>

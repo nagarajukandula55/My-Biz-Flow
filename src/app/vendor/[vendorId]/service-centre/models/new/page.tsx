@@ -3,6 +3,7 @@ import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { scModelFormFields } from "@/lib/sample-data/service-centre-models";
 import { applyCustomizations } from "@/lib/designer/customizations";
+import { createBusinessRecordAction } from "@/lib/businessRecordActions";
 
 registerPage({
   id: "service-centre.models.create",
@@ -20,7 +21,7 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/service-centre/models/new/page.tsx",
 });
 
-export default async function NewScModelPage() {
+export default async function NewScModelPage({ params }: { params: { vendorId: string } }) {
   const fields = await applyCustomizations("service-centre.models.create", scModelFormFields);
 
   return (
@@ -29,7 +30,11 @@ export default async function NewScModelPage() {
         <h1 className="font-display text-xl font-bold text-text">New Model</h1>
         <p className="mt-1 text-xs text-text-muted">Create a new model entry.</p>
         <div className="mt-6">
-          <RecordForm fields={fields} submitLabel="Create Model" />
+          <RecordForm
+            fields={fields}
+            submitLabel="Create Model"
+            action={createBusinessRecordAction.bind(null, params.vendorId, "service-centre-models")}
+          />
         </div>
       </div>
     </AppShell>

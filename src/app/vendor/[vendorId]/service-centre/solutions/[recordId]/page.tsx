@@ -1,15 +1,16 @@
 import { AppShell } from "@/components/AppShell";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { RecordDetail } from "@/components/RecordDetail";
 import {
-  getSolutionRecord,
   getSolutionDetailFields,
   getSolutionTimeline,
   solutionsRelated,
   solutionsColumns,
 } from "@/lib/sample-data/solutions";
 import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
+import { getBusinessRecord } from "@/lib/businessRecords";
 
 registerPage({
   id: "service-centre.solutions.detail",
@@ -26,12 +27,15 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/service-centre/solutions/[recordId]/page.tsx",
 });
 
+export const dynamic = "force-dynamic";
+
 export default async function SolutionDetailPage({
   params,
 }: {
   params: { vendorId: string; recordId: string };
 }) {
-  const record = getSolutionRecord(params.recordId);
+  const record = await getBusinessRecord(params.vendorId, "service-centre-solutions", params.recordId);
+  if (!record) notFound();
   const fields = await applyCustomizationsToDetailFields(
     "service-centre.solutions.detail",
     getSolutionDetailFields(record),

@@ -1,9 +1,10 @@
 "use client";
 
 import { RecordFormModal, useRecordFormModal } from "@/components/RecordFormModal";
+import { createBusinessRecordAction } from "@/lib/businessRecordActions";
 import { scBrandFormFields } from "@/lib/sample-data/service-centre-brands";
 
-export function ScBrandNewButton() {
+export function ScBrandNewButton({ vendorId }: { vendorId: string }) {
   const { open, openModal, closeModal } = useRecordFormModal();
   return (
     <>
@@ -16,6 +17,7 @@ export function ScBrandNewButton() {
         title="New Brand"
         fields={scBrandFormFields}
         submitLabel="Create Brand"
+        action={createBusinessRecordAction.bind(null, vendorId, "service-centre-brands")}
       />
     </>
   );

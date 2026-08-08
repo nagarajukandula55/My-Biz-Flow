@@ -5,6 +5,7 @@ import { ServiceCentreClientTable } from "./ServiceCentreClientTable";
 import { ServiceCentreNewButton } from "./ServiceCentreNewButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { serviceCentreColumns } from "@/lib/sample-data/service-centre";
+import { listBusinessRecords } from "@/lib/businessRecords";
 
 registerPage({
   id: "service-centre.list",
@@ -22,21 +23,24 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/service-centre/page.tsx",
 });
 
+export const dynamic = "force-dynamic";
+
 export default async function ServiceCentrePage({ params }: { params: { vendorId: string } }) {
   const mod = await getModule("service-centre");
   const columns = await applyCustomizations("service-centre.list", serviceCentreColumns);
+  const rows = await listBusinessRecords(params.vendorId, "service-centre");
 
   return (
     <AppShell
       topbarTitle={mod?.label ?? "Service Centre"}
       topbarActions={
-        <ServiceCentreNewButton />
+        <ServiceCentreNewButton vendorId={params.vendorId} />
       }
     >
       <div>
         <p className="text-sm text-text-muted">{mod?.description}</p>
         <div className="mt-6">
-          <ServiceCentreClientTable vendorId={params.vendorId} columns={columns} />
+          <ServiceCentreClientTable vendorId={params.vendorId} columns={columns} rows={rows} />
         </div>
       </div>
     </AppShell>

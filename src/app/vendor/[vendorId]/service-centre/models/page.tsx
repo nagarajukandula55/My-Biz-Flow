@@ -4,6 +4,7 @@ import { ScModelClientTable } from "./ScModelClientTable";
 import { ScModelNewButton } from "./ScModelNewButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { scModelColumns } from "@/lib/sample-data/service-centre-models";
+import { listBusinessRecords } from "@/lib/businessRecords";
 
 registerPage({
   id: "service-centre.models.list",
@@ -20,14 +21,17 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/service-centre/models/page.tsx",
 });
 
+export const dynamic = "force-dynamic";
+
 export default async function ScModelListPage({ params }: { params: { vendorId: string } }) {
   const columns = await applyCustomizations("service-centre.models.list", scModelColumns);
+  const rows = await listBusinessRecords(params.vendorId, "service-centre-models");
 
   return (
-    <AppShell topbarTitle="Device Models" topbarActions={<ScModelNewButton />}>
+    <AppShell topbarTitle="Device Models" topbarActions={<ScModelNewButton vendorId={params.vendorId} />}>
       <div>
         <div className="mt-2">
-          <ScModelClientTable vendorId={params.vendorId} columns={columns} />
+          <ScModelClientTable vendorId={params.vendorId} columns={columns} rows={rows} />
         </div>
       </div>
     </AppShell>

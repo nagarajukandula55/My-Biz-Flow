@@ -5,6 +5,7 @@ import Link from "next/link";
 import { BillingClientTable } from "./BillingClientTable";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { billingColumns } from "@/lib/sample-data/billing";
+import { listBusinessRecords } from "@/lib/businessRecords";
 
 registerPage({
   id: "billing.list",
@@ -22,9 +23,12 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/billing/page.tsx",
 });
 
+export const dynamic = "force-dynamic";
+
 export default async function BillingPage({ params }: { params: { vendorId: string } }) {
   const mod = await getModule("billing");
   const columns = await applyCustomizations("billing.list", billingColumns);
+  const rows = await listBusinessRecords(params.vendorId, "billing");
 
   return (
     <AppShell
@@ -38,7 +42,7 @@ export default async function BillingPage({ params }: { params: { vendorId: stri
       <div>
         <p className="text-sm text-text-muted">{mod?.description}</p>
         <div className="mt-6">
-          <BillingClientTable vendorId={params.vendorId} columns={columns} />
+          <BillingClientTable vendorId={params.vendorId} columns={columns} rows={rows} />
         </div>
       </div>
     </AppShell>

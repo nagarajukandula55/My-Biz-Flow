@@ -4,6 +4,7 @@ import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { serviceCentreFormFields } from "@/lib/sample-data/service-centre";
 import { applyCustomizations } from "@/lib/designer/customizations";
+import { createBusinessRecordAction } from "@/lib/businessRecordActions";
 
 registerPage({
   id: "service-centre.create",
@@ -31,7 +32,11 @@ export default async function NewServiceCentrePage({ params }: { params: { vendo
         <h1 className="font-display text-2xl font-bold text-text">New Workorder</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new workorder record for Service Centre.</p>
         <div className="mt-6">
-          <RecordForm fields={fields} submitLabel="Create Workorder" />
+          <RecordForm
+            fields={fields}
+            submitLabel="Create Workorder"
+            action={createBusinessRecordAction.bind(null, params.vendorId, "service-centre")}
+          />
         </div>
       </div>
     </AppShell>

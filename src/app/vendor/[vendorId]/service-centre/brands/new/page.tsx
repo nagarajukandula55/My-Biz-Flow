@@ -3,6 +3,7 @@ import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { scBrandFormFields } from "@/lib/sample-data/service-centre-brands";
 import { applyCustomizations } from "@/lib/designer/customizations";
+import { createBusinessRecordAction } from "@/lib/businessRecordActions";
 
 registerPage({
   id: "service-centre.brands.create",
@@ -20,7 +21,7 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/service-centre/brands/new/page.tsx",
 });
 
-export default async function NewScBrandPage() {
+export default async function NewScBrandPage({ params }: { params: { vendorId: string } }) {
   const fields = await applyCustomizations("service-centre.brands.create", scBrandFormFields);
 
   return (
@@ -29,7 +30,11 @@ export default async function NewScBrandPage() {
         <h1 className="font-display text-xl font-bold text-text">New Brand</h1>
         <p className="mt-1 text-xs text-text-muted">Create a new brand entry.</p>
         <div className="mt-6">
-          <RecordForm fields={fields} submitLabel="Create Brand" />
+          <RecordForm
+            fields={fields}
+            submitLabel="Create Brand"
+            action={createBusinessRecordAction.bind(null, params.vendorId, "service-centre-brands")}
+          />
         </div>
       </div>
     </AppShell>

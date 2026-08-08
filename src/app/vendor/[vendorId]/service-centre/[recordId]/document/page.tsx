@@ -1,6 +1,8 @@
 import { DocumentView } from "@/components/DocumentView";
-import { serviceCentreColumns, serviceCentreRows, getServiceCentreRecord } from "@/lib/sample-data/service-centre";
+import { serviceCentreColumns } from "@/lib/sample-data/service-centre";
 import { registerPage } from "@/lib/designer/registry";
+import { notFound } from "next/navigation";
+import { getBusinessRecord, getBusinessRecordSequenceIndex } from "@/lib/businessRecords";
 
 registerPage({
   id: "service-centre.document",
@@ -13,17 +15,18 @@ registerPage({
     { key: "document-template", label: "Job Card HTML template (placeholders)" },
   ],
   explanation:
-    "Renders a Service Centre workorder as a printable job card — handed to a customer as proof of intake/handover. Same template-or-default rendering as every other document page; see billing.document for the full mechanism.",
+    "Renders a Service Centre workorder as a printable job card — handed to a customer as proof of intake/handover. Same template-or-default rendering as every other document page; see billing.document for the full mechanism. Real data — Prisma-backed (BusinessRecord table).",
   sourceFile: "src/app/vendor/[vendorId]/service-centre/[recordId]/document/page.tsx",
 });
 
-export default function ServiceCentreDocumentPage({
+export default async function ServiceCentreDocumentPage({
   params,
 }: {
   params: { vendorId: string; recordId: string };
 }) {
-  const record = getServiceCentreRecord(params.recordId);
-  const sequenceIndex = serviceCentreRows.findIndex((r) => String(r["id"]) === params.recordId);
+  const record = await getBusinessRecord(params.vendorId, "service-centre", params.recordId);
+  if (!record) notFound();
+  const sequenceIndex = await getBusinessRecordSequenceIndex(params.vendorId, "service-centre", params.recordId);
   return (
     <DocumentView
       pageId="service-centre.document"
@@ -33,7 +36,7 @@ export default function ServiceCentreDocumentPage({
       vendorId={params.vendorId}
       record={record}
       columns={serviceCentreColumns}
-      sequenceIndex={sequenceIndex >= 0 ? sequenceIndex : 0}
+      sequenceIndex={sequenceIndex}
     />
   );
 }

@@ -1,9 +1,10 @@
-import { getServiceCentreRecord, getWorkorderInvoiceLineItems } from "@/lib/sample-data/service-centre";
+import { getWorkorderInvoiceLineItems } from "@/lib/sample-data/service-centre";
 import { getEffectiveScheme } from "@/lib/designer/numbering";
 import { formatNumber } from "@/lib/designer/numberingFormat";
-import { serviceCentreRows } from "@/lib/sample-data/service-centre";
 import { registerPage } from "@/lib/designer/registry";
+import { notFound } from "next/navigation";
 import { getDocumentTemplate } from "@/lib/designer/documentTemplates";
+import { getBusinessRecord, getBusinessRecordSequenceIndex } from "@/lib/businessRecords";
 import { ServiceCentreInvoiceDocument } from "./ServiceCentreInvoiceDocument";
 
 registerPage({
@@ -24,10 +25,11 @@ export default async function ServiceCentreInvoicePage({
 }: {
   params: { vendorId: string; recordId: string };
 }) {
-  const record = getServiceCentreRecord(params.recordId);
-  const sequenceIndex = serviceCentreRows.findIndex((r) => String(r["id"]) === params.recordId);
+  const record = await getBusinessRecord(params.vendorId, "service-centre", params.recordId);
+  if (!record) notFound();
+  const sequenceIndex = await getBusinessRecordSequenceIndex(params.vendorId, "service-centre", params.recordId);
   const scheme = await getEffectiveScheme("service-centre.invoice", params.vendorId);
-  const invoiceNumber = formatNumber(scheme, scheme.sequenceStart + (sequenceIndex >= 0 ? sequenceIndex : 0));
+  const invoiceNumber = formatNumber(scheme, scheme.sequenceStart + sequenceIndex);
   const lines = getWorkorderInvoiceLineItems(params.recordId);
   const customTemplate = await getDocumentTemplate("service-centre.invoice");
 

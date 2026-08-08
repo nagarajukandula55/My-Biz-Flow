@@ -2,10 +2,14 @@ import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { RecordDetail } from "@/components/RecordDetail";
-import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
-import { getBillingRecord, getBillingDetailFields, getBillingTimeline, billingRelated, billingColumns } from "@/lib/sample-data/billing";
+import { DeleteBusinessRecordButton } from "@/components/DeleteBusinessRecordButton";
+import { getBillingDetailFields, getBillingTimeline, billingRelated, billingColumns } from "@/lib/sample-data/billing";
 import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
+import { getBusinessRecord } from "@/lib/businessRecords";
+
+export const dynamic = "force-dynamic";
 
 registerPage({
   id: "billing.detail",
@@ -19,7 +23,7 @@ registerPage({
     { key: "timeline", label: "Activity timeline" },
     { key: "related-records", label: "Related records rail" },
   ],
-  explanation: "Read-only detail view of a single invoice, rendered via the shared RecordDetail component (field grid + activity timeline), with Edit and Delete actions in the header.",
+  explanation: "Read-only detail view of a single invoice, rendered via the shared RecordDetail component (field grid + activity timeline), with Edit and Delete actions in the header. Real data — Prisma-backed (BusinessRecord table).",
   sourceFile: "src/app/vendor/[vendorId]/billing/[recordId]/page.tsx",
 });
 
@@ -29,7 +33,8 @@ export default async function BillingDetailPage({
   params: { vendorId: string; recordId: string };
 }) {
   const mod = await getModule("billing");
-  const record = getBillingRecord(params.recordId);
+  const record = await getBusinessRecord(params.vendorId, "billing", params.recordId);
+  if (!record) notFound();
   const fields = await applyCustomizationsToDetailFields("billing.detail", getBillingDetailFields(record), billingColumns);
   const timeline = getBillingTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
@@ -64,7 +69,12 @@ export default async function BillingDetailPage({
                 >
                   Edit
                 </Link>
-                <ConfirmDeleteDialog recordLabel={recordLabel} />
+                <DeleteBusinessRecordButton
+                  vendorId={params.vendorId}
+                  moduleSlug="billing"
+                  recordKey={params.recordId}
+                  recordLabel={recordLabel}
+                />
               </div>
             </div>
           }

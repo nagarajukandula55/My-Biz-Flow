@@ -1,15 +1,16 @@
 import { AppShell } from "@/components/AppShell";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { RecordDetail } from "@/components/RecordDetail";
 import {
-  getScBrandRecord,
   getScBrandDetailFields,
   getScBrandTimeline,
   scBrandRelated,
   scBrandColumns,
 } from "@/lib/sample-data/service-centre-brands";
 import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
+import { getBusinessRecord } from "@/lib/businessRecords";
 
 registerPage({
   id: "service-centre.brands.detail",
@@ -26,12 +27,15 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/service-centre/brands/[recordId]/page.tsx",
 });
 
+export const dynamic = "force-dynamic";
+
 export default async function ScBrandDetailPage({
   params,
 }: {
   params: { vendorId: string; recordId: string };
 }) {
-  const record = getScBrandRecord(params.recordId);
+  const record = await getBusinessRecord(params.vendorId, "service-centre-brands", params.recordId);
+  if (!record) notFound();
   const fields = await applyCustomizationsToDetailFields(
     "service-centre.brands.detail",
     getScBrandDetailFields(record),

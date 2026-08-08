@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { LineItemsEditor, computeTotals } from "./LineItemsEditor";
 import type { LineItem } from "@/lib/sample-data/billing";
 
@@ -28,9 +28,12 @@ const DEFAULT_ITEM: LineItem = { description: "", quantity: 1, unit: "pcs", unit
 export function BillingInvoiceForm({
   initialValues,
   submitLabel,
+  action,
 }: {
   initialValues?: Partial<BillingInvoiceValues>;
   submitLabel: string;
+  /** Real persistence path — a bound server action receiving the full record (including computed totals). Omit for the demo-stub path. */
+  action?: (values: Record<string, unknown>) => Promise<void>;
 }) {
   const [customer, setCustomer] = useState(initialValues?.customer ?? "");
   const [invoiceType, setInvoiceType] = useState<InvoiceType>(initialValues?.invoiceType ?? "GST");
@@ -41,6 +44,7 @@ export function BillingInvoiceForm({
   const [paymentMode, setPaymentMode] = useState(initialValues?.paymentMode ?? "Bank Transfer");
   const [items, setItems] = useState<LineItem[]>(initialValues?.items ?? [{ ...DEFAULT_ITEM }]);
   const [saved, setSaved] = useState(false);
+  const [pending, startTransition] = useTransition();
 
   const showTax = invoiceType === "GST";
   const totals = computeTotals(items, showTax);
@@ -67,6 +71,18 @@ export function BillingInvoiceForm({
       paymentMode,
       items,
     };
+    if (action) {
+      startTransition(async () => {
+        await action({
+          ...values,
+          lineItemsSummary: items.map((it) => it.description).filter(Boolean).join("; "),
+          subtotal: totals.subtotal,
+          taxAmount: totals.taxTotal,
+          totalAmount: totals.grandTotal,
+        });
+      });
+      return;
+    }
     // eslint-disable-next-line no-console
     console.log("BillingInvoiceForm submit (demo, no backend):", values, totals);
     setSaved(true);
@@ -163,10 +179,10 @@ export function BillingInvoiceForm({
       </div>
 
       <div className="mt-6 flex items-center gap-3">
-        <button type="submit" className="btn-accent">
-          {submitLabel}
+        <button type="submit" className="btn-accent" disabled={pending}>
+          {pending ? "Saving…" : submitLabel}
         </button>
-        {saved && (
+        {saved && !action && (
           <span className="text-sm font-semibold text-success">Saved (demo — no backend yet)</span>
         )}
       </div>

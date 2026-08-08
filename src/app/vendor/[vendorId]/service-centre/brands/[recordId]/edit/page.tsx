@@ -1,8 +1,11 @@
 import { AppShell } from "@/components/AppShell";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
-import { scBrandFormFields, getScBrandRecord } from "@/lib/sample-data/service-centre-brands";
+import { scBrandFormFields } from "@/lib/sample-data/service-centre-brands";
 import { applyCustomizations } from "@/lib/designer/customizations";
+import { notFound } from "next/navigation";
+import { getBusinessRecord } from "@/lib/businessRecords";
+import { updateBusinessRecordAction } from "@/lib/businessRecordActions";
 
 registerPage({
   id: "service-centre.brands.edit",
@@ -21,7 +24,8 @@ registerPage({
 });
 
 export default async function EditScBrandPage({ params }: { params: { vendorId: string; recordId: string } }) {
-  const record = getScBrandRecord(params.recordId);
+  const record = await getBusinessRecord(params.vendorId, "service-centre-brands", params.recordId);
+  if (!record) notFound();
   const fields = await applyCustomizations("service-centre.brands.edit", scBrandFormFields);
 
   return (
@@ -30,7 +34,12 @@ export default async function EditScBrandPage({ params }: { params: { vendorId: 
         <h1 className="font-display text-xl font-bold text-text">Edit Brand</h1>
         <p className="mt-1 text-xs text-text-muted">{String(record["name"])}</p>
         <div className="mt-6">
-          <RecordForm fields={fields} initialValues={record} submitLabel="Save changes" />
+          <RecordForm
+            fields={fields}
+            initialValues={record}
+            submitLabel="Save changes"
+            action={updateBusinessRecordAction.bind(null, params.vendorId, "service-centre-brands", params.recordId)}
+          />
         </div>
       </div>
     </AppShell>
