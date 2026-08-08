@@ -1,10 +1,11 @@
 "use client";
 
 import { RecordFormModal, useRecordFormModal } from "@/components/RecordFormModal";
+import { createBusinessRecordAction } from "@/lib/businessRecordActions";
 import { returnOrderFormFields } from "@/lib/sample-data/warehouse";
 
 /** Create-as-modal for inventory/return-orders (see src/components/RecordFormModal.tsx). */
-export function ReturnOrdersNewButton() {
+export function ReturnOrdersNewButton({ vendorId }: { vendorId: string }) {
   const { open, openModal, closeModal } = useRecordFormModal();
   return (
     <>
@@ -17,6 +18,7 @@ export function ReturnOrdersNewButton() {
         title="New Return Order"
         fields={returnOrderFormFields}
         submitLabel="Create Return Order"
+        action={createBusinessRecordAction.bind(null, vendorId, "inventory-return-orders")}
       />
     </>
   );

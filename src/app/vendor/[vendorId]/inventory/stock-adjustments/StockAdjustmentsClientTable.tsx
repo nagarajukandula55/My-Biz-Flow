@@ -2,14 +2,14 @@
 
 import { useRouter } from "next/navigation";
 import { DataTable, type Row, type Column } from "@/components/DataTable";
-import { stockAdjustmentColumns, stockAdjustmentRows } from "@/lib/sample-data/warehouse";
+import { stockAdjustmentColumns } from "@/lib/sample-data/warehouse";
 
-export function StockAdjustmentsClientTable({ vendorId, columns }: { vendorId: string; columns?: Column[] }) {
+export function StockAdjustmentsClientTable({ vendorId, columns, rows }: { vendorId: string; columns?: Column[]; rows: Row[] }) {
   const router = useRouter();
   return (
     <DataTable
       columns={columns ?? stockAdjustmentColumns}
-      rows={stockAdjustmentRows}
+      rows={rows}
       onRowClick={(row: Row) => router.push(`/vendor/${vendorId}/inventory/stock-adjustments/${row["id"]}`)}
       enableQuickView
     />

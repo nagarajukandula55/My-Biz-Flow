@@ -3,6 +3,7 @@ import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { returnOrderFormFields } from "@/lib/sample-data/warehouse";
 import { applyCustomizations } from "@/lib/designer/customizations";
+import { createBusinessRecordAction } from "@/lib/businessRecordActions";
 
 registerPage({
   id: "inventory.return-orders.create",
@@ -20,7 +21,7 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/inventory/return-orders/new/page.tsx",
 });
 
-export default async function NewReturnOrdersPage() {
+export default async function NewReturnOrdersPage({ params }: { params: { vendorId: string } }) {
   const fields = await applyCustomizations("inventory.return-orders.create", returnOrderFormFields);
 
   return (
@@ -29,7 +30,11 @@ export default async function NewReturnOrdersPage() {
         <h1 className="font-display text-xl font-bold text-text">New Return Order</h1>
         <p className="mt-1 text-xs text-text-muted">Create a new return order record.</p>
         <div className="mt-6">
-          <RecordForm fields={fields} submitLabel="Create Return Order" />
+          <RecordForm
+            fields={fields}
+            submitLabel="Create Return Order"
+            action={createBusinessRecordAction.bind(null, params.vendorId, "inventory-return-orders")}
+          />
         </div>
       </div>
     </AppShell>

@@ -1,9 +1,11 @@
 import { AppShell } from "@/components/AppShell";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { RecordDetail } from "@/components/RecordDetail";
-import { getPartOrderRecord, getPartOrderDetailFields, getPartOrderTimeline, partOrderRelated, partOrderColumns } from "@/lib/sample-data/warehouse";
+import { getPartOrderDetailFields, getPartOrderTimeline, partOrderRelated, partOrderColumns } from "@/lib/sample-data/warehouse";
 import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
+import { getBusinessRecord } from "@/lib/businessRecords";
 
 registerPage({
   id: "inventory.part-orders.detail",
@@ -20,12 +22,15 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/inventory/part-orders/[recordId]/page.tsx",
 });
 
+export const dynamic = "force-dynamic";
+
 export default async function PartOrdersDetailPage({
   params,
 }: {
   params: { vendorId: string; recordId: string };
 }) {
-  const record = getPartOrderRecord(params.recordId);
+  const record = await getBusinessRecord(params.vendorId, "inventory-part-orders", params.recordId);
+  if (!record) notFound();
   const fields = await applyCustomizationsToDetailFields("inventory.part-orders.detail", getPartOrderDetailFields(record), partOrderColumns);
   const timeline = getPartOrderTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);

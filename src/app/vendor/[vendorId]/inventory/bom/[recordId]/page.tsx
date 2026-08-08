@@ -1,9 +1,11 @@
 import { AppShell } from "@/components/AppShell";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { RecordDetail } from "@/components/RecordDetail";
-import { getBomRecord, getBomDetailFields, getBomTimeline, bomRelated, bomColumns } from "@/lib/sample-data/bom";
+import { getBomDetailFields, getBomTimeline, bomRelated, bomColumns } from "@/lib/sample-data/bom";
 import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
+import { getBusinessRecord } from "@/lib/businessRecords";
 
 registerPage({
   id: "inventory.bom.detail",
@@ -20,12 +22,15 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/inventory/bom/[recordId]/page.tsx",
 });
 
+export const dynamic = "force-dynamic";
+
 export default async function BomDetailPage({
   params,
 }: {
   params: { vendorId: string; recordId: string };
 }) {
-  const record = getBomRecord(params.recordId);
+  const record = await getBusinessRecord(params.vendorId, "inventory-bom", params.recordId);
+  if (!record) notFound();
   const fields = await applyCustomizationsToDetailFields("inventory.bom.detail", getBomDetailFields(record), bomColumns);
   const timeline = getBomTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);

@@ -5,6 +5,7 @@ import { BomNewButton } from "./BomNewButton";
 import { BomSearchButton } from "./BomSearchButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { bomColumns } from "@/lib/sample-data/bom";
+import { listBusinessRecords } from "@/lib/businessRecords";
 
 registerPage({
   id: "inventory.bom.list",
@@ -21,8 +22,11 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/inventory/bom/page.tsx",
 });
 
+export const dynamic = "force-dynamic";
+
 export default async function BomPage({ params }: { params: { vendorId: string } }) {
   const columns = await applyCustomizations("inventory.bom.list", bomColumns);
+  const rows = await listBusinessRecords(params.vendorId, "inventory-bom");
 
   return (
     <AppShell
@@ -30,13 +34,13 @@ export default async function BomPage({ params }: { params: { vendorId: string }
       topbarActions={
         <div className="flex items-center gap-3">
           <BomSearchButton />
-          <BomNewButton />
+          <BomNewButton vendorId={params.vendorId} />
         </div>
       }
     >
       <div>
         <div className="mt-2">
-          <BomClientTable vendorId={params.vendorId} columns={columns} />
+          <BomClientTable vendorId={params.vendorId} columns={columns} rows={rows} />
         </div>
       </div>
     </AppShell>

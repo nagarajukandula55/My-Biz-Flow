@@ -3,6 +3,7 @@ import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { warehouseFormFields } from "@/lib/sample-data/warehouse";
 import { applyCustomizations } from "@/lib/designer/customizations";
+import { createBusinessRecordAction } from "@/lib/businessRecordActions";
 
 registerPage({
   id: "inventory.warehouses.create",
@@ -20,7 +21,7 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/inventory/warehouses/new/page.tsx",
 });
 
-export default async function NewWarehousesPage() {
+export default async function NewWarehousesPage({ params }: { params: { vendorId: string } }) {
   const fields = await applyCustomizations("inventory.warehouses.create", warehouseFormFields);
 
   return (
@@ -29,7 +30,11 @@ export default async function NewWarehousesPage() {
         <h1 className="font-display text-xl font-bold text-text">New Warehouse</h1>
         <p className="mt-1 text-xs text-text-muted">Create a new warehouse record.</p>
         <div className="mt-6">
-          <RecordForm fields={fields} submitLabel="Create Warehouse" />
+          <RecordForm
+            fields={fields}
+            submitLabel="Create Warehouse"
+            action={createBusinessRecordAction.bind(null, params.vendorId, "inventory-warehouses")}
+          />
         </div>
       </div>
     </AppShell>

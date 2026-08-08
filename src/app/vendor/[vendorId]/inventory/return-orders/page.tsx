@@ -4,6 +4,7 @@ import { ReturnOrdersClientTable } from "./ReturnOrdersClientTable";
 import { ReturnOrdersNewButton } from "./ReturnOrdersNewButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { returnOrderColumns } from "@/lib/sample-data/warehouse";
+import { listBusinessRecords } from "@/lib/businessRecords";
 
 registerPage({
   id: "inventory.return-orders.list",
@@ -20,19 +21,22 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/inventory/return-orders/page.tsx",
 });
 
+export const dynamic = "force-dynamic";
+
 export default async function ReturnOrdersPage({ params }: { params: { vendorId: string } }) {
   const columns = await applyCustomizations("inventory.return-orders.list", returnOrderColumns);
+  const rows = await listBusinessRecords(params.vendorId, "inventory-return-orders");
 
   return (
     <AppShell
       topbarTitle="Return Orders"
       topbarActions={
-        <ReturnOrdersNewButton />
+        <ReturnOrdersNewButton vendorId={params.vendorId} />
       }
     >
       <div>
         <div className="mt-2">
-          <ReturnOrdersClientTable vendorId={params.vendorId} columns={columns} />
+          <ReturnOrdersClientTable vendorId={params.vendorId} columns={columns} rows={rows} />
         </div>
       </div>
     </AppShell>

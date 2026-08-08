@@ -1,10 +1,11 @@
 "use client";
 
 import { RecordFormModal, useRecordFormModal } from "@/components/RecordFormModal";
+import { createBusinessRecordAction } from "@/lib/businessRecordActions";
 import { stockAdjustmentFormFields } from "@/lib/sample-data/warehouse";
 
 /** Create-as-modal for inventory/stock-adjustments (see src/components/RecordFormModal.tsx). */
-export function StockAdjustmentsNewButton() {
+export function StockAdjustmentsNewButton({ vendorId }: { vendorId: string }) {
   const { open, openModal, closeModal } = useRecordFormModal();
   return (
     <>
@@ -17,6 +18,7 @@ export function StockAdjustmentsNewButton() {
         title="New Adjustment"
         fields={stockAdjustmentFormFields}
         submitLabel="Create Adjustment"
+        action={createBusinessRecordAction.bind(null, vendorId, "inventory-stock-adjustments")}
       />
     </>
   );

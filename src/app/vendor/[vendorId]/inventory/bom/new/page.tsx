@@ -3,6 +3,7 @@ import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { bomFormFields } from "@/lib/sample-data/bom";
 import { applyCustomizations } from "@/lib/designer/customizations";
+import { createBusinessRecordAction } from "@/lib/businessRecordActions";
 
 registerPage({
   id: "inventory.bom.create",
@@ -20,7 +21,7 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/inventory/bom/new/page.tsx",
 });
 
-export default async function NewBomPage() {
+export default async function NewBomPage({ params }: { params: { vendorId: string } }) {
   const fields = await applyCustomizations("inventory.bom.create", bomFormFields);
 
   return (
@@ -29,7 +30,11 @@ export default async function NewBomPage() {
         <h1 className="font-display text-xl font-bold text-text">New Material</h1>
         <p className="mt-1 text-xs text-text-muted">Create a new material record.</p>
         <div className="mt-6">
-          <RecordForm fields={fields} submitLabel="Create Material" />
+          <RecordForm
+            fields={fields}
+            submitLabel="Create Material"
+            action={createBusinessRecordAction.bind(null, params.vendorId, "inventory-bom")}
+          />
         </div>
       </div>
     </AppShell>

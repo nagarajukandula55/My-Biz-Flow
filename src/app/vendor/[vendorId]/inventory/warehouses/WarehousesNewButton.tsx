@@ -1,10 +1,11 @@
 "use client";
 
 import { RecordFormModal, useRecordFormModal } from "@/components/RecordFormModal";
+import { createBusinessRecordAction } from "@/lib/businessRecordActions";
 import { warehouseFormFields } from "@/lib/sample-data/warehouse";
 
 /** Create-as-modal for inventory/warehouses (see src/components/RecordFormModal.tsx). */
-export function WarehousesNewButton() {
+export function WarehousesNewButton({ vendorId }: { vendorId: string }) {
   const { open, openModal, closeModal } = useRecordFormModal();
   return (
     <>
@@ -17,6 +18,7 @@ export function WarehousesNewButton() {
         title="New Warehouse"
         fields={warehouseFormFields}
         submitLabel="Create Warehouse"
+        action={createBusinessRecordAction.bind(null, vendorId, "inventory-warehouses")}
       />
     </>
   );

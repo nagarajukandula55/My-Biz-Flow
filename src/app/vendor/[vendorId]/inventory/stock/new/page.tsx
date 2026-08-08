@@ -3,6 +3,7 @@ import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { stockFormFields } from "@/lib/sample-data/warehouse";
 import { applyCustomizations } from "@/lib/designer/customizations";
+import { createBusinessRecordAction } from "@/lib/businessRecordActions";
 
 registerPage({
   id: "inventory.stock.create",
@@ -20,7 +21,7 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/inventory/stock/new/page.tsx",
 });
 
-export default async function NewStockPage() {
+export default async function NewStockPage({ params }: { params: { vendorId: string } }) {
   const fields = await applyCustomizations("inventory.stock.create", stockFormFields);
 
   return (
@@ -29,7 +30,11 @@ export default async function NewStockPage() {
         <h1 className="font-display text-xl font-bold text-text">New Stock Entry</h1>
         <p className="mt-1 text-xs text-text-muted">Create a new stock entry record.</p>
         <div className="mt-6">
-          <RecordForm fields={fields} submitLabel="Create Stock Entry" />
+          <RecordForm
+            fields={fields}
+            submitLabel="Create Stock Entry"
+            action={createBusinessRecordAction.bind(null, params.vendorId, "inventory-stock")}
+          />
         </div>
       </div>
     </AppShell>

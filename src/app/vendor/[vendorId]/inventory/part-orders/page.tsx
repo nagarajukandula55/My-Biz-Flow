@@ -4,6 +4,7 @@ import { PartOrdersClientTable } from "./PartOrdersClientTable";
 import { PartOrdersNewButton } from "./PartOrdersNewButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { partOrderColumns } from "@/lib/sample-data/warehouse";
+import { listBusinessRecords } from "@/lib/businessRecords";
 
 registerPage({
   id: "inventory.part-orders.list",
@@ -20,19 +21,22 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/inventory/part-orders/page.tsx",
 });
 
+export const dynamic = "force-dynamic";
+
 export default async function PartOrdersPage({ params }: { params: { vendorId: string } }) {
   const columns = await applyCustomizations("inventory.part-orders.list", partOrderColumns);
+  const rows = await listBusinessRecords(params.vendorId, "inventory-part-orders");
 
   return (
     <AppShell
       topbarTitle="Part Orders"
       topbarActions={
-        <PartOrdersNewButton />
+        <PartOrdersNewButton vendorId={params.vendorId} />
       }
     >
       <div>
         <div className="mt-2">
-          <PartOrdersClientTable vendorId={params.vendorId} columns={columns} />
+          <PartOrdersClientTable vendorId={params.vendorId} columns={columns} rows={rows} />
         </div>
       </div>
     </AppShell>

@@ -1,8 +1,11 @@
 import { AppShell } from "@/components/AppShell";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
-import { warehouseFormFields, getWarehouseRecord } from "@/lib/sample-data/warehouse";
+import { warehouseFormFields } from "@/lib/sample-data/warehouse";
 import { applyCustomizations } from "@/lib/designer/customizations";
+import { notFound } from "next/navigation";
+import { getBusinessRecord } from "@/lib/businessRecords";
+import { updateBusinessRecordAction } from "@/lib/businessRecordActions";
 
 registerPage({
   id: "inventory.warehouses.edit",
@@ -21,7 +24,8 @@ registerPage({
 });
 
 export default async function EditWarehousesPage({ params }: { params: { vendorId: string; recordId: string } }) {
-  const record = getWarehouseRecord(params.recordId);
+  const record = await getBusinessRecord(params.vendorId, "inventory-warehouses", params.recordId);
+  if (!record) notFound();
   const fields = await applyCustomizations("inventory.warehouses.edit", warehouseFormFields);
 
   return (
@@ -30,7 +34,12 @@ export default async function EditWarehousesPage({ params }: { params: { vendorI
         <h1 className="font-display text-xl font-bold text-text">Edit Warehouse</h1>
         <p className="mt-1 text-xs text-text-muted">{String(record["id"])}</p>
         <div className="mt-6">
-          <RecordForm fields={fields} initialValues={record} submitLabel="Save changes" />
+          <RecordForm
+            fields={fields}
+            initialValues={record}
+            submitLabel="Save changes"
+            action={updateBusinessRecordAction.bind(null, params.vendorId, "inventory-warehouses", params.recordId)}
+          />
         </div>
       </div>
     </AppShell>

@@ -1,6 +1,7 @@
 "use client";
 
 import { RecordFormModal, useRecordFormModal } from "@/components/RecordFormModal";
+import { createBusinessRecordAction } from "@/lib/businessRecordActions";
 import { bomFormFields } from "@/lib/sample-data/bom";
 
 /**
@@ -10,7 +11,7 @@ import { bomFormFields } from "@/lib/sample-data/bom";
  * modules keep the full-page form for now (see chat: rolling this out
  * everywhere is a separate, larger follow-up).
  */
-export function BomNewButton() {
+export function BomNewButton({ vendorId }: { vendorId: string }) {
   const { open, openModal, closeModal } = useRecordFormModal();
   return (
     <>
@@ -23,6 +24,7 @@ export function BomNewButton() {
         title="New Material"
         fields={bomFormFields}
         submitLabel="Create Material"
+        action={createBusinessRecordAction.bind(null, vendorId, "inventory-bom")}
       />
     </>
   );

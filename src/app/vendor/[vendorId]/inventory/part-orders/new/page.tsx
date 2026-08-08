@@ -3,6 +3,7 @@ import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { partOrderFormFields } from "@/lib/sample-data/warehouse";
 import { applyCustomizations } from "@/lib/designer/customizations";
+import { createBusinessRecordAction } from "@/lib/businessRecordActions";
 
 registerPage({
   id: "inventory.part-orders.create",
@@ -20,7 +21,7 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/inventory/part-orders/new/page.tsx",
 });
 
-export default async function NewPartOrdersPage() {
+export default async function NewPartOrdersPage({ params }: { params: { vendorId: string } }) {
   const fields = await applyCustomizations("inventory.part-orders.create", partOrderFormFields);
 
   return (
@@ -29,7 +30,11 @@ export default async function NewPartOrdersPage() {
         <h1 className="font-display text-xl font-bold text-text">New Part Order</h1>
         <p className="mt-1 text-xs text-text-muted">Create a new part order record.</p>
         <div className="mt-6">
-          <RecordForm fields={fields} submitLabel="Create Part Order" />
+          <RecordForm
+            fields={fields}
+            submitLabel="Create Part Order"
+            action={createBusinessRecordAction.bind(null, params.vendorId, "inventory-part-orders")}
+          />
         </div>
       </div>
     </AppShell>

@@ -1,8 +1,11 @@
 import { AppShell } from "@/components/AppShell";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
-import { bomFormFields, getBomRecord } from "@/lib/sample-data/bom";
+import { bomFormFields } from "@/lib/sample-data/bom";
 import { applyCustomizations } from "@/lib/designer/customizations";
+import { notFound } from "next/navigation";
+import { getBusinessRecord } from "@/lib/businessRecords";
+import { updateBusinessRecordAction } from "@/lib/businessRecordActions";
 
 registerPage({
   id: "inventory.bom.edit",
@@ -21,7 +24,8 @@ registerPage({
 });
 
 export default async function EditBomPage({ params }: { params: { vendorId: string; recordId: string } }) {
-  const record = getBomRecord(params.recordId);
+  const record = await getBusinessRecord(params.vendorId, "inventory-bom", params.recordId);
+  if (!record) notFound();
   const fields = await applyCustomizations("inventory.bom.edit", bomFormFields);
 
   return (
@@ -30,7 +34,12 @@ export default async function EditBomPage({ params }: { params: { vendorId: stri
         <h1 className="font-display text-xl font-bold text-text">Edit Material</h1>
         <p className="mt-1 text-xs text-text-muted">{String(record["id"])}</p>
         <div className="mt-6">
-          <RecordForm fields={fields} initialValues={record} submitLabel="Save changes" />
+          <RecordForm
+            fields={fields}
+            initialValues={record}
+            submitLabel="Save changes"
+            action={updateBusinessRecordAction.bind(null, params.vendorId, "inventory-bom", params.recordId)}
+          />
         </div>
       </div>
     </AppShell>

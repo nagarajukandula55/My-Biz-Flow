@@ -1,9 +1,11 @@
 import { AppShell } from "@/components/AppShell";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { RecordDetail } from "@/components/RecordDetail";
-import { getWarehouseRecord, getWarehouseDetailFields, getWarehouseTimeline, warehouseRelated, warehouseColumns } from "@/lib/sample-data/warehouse";
+import { getWarehouseDetailFields, getWarehouseTimeline, warehouseRelated, warehouseColumns } from "@/lib/sample-data/warehouse";
 import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
+import { getBusinessRecord } from "@/lib/businessRecords";
 
 registerPage({
   id: "inventory.warehouses.detail",
@@ -20,12 +22,15 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/inventory/warehouses/[recordId]/page.tsx",
 });
 
+export const dynamic = "force-dynamic";
+
 export default async function WarehousesDetailPage({
   params,
 }: {
   params: { vendorId: string; recordId: string };
 }) {
-  const record = getWarehouseRecord(params.recordId);
+  const record = await getBusinessRecord(params.vendorId, "inventory-warehouses", params.recordId);
+  if (!record) notFound();
   const fields = await applyCustomizationsToDetailFields("inventory.warehouses.detail", getWarehouseDetailFields(record), warehouseColumns);
   const timeline = getWarehouseTimeline();
   const recordLabel = String(record["id"] ?? params.recordId);
