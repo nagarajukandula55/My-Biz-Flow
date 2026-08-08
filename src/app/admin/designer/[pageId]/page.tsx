@@ -15,6 +15,9 @@ import { formatNumber } from "@/lib/designer/numberingFormat";
 import { MODULE_DATA } from "@/lib/moduleData";
 import { DesignerFieldEditor } from "@/components/DesignerFieldEditor";
 import { DesignerDocumentEditor } from "@/components/DesignerDocumentEditor";
+import { ModuleAppearanceEditor } from "@/components/ModuleAppearanceEditor";
+import { MODULES } from "@/lib/designer/modules";
+import { getModuleAppearance } from "@/lib/designer/moduleAppearance";
 
 registerPage({
   id: "platform.designer.detail",
@@ -96,6 +99,15 @@ export default function PageDetailPage({ params }: { params: { pageId: string } 
                 ))}
               </ul>
             </div>
+          )}
+
+          {page.kind === "list" && MODULES.some((m) => m.slug === page.moduleSlug) && (
+            <ModuleAppearanceEditor
+              slug={page.moduleSlug}
+              defaultLabel={MODULES.find((m) => m.slug === page.moduleSlug)!.label}
+              initialLabel={getModuleAppearance(page.moduleSlug).label}
+              initialIcon={getModuleAppearance(page.moduleSlug).icon}
+            />
           )}
 
           {page.kind === "document" && baseFields && (

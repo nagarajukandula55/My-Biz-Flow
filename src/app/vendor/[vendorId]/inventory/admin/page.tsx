@@ -1,6 +1,6 @@
 import { AppShell } from "@/components/AppShell";
 import { SuperAdminGate } from "@/components/SuperAdminGate";
-import { buildVendorNavGroups, getModule } from "@/lib/designer/modules";
+import { buildVendorNavGroups, getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
 
 registerPage({

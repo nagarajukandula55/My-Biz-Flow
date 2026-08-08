@@ -2,7 +2,24 @@ import type { ReactNode } from "react";
 import { StatusChip, type StatusVariant } from "./StatusChip";
 import { formatCurrencyINR, formatDate } from "@/lib/format";
 
-export type FieldType = "text" | "relation" | "currency" | "date" | "boolean" | "select" | "multi-select";
+export type FieldType =
+  | "text"
+  | "relation"
+  | "currency"
+  | "date"
+  | "boolean"
+  | "select"
+  | "multi-select"
+  | "email"
+  | "phone"
+  | "url"
+  | "percentage"
+  | "color"
+  | "rating"
+  | "time"
+  | "datetime"
+  | "password"
+  | "file";
 
 export type RecordField = {
   label: string;
@@ -43,6 +60,63 @@ function renderFieldValue(field: RecordField) {
         </div>
       );
     }
+    case "email":
+      return field.value ? (
+        <a href={`mailto:${field.value}`} className="text-teal hover:underline">
+          {String(field.value)}
+        </a>
+      ) : (
+        <span className="text-text-muted">—</span>
+      );
+    case "phone":
+      return <span className="font-mono text-text">{String(field.value ?? "—")}</span>;
+    case "url":
+      return field.value ? (
+        <a
+          href={String(field.value)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-teal hover:underline"
+        >
+          {String(field.value)}
+        </a>
+      ) : (
+        <span className="text-text-muted">—</span>
+      );
+    case "percentage":
+      return (
+        <span className="font-mono tabular-nums text-text">
+          {field.value === "" || field.value == null ? "—" : `${field.value}%`}
+        </span>
+      );
+    case "color":
+      return field.value ? (
+        <span className="inline-flex items-center gap-2">
+          <span
+            className="h-3.5 w-3.5 rounded-full border border-border"
+            style={{ background: String(field.value) }}
+          />
+          <span className="font-mono text-xs text-text-muted">{String(field.value)}</span>
+        </span>
+      ) : (
+        <span className="text-text-muted">—</span>
+      );
+    case "rating": {
+      const n = Math.min(5, Math.max(0, Math.round(Number(field.value) || 0)));
+      return (
+        <span aria-label={`${n} out of 5`} className="text-accent">
+          {"★".repeat(n)}
+          <span className="text-border">{"★".repeat(5 - n)}</span>
+        </span>
+      );
+    }
+    case "time":
+    case "datetime":
+      return <span className="font-mono text-text-muted">{String(field.value ?? "—")}</span>;
+    case "password":
+      return <span className="font-mono text-text-muted">••••••••</span>;
+    case "file":
+      return <span className="text-text-muted">{field.value ? String(field.value) : "—"}</span>;
     case "text":
     default:
       return <span className="text-text">{String(field.value ?? "—")}</span>;

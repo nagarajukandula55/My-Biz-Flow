@@ -18,8 +18,35 @@ type Props = {
   customization: PageCustomization;
 };
 
-const SELECT_TYPES = ["select", "select-chip"];
-const FIELD_TYPES = ["text", "number", "date", "select", "currency", "boolean", "textarea", "relation"];
+const SELECT_TYPES = ["select", "select-chip", "multi-select", "multi-chip"];
+/**
+ * Every input type a Super Admin can hand a module — matches
+ * RecordForm's FormFieldType, DataTable's ColumnType, and RecordDetail's
+ * FieldType (all three widened together, see DESIGN_SYSTEM.md §8): a
+ * field added here renders correctly wherever that field shows up, not
+ * just in the form it was added from.
+ */
+const FIELD_TYPES = [
+  "text",
+  "textarea",
+  "number",
+  "currency",
+  "percentage",
+  "date",
+  "time",
+  "datetime",
+  "select",
+  "multi-select",
+  "boolean",
+  "relation",
+  "email",
+  "phone",
+  "url",
+  "password",
+  "color",
+  "rating",
+  "file",
+];
 
 export function DesignerFieldEditor({ pageId, baseFields, customization }: Props) {
   const [isPending, startTransition] = useTransition();

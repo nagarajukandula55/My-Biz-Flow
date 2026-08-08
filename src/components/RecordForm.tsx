@@ -11,7 +11,17 @@ export type FormFieldType =
   | "boolean"
   | "textarea"
   | "relation"
-  | "multi-select";
+  | "multi-select"
+  | "email"
+  | "phone"
+  | "url"
+  | "password"
+  | "time"
+  | "datetime"
+  | "percentage"
+  | "color"
+  | "rating"
+  | "file";
 
 export type FormFieldDef = {
   key: string;
@@ -194,6 +204,138 @@ function renderInput(
           required={field.required}
           onChange={(e) => setValue(field.key, e.target.value)}
         />
+      );
+    case "time":
+      return (
+        <input
+          id={field.key}
+          type="time"
+          className={`${baseClass} font-mono`}
+          value={String(value ?? "")}
+          required={field.required}
+          onChange={(e) => setValue(field.key, e.target.value)}
+        />
+      );
+    case "datetime":
+      return (
+        <input
+          id={field.key}
+          type="datetime-local"
+          className={`${baseClass} font-mono`}
+          value={String(value ?? "")}
+          required={field.required}
+          onChange={(e) => setValue(field.key, e.target.value)}
+        />
+      );
+    case "email":
+      return (
+        <input
+          id={field.key}
+          type="email"
+          className={baseClass}
+          value={String(value ?? "")}
+          placeholder={field.placeholder ?? "name@example.com"}
+          required={field.required}
+          onChange={(e) => setValue(field.key, e.target.value)}
+        />
+      );
+    case "phone":
+      return (
+        <input
+          id={field.key}
+          type="tel"
+          className={`${baseClass} font-mono`}
+          value={String(value ?? "")}
+          placeholder={field.placeholder ?? "+91 98765 43210"}
+          required={field.required}
+          onChange={(e) => setValue(field.key, e.target.value)}
+        />
+      );
+    case "url":
+      return (
+        <input
+          id={field.key}
+          type="url"
+          className={baseClass}
+          value={String(value ?? "")}
+          placeholder={field.placeholder ?? "https://"}
+          required={field.required}
+          onChange={(e) => setValue(field.key, e.target.value)}
+        />
+      );
+    case "password":
+      return (
+        <input
+          id={field.key}
+          type="password"
+          className={baseClass}
+          value={String(value ?? "")}
+          required={field.required}
+          onChange={(e) => setValue(field.key, e.target.value)}
+        />
+      );
+    case "percentage":
+      return (
+        <div className="relative">
+          <input
+            id={field.key}
+            type="number"
+            min={0}
+            max={100}
+            className={`${baseClass} pr-8 font-mono tabular-nums`}
+            value={value === "" || value === undefined ? "" : String(value)}
+            required={field.required}
+            onChange={(e) => setValue(field.key, e.target.value === "" ? "" : Number(e.target.value))}
+          />
+          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-text-muted">
+            %
+          </span>
+        </div>
+      );
+    case "color":
+      return (
+        <div className="flex items-center gap-2">
+          <input
+            id={field.key}
+            type="color"
+            className="h-9 w-12 cursor-pointer rounded-md border border-border bg-bg p-1"
+            value={String(value || "#000000")}
+            onChange={(e) => setValue(field.key, e.target.value)}
+          />
+          <span className="font-mono text-sm text-text-muted">{String(value || "#000000")}</span>
+        </div>
+      );
+    case "rating": {
+      const current = Number(value) || 0;
+      return (
+        <div className="flex items-center gap-1">
+          {[1, 2, 3, 4, 5].map((n) => (
+            <button
+              key={n}
+              type="button"
+              onClick={() => setValue(field.key, n)}
+              className={`text-xl leading-none ${n <= current ? "text-accent" : "text-border"}`}
+              aria-label={`${n} star${n === 1 ? "" : "s"}`}
+            >
+              ★
+            </button>
+          ))}
+        </div>
+      );
+    }
+    case "file":
+      return (
+        <div>
+          <input
+            id={field.key}
+            type="file"
+            className={`${baseClass} cursor-pointer file:mr-3 file:rounded file:border-0 file:bg-bg-sunken file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-text`}
+            onChange={(e) => setValue(field.key, e.target.files?.[0]?.name ?? "")}
+          />
+          <p className="mt-1 text-xs text-text-muted">
+            Demo only — no file storage wired up yet, the filename is kept for display.
+          </p>
+        </div>
       );
     case "relation":
     case "text":

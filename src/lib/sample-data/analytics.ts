@@ -2,7 +2,7 @@ import type { Column, Row } from "@/components/DataTable";
 import type { LineSeriesPoint } from "@/components/charts/LineChartCard";
 import type { BarPoint } from "@/components/charts/BarChartCard";
 import type { PieSlice } from "@/components/charts/PieChartCard";
-import { getModule } from "@/lib/designer/modules";
+import { getModule } from "@/lib/designer/moduleRegistry";
 import { computeModuleStat } from "@/lib/moduleData";
 
 // Analytics sample data — derived from the same MODULE_DATA every list page

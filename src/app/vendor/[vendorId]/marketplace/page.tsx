@@ -1,5 +1,5 @@
 import { AppShell } from "@/components/AppShell";
-import { buildVendorNavGroups, getModule } from "@/lib/designer/modules";
+import { buildVendorNavGroups, getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { MarketplaceClientTable } from "./MarketplaceClientTable";

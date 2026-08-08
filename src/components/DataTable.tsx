@@ -3,7 +3,24 @@
 import { StatusChip, type StatusVariant } from "./StatusChip";
 import { formatCurrencyINR, formatDate } from "@/lib/format";
 
-export type ColumnType = "text" | "currency" | "date" | "select-chip" | "relation-link" | "multi-chip";
+export type ColumnType =
+  | "text"
+  | "currency"
+  | "date"
+  | "select-chip"
+  | "relation-link"
+  | "multi-chip"
+  | "email"
+  | "phone"
+  | "url"
+  | "percentage"
+  | "color"
+  | "rating"
+  | "boolean"
+  | "time"
+  | "datetime"
+  | "file"
+  | "password";
 
 export type Column = {
   key: string;
@@ -54,6 +71,61 @@ function renderCell(column: Column, row: Row) {
         </div>
       );
     }
+    case "boolean":
+      return <StatusChip label={value ? "Yes" : "No"} variant={value ? "success" : "neutral"} />;
+    case "email":
+      return value ? (
+        <a href={`mailto:${value}`} className="text-teal hover:underline">
+          {String(value)}
+        </a>
+      ) : (
+        <span className="text-text-muted">—</span>
+      );
+    case "phone":
+      return <span className="font-mono">{String(value ?? "—")}</span>;
+    case "url":
+      return value ? (
+        <a
+          href={String(value)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-teal hover:underline"
+        >
+          {String(value)}
+        </a>
+      ) : (
+        <span className="text-text-muted">—</span>
+      );
+    case "percentage":
+      return <span className="font-mono tabular-nums">{value === "" || value == null ? "—" : `${value}%`}</span>;
+    case "color":
+      return value ? (
+        <span className="inline-flex items-center gap-2">
+          <span
+            className="h-3.5 w-3.5 rounded-full border border-border"
+            style={{ background: String(value) }}
+          />
+          <span className="font-mono text-xs text-text-muted">{String(value)}</span>
+        </span>
+      ) : (
+        <span className="text-text-muted">—</span>
+      );
+    case "rating": {
+      const n = Math.min(5, Math.max(0, Math.round(Number(value) || 0)));
+      return (
+        <span aria-label={`${n} out of 5`} className="text-accent">
+          {"★".repeat(n)}
+          <span className="text-border">{"★".repeat(5 - n)}</span>
+        </span>
+      );
+    }
+    case "time":
+    case "datetime":
+      return <span className="font-mono text-text-muted">{String(value ?? "—")}</span>;
+    case "password":
+      return <span className="font-mono text-text-muted">••••••••</span>;
+    case "file":
+      return <span className="text-text-muted">{value ? String(value) : "—"}</span>;
     case "text":
     default:
       return <span>{String(value ?? "")}</span>;

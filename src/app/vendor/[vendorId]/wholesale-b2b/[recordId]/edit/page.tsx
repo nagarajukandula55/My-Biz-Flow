@@ -1,5 +1,5 @@
 import { AppShell } from "@/components/AppShell";
-import { buildVendorNavGroups, getModule } from "@/lib/designer/modules";
+import { buildVendorNavGroups, getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { wholesaleB2bFormFields, getWholesaleB2bRecord } from "@/lib/sample-data/wholesale-b2b";

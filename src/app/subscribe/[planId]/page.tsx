@@ -2,7 +2,7 @@ import Link from "next/link";
 import { LogoMark } from "@/components/LogoMark";
 import { registerPage } from "@/lib/designer/registry";
 import { getPlan } from "@/lib/sample-data/plans";
-import { getModule } from "@/lib/designer/modules";
+import { getModule } from "@/lib/designer/moduleRegistry";
 import { SubscribeForm } from "./SubscribeForm";
 
 registerPage({

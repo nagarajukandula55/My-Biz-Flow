@@ -1,5 +1,5 @@
 import { AppShell } from "@/components/AppShell";
-import { buildVendorNavGroups, getModule } from "@/lib/designer/modules";
+import { buildVendorNavGroups, getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { amcFieldServiceFormFields, getAmcFieldServiceRecord } from "@/lib/sample-data/amc-field-service";

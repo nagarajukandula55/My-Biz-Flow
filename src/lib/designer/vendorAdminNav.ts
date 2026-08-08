@@ -1,4 +1,5 @@
-import { buildVendorNavGroups, type VendorNavGroup } from "./modules";
+import { buildVendorNavGroups } from "./moduleRegistry";
+import type { VendorNavGroup } from "./modules";
 
 /**
  * Nav groups for vendor-ACCOUNT-level admin pages (Users, Roles, Access

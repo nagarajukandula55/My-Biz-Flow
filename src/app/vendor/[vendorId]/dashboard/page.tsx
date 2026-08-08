@@ -1,6 +1,7 @@
 import { AppShell } from "@/components/AppShell";
 import { DashboardWidget } from "@/components/DashboardWidget";
-import { getModule, getDemoEnabledModules } from "@/lib/designer/modules";
+import { getModule } from "@/lib/designer/moduleRegistry";
+import { getDemoEnabledModules } from "@/lib/designer/modules";
 import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { computeModuleStat } from "@/lib/moduleData";
 import { formatCurrencyINR } from "@/lib/format";

@@ -255,6 +255,45 @@ template is authored from the Designer's `[pageId]` page via
 `DesignerDocumentEditor` (placeholder picker + live preview against a real
 sample record).
 
+### Field types — the full set, and where each renders
+
+`RecordForm`'s `FormFieldType`, `DataTable`'s `ColumnType`, and
+`RecordDetail`'s `FieldType` are kept in sync as one shared vocabulary:
+text, textarea, number, currency, percentage, date, time, datetime,
+select, multi-select, boolean, relation, email, phone, url, password,
+color, rating, file. A field added from the Designer
+(`DesignerFieldEditor`'s `FIELD_TYPES`) with any of these types renders
+correctly wherever it appears — form input, table cell, detail field —
+because all three components implement the full set, not just a
+lowest-common-denominator subset. Every renderer still has a safe `text`
+fallback for a type string none of them recognize (defense in depth, not
+a design target — extend all three together when adding a type, don't
+rely on the fallback).
+
+### Module appearance — label and icon, Super-Admin-editable
+
+A module's display label and sidebar icon can be overridden from the
+Designer (`ModuleAppearanceEditor`, shown on a module's `.list` page
+detail view) — `src/lib/designer/moduleAppearance.ts` (JSON-file store,
+same pattern as the rest). Icons come from `src/lib/designer/icons.ts`, a
+curated ~90-icon subset of `lucide-react` relevant to business/CRM
+contexts — not literally every icon in the library, which would make the
+picker unusable; extend `ICONS` there if a genuinely new module category
+needs a glyph that isn't covered.
+
+**Architectural note — read before touching `modules.ts`:** that file is
+imported by at least one Client Component (vendor Settings' module
+toggle grid), so it must stay 100% free of `node:fs`/`node:path`.
+`getModule()`/`buildVendorNavGroups()` there are pure (no override
+applied). The override-aware versions — same names, same signatures —
+live in `moduleRegistry.ts`, which layers the fs-based
+`moduleAppearance.ts` store on top. Server Components (nearly everything
+except a page with genuine client-side interactivity) should import from
+`moduleRegistry.ts`; anything that must stay a Client Component and needs
+only the pure module list imports from `modules.ts` directly. Same split
+pattern as `renderTemplate.ts`/`numberingFormat.ts` — see §7's Designer
+registry section for the general rule.
+
 ### Document numbering — Main + per-Vendor
 
 `src/lib/designer/numbering.ts` (store) + `numberingFormat.ts` (pure

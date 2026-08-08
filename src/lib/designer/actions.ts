@@ -19,6 +19,7 @@ import {
 } from "./customizations";
 import { getPage } from "./registry";
 import { saveDocumentTemplate as saveDocumentTemplateStore } from "./documentTemplates";
+import { setModuleAppearance as setModuleAppearanceStore, type ModuleAppearance } from "./moduleAppearance";
 
 function revalidateForPage(pageId: string) {
   revalidatePath(`/admin/designer/${pageId}`);
@@ -64,4 +65,10 @@ export async function saveDocumentTemplateAction(pageId: string, htmlTemplate: s
   // deeper ([recordId]/document).
   const def = getPage(pageId);
   if (def) revalidatePath(def.path, "page");
+}
+
+export async function setModuleAppearanceAction(slug: string, appearance: ModuleAppearance) {
+  setModuleAppearanceStore(slug, appearance);
+  revalidatePath("/admin/designer", "layout");
+  revalidatePath(`/vendor/[vendorId]/${slug}`, "layout");
 }

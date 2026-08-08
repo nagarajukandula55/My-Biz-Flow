@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { LogoMark } from "./LogoMark";
+import { getIconComponent } from "@/lib/designer/icons";
 
 export type NavDotVariant = "teal" | "amber" | "neutral";
 
@@ -7,6 +8,8 @@ export type NavItem = {
   key: string;
   label: string;
   dot: NavDotVariant;
+  /** Super-Admin-set icon override (src/lib/designer/icons.ts key) — falls back to the dot when unset. */
+  icon?: string;
   active?: boolean;
 };
 
@@ -19,6 +22,12 @@ const DOT_CLASS: Record<NavDotVariant, string> = {
   teal: "bg-teal",
   amber: "bg-accent",
   neutral: "bg-text-muted",
+};
+
+const ICON_CLASS: Record<NavDotVariant, string> = {
+  teal: "text-teal",
+  amber: "text-accent",
+  neutral: "text-text-muted",
 };
 
 type AppShellProps = {
@@ -46,20 +55,27 @@ export function AppShell({ navGroups, topbarTitle, topbarActions, children }: Ap
                 {group.title}
               </div>
               <ul className="space-y-0.5">
-                {group.items.map((item) => (
-                  <li key={item.key}>
-                    <div
-                      className={`flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium ${
-                        item.active
-                          ? "bg-sidebar-active text-sidebar-text"
-                          : "text-sidebar-text-dim hover:bg-sidebar-active/60 hover:text-sidebar-text"
-                      }`}
-                    >
-                      <span className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${DOT_CLASS[item.dot]}`} />
-                      {item.label}
-                    </div>
-                  </li>
-                ))}
+                {group.items.map((item) => {
+                  const Icon = getIconComponent(item.icon);
+                  return (
+                    <li key={item.key}>
+                      <div
+                        className={`flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium ${
+                          item.active
+                            ? "bg-sidebar-active text-sidebar-text"
+                            : "text-sidebar-text-dim hover:bg-sidebar-active/60 hover:text-sidebar-text"
+                        }`}
+                      >
+                        {Icon ? (
+                          <Icon className={`h-3.5 w-3.5 flex-shrink-0 ${ICON_CLASS[item.dot]}`} strokeWidth={2.25} />
+                        ) : (
+                          <span className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${DOT_CLASS[item.dot]}`} />
+                        )}
+                        {item.label}
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           ))}

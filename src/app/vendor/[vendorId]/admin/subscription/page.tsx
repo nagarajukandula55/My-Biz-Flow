@@ -4,7 +4,7 @@ import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import { StatusChip } from "@/components/StatusChip";
 import { DashboardWidget } from "@/components/DashboardWidget";
-import { getModule } from "@/lib/designer/modules";
+import { getModule } from "@/lib/designer/moduleRegistry";
 import { getPlan } from "@/lib/sample-data/plans";
 import { getSubscriber } from "@/lib/sample-data/subscribers";
 

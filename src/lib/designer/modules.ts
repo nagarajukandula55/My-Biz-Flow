@@ -5,6 +5,14 @@
  * else in the codebase. Adding a module means adding one entry here first,
  * then scaffolding its folder under src/app/vendor/[vendorId]/<slug>/ —
  * never the other way around.
+ *
+ * This file is imported by at least one Client Component (vendor
+ * settings' module toggle grid), so it MUST stay free of any node:fs/
+ * node:path dependency — getModule()/buildVendorNavGroups() with
+ * Super-Admin label/icon overrides applied live in moduleRegistry.ts
+ * instead, which layers moduleAppearance.ts's fs-based store on top of
+ * the pure data here. Same split pattern as renderTemplate.ts/
+ * numberingFormat.ts elsewhere in this codebase — see DESIGN_SYSTEM.md §8.
  */
 
 export type ModuleTaxonomy = "vertical" | "cross-cutting" | "brand";
@@ -21,6 +29,8 @@ export interface ModuleDefinition {
    * vertical = teal, cross-cutting = neutral, brand = amber
    */
   taxonomy: ModuleTaxonomy;
+  /** Super-Admin-set icon override (src/lib/designer/icons.ts key) — undefined until customized. */
+  icon?: string;
 }
 
 export const MODULES: ModuleDefinition[] = [
@@ -54,6 +64,13 @@ export const MODULES: ModuleDefinition[] = [
   { slug: "marketplace", label: "Marketplace / Vendor Aggregator", description: "Multiple vendors under one umbrella — coordinates with central-api's own vendor concept, does not duplicate it.", taxonomy: "cross-cutting" },
 ];
 
+/**
+ * Pure lookup — no Super-Admin label/icon override applied (that needs
+ * fs, see file header). Server Components that want overrides applied
+ * should use getModule() from moduleRegistry.ts instead; this export
+ * stays for pure/static use (and is what moduleRegistry.ts itself
+ * builds on top of).
+ */
 export function getModule(slug: string): ModuleDefinition | undefined {
   return MODULES.find((m) => m.slug === slug);
 }
@@ -72,9 +89,9 @@ export function taxonomyDotClass(taxonomy: ModuleTaxonomy): string {
 
 /** AppShell's NavDotVariant, duplicated here (not imported) to keep this file
  *  framework-agnostic — it's pure data, not a React module. */
-type NavDot = "teal" | "amber" | "neutral";
+export type NavDot = "teal" | "amber" | "neutral";
 
-function taxonomyToNavDot(taxonomy: ModuleTaxonomy): NavDot {
+export function taxonomyToNavDot(taxonomy: ModuleTaxonomy): NavDot {
   switch (taxonomy) {
     case "vertical":
       return "teal";
@@ -88,13 +105,20 @@ function taxonomyToNavDot(taxonomy: ModuleTaxonomy): NavDot {
 
 export interface VendorNavGroup {
   title: string;
-  items: { key: string; label: string; dot: NavDot; active?: boolean }[];
+  items: { key: string; label: string; dot: NavDot; icon?: string; active?: boolean }[];
 }
 
 /**
  * Builds the vendor sidebar's nav groups from the canonical MODULES list —
  * every module page uses this instead of hand-writing its own nav array,
  * so the sidebar can never drift from the module registry above.
+ *
+ * Pure — no Super-Admin label/icon override applied (that needs fs, see
+ * file header). Use buildVendorNavGroups() from moduleRegistry.ts in any
+ * Server Component that should reflect overrides (which is effectively
+ * everywhere it's currently called — moduleRegistry.ts's version has the
+ * same name and signature, so updating an import path is the only change
+ * needed).
  */
 export function buildVendorNavGroups(activeModuleSlug?: string): VendorNavGroup[] {
   const groups: Record<ModuleTaxonomy, ModuleDefinition[]> = {
