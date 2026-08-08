@@ -1,8 +1,8 @@
 import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
-import Link from "next/link";
 import { PosClientTable } from "./PosClientTable";
+import { PosNewButton } from "./PosNewButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { posColumns } from "@/lib/sample-data/pos";
 
@@ -30,9 +30,7 @@ export default async function PosPage({ params }: { params: { vendorId: string }
     <AppShell
       topbarTitle={mod?.label ?? "POS"}
       topbarActions={
-        <Link href={`/vendor/${params.vendorId}/pos/new`} className="btn-accent">
-          + New Sale
-        </Link>
+        <PosNewButton />
       }
     >
       <div>

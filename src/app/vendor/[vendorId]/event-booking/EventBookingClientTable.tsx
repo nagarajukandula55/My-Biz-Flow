@@ -11,6 +11,7 @@ export function EventBookingClientTable({ vendorId, columns }: { vendorId: strin
       columns={columns ?? eventBookingColumns}
       rows={eventBookingRows}
       onRowClick={(row: Row) => router.push(`/vendor/${vendorId}/event-booking/${row["id"]}`)}
+      enableQuickView
     />
   );
 }

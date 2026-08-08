@@ -11,6 +11,7 @@ export function PosClientTable({ vendorId, columns }: { vendorId: string; column
       columns={columns ?? posColumns}
       rows={posRows}
       onRowClick={(row: Row) => router.push(`/vendor/${vendorId}/pos/${row["id"]}`)}
+      enableQuickView
     />
   );
 }

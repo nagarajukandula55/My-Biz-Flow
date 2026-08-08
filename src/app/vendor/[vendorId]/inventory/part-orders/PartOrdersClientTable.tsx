@@ -11,6 +11,7 @@ export function PartOrdersClientTable({ vendorId, columns }: { vendorId: string;
       columns={columns ?? partOrderColumns}
       rows={partOrderRows}
       onRowClick={(row: Row) => router.push(`/vendor/${vendorId}/inventory/part-orders/${row["id"]}`)}
+      enableQuickView
     />
   );
 }

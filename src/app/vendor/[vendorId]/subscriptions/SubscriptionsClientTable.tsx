@@ -11,6 +11,7 @@ export function SubscriptionsClientTable({ vendorId, columns }: { vendorId: stri
       columns={columns ?? subscriptionsColumns}
       rows={subscriptionsRows}
       onRowClick={(row: Row) => router.push(`/vendor/${vendorId}/subscriptions/${row["id"]}`)}
+      enableQuickView
     />
   );
 }

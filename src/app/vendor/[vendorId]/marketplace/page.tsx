@@ -1,8 +1,8 @@
 import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
-import Link from "next/link";
 import { MarketplaceClientTable } from "./MarketplaceClientTable";
+import { MarketplaceNewButton } from "./MarketplaceNewButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { marketplaceColumns } from "@/lib/sample-data/marketplace";
 
@@ -30,9 +30,7 @@ export default async function MarketplacePage({ params }: { params: { vendorId: 
     <AppShell
       topbarTitle={mod?.label ?? "Marketplace / Vendor Aggregator"}
       topbarActions={
-        <Link href={`/vendor/${params.vendorId}/marketplace/new`} className="btn-accent">
-          + New Vendor Listing
-        </Link>
+        <MarketplaceNewButton />
       }
     >
       <div>

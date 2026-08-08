@@ -1,7 +1,7 @@
 import { AppShell } from "@/components/AppShell";
 import { registerPage } from "@/lib/designer/registry";
-import Link from "next/link";
 import { WarehousesClientTable } from "./WarehousesClientTable";
+import { WarehousesNewButton } from "./WarehousesNewButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { warehouseColumns } from "@/lib/sample-data/warehouse";
 
@@ -27,9 +27,7 @@ export default async function WarehousesPage({ params }: { params: { vendorId: s
     <AppShell
       topbarTitle="Warehouses"
       topbarActions={
-        <Link href={`/vendor/${params.vendorId}/inventory/warehouses/new`} className="btn-accent">
-          + New Warehouse
-        </Link>
+        <WarehousesNewButton />
       }
     >
       <div>

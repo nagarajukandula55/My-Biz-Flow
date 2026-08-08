@@ -1,7 +1,7 @@
 import { AppShell } from "@/components/AppShell";
 import { registerPage } from "@/lib/designer/registry";
-import Link from "next/link";
 import { StockAdjustmentsClientTable } from "./StockAdjustmentsClientTable";
+import { StockAdjustmentsNewButton } from "./StockAdjustmentsNewButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { stockAdjustmentColumns } from "@/lib/sample-data/warehouse";
 
@@ -27,9 +27,7 @@ export default async function StockAdjustmentsPage({ params }: { params: { vendo
     <AppShell
       topbarTitle="Stock Adjustments"
       topbarActions={
-        <Link href={`/vendor/${params.vendorId}/inventory/stock-adjustments/new`} className="btn-accent">
-          + New Adjustment
-        </Link>
+        <StockAdjustmentsNewButton />
       }
     >
       <div>

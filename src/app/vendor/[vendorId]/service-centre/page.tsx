@@ -1,8 +1,8 @@
 import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
-import Link from "next/link";
 import { ServiceCentreClientTable } from "./ServiceCentreClientTable";
+import { ServiceCentreNewButton } from "./ServiceCentreNewButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { serviceCentreColumns } from "@/lib/sample-data/service-centre";
 
@@ -30,9 +30,7 @@ export default async function ServiceCentrePage({ params }: { params: { vendorId
     <AppShell
       topbarTitle={mod?.label ?? "Service Centre"}
       topbarActions={
-        <Link href={`/vendor/${params.vendorId}/service-centre/new`} className="btn-accent">
-          + New Workorder
-        </Link>
+        <ServiceCentreNewButton />
       }
     >
       <div>

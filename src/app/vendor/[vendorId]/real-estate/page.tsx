@@ -1,8 +1,8 @@
 import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
-import Link from "next/link";
 import { RealEstateClientTable } from "./RealEstateClientTable";
+import { RealEstateNewButton } from "./RealEstateNewButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { realEstateColumns } from "@/lib/sample-data/real-estate";
 
@@ -30,9 +30,7 @@ export default async function RealEstatePage({ params }: { params: { vendorId: s
     <AppShell
       topbarTitle={mod?.label ?? "Real Estate"}
       topbarActions={
-        <Link href={`/vendor/${params.vendorId}/real-estate/new`} className="btn-accent">
-          + New Listing
-        </Link>
+        <RealEstateNewButton />
       }
     >
       <div>

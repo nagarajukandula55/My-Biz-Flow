@@ -11,6 +11,7 @@ export function HrmsClientTable({ vendorId, columns }: { vendorId: string; colum
       columns={columns ?? hrmsColumns}
       rows={hrmsRows}
       onRowClick={(row: Row) => router.push(`/vendor/${vendorId}/hrms/${row["id"]}`)}
+      enableQuickView
     />
   );
 }

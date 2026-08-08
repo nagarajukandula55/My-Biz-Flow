@@ -11,6 +11,7 @@ export function LogisticsFleetClientTable({ vendorId, columns }: { vendorId: str
       columns={columns ?? logisticsFleetColumns}
       rows={logisticsFleetRows}
       onRowClick={(row: Row) => router.push(`/vendor/${vendorId}/logistics-fleet/${row["id"]}`)}
+      enableQuickView
     />
   );
 }

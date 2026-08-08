@@ -11,6 +11,7 @@ export function BrandClientTable({ vendorId, columns }: { vendorId: string; colu
       columns={columns ?? brandColumns}
       rows={brandRows}
       onRowClick={(row: Row) => router.push(`/vendor/${vendorId}/brand/${row["id"]}`)}
+      enableQuickView
     />
   );
 }

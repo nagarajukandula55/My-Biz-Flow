@@ -1,8 +1,8 @@
 import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
-import Link from "next/link";
 import { RestaurantPosClientTable } from "./RestaurantPosClientTable";
+import { RestaurantPosNewButton } from "./RestaurantPosNewButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { restaurantPosColumns } from "@/lib/sample-data/restaurant-pos";
 
@@ -30,9 +30,7 @@ export default async function RestaurantPosPage({ params }: { params: { vendorId
     <AppShell
       topbarTitle={mod?.label ?? "Restaurant POS"}
       topbarActions={
-        <Link href={`/vendor/${params.vendorId}/restaurant-pos/new`} className="btn-accent">
-          + New Order
-        </Link>
+        <RestaurantPosNewButton />
       }
     >
       <div>

@@ -1,8 +1,8 @@
 import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
-import Link from "next/link";
 import { HrmsClientTable } from "./HrmsClientTable";
+import { HrmsNewButton } from "./HrmsNewButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { hrmsColumns } from "@/lib/sample-data/hrms";
 
@@ -30,9 +30,7 @@ export default async function HrmsPage({ params }: { params: { vendorId: string 
     <AppShell
       topbarTitle={mod?.label ?? "HRMS / Payroll"}
       topbarActions={
-        <Link href={`/vendor/${params.vendorId}/hrms/new`} className="btn-accent">
-          + New Employee
-        </Link>
+        <HrmsNewButton />
       }
     >
       <div>

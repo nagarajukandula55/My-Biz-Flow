@@ -11,6 +11,7 @@ export function WholesaleB2bClientTable({ vendorId, columns }: { vendorId: strin
       columns={columns ?? wholesaleB2bColumns}
       rows={wholesaleB2bRows}
       onRowClick={(row: Row) => router.push(`/vendor/${vendorId}/wholesale-b2b/${row["id"]}`)}
+      enableQuickView
     />
   );
 }

@@ -1,8 +1,8 @@
 import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
-import Link from "next/link";
 import { ClinicClientTable } from "./ClinicClientTable";
+import { ClinicNewButton } from "./ClinicNewButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { clinicColumns } from "@/lib/sample-data/clinic";
 
@@ -30,9 +30,7 @@ export default async function ClinicPage({ params }: { params: { vendorId: strin
     <AppShell
       topbarTitle={mod?.label ?? "Clinic"}
       topbarActions={
-        <Link href={`/vendor/${params.vendorId}/clinic/new`} className="btn-accent">
-          + New Appointment
-        </Link>
+        <ClinicNewButton />
       }
     >
       <div>

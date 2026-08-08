@@ -11,6 +11,7 @@ export function EducationClientTable({ vendorId, columns }: { vendorId: string; 
       columns={columns ?? educationColumns}
       rows={educationRows}
       onRowClick={(row: Row) => router.push(`/vendor/${vendorId}/education/${row["id"]}`)}
+      enableQuickView
     />
   );
 }

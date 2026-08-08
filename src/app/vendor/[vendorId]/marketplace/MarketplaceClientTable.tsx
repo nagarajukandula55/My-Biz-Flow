@@ -11,6 +11,7 @@ export function MarketplaceClientTable({ vendorId, columns }: { vendorId: string
       columns={columns ?? marketplaceColumns}
       rows={marketplaceRows}
       onRowClick={(row: Row) => router.push(`/vendor/${vendorId}/marketplace/${row["id"]}`)}
+      enableQuickView
     />
   );
 }

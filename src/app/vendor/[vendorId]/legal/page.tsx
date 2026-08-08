@@ -1,8 +1,8 @@
 import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
-import Link from "next/link";
 import { LegalClientTable } from "./LegalClientTable";
+import { LegalNewButton } from "./LegalNewButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { legalColumns } from "@/lib/sample-data/legal";
 
@@ -30,9 +30,7 @@ export default async function LegalPage({ params }: { params: { vendorId: string
     <AppShell
       topbarTitle={mod?.label ?? "Legal / Case Management"}
       topbarActions={
-        <Link href={`/vendor/${params.vendorId}/legal/new`} className="btn-accent">
-          + New Matter
-        </Link>
+        <LegalNewButton />
       }
     >
       <div>

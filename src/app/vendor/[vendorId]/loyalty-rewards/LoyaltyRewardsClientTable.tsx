@@ -11,6 +11,7 @@ export function LoyaltyRewardsClientTable({ vendorId, columns }: { vendorId: str
       columns={columns ?? loyaltyRewardsColumns}
       rows={loyaltyRewardsRows}
       onRowClick={(row: Row) => router.push(`/vendor/${vendorId}/loyalty-rewards/${row["id"]}`)}
+      enableQuickView
     />
   );
 }

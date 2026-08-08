@@ -1,7 +1,7 @@
 import { AppShell } from "@/components/AppShell";
 import { registerPage } from "@/lib/designer/registry";
-import Link from "next/link";
 import { StockClientTable } from "./StockClientTable";
+import { StockNewButton } from "./StockNewButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { stockColumns } from "@/lib/sample-data/warehouse";
 
@@ -27,9 +27,7 @@ export default async function StockPage({ params }: { params: { vendorId: string
     <AppShell
       topbarTitle="Inventory (Stock)"
       topbarActions={
-        <Link href={`/vendor/${params.vendorId}/inventory/stock/new`} className="btn-accent">
-          + New Stock Entry
-        </Link>
+        <StockNewButton />
       }
     >
       <div>

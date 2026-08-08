@@ -1,8 +1,8 @@
 import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
-import Link from "next/link";
 import { EventBookingClientTable } from "./EventBookingClientTable";
+import { EventBookingNewButton } from "./EventBookingNewButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { eventBookingColumns } from "@/lib/sample-data/event-booking";
 
@@ -30,9 +30,7 @@ export default async function EventBookingPage({ params }: { params: { vendorId:
     <AppShell
       topbarTitle={mod?.label ?? "Event / Venue Booking"}
       topbarActions={
-        <Link href={`/vendor/${params.vendorId}/event-booking/new`} className="btn-accent">
-          + New Event
-        </Link>
+        <EventBookingNewButton />
       }
     >
       <div>

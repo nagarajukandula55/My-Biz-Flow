@@ -11,6 +11,7 @@ export function BillingClientTable({ vendorId, columns }: { vendorId: string; co
       columns={columns ?? billingColumns}
       rows={billingRows}
       onRowClick={(row: Row) => router.push(`/vendor/${vendorId}/billing/${row["id"]}`)}
+      enableQuickView
     />
   );
 }

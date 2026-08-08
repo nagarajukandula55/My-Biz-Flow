@@ -1,7 +1,7 @@
 import { AppShell } from "@/components/AppShell";
 import { registerPage } from "@/lib/designer/registry";
-import Link from "next/link";
 import { PartOrdersClientTable } from "./PartOrdersClientTable";
+import { PartOrdersNewButton } from "./PartOrdersNewButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { partOrderColumns } from "@/lib/sample-data/warehouse";
 
@@ -27,9 +27,7 @@ export default async function PartOrdersPage({ params }: { params: { vendorId: s
     <AppShell
       topbarTitle="Part Orders"
       topbarActions={
-        <Link href={`/vendor/${params.vendorId}/inventory/part-orders/new`} className="btn-accent">
-          + New Part Order
-        </Link>
+        <PartOrdersNewButton />
       }
     >
       <div>

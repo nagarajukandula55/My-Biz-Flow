@@ -11,6 +11,7 @@ export function RentalsClientTable({ vendorId, columns }: { vendorId: string; co
       columns={columns ?? rentalsColumns}
       rows={rentalsRows}
       onRowClick={(row: Row) => router.push(`/vendor/${vendorId}/rentals/${row["id"]}`)}
+      enableQuickView
     />
   );
 }

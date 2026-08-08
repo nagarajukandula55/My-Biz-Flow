@@ -1,8 +1,8 @@
 import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
-import Link from "next/link";
 import { ManufacturingClientTable } from "./ManufacturingClientTable";
+import { ManufacturingNewButton } from "./ManufacturingNewButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { manufacturingColumns } from "@/lib/sample-data/manufacturing";
 
@@ -30,9 +30,7 @@ export default async function ManufacturingPage({ params }: { params: { vendorId
     <AppShell
       topbarTitle={mod?.label ?? "Manufacturing / Production"}
       topbarActions={
-        <Link href={`/vendor/${params.vendorId}/manufacturing/new`} className="btn-accent">
-          + New Work Order
-        </Link>
+        <ManufacturingNewButton />
       }
     >
       <div>

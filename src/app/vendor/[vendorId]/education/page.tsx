@@ -1,8 +1,8 @@
 import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
-import Link from "next/link";
 import { EducationClientTable } from "./EducationClientTable";
+import { EducationNewButton } from "./EducationNewButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { educationColumns } from "@/lib/sample-data/education";
 
@@ -30,9 +30,7 @@ export default async function EducationPage({ params }: { params: { vendorId: st
     <AppShell
       topbarTitle={mod?.label ?? "Education / Coaching"}
       topbarActions={
-        <Link href={`/vendor/${params.vendorId}/education/new`} className="btn-accent">
-          + New Enrollment
-        </Link>
+        <EducationNewButton />
       }
     >
       <div>

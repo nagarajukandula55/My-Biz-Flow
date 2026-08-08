@@ -1,8 +1,8 @@
 import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
-import Link from "next/link";
 import { RentalsClientTable } from "./RentalsClientTable";
+import { RentalsNewButton } from "./RentalsNewButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { rentalsColumns } from "@/lib/sample-data/rentals";
 
@@ -30,9 +30,7 @@ export default async function RentalsPage({ params }: { params: { vendorId: stri
     <AppShell
       topbarTitle={mod?.label ?? "Rentals / Booking"}
       topbarActions={
-        <Link href={`/vendor/${params.vendorId}/rentals/new`} className="btn-accent">
-          + New Booking
-        </Link>
+        <RentalsNewButton />
       }
     >
       <div>

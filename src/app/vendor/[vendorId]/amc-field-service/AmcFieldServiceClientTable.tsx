@@ -11,6 +11,7 @@ export function AmcFieldServiceClientTable({ vendorId, columns }: { vendorId: st
       columns={columns ?? amcFieldServiceColumns}
       rows={amcFieldServiceRows}
       onRowClick={(row: Row) => router.push(`/vendor/${vendorId}/amc-field-service/${row["id"]}`)}
+      enableQuickView
     />
   );
 }

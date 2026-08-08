@@ -11,6 +11,7 @@ export function RestaurantPosClientTable({ vendorId, columns }: { vendorId: stri
       columns={columns ?? restaurantPosColumns}
       rows={restaurantPosRows}
       onRowClick={(row: Row) => router.push(`/vendor/${vendorId}/restaurant-pos/${row["id"]}`)}
+      enableQuickView
     />
   );
 }

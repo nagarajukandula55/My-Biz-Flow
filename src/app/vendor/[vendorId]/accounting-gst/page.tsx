@@ -1,8 +1,8 @@
 import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
-import Link from "next/link";
 import { AccountingGstClientTable } from "./AccountingGstClientTable";
+import { AccountingGstNewButton } from "./AccountingGstNewButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { accountingGstColumns } from "@/lib/sample-data/accounting-gst";
 
@@ -30,9 +30,7 @@ export default async function AccountingGstPage({ params }: { params: { vendorId
     <AppShell
       topbarTitle={mod?.label ?? "Accounting / GST Compliance"}
       topbarActions={
-        <Link href={`/vendor/${params.vendorId}/accounting-gst/new`} className="btn-accent">
-          + New GST Return
-        </Link>
+        <AccountingGstNewButton />
       }
     >
       <div>

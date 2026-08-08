@@ -11,6 +11,7 @@ export function ManufacturingClientTable({ vendorId, columns }: { vendorId: stri
       columns={columns ?? manufacturingColumns}
       rows={manufacturingRows}
       onRowClick={(row: Row) => router.push(`/vendor/${vendorId}/manufacturing/${row["id"]}`)}
+      enableQuickView
     />
   );
 }

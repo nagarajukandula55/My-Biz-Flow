@@ -11,6 +11,7 @@ export function ReturnOrdersClientTable({ vendorId, columns }: { vendorId: strin
       columns={columns ?? returnOrderColumns}
       rows={returnOrderRows}
       onRowClick={(row: Row) => router.push(`/vendor/${vendorId}/inventory/return-orders/${row["id"]}`)}
+      enableQuickView
     />
   );
 }

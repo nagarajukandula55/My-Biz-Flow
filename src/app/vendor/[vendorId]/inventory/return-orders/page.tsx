@@ -1,7 +1,7 @@
 import { AppShell } from "@/components/AppShell";
 import { registerPage } from "@/lib/designer/registry";
-import Link from "next/link";
 import { ReturnOrdersClientTable } from "./ReturnOrdersClientTable";
+import { ReturnOrdersNewButton } from "./ReturnOrdersNewButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { returnOrderColumns } from "@/lib/sample-data/warehouse";
 
@@ -27,9 +27,7 @@ export default async function ReturnOrdersPage({ params }: { params: { vendorId:
     <AppShell
       topbarTitle="Return Orders"
       topbarActions={
-        <Link href={`/vendor/${params.vendorId}/inventory/return-orders/new`} className="btn-accent">
-          + New Return Order
-        </Link>
+        <ReturnOrdersNewButton />
       }
     >
       <div>

@@ -1,8 +1,8 @@
 import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
-import Link from "next/link";
 import { WholesaleB2bClientTable } from "./WholesaleB2bClientTable";
+import { WholesaleB2bNewButton } from "./WholesaleB2bNewButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { wholesaleB2bColumns } from "@/lib/sample-data/wholesale-b2b";
 
@@ -30,9 +30,7 @@ export default async function WholesaleB2bPage({ params }: { params: { vendorId:
     <AppShell
       topbarTitle={mod?.label ?? "Wholesale / Distributor B2B"}
       topbarActions={
-        <Link href={`/vendor/${params.vendorId}/wholesale-b2b/new`} className="btn-accent">
-          + New Order
-        </Link>
+        <WholesaleB2bNewButton />
       }
     >
       <div>

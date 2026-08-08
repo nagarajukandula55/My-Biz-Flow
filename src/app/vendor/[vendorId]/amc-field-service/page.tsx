@@ -1,8 +1,8 @@
 import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
-import Link from "next/link";
 import { AmcFieldServiceClientTable } from "./AmcFieldServiceClientTable";
+import { AmcFieldServiceNewButton } from "./AmcFieldServiceNewButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { amcFieldServiceColumns } from "@/lib/sample-data/amc-field-service";
 
@@ -30,9 +30,7 @@ export default async function AmcFieldServicePage({ params }: { params: { vendor
     <AppShell
       topbarTitle={mod?.label ?? "AMC / Field Service"}
       topbarActions={
-        <Link href={`/vendor/${params.vendorId}/amc-field-service/new`} className="btn-accent">
-          + New Contract
-        </Link>
+        <AmcFieldServiceNewButton />
       }
     >
       <div>

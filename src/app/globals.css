@@ -129,6 +129,33 @@ h3,
   font-weight: 700;
 }
 
+/* Minimal scrollbars everywhere — thin, unobtrusive, theme-aware, but
+   scrolling itself is untouched (still native, still keyboard/wheel/
+   touch scrollable). Firefox via scrollbar-width; WebKit/Chromium via
+   the ::-webkit-scrollbar pseudo-elements. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: var(--border);
+  border-radius: 8px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: var(--text-muted);
+}
+
 /* Full-width page shell: responsive safe-gutter padding, not a centered
    max-width container. */
 .mbf-page {

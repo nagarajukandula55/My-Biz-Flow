@@ -11,6 +11,7 @@ export function ClinicClientTable({ vendorId, columns }: { vendorId: string; col
       columns={columns ?? clinicColumns}
       rows={clinicRows}
       onRowClick={(row: Row) => router.push(`/vendor/${vendorId}/clinic/${row["id"]}`)}
+      enableQuickView
     />
   );
 }

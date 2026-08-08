@@ -11,6 +11,7 @@ export function LegalClientTable({ vendorId, columns }: { vendorId: string; colu
       columns={columns ?? legalColumns}
       rows={legalRows}
       onRowClick={(row: Row) => router.push(`/vendor/${vendorId}/legal/${row["id"]}`)}
+      enableQuickView
     />
   );
 }

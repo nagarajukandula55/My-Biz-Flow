@@ -11,6 +11,7 @@ export function RealEstateClientTable({ vendorId, columns }: { vendorId: string;
       columns={columns ?? realEstateColumns}
       rows={realEstateRows}
       onRowClick={(row: Row) => router.push(`/vendor/${vendorId}/real-estate/${row["id"]}`)}
+      enableQuickView
     />
   );
 }

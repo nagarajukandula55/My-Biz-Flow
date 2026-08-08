@@ -1,8 +1,8 @@
 import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
-import Link from "next/link";
 import { SubscriptionsClientTable } from "./SubscriptionsClientTable";
+import { SubscriptionsNewButton } from "./SubscriptionsNewButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { subscriptionsColumns } from "@/lib/sample-data/subscriptions";
 
@@ -30,9 +30,7 @@ export default async function SubscriptionsPage({ params }: { params: { vendorId
     <AppShell
       topbarTitle={mod?.label ?? "Subscriptions / Membership"}
       topbarActions={
-        <Link href={`/vendor/${params.vendorId}/subscriptions/new`} className="btn-accent">
-          + New Membership
-        </Link>
+        <SubscriptionsNewButton />
       }
     >
       <div>

@@ -11,6 +11,7 @@ export function ServiceCentreClientTable({ vendorId, columns }: { vendorId: stri
       columns={columns ?? serviceCentreColumns}
       rows={serviceCentreRows}
       onRowClick={(row: Row) => router.push(`/vendor/${vendorId}/service-centre/${row["id"]}`)}
+      enableQuickView
     />
   );
 }

@@ -1,8 +1,8 @@
 import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
-import Link from "next/link";
 import { LoyaltyRewardsClientTable } from "./LoyaltyRewardsClientTable";
+import { LoyaltyRewardsNewButton } from "./LoyaltyRewardsNewButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { loyaltyRewardsColumns } from "@/lib/sample-data/loyalty-rewards";
 
@@ -30,9 +30,7 @@ export default async function LoyaltyRewardsPage({ params }: { params: { vendorI
     <AppShell
       topbarTitle={mod?.label ?? "Loyalty & Rewards"}
       topbarActions={
-        <Link href={`/vendor/${params.vendorId}/loyalty-rewards/new`} className="btn-accent">
-          + New Member
-        </Link>
+        <LoyaltyRewardsNewButton />
       }
     >
       <div>

@@ -1,8 +1,8 @@
 import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
-import Link from "next/link";
 import { BrandClientTable } from "./BrandClientTable";
+import { BrandNewButton } from "./BrandNewButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { brandColumns } from "@/lib/sample-data/brand";
 
@@ -30,9 +30,7 @@ export default async function BrandPage({ params }: { params: { vendorId: string
     <AppShell
       topbarTitle={mod?.label ?? "Brand"}
       topbarActions={
-        <Link href={`/vendor/${params.vendorId}/brand/new`} className="btn-accent">
-          + New Location
-        </Link>
+        <BrandNewButton />
       }
     >
       <div>

@@ -11,6 +11,7 @@ export function AccountingGstClientTable({ vendorId, columns }: { vendorId: stri
       columns={columns ?? accountingGstColumns}
       rows={accountingGstRows}
       onRowClick={(row: Row) => router.push(`/vendor/${vendorId}/accounting-gst/${row["id"]}`)}
+      enableQuickView
     />
   );
 }

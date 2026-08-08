@@ -1,8 +1,8 @@
 import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
-import Link from "next/link";
 import { LogisticsFleetClientTable } from "./LogisticsFleetClientTable";
+import { LogisticsFleetNewButton } from "./LogisticsFleetNewButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { logisticsFleetColumns } from "@/lib/sample-data/logistics-fleet";
 
@@ -30,9 +30,7 @@ export default async function LogisticsFleetPage({ params }: { params: { vendorI
     <AppShell
       topbarTitle={mod?.label ?? "Logistics / Fleet"}
       topbarActions={
-        <Link href={`/vendor/${params.vendorId}/logistics-fleet/new`} className="btn-accent">
-          + New Shipment
-        </Link>
+        <LogisticsFleetNewButton />
       }
     >
       <div>
