@@ -103,6 +103,25 @@ export function taxonomyToNavDot(taxonomy: ModuleTaxonomy): NavDot {
   }
 }
 
+/**
+ * Per-module sidebar sub-item overrides — most modules get the generic
+ * List/+New/Admin trio (see moduleRegistry.ts), but a module whose real
+ * sub-pages don't fit that shape (Inventory is a hub of six sections, not
+ * one record list) lists its actual sub-pages here instead. Keyed by
+ * module slug; a module without an entry falls back to the generic trio.
+ */
+export const MODULE_SUB_NAV: Record<string, { key: string; label: string; href: string }[]> = {
+  inventory: [
+    { key: "inventory.bom", label: "Material Catalog (BOM)", href: "inventory/bom" },
+    { key: "inventory.warehouses", label: "Warehouses", href: "inventory/warehouses" },
+    { key: "inventory.stock", label: "Inventory (Stock)", href: "inventory/stock" },
+    { key: "inventory.stock-adjustments", label: "Stock Adjustments", href: "inventory/stock-adjustments" },
+    { key: "inventory.return-orders", label: "Return Orders", href: "inventory/return-orders" },
+    { key: "inventory.part-orders", label: "Part Orders", href: "inventory/part-orders" },
+    { key: "inventory.admin", label: "Admin", href: "inventory/admin" },
+  ],
+};
+
 export interface VendorNavSubItem {
   key: string;
   label: string;

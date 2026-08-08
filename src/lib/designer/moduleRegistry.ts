@@ -15,6 +15,7 @@
 
 import {
   MODULES,
+  MODULE_SUB_NAV,
   type ModuleDefinition,
   type ModuleTaxonomy,
   type VendorNavGroup,
@@ -52,7 +53,7 @@ export async function buildVendorNavGroups(): Promise<VendorNavGroup[]> {
         dot: taxonomyToNavDot(m.taxonomy),
         icon: override?.icon,
         href: m.slug,
-        subItems: [
+        subItems: MODULE_SUB_NAV[m.slug] ?? [
           { key: `${m.slug}.list`, label: "All records", href: m.slug },
           { key: `${m.slug}.new`, label: "+ New", href: `${m.slug}/new` },
           { key: `${m.slug}.admin`, label: "Admin", href: `${m.slug}/admin` },

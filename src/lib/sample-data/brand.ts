@@ -2,9 +2,15 @@ import type { Column, Row } from "@/components/DataTable";
 import type { RecordField, TimelineEntry, RelatedRecord } from "@/components/RecordDetail";
 import type { StatusVariant } from "@/components/StatusChip";
 import type { FormFieldDef } from "@/components/RecordForm";
+import { getWarehouseOptions } from "./warehouse";
 
 // Location sample data for the brand module — realistic field modeling,
 // no backend wired up in this pass (see CLAUDE.md).
+//
+// mappedWarehouse: confirmed 2026-08-08 — a Service Centre location's
+// Return Orders/Part Orders route through this warehouse. Configured
+// here (on the Location), not on the Warehouse itself, since Brand
+// already owns the location hierarchy.
 
 const STATUS_VARIANT: Record<string, StatusVariant> = {
   "Active": "success",
@@ -19,6 +25,7 @@ export const brandColumns: Column[] = [
   { key: "locationName", label: "Location Name", type: "text" },
   { key: "city", label: "City", type: "text" },
   { key: "modulesEnabled", label: "Modules Enabled", type: "text" },
+  { key: "mappedWarehouse", label: "Mapped Warehouse", type: "text" },
   { key: "monthlyRevenue", label: "Monthly Revenue", type: "currency" },
   { key: "status", label: "Status", type: "select-chip", chipVariantMap: STATUS_VARIANT },
   { key: "openedDate", label: "Opened Date", type: "date" },
@@ -32,6 +39,7 @@ export const brandRows: Row[] = [
     locationName: "Meridian — Indiranagar",
     city: "Bengaluru",
     modulesEnabled: "Restaurant POS, Inventory, Loyalty",
+    mappedWarehouse: "Central Warehouse — Bengaluru",
     monthlyRevenue: 1180000,
     status: "Active",
     openedDate: "2024-03-11",
@@ -43,6 +51,7 @@ export const brandRows: Row[] = [
     locationName: "Meridian — Andheri",
     city: "Mumbai",
     modulesEnabled: "Restaurant POS, Inventory",
+    mappedWarehouse: "Regional Warehouse — Mumbai",
     monthlyRevenue: 940000,
     status: "Active",
     openedDate: "2024-08-02",
@@ -54,6 +63,7 @@ export const brandRows: Row[] = [
     locationName: "FitZone — Baner",
     city: "Pune",
     modulesEnabled: "Subscriptions, HRMS",
+    mappedWarehouse: "",
     monthlyRevenue: 610000,
     status: "Onboarding",
     openedDate: "2026-07-20",
@@ -65,6 +75,7 @@ export const brandRows: Row[] = [
     locationName: "FitZone — Saket",
     city: "New Delhi",
     modulesEnabled: "Subscriptions, HRMS, Loyalty",
+    mappedWarehouse: "",
     monthlyRevenue: 0,
     status: "Suspended",
     openedDate: "2023-11-05",
@@ -78,6 +89,7 @@ export const brandFormFields: FormFieldDef[] = [
   { key: "locationName", label: "Location Name", type: "text", required: true },
   { key: "city", label: "City", type: "text", required: true },
   { key: "modulesEnabled", label: "Modules Enabled", type: "textarea", required: false },
+  { key: "mappedWarehouse", label: "Mapped Warehouse", type: "select", required: false, options: getWarehouseOptions().map((o) => o.label) },
   { key: "monthlyRevenue", label: "Monthly Revenue", type: "currency", required: false },
   { key: "status", label: "Status", type: "select", required: true, options: ["Active","Onboarding","Suspended"] },
   { key: "openedDate", label: "Opened Date", type: "date", required: false },
@@ -96,6 +108,7 @@ export function getBrandDetailFields(record: Row): RecordField[] {
     { label: "Location Name", value: r["locationName"], type: "text" },
     { label: "City", value: r["city"], type: "text" },
     { label: "Modules Enabled", value: r["modulesEnabled"], type: "text" },
+    { label: "Mapped Warehouse", value: r["mappedWarehouse"], type: "text" },
     { label: "Monthly Revenue", value: r["monthlyRevenue"], type: "currency" },
     { label: "Status", value: r["status"], type: "select", chipVariant: STATUS_VARIANT[String(r["status"])] ?? "neutral" },
     { label: "Opened Date", value: r["openedDate"], type: "date" },
