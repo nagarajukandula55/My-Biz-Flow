@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
-import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import { StatusChip } from "@/components/StatusChip";
 import { DashboardWidget } from "@/components/DashboardWidget";
@@ -33,7 +32,7 @@ export default async function VendorSubscriptionPage({ params }: { params: { ven
   );
 
   return (
-    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups("billing")} topbarTitle="Subscription">
+    <AppShell topbarTitle="Subscription">
       <div>
         <h1 className="font-display text-2xl font-bold text-text">Subscription</h1>
         <p className="mt-1 text-sm text-text-muted">

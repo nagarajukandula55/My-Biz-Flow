@@ -1,6 +1,5 @@
 import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
-import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { legalFormFields, getLegalRecord } from "@/lib/sample-data/legal";
@@ -28,7 +27,7 @@ export default async function EditLegalPage({ params }: { params: { vendorId: st
   const fields = await applyCustomizations("legal.edit", legalFormFields);
 
   return (
-    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups(undefined, "legal")} topbarTitle={`Edit Matter — ${mod?.label ?? "Legal / Case Management"}`}>
+    <AppShell topbarTitle={`Edit Matter — ${mod?.label ?? "Legal / Case Management"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">Edit Matter</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>

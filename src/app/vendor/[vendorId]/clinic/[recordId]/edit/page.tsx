@@ -1,6 +1,5 @@
 import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
-import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { clinicFormFields, getClinicRecord } from "@/lib/sample-data/clinic";
@@ -28,7 +27,7 @@ export default async function EditClinicPage({ params }: { params: { vendorId: s
   const fields = await applyCustomizations("clinic.edit", clinicFormFields);
 
   return (
-    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups(undefined, "clinic")} topbarTitle={`Edit Appointment — ${mod?.label ?? "Clinic"}`}>
+    <AppShell topbarTitle={`Edit Appointment — ${mod?.label ?? "Clinic"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">Edit Appointment</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>

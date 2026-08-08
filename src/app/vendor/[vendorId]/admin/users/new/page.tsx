@@ -1,6 +1,5 @@
 import { AppShell } from "@/components/AppShell";
 import { SuperAdminGate } from "@/components/SuperAdminGate";
-import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { userFormFields } from "@/lib/sample-data/users";
@@ -19,7 +18,7 @@ registerPage({
 
 export default async function NewUserPage({ params }: { params: { vendorId: string } }) {
   return (
-    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups("users")} topbarTitle="New User">
+    <AppShell topbarTitle="New User">
       <SuperAdminGate>
         <div>
           <h1 className="font-display text-2xl font-bold text-text">New User</h1>

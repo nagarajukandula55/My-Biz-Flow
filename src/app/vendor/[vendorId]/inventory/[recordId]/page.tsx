@@ -1,6 +1,5 @@
 import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
-import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { RecordDetail } from "@/components/RecordDetail";
@@ -36,14 +35,8 @@ export default async function InventoryDetailPage({
   const recordLabel = String(record["id"] ?? params.recordId);
 
   return (
-    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups(undefined, "inventory")} topbarTitle={mod?.label ?? "Inventory / Warehouse"}>
+    <AppShell topbarTitle={mod?.label ?? "Inventory / Warehouse"}>
       <div>
-        <Link
-          href={`/vendor/${params.vendorId}/inventory`}
-          className="text-sm font-semibold text-teal hover:underline"
-        >
-          &larr; Back to Inventory / Warehouse
-        </Link>
 
         <RecordDetail
           fields={fields}
@@ -52,10 +45,13 @@ export default async function InventoryDetailPage({
           headerSlot={
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="font-display text-2xl font-bold text-text">{recordLabel}</h1>
-                <p className="mt-1 text-sm text-text-muted">Stock Item detail</p>
+                <h1 className="font-display text-xl font-bold text-text">{recordLabel}</h1>
+                <p className="mt-1 text-xs text-text-muted">Stock Item detail</p>
               </div>
               <div className="flex items-center gap-3">
+                <Link href={`/vendor/${params.vendorId}/inventory`} className="btn-outline">
+                  &larr; Back
+                </Link>
                 <Link
                   href={`/vendor/${params.vendorId}/inventory/${params.recordId}/edit`}
                   className="btn-outline"

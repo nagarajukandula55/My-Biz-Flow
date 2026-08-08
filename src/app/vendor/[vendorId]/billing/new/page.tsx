@@ -1,6 +1,5 @@
 import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
-import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import { BillingInvoiceForm } from "@/components/BillingInvoiceForm";
 
@@ -24,7 +23,7 @@ export default async function NewBillingPage({ params }: { params: { vendorId: s
   const mod = await getModule("billing");
 
   return (
-    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups(undefined, "billing")} topbarTitle={`New Invoice — ${mod?.label ?? "Billing"}`}>
+    <AppShell topbarTitle={`New Invoice — ${mod?.label ?? "Billing"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">New Invoice</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new invoice record for Billing.</p>

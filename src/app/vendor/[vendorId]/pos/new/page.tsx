@@ -1,6 +1,5 @@
 import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
-import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { posFormFields } from "@/lib/sample-data/pos";
@@ -27,7 +26,7 @@ export default async function NewPosPage({ params }: { params: { vendorId: strin
   const fields = await applyCustomizations("pos.create", posFormFields);
 
   return (
-    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups(undefined, "pos")} topbarTitle={`New Sale — ${mod?.label ?? "POS"}`}>
+    <AppShell topbarTitle={`New Sale — ${mod?.label ?? "POS"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">New Sale</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new sale record for POS.</p>

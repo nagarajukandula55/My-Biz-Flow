@@ -1,6 +1,5 @@
 import { AppShell } from "@/components/AppShell";
 import { SuperAdminGate } from "@/components/SuperAdminGate";
-import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { UserClientTable } from "./UserClientTable";
@@ -21,8 +20,6 @@ registerPage({
 export default async function UsersPage({ params }: { params: { vendorId: string } }) {
   return (
     <AppShell
-      vendorId={params.vendorId}
-      navGroups={await buildVendorAdminNavGroups("users")}
       topbarTitle="Users"
       topbarActions={
         <Link href={`/vendor/${params.vendorId}/admin/users/new`} className="btn-accent">

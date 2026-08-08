@@ -1,6 +1,5 @@
 import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
-import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { BillingClientTable } from "./BillingClientTable";
@@ -29,8 +28,6 @@ export default async function BillingPage({ params }: { params: { vendorId: stri
 
   return (
     <AppShell
-      vendorId={params.vendorId}
-      navGroups={await buildVendorAdminNavGroups(undefined, "billing")}
       topbarTitle={mod?.label ?? "Billing"}
       topbarActions={
         <Link href={`/vendor/${params.vendorId}/billing/new`} className="btn-accent">

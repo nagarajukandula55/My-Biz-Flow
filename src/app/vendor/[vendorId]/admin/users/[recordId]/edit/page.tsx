@@ -1,6 +1,5 @@
 import { AppShell } from "@/components/AppShell";
 import { SuperAdminGate } from "@/components/SuperAdminGate";
-import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { userFormFields, getUserRecord } from "@/lib/sample-data/users";
@@ -20,7 +19,7 @@ registerPage({
 export default async function EditUserPage({ params }: { params: { vendorId: string; recordId: string } }) {
   const record = getUserRecord(params.recordId);
   return (
-    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups("users")} topbarTitle="Edit User">
+    <AppShell topbarTitle="Edit User">
       <SuperAdminGate>
         <div>
           <h1 className="font-display text-2xl font-bold text-text">Edit User</h1>

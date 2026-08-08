@@ -1,4 +1,5 @@
-import { AppShell } from "@/components/AppShell";
+import Link from "next/link";
+import { LogoMark } from "@/components/LogoMark";
 import { registerPage } from "@/lib/designer/registry";
 import "@/lib/designer/registerAll";
 
@@ -14,13 +15,6 @@ registerPage({
     "General-purpose help/documentation page, visible to any signed-in user (not vendor-scoped, not Super-Admin-gated). Explains the Vendor/module concept, sidebar navigation, the Create/Edit/Delete pattern used across every module, and answers common questions — the first place a new user should land when they're unsure how the product works.",
   sourceFile: "src/app/help/page.tsx",
 });
-
-const HELP_NAV_GROUPS = [
-  {
-    title: "Platform",
-    items: [{ key: "help", label: "Help", dot: "amber" as const, active: true }],
-  },
-];
 
 const FAQS: { q: string; a: string }[] = [
   {
@@ -59,7 +53,13 @@ const FAQS: { q: string; a: string }[] = [
 
 export default function HelpPage() {
   return (
-    <AppShell vendorId="demo" navGroups={HELP_NAV_GROUPS} topbarTitle="Help & Documentation">
+    <div className="mbf-page min-h-screen w-full bg-bg">
+      <header className="mb-6 flex items-center justify-between border-b border-border pb-4">
+        <Link href="/" className="flex items-center gap-2">
+          <LogoMark size={22} />
+          <span className="font-display text-base font-extrabold text-text">My Biz Flow</span>
+        </Link>
+      </header>
       <div>
         <div className="mbf-prose">
           <h1 className="font-display text-3xl font-bold text-text">Help &amp; Documentation</h1>
@@ -118,6 +118,6 @@ export default function HelpPage() {
           </dl>
         </div>
       </div>
-    </AppShell>
+    </div>
   );
 }

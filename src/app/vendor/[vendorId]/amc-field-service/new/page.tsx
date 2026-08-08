@@ -1,6 +1,5 @@
 import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
-import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { amcFieldServiceFormFields } from "@/lib/sample-data/amc-field-service";
@@ -27,7 +26,7 @@ export default async function NewAmcFieldServicePage({ params }: { params: { ven
   const fields = await applyCustomizations("amc-field-service.create", amcFieldServiceFormFields);
 
   return (
-    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups(undefined, "amc-field-service")} topbarTitle={`New Contract — ${mod?.label ?? "AMC / Field Service"}`}>
+    <AppShell topbarTitle={`New Contract — ${mod?.label ?? "AMC / Field Service"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">New Contract</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new contract record for AMC / Field Service.</p>

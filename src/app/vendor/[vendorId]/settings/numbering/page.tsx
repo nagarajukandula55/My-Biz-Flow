@@ -1,7 +1,6 @@
 import { AppShell } from "@/components/AppShell";
 import Link from "next/link";
 import { NumberingSchemeEditor } from "@/components/NumberingSchemeEditor";
-import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import {
   NUMBERED_DOCUMENT_TYPES,
   getEffectiveScheme,
@@ -34,7 +33,7 @@ export default async function VendorNumberingPage({ params }: { params: { vendor
     }))
   );
   return (
-    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups("numbering")} topbarTitle="Settings — Numbering">
+    <AppShell topbarTitle="Settings — Numbering">
       <div>
         <Link
           href={`/vendor/${params.vendorId}/settings`}

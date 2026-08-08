@@ -1,6 +1,5 @@
 import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
-import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { restaurantPosFormFields } from "@/lib/sample-data/restaurant-pos";
@@ -27,7 +26,7 @@ export default async function NewRestaurantPosPage({ params }: { params: { vendo
   const fields = await applyCustomizations("restaurant-pos.create", restaurantPosFormFields);
 
   return (
-    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups(undefined, "restaurant-pos")} topbarTitle={`New Order — ${mod?.label ?? "Restaurant POS"}`}>
+    <AppShell topbarTitle={`New Order — ${mod?.label ?? "Restaurant POS"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">New Order</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new order record for Restaurant POS.</p>

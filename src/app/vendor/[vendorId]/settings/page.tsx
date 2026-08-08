@@ -1,5 +1,4 @@
 import { AppShell } from "@/components/AppShell";
-import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import { SettingsPageClient } from "./SettingsPageClient";
 
@@ -23,7 +22,7 @@ registerPage({
  */
 export default async function SettingsPage({ params }: { params: { vendorId: string } }) {
   return (
-    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups("settings")} topbarTitle="Settings">
+    <AppShell topbarTitle="Settings">
       <SettingsPageClient />
     </AppShell>
   );

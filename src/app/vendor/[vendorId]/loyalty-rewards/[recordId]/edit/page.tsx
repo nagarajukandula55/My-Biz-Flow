@@ -1,6 +1,5 @@
 import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
-import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { loyaltyRewardsFormFields, getLoyaltyRewardsRecord } from "@/lib/sample-data/loyalty-rewards";
@@ -28,7 +27,7 @@ export default async function EditLoyaltyRewardsPage({ params }: { params: { ven
   const fields = await applyCustomizations("loyalty-rewards.edit", loyaltyRewardsFormFields);
 
   return (
-    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups(undefined, "loyalty-rewards")} topbarTitle={`Edit Member — ${mod?.label ?? "Loyalty & Rewards"}`}>
+    <AppShell topbarTitle={`Edit Member — ${mod?.label ?? "Loyalty & Rewards"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">Edit Member</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>

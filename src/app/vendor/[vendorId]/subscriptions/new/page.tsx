@@ -1,6 +1,5 @@
 import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
-import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { subscriptionsFormFields } from "@/lib/sample-data/subscriptions";
@@ -27,7 +26,7 @@ export default async function NewSubscriptionsPage({ params }: { params: { vendo
   const fields = await applyCustomizations("subscriptions.create", subscriptionsFormFields);
 
   return (
-    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups(undefined, "subscriptions")} topbarTitle={`New Membership — ${mod?.label ?? "Subscriptions / Membership"}`}>
+    <AppShell topbarTitle={`New Membership — ${mod?.label ?? "Subscriptions / Membership"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">New Membership</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new membership record for Subscriptions / Membership.</p>

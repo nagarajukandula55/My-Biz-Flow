@@ -1,6 +1,5 @@
 import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
-import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { amcFieldServiceFormFields, getAmcFieldServiceRecord } from "@/lib/sample-data/amc-field-service";
@@ -28,7 +27,7 @@ export default async function EditAmcFieldServicePage({ params }: { params: { ve
   const fields = await applyCustomizations("amc-field-service.edit", amcFieldServiceFormFields);
 
   return (
-    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups(undefined, "amc-field-service")} topbarTitle={`Edit Contract — ${mod?.label ?? "AMC / Field Service"}`}>
+    <AppShell topbarTitle={`Edit Contract — ${mod?.label ?? "AMC / Field Service"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">Edit Contract</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>

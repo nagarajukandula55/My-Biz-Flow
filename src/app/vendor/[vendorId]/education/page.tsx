@@ -1,6 +1,5 @@
 import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
-import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { EducationClientTable } from "./EducationClientTable";
@@ -29,8 +28,6 @@ export default async function EducationPage({ params }: { params: { vendorId: st
 
   return (
     <AppShell
-      vendorId={params.vendorId}
-      navGroups={await buildVendorAdminNavGroups(undefined, "education")}
       topbarTitle={mod?.label ?? "Education / Coaching"}
       topbarActions={
         <Link href={`/vendor/${params.vendorId}/education/new`} className="btn-accent">

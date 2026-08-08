@@ -1,6 +1,5 @@
 import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
-import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { AccountingGstClientTable } from "./AccountingGstClientTable";
@@ -29,8 +28,6 @@ export default async function AccountingGstPage({ params }: { params: { vendorId
 
   return (
     <AppShell
-      vendorId={params.vendorId}
-      navGroups={await buildVendorAdminNavGroups(undefined, "accounting-gst")}
       topbarTitle={mod?.label ?? "Accounting / GST Compliance"}
       topbarActions={
         <Link href={`/vendor/${params.vendorId}/accounting-gst/new`} className="btn-accent">

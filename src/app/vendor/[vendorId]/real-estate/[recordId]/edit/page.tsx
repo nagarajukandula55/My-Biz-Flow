@@ -1,6 +1,5 @@
 import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
-import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { realEstateFormFields, getRealEstateRecord } from "@/lib/sample-data/real-estate";
@@ -28,7 +27,7 @@ export default async function EditRealEstatePage({ params }: { params: { vendorI
   const fields = await applyCustomizations("real-estate.edit", realEstateFormFields);
 
   return (
-    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups(undefined, "real-estate")} topbarTitle={`Edit Listing — ${mod?.label ?? "Real Estate"}`}>
+    <AppShell topbarTitle={`Edit Listing — ${mod?.label ?? "Real Estate"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">Edit Listing</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>

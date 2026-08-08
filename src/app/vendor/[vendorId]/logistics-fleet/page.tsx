@@ -1,6 +1,5 @@
 import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
-import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { LogisticsFleetClientTable } from "./LogisticsFleetClientTable";
@@ -29,8 +28,6 @@ export default async function LogisticsFleetPage({ params }: { params: { vendorI
 
   return (
     <AppShell
-      vendorId={params.vendorId}
-      navGroups={await buildVendorAdminNavGroups(undefined, "logistics-fleet")}
       topbarTitle={mod?.label ?? "Logistics / Fleet"}
       topbarActions={
         <Link href={`/vendor/${params.vendorId}/logistics-fleet/new`} className="btn-accent">

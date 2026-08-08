@@ -1,6 +1,5 @@
 import { AppShell } from "@/components/AppShell";
 import { SuperAdminGate } from "@/components/SuperAdminGate";
-import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { AccessGroupClientTable } from "./AccessGroupClientTable";
@@ -21,8 +20,6 @@ registerPage({
 export default async function AccessGroupsPage({ params }: { params: { vendorId: string } }) {
   return (
     <AppShell
-      vendorId={params.vendorId}
-      navGroups={await buildVendorAdminNavGroups("access-groups")}
       topbarTitle="Access Groups"
       topbarActions={
         <Link href={`/vendor/${params.vendorId}/admin/access-groups/new`} className="btn-accent">

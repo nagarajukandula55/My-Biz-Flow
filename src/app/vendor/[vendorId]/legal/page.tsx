@@ -1,6 +1,5 @@
 import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
-import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { LegalClientTable } from "./LegalClientTable";
@@ -29,8 +28,6 @@ export default async function LegalPage({ params }: { params: { vendorId: string
 
   return (
     <AppShell
-      vendorId={params.vendorId}
-      navGroups={await buildVendorAdminNavGroups(undefined, "legal")}
       topbarTitle={mod?.label ?? "Legal / Case Management"}
       topbarActions={
         <Link href={`/vendor/${params.vendorId}/legal/new`} className="btn-accent">

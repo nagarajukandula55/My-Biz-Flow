@@ -1,6 +1,5 @@
 import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
-import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { WholesaleB2bClientTable } from "./WholesaleB2bClientTable";
@@ -29,8 +28,6 @@ export default async function WholesaleB2bPage({ params }: { params: { vendorId:
 
   return (
     <AppShell
-      vendorId={params.vendorId}
-      navGroups={await buildVendorAdminNavGroups(undefined, "wholesale-b2b")}
       topbarTitle={mod?.label ?? "Wholesale / Distributor B2B"}
       topbarActions={
         <Link href={`/vendor/${params.vendorId}/wholesale-b2b/new`} className="btn-accent">

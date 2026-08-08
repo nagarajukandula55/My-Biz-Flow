@@ -32,7 +32,7 @@ function renderFieldValue(field: RecordField) {
   switch (field.type) {
     case "currency":
       return (
-        <span className="font-mono text-base font-bold tabular-nums text-text">
+        <span className="font-mono text-sm font-bold tabular-nums text-text">
           {formatCurrencyINR(Number(field.value))}
         </span>
       );
@@ -156,7 +156,7 @@ export function RecordDetail({ fields, timeline, related, headerSlot }: RecordDe
                 <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">
                   {field.label}
                 </div>
-                <div className="mt-1">{renderFieldValue(field)}</div>
+                <div className="mt-1 text-sm">{renderFieldValue(field)}</div>
               </div>
             ))}
           </div>

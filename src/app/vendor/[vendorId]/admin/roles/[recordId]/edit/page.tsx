@@ -1,6 +1,5 @@
 import { AppShell } from "@/components/AppShell";
 import { SuperAdminGate } from "@/components/SuperAdminGate";
-import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { roleFormFields, getRoleRecord } from "@/lib/sample-data/roles";
@@ -20,7 +19,7 @@ registerPage({
 export default async function EditRolePage({ params }: { params: { vendorId: string; recordId: string } }) {
   const record = getRoleRecord(params.recordId);
   return (
-    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups("roles")} topbarTitle="Edit Role">
+    <AppShell topbarTitle="Edit Role">
       <SuperAdminGate>
         <div>
           <h1 className="font-display text-2xl font-bold text-text">Edit Role</h1>

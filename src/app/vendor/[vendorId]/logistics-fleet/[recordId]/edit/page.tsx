@@ -1,6 +1,5 @@
 import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
-import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { logisticsFleetFormFields, getLogisticsFleetRecord } from "@/lib/sample-data/logistics-fleet";
@@ -28,7 +27,7 @@ export default async function EditLogisticsFleetPage({ params }: { params: { ven
   const fields = await applyCustomizations("logistics-fleet.edit", logisticsFleetFormFields);
 
   return (
-    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups(undefined, "logistics-fleet")} topbarTitle={`Edit Shipment — ${mod?.label ?? "Logistics / Fleet"}`}>
+    <AppShell topbarTitle={`Edit Shipment — ${mod?.label ?? "Logistics / Fleet"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">Edit Shipment</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>

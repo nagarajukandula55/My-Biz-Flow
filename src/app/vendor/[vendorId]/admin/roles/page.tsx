@@ -1,6 +1,5 @@
 import { AppShell } from "@/components/AppShell";
 import { SuperAdminGate } from "@/components/SuperAdminGate";
-import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { RoleClientTable } from "./RoleClientTable";
@@ -21,8 +20,6 @@ registerPage({
 export default async function RolesPage({ params }: { params: { vendorId: string } }) {
   return (
     <AppShell
-      vendorId={params.vendorId}
-      navGroups={await buildVendorAdminNavGroups("roles")}
       topbarTitle="Roles"
       topbarActions={
         <Link href={`/vendor/${params.vendorId}/admin/roles/new`} className="btn-accent">

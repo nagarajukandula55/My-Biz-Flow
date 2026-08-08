@@ -1,6 +1,5 @@
 import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
-import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { LoyaltyRewardsClientTable } from "./LoyaltyRewardsClientTable";
@@ -29,8 +28,6 @@ export default async function LoyaltyRewardsPage({ params }: { params: { vendorI
 
   return (
     <AppShell
-      vendorId={params.vendorId}
-      navGroups={await buildVendorAdminNavGroups(undefined, "loyalty-rewards")}
       topbarTitle={mod?.label ?? "Loyalty & Rewards"}
       topbarActions={
         <Link href={`/vendor/${params.vendorId}/loyalty-rewards/new`} className="btn-accent">

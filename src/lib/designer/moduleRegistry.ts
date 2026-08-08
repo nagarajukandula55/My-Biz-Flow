@@ -33,7 +33,7 @@ export async function getModule(slug: string): Promise<ModuleDefinition | undefi
   };
 }
 
-export async function buildVendorNavGroups(activeModuleSlug?: string): Promise<VendorNavGroup[]> {
+export async function buildVendorNavGroups(): Promise<VendorNavGroup[]> {
   const groups: Record<ModuleTaxonomy, ModuleDefinition[]> = {
     brand: [],
     vertical: [],
@@ -51,7 +51,6 @@ export async function buildVendorNavGroups(activeModuleSlug?: string): Promise<V
         label: override?.label || m.label,
         dot: taxonomyToNavDot(m.taxonomy),
         icon: override?.icon,
-        active: m.slug === activeModuleSlug,
         href: m.slug,
         subItems: [
           { key: `${m.slug}.list`, label: "All records", href: m.slug },

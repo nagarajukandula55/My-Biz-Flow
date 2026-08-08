@@ -1,6 +1,5 @@
 import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
-import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { eventBookingFormFields } from "@/lib/sample-data/event-booking";
@@ -27,7 +26,7 @@ export default async function NewEventBookingPage({ params }: { params: { vendor
   const fields = await applyCustomizations("event-booking.create", eventBookingFormFields);
 
   return (
-    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups(undefined, "event-booking")} topbarTitle={`New Event — ${mod?.label ?? "Event / Venue Booking"}`}>
+    <AppShell topbarTitle={`New Event — ${mod?.label ?? "Event / Venue Booking"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">New Event</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new event record for Event / Venue Booking.</p>

@@ -1,6 +1,5 @@
 import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
-import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import { BillingInvoiceForm } from "@/components/BillingInvoiceForm";
 import { getBillingRecord, billingLineItems } from "@/lib/sample-data/billing";
@@ -27,7 +26,7 @@ export default async function EditBillingPage({ params }: { params: { vendorId: 
   const items = billingLineItems[params.recordId] ?? [];
 
   return (
-    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups(undefined, "billing")} topbarTitle={`Edit Invoice — ${mod?.label ?? "Billing"}`}>
+    <AppShell topbarTitle={`Edit Invoice — ${mod?.label ?? "Billing"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">Edit Invoice</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>

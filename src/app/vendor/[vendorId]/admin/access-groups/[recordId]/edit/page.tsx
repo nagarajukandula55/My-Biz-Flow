@@ -1,6 +1,5 @@
 import { AppShell } from "@/components/AppShell";
 import { SuperAdminGate } from "@/components/SuperAdminGate";
-import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { accessGroupFormFields, getAccessGroupRecord } from "@/lib/sample-data/access-groups";
@@ -20,7 +19,7 @@ registerPage({
 export default async function EditAccessGroupPage({ params }: { params: { vendorId: string; recordId: string } }) {
   const record = getAccessGroupRecord(params.recordId);
   return (
-    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups("access-groups")} topbarTitle="Edit Access Group">
+    <AppShell topbarTitle="Edit Access Group">
       <SuperAdminGate>
         <div>
           <h1 className="font-display text-2xl font-bold text-text">Edit Access Group</h1>

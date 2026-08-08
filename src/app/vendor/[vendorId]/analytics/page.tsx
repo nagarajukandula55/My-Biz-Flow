@@ -3,7 +3,6 @@ import { DashboardWidget } from "@/components/DashboardWidget";
 import { DataTable } from "@/components/DataTable";
 import { LineChartCard, BarChartCard, PieChartCard } from "@/components/charts";
 import { getDemoEnabledModules } from "@/lib/designer/modules";
-import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { formatCurrencyINR } from "@/lib/format";
 import {
   revenueTrend,
@@ -56,7 +55,7 @@ export default async function AnalyticsPage({ params }: { params: { vendorId: st
   const totalRevenue = revenueTrend.reduce((sum, p) => sum + p.y, 0);
 
   return (
-    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups("analytics")} topbarTitle="Analytics">
+    <AppShell topbarTitle="Analytics">
       <div>
         <h1 className="font-display text-2xl font-bold text-text">Analytics</h1>
         <p className="mt-1 max-w-[65ch] text-sm text-text-muted">

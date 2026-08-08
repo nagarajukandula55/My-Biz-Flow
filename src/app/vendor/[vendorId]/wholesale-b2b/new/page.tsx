@@ -1,6 +1,5 @@
 import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
-import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { wholesaleB2bFormFields } from "@/lib/sample-data/wholesale-b2b";
@@ -27,7 +26,7 @@ export default async function NewWholesaleB2bPage({ params }: { params: { vendor
   const fields = await applyCustomizations("wholesale-b2b.create", wholesaleB2bFormFields);
 
   return (
-    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups(undefined, "wholesale-b2b")} topbarTitle={`New Order — ${mod?.label ?? "Wholesale / Distributor B2B"}`}>
+    <AppShell topbarTitle={`New Order — ${mod?.label ?? "Wholesale / Distributor B2B"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">New Order</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new order record for Wholesale / Distributor B2B.</p>

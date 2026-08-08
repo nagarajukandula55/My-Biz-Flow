@@ -2,7 +2,6 @@ import { AppShell } from "@/components/AppShell";
 import { DashboardWidget } from "@/components/DashboardWidget";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { getDemoEnabledModules } from "@/lib/designer/modules";
-import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { computeModuleStat } from "@/lib/moduleData";
 import { formatCurrencyINR } from "@/lib/format";
 import { registerPage } from "@/lib/designer/registry";
@@ -28,7 +27,7 @@ export default async function VendorDashboardPage({ params }: { params: { vendor
   const modules = await Promise.all(enabledSlugs.map((slug) => getModule(slug)));
 
   return (
-    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups("dashboard")} topbarTitle="Dashboard">
+    <AppShell topbarTitle="Dashboard">
       <div>
         <h1 className="font-display text-2xl font-bold text-text">Dashboard</h1>
         <p className="mt-1 max-w-[65ch] text-sm text-text-muted">

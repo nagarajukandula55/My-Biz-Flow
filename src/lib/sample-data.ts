@@ -129,7 +129,7 @@ export const sampleRelated: RelatedRecord[] = [
 export const sampleNavGroups: NavGroup[] = [
   {
     title: "Overview",
-    items: [{ key: "dashboard", label: "Dashboard", dot: "amber", active: true }],
+    items: [{ key: "dashboard", label: "Dashboard", dot: "amber" }],
   },
   {
     title: "Service Centre",

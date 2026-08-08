@@ -1,6 +1,5 @@
 import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
-import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { marketplaceFormFields } from "@/lib/sample-data/marketplace";
@@ -27,7 +26,7 @@ export default async function NewMarketplacePage({ params }: { params: { vendorI
   const fields = await applyCustomizations("marketplace.create", marketplaceFormFields);
 
   return (
-    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups(undefined, "marketplace")} topbarTitle={`New Vendor Listing — ${mod?.label ?? "Marketplace / Vendor Aggregator"}`}>
+    <AppShell topbarTitle={`New Vendor Listing — ${mod?.label ?? "Marketplace / Vendor Aggregator"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">New Vendor Listing</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new vendor listing record for Marketplace / Vendor Aggregator.</p>

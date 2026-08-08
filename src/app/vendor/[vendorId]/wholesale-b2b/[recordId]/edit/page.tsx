@@ -1,6 +1,5 @@
 import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
-import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { wholesaleB2bFormFields, getWholesaleB2bRecord } from "@/lib/sample-data/wholesale-b2b";
@@ -28,7 +27,7 @@ export default async function EditWholesaleB2bPage({ params }: { params: { vendo
   const fields = await applyCustomizations("wholesale-b2b.edit", wholesaleB2bFormFields);
 
   return (
-    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups(undefined, "wholesale-b2b")} topbarTitle={`Edit Order — ${mod?.label ?? "Wholesale / Distributor B2B"}`}>
+    <AppShell topbarTitle={`Edit Order — ${mod?.label ?? "Wholesale / Distributor B2B"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">Edit Order</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>

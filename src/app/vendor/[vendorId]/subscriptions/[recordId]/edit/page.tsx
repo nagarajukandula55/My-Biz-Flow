@@ -1,6 +1,5 @@
 import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
-import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { subscriptionsFormFields, getSubscriptionsRecord } from "@/lib/sample-data/subscriptions";
@@ -28,7 +27,7 @@ export default async function EditSubscriptionsPage({ params }: { params: { vend
   const fields = await applyCustomizations("subscriptions.edit", subscriptionsFormFields);
 
   return (
-    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups(undefined, "subscriptions")} topbarTitle={`Edit Membership — ${mod?.label ?? "Subscriptions / Membership"}`}>
+    <AppShell topbarTitle={`Edit Membership — ${mod?.label ?? "Subscriptions / Membership"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">Edit Membership</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>

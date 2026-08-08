@@ -1,7 +1,6 @@
 import { AppShell } from "@/components/AppShell";
 import { SuperAdminGate } from "@/components/SuperAdminGate";
 import { getModule } from "@/lib/designer/moduleRegistry";
-import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 
 registerPage({
@@ -24,7 +23,7 @@ export default async function WholesaleB2bAdminPage({ params }: { params: { vend
   const mod = await getModule("wholesale-b2b");
 
   return (
-    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups(undefined, "wholesale-b2b")} topbarTitle={`${mod?.label ?? "Wholesale / Distributor B2B"} · Admin`}>
+    <AppShell topbarTitle={`${mod?.label ?? "Wholesale / Distributor B2B"} · Admin`}>
       <SuperAdminGate>
         <div>
           <h1 className="font-display text-2xl font-bold text-text">

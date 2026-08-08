@@ -1,6 +1,5 @@
 import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
-import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { ServiceCentreClientTable } from "./ServiceCentreClientTable";
@@ -29,8 +28,6 @@ export default async function ServiceCentrePage({ params }: { params: { vendorId
 
   return (
     <AppShell
-      vendorId={params.vendorId}
-      navGroups={await buildVendorAdminNavGroups(undefined, "service-centre")}
       topbarTitle={mod?.label ?? "Service Centre"}
       topbarActions={
         <Link href={`/vendor/${params.vendorId}/service-centre/new`} className="btn-accent">

@@ -117,7 +117,6 @@ export interface VendorNavGroup {
     label: string;
     dot: NavDot;
     icon?: string;
-    active?: boolean;
     /** Path segment(s) relative to /vendor/[vendorId]/. Defaults to `key` when unset (true for module items, since a module's slug is its list-page route). */
     href?: string;
     subItems?: VendorNavSubItem[];

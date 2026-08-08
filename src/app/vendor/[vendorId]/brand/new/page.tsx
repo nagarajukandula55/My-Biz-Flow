@@ -1,6 +1,5 @@
 import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
-import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { brandFormFields } from "@/lib/sample-data/brand";
@@ -27,7 +26,7 @@ export default async function NewBrandPage({ params }: { params: { vendorId: str
   const fields = await applyCustomizations("brand.create", brandFormFields);
 
   return (
-    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups(undefined, "brand")} topbarTitle={`New Location — ${mod?.label ?? "Brand"}`}>
+    <AppShell topbarTitle={`New Location — ${mod?.label ?? "Brand"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">New Location</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new location record for Brand.</p>
