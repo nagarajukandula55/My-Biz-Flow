@@ -141,6 +141,11 @@ model VendorType {
   defaultModules     Json     @default("[]")
   assignableRoleIds  Json     @default("[]")
   planTierByPage     Json     @default("{}")
+  /// When true, a signup against this type creates a VendorSignupRequest
+  /// instead of a Vendor directly — no VND#### id is assigned until Super
+  /// Admin approves it. Off by default (confirmed 2026-08-08: no approval
+  /// required unless explicitly turned on per type).
+  requiresApproval   Boolean  @default(false)
   status             String   @default("Active")
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
@@ -155,9 +160,36 @@ model VendorType {
 /// shown to the vendor. businessId is fixed to "BIZ002" (this business's
 /// central-api id) until real cross-business support exists.
 model Vendor {
-  id              String   @id
-  internalKey     String   @unique
-  businessId      String   @default("BIZ002")
+  id                 String   @id
+  internalKey        String   @unique
+  businessId         String   @default("BIZ002")
+  vendorTypeId       String
+  businessName       String
+  addressLine        String?
+  city               String
+  state              String
+  pincode            String
+  gstin              String?
+  businessEmail      String
+  businessContact    String
+  loginContact       String   @unique
+  passwordHash       String
+  /// True until the vendor completes their first forced password change
+  /// (signup never collects a password directly — one is generated and
+  /// shown/emailed once).
+  mustChangePassword Boolean  @default(true)
+  status             String   @default("Active")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@map("vendors")
+}
+
+/// A signup submitted against a Vendor Type with requiresApproval=true —
+/// holds everything a Vendor row would, but no VND#### id is assigned
+/// until Super Admin approves it (see vendorSignupRequestsData.ts).
+model VendorSignupRequest {
+  id              String   @id @default(cuid())
   vendorTypeId    String
   businessName    String
   addressLine     String?
@@ -167,11 +199,10 @@ model Vendor {
   gstin           String?
   businessEmail   String
   businessContact String
-  loginContact    String   @unique
+  loginContact    String
   passwordHash    String
-  status          String   @default("Active")
+  status          String   @default("Pending")
   createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
 
-  @@map("vendors")
+  @@map("vendor_signup_requests")
 }

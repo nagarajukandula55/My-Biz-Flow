@@ -14,6 +14,7 @@ import {
   ShieldCheck,
   KeyRound,
   Building2,
+  UserCheck,
 } from "lucide-react";
 import { LogoMark } from "./LogoMark";
 import { signOutAdminAction } from "@/app/admin/login/actions";
@@ -34,6 +35,7 @@ const NAV_ITEMS: PlatformNavItem[] = [
   { key: "plans", label: "Plans", href: "/admin/plans", icon: CreditCard },
   { key: "subscribers", label: "Subscribers", href: "/admin/subscribers", icon: Users },
   { key: "vendor-types", label: "Vendor Types", href: "/admin/vendor-types", icon: Building2 },
+  { key: "vendor-signups", label: "Signup Requests", href: "/admin/vendor-signups", icon: UserCheck },
   { key: "access-groups", label: "Access Groups", href: "/admin/access-groups", icon: KeyRound },
   { key: "roles", label: "Roles", href: "/admin/roles", icon: ShieldCheck },
 ];

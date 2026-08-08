@@ -28,6 +28,7 @@ function parseInput(formData: FormData): VendorTypeInput {
     defaultModules,
     assignableRoleIds: formData.getAll("assignableRoleIds").map(String).filter(Boolean),
     planTierByPage,
+    requiresApproval: formData.get("requiresApproval") === "on",
     status: String(formData.get("status") ?? "Active"),
   };
 }

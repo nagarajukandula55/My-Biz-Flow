@@ -74,6 +74,16 @@ export default async function NewVendorTypePage() {
                 )}
               </div>
               <div>
+                <label className="flex items-center gap-2 text-sm text-text">
+                  <input type="checkbox" name="requiresApproval" className="h-4 w-4 accent-accent" />
+                  Require Super Admin approval before assigning a Vendor ID
+                </label>
+                <p className="mt-1 text-xs text-text-muted">
+                  Off by default. When on, signups against this type go to a review queue instead of getting
+                  a VND#### id immediately.
+                </p>
+              </div>
+              <div>
                 <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-text-muted">
                   Status
                 </label>

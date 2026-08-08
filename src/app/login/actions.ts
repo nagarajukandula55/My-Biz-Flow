@@ -9,8 +9,11 @@ import { findVendorByLoginIdentifier, verifyVendorPassword } from "@/lib/vendorD
  * Real vendor login: looks a vendor up by their public VND#### id OR their
  * registered login contact number (never the internal BIZ###-VND#### key
  * — see vendorData.ts), verifies the password hash, and sets the session
- * cookie to their real vendor id. Route-level enforcement that a request
- * to /vendor/[vendorId]/* actually matches the signed-in cookie doesn't
+ * cookie to their real vendor id. If mustChangePassword is still set
+ * (true for every account until their first password change — signup
+ * never collects one, see /signup), routes to /change-password instead
+ * of the dashboard. Route-level enforcement that a request to
+ * /vendor/[vendorId]/* actually matches the signed-in cookie doesn't
  * exist yet — this only covers the login handshake itself, same
  * demo-honesty scoping as every other pass in this codebase.
  */
@@ -30,6 +33,10 @@ export async function signInAsVendor(formData: FormData) {
     path: "/",
     maxAge: 60 * 60 * 8,
   });
+
+  if (vendor.mustChangePassword) {
+    redirect("/change-password");
+  }
 
   redirect(`/vendor/${vendor.id}/dashboard`);
 }

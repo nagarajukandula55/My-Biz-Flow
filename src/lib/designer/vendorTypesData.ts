@@ -17,6 +17,8 @@ export type VendorTypeRecord = {
   assignableRoleIds: string[];
   /** pageId -> tier that unlocks it, scoped to this type's own defaultModules pages only. */
   planTierByPage: Record<string, PlanTier>;
+  /** When true, signups against this type go to a review queue instead of getting a VND#### id immediately. */
+  requiresApproval: boolean;
   status: string;
 };
 
@@ -26,6 +28,7 @@ function toRecord(row: {
   defaultModules: unknown;
   assignableRoleIds: unknown;
   planTierByPage: unknown;
+  requiresApproval: boolean;
   status: string;
 }): VendorTypeRecord {
   return {
@@ -34,6 +37,7 @@ function toRecord(row: {
     defaultModules: (row.defaultModules as string[] | null) ?? [],
     assignableRoleIds: (row.assignableRoleIds as string[] | null) ?? [],
     planTierByPage: (row.planTierByPage as Record<string, PlanTier> | null) ?? {},
+    requiresApproval: row.requiresApproval,
     status: row.status,
   };
 }
@@ -58,6 +62,7 @@ export type VendorTypeInput = {
   defaultModules: string[];
   assignableRoleIds: string[];
   planTierByPage: Record<string, PlanTier>;
+  requiresApproval: boolean;
   status: string;
 };
 

@@ -19,7 +19,7 @@ registerPage({
 export default function LoginPage({
   searchParams,
 }: {
-  searchParams: { welcomeVendorId?: string; error?: string };
+  searchParams: { error?: string };
 }) {
   return (
     <div className="flex min-h-screen w-full items-center justify-center bg-bg px-6">
@@ -30,13 +30,6 @@ export default function LoginPage({
         </Link>
         <h1 className="font-display text-xl font-bold text-text">Sign in</h1>
 
-        {searchParams.welcomeVendorId && (
-          <p className="mt-3 rounded-md border border-success bg-success-soft px-3 py-2 text-sm text-success">
-            Account created — your Vendor ID is{" "}
-            <span className="font-mono font-bold">{searchParams.welcomeVendorId}</span>. Sign in with it (or your
-            registered contact number) below.
-          </p>
-        )}
         {searchParams.error === "invalid_credentials" && (
           <p className="mt-3 rounded-md border border-danger bg-danger-soft px-3 py-2 text-sm text-danger">
             Vendor ID / contact number or password is incorrect.

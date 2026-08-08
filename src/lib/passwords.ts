@@ -20,3 +20,19 @@ export function verifyPassword(password: string, stored: string): boolean {
   if (candidate.length !== expected.length) return false;
   return timingSafeEqual(candidate, expected);
 }
+
+/**
+ * Generates a readable one-time password for signup (no password field is
+ * ever shown at signup — see /signup). Avoids visually ambiguous
+ * characters (0/O, 1/l/I) since this is meant to be typed back in.
+ */
+const READABLE_CHARS = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+
+export function generatePassword(length = 10): string {
+  const bytes = randomBytes(length);
+  let out = "";
+  for (let i = 0; i < length; i++) {
+    out += READABLE_CHARS[bytes[i] % READABLE_CHARS.length];
+  }
+  return out;
+}
