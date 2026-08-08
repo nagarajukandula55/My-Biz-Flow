@@ -2,6 +2,7 @@ import { LogoMark } from "@/components/LogoMark";
 import { PrintButton } from "@/components/PrintButton";
 import { PrintFrame } from "@/components/PrintFrame";
 import { formatCurrencyINR, formatDate } from "@/lib/format";
+import { renderTemplate } from "@/lib/designer/documentTemplates";
 
 export type InvoiceLine = {
   description: string;
@@ -28,6 +29,7 @@ export function ServiceCentreInvoiceDocument({
   customerCity,
   customerState,
   lines,
+  customTemplate,
 }: {
   vendorName: string;
   invoiceNumber: string;
@@ -37,6 +39,9 @@ export function ServiceCentreInvoiceDocument({
   customerCity?: string;
   customerState?: string;
   lines: InvoiceLine[];
+  /** Super-Admin-designed override from the Designer (src/lib/designer/documentTemplates.ts) — same
+   * {{placeholder}} mechanism as every other document page; when set, replaces the default layout below. */
+  customTemplate?: string;
 }) {
   const rows = lines.map((l) => {
     const taxable = l.quantity * l.rate;
@@ -46,6 +51,35 @@ export function ServiceCentreInvoiceDocument({
   const taxableTotal = rows.reduce((s, r) => s + r.taxable, 0);
   const gstTotal = rows.reduce((s, r) => s + r.gstAmount, 0);
   const grandTotal = taxableTotal + gstTotal;
+
+  if (customTemplate) {
+    const html = renderTemplate(customTemplate, {
+      documentNumber: invoiceNumber,
+      invoiceDate,
+      customerName,
+      customerPhone: customerPhone ?? "",
+      customerCity: customerCity ?? "",
+      customerState: customerState ?? "",
+      taxableTotal,
+      taxAmount: gstTotal,
+      totalAmount: grandTotal,
+    });
+    return (
+      <div className="mbf-page bg-bg-sunken">
+        <div className="mx-auto flex max-w-3xl flex-col gap-4 py-8 print:max-w-none print:py-0">
+          <div className="flex justify-end print:hidden">
+            <PrintButton />
+          </div>
+          <PrintFrame sizes={["a4", "a5"]}>
+            <div
+              className="rounded-lg border border-border bg-bg-raised p-10 shadow-sm print:rounded-none print:border-0 print:shadow-none"
+              dangerouslySetInnerHTML={{ __html: html }}
+            />
+          </PrintFrame>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mbf-page bg-bg-sunken">

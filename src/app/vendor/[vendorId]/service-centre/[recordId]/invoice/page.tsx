@@ -3,6 +3,7 @@ import { getEffectiveScheme } from "@/lib/designer/numbering";
 import { formatNumber } from "@/lib/designer/numberingFormat";
 import { serviceCentreRows } from "@/lib/sample-data/service-centre";
 import { registerPage } from "@/lib/designer/registry";
+import { getDocumentTemplate } from "@/lib/designer/documentTemplates";
 import { ServiceCentreInvoiceDocument } from "./ServiceCentreInvoiceDocument";
 
 registerPage({
@@ -28,6 +29,7 @@ export default async function ServiceCentreInvoicePage({
   const scheme = await getEffectiveScheme("service-centre.invoice", params.vendorId);
   const invoiceNumber = formatNumber(scheme, scheme.sequenceStart + (sequenceIndex >= 0 ? sequenceIndex : 0));
   const lines = getWorkorderInvoiceLineItems(params.recordId);
+  const customTemplate = await getDocumentTemplate("service-centre.invoice");
 
   return (
     <ServiceCentreInvoiceDocument
@@ -37,6 +39,7 @@ export default async function ServiceCentreInvoicePage({
       customerName={String(record["customer"] ?? "Walk-in Customer")}
       customerCity={String(record["branch"] ?? "")}
       lines={lines}
+      customTemplate={customTemplate}
     />
   );
 }

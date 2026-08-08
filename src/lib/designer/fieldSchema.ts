@@ -71,7 +71,23 @@ export type SchemaField = {
  * the module's form fields, since those are the ones a Super Admin
  * actually edits shape for.
  */
+/** Placeholder set for the Service Centre Sales Invoice — doesn't match serviceCentreColumns
+ * (a different field set: GST totals, Bill To address, not the workorder's own columns), so it
+ * needs its own entry rather than falling through to the generic module schema below. */
+const SERVICE_CENTRE_INVOICE_FIELDS: SchemaField[] = [
+  { key: "customerName", label: "Customer Name", type: "text" },
+  { key: "customerPhone", label: "Customer Phone", type: "text" },
+  { key: "customerCity", label: "Customer City", type: "text" },
+  { key: "customerState", label: "Customer State", type: "text" },
+  { key: "invoiceDate", label: "Invoice Date", type: "date" },
+  { key: "taxableTotal", label: "Taxable Amount", type: "currency" },
+  { key: "taxAmount", label: "GST Amount", type: "currency" },
+  { key: "totalAmount", label: "Grand Total", type: "currency" },
+];
+
 export function getFieldSchema(pageId: string): SchemaField[] | null {
+  if (pageId === "service-centre.invoice") return SERVICE_CENTRE_INVOICE_FIELDS;
+
   const [moduleSlug, kind] = pageId.split(".");
   const schema = MODULE_SCHEMA[moduleSlug];
   if (!schema) return null;

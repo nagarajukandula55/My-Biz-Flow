@@ -115,7 +115,18 @@ export default async function PageDetailPage({ params }: { params: { pageId: str
               ]}
               initialTemplate={documentTemplate ?? ""}
               sampleRecord={{
-                ...(MODULE_DATA[page.moduleSlug]?.rows[0] ?? {}),
+                ...(page.id === "service-centre.invoice"
+                  ? {
+                      customerName: "Divya Menon",
+                      customerPhone: "",
+                      customerCity: "HSR Layout",
+                      customerState: "",
+                      invoiceDate: "2026-08-01",
+                      taxableTotal: 300,
+                      taxAmount: 54,
+                      totalAmount: 354,
+                    }
+                  : (MODULE_DATA[page.moduleSlug]?.rows[0] ?? {})),
                 documentNumber: effectiveScheme ? formatNumber(effectiveScheme, effectiveScheme.sequenceStart) : "",
               }}
             />
