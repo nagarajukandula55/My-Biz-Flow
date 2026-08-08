@@ -2,6 +2,7 @@ import type { Column, Row } from "@/components/DataTable";
 import type { RecordField, TimelineEntry, RelatedRecord } from "@/components/RecordDetail";
 import type { StatusVariant } from "@/components/StatusChip";
 import type { FormFieldDef } from "@/components/RecordForm";
+import { bomRows } from "./bom";
 
 // Workorder sample data for the service-centre module — realistic field modeling,
 // no backend wired up in this pass (see CLAUDE.md).
@@ -95,14 +96,21 @@ export function getWorkorderLifecycle(workorderId: string) {
 /** Sales Invoice line items derived from a closed workorder's Parts & Service Lines — A4/A5 print only. */
 export function getWorkorderInvoiceLineItems(
   workorderId: string
-): { description: string; quantity: number; unit: string; unitPrice: number; taxRate: number }[] {
+): { description: string; hsn: string; quantity: number; rate: number; gstRate: number }[] {
   const lifecycle = getWorkorderLifecycle(workorderId);
-  const items: { description: string; quantity: number; unit: string; unitPrice: number; taxRate: number }[] = [];
+  const items: { description: string; hsn: string; quantity: number; rate: number; gstRate: number }[] = [];
   for (const line of lifecycle.serviceLines) {
-    items.push({ description: line.solutionLabel, quantity: 1, unit: "service", unitPrice: line.laborCharge, taxRate: 18 });
+    items.push({ description: line.solutionLabel, hsn: "9987", quantity: 1, rate: line.laborCharge, gstRate: 18 });
   }
   for (const line of lifecycle.partLines) {
-    items.push({ description: line.materialLabel, quantity: line.qty, unit: "unit", unitPrice: 0, taxRate: 18 });
+    const material = bomRows.find((r) => String(r["id"]) === line.materialId);
+    items.push({
+      description: line.materialLabel,
+      hsn: String(material?.["hsnCode"] ?? ""),
+      quantity: line.qty,
+      rate: Number(material?.["rate"] ?? 0),
+      gstRate: Number(material?.["taxPercent"] ?? 18),
+    });
   }
   return items;
 }
