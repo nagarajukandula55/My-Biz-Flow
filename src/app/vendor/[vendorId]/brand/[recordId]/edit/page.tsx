@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/AppShell";
-import { buildVendorNavGroups, getModule } from "@/lib/designer/moduleRegistry";
+import { getModule } from "@/lib/designer/moduleRegistry";
+import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { brandFormFields, getBrandRecord } from "@/lib/sample-data/brand";
@@ -21,13 +22,13 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/brand/[recordId]/edit/page.tsx",
 });
 
-export default async function EditBrandPage({ params }: { params: { recordId: string } }) {
+export default async function EditBrandPage({ params }: { params: { vendorId: string; recordId: string } }) {
   const mod = await getModule("brand");
   const record = getBrandRecord(params.recordId);
   const fields = await applyCustomizations("brand.edit", brandFormFields);
 
   return (
-    <AppShell navGroups={await buildVendorNavGroups("brand")} topbarTitle={`Edit Location — ${mod?.label ?? "Brand"}`}>
+    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups(undefined, "brand")} topbarTitle={`Edit Location — ${mod?.label ?? "Brand"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">Edit Location</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>

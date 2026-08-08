@@ -132,7 +132,7 @@ h3,
 /* Full-width page shell: responsive safe-gutter padding, not a centered
    max-width container. */
 .mbf-page {
-  padding: clamp(28px, 4vw, 64px) clamp(20px, 5vw, 72px) clamp(56px, 8vw, 112px);
+  padding: clamp(16px, 2vw, 32px) clamp(16px, 3vw, 40px) clamp(32px, 4vw, 56px);
   width: 100%;
 }
 

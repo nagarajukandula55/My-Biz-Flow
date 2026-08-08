@@ -56,7 +56,7 @@ export default async function AnalyticsPage({ params }: { params: { vendorId: st
   const totalRevenue = revenueTrend.reduce((sum, p) => sum + p.y, 0);
 
   return (
-    <AppShell navGroups={await buildVendorAdminNavGroups("analytics")} topbarTitle="Analytics">
+    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups("analytics")} topbarTitle="Analytics">
       <div>
         <h1 className="font-display text-2xl font-bold text-text">Analytics</h1>
         <p className="mt-1 max-w-[65ch] text-sm text-text-muted">

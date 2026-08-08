@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/AppShell";
-import { buildVendorNavGroups, getModule } from "@/lib/designer/moduleRegistry";
+import { getModule } from "@/lib/designer/moduleRegistry";
+import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { rentalsFormFields } from "@/lib/sample-data/rentals";
@@ -21,12 +22,12 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/rentals/new/page.tsx",
 });
 
-export default async function NewRentalsPage() {
+export default async function NewRentalsPage({ params }: { params: { vendorId: string } }) {
   const mod = await getModule("rentals");
   const fields = await applyCustomizations("rentals.create", rentalsFormFields);
 
   return (
-    <AppShell navGroups={await buildVendorNavGroups("rentals")} topbarTitle={`New Booking — ${mod?.label ?? "Rentals / Booking"}`}>
+    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups(undefined, "rentals")} topbarTitle={`New Booking — ${mod?.label ?? "Rentals / Booking"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">New Booking</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new booking record for Rentals / Booking.</p>

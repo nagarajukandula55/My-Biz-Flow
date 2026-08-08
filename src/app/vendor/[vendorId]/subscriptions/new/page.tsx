@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/AppShell";
-import { buildVendorNavGroups, getModule } from "@/lib/designer/moduleRegistry";
+import { getModule } from "@/lib/designer/moduleRegistry";
+import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { subscriptionsFormFields } from "@/lib/sample-data/subscriptions";
@@ -21,12 +22,12 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/subscriptions/new/page.tsx",
 });
 
-export default async function NewSubscriptionsPage() {
+export default async function NewSubscriptionsPage({ params }: { params: { vendorId: string } }) {
   const mod = await getModule("subscriptions");
   const fields = await applyCustomizations("subscriptions.create", subscriptionsFormFields);
 
   return (
-    <AppShell navGroups={await buildVendorNavGroups("subscriptions")} topbarTitle={`New Membership — ${mod?.label ?? "Subscriptions / Membership"}`}>
+    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups(undefined, "subscriptions")} topbarTitle={`New Membership — ${mod?.label ?? "Subscriptions / Membership"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">New Membership</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new membership record for Subscriptions / Membership.</p>

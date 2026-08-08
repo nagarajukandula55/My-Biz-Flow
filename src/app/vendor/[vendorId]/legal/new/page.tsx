@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/AppShell";
-import { buildVendorNavGroups, getModule } from "@/lib/designer/moduleRegistry";
+import { getModule } from "@/lib/designer/moduleRegistry";
+import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { legalFormFields } from "@/lib/sample-data/legal";
@@ -21,12 +22,12 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/legal/new/page.tsx",
 });
 
-export default async function NewLegalPage() {
+export default async function NewLegalPage({ params }: { params: { vendorId: string } }) {
   const mod = await getModule("legal");
   const fields = await applyCustomizations("legal.create", legalFormFields);
 
   return (
-    <AppShell navGroups={await buildVendorNavGroups("legal")} topbarTitle={`New Matter — ${mod?.label ?? "Legal / Case Management"}`}>
+    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups(undefined, "legal")} topbarTitle={`New Matter — ${mod?.label ?? "Legal / Case Management"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">New Matter</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new matter record for Legal / Case Management.</p>

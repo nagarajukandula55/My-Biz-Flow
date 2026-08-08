@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/AppShell";
-import { buildVendorNavGroups, getModule } from "@/lib/designer/moduleRegistry";
+import { getModule } from "@/lib/designer/moduleRegistry";
+import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { SubscriptionsClientTable } from "./SubscriptionsClientTable";
@@ -28,7 +29,8 @@ export default async function SubscriptionsPage({ params }: { params: { vendorId
 
   return (
     <AppShell
-      navGroups={await buildVendorNavGroups("subscriptions")}
+      vendorId={params.vendorId}
+      navGroups={await buildVendorAdminNavGroups(undefined, "subscriptions")}
       topbarTitle={mod?.label ?? "Subscriptions / Membership"}
       topbarActions={
         <Link href={`/vendor/${params.vendorId}/subscriptions/new`} className="btn-accent">

@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/AppShell";
-import { buildVendorNavGroups, getModule } from "@/lib/designer/moduleRegistry";
+import { getModule } from "@/lib/designer/moduleRegistry";
+import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { AmcFieldServiceClientTable } from "./AmcFieldServiceClientTable";
@@ -28,7 +29,8 @@ export default async function AmcFieldServicePage({ params }: { params: { vendor
 
   return (
     <AppShell
-      navGroups={await buildVendorNavGroups("amc-field-service")}
+      vendorId={params.vendorId}
+      navGroups={await buildVendorAdminNavGroups(undefined, "amc-field-service")}
       topbarTitle={mod?.label ?? "AMC / Field Service"}
       topbarActions={
         <Link href={`/vendor/${params.vendorId}/amc-field-service/new`} className="btn-accent">

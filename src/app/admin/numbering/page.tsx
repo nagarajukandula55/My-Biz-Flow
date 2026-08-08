@@ -4,6 +4,10 @@ import { NumberingSchemeEditor } from "@/components/NumberingSchemeEditor";
 import { NUMBERED_DOCUMENT_TYPES, getMainScheme } from "@/lib/designer/numbering";
 import { registerPage } from "@/lib/designer/registry";
 
+// Reads live DB-backed numbering schemes — must not be baked into a static
+// build; every request should see current schemes, not a build-time snapshot.
+export const dynamic = "force-dynamic";
+
 registerPage({
   id: "platform.numbering",
   moduleSlug: "platform",

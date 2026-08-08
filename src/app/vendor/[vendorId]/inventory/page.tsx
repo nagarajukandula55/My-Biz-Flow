@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/AppShell";
-import { buildVendorNavGroups, getModule } from "@/lib/designer/moduleRegistry";
+import { getModule } from "@/lib/designer/moduleRegistry";
+import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { InventoryClientTable } from "./InventoryClientTable";
@@ -28,7 +29,8 @@ export default async function InventoryPage({ params }: { params: { vendorId: st
 
   return (
     <AppShell
-      navGroups={await buildVendorNavGroups("inventory")}
+      vendorId={params.vendorId}
+      navGroups={await buildVendorAdminNavGroups(undefined, "inventory")}
       topbarTitle={mod?.label ?? "Inventory / Warehouse"}
       topbarActions={
         <Link href={`/vendor/${params.vendorId}/inventory/new`} className="btn-accent">

@@ -28,7 +28,7 @@ export default async function VendorDashboardPage({ params }: { params: { vendor
   const modules = await Promise.all(enabledSlugs.map((slug) => getModule(slug)));
 
   return (
-    <AppShell navGroups={await buildVendorAdminNavGroups("dashboard")} topbarTitle="Dashboard">
+    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups("dashboard")} topbarTitle="Dashboard">
       <div>
         <h1 className="font-display text-2xl font-bold text-text">Dashboard</h1>
         <p className="mt-1 max-w-[65ch] text-sm text-text-muted">

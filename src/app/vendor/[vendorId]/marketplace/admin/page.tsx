@@ -1,6 +1,7 @@
 import { AppShell } from "@/components/AppShell";
 import { SuperAdminGate } from "@/components/SuperAdminGate";
-import { buildVendorNavGroups, getModule } from "@/lib/designer/moduleRegistry";
+import { getModule } from "@/lib/designer/moduleRegistry";
+import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 
 registerPage({
@@ -19,11 +20,11 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/marketplace/admin/page.tsx",
 });
 
-export default async function MarketplaceAdminPage() {
+export default async function MarketplaceAdminPage({ params }: { params: { vendorId: string } }) {
   const mod = await getModule("marketplace");
 
   return (
-    <AppShell navGroups={await buildVendorNavGroups("marketplace")} topbarTitle={`${mod?.label ?? "Marketplace / Vendor Aggregator"} · Admin`}>
+    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups(undefined, "marketplace")} topbarTitle={`${mod?.label ?? "Marketplace / Vendor Aggregator"} · Admin`}>
       <SuperAdminGate>
         <div>
           <h1 className="font-display text-2xl font-bold text-text">

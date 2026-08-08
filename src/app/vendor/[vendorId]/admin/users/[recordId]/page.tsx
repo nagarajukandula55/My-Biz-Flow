@@ -30,7 +30,7 @@ export default async function UserDetailPage({
   const recordLabel = String(record["id"] ?? params.recordId);
 
   return (
-    <AppShell navGroups={await buildVendorAdminNavGroups("users")} topbarTitle="Users">
+    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups("users")} topbarTitle="Users">
       <SuperAdminGate>
         <div>
           <Link href={`/vendor/${params.vendorId}/admin/users`} className="text-sm font-semibold text-teal hover:underline">

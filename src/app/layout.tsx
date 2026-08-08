@@ -14,6 +14,15 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${mbfDisplay.variable} ${mbfSans.variable} ${mbfMono.variable}`}>
+      <head>
+        {/* Applies a saved light/dark choice (see ThemeToggle) before first
+            paint, so there's no flash of the wrong theme on load. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var t=localStorage.getItem("mbf-theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t);}catch(e){}`,
+          }}
+        />
+      </head>
       <body>{children}</body>
     </html>
   );

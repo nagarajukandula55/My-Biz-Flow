@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/AppShell";
-import { buildVendorNavGroups, getModule } from "@/lib/designer/moduleRegistry";
+import { getModule } from "@/lib/designer/moduleRegistry";
+import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { accountingGstFormFields } from "@/lib/sample-data/accounting-gst";
@@ -21,12 +22,12 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/accounting-gst/new/page.tsx",
 });
 
-export default async function NewAccountingGstPage() {
+export default async function NewAccountingGstPage({ params }: { params: { vendorId: string } }) {
   const mod = await getModule("accounting-gst");
   const fields = await applyCustomizations("accounting-gst.create", accountingGstFormFields);
 
   return (
-    <AppShell navGroups={await buildVendorNavGroups("accounting-gst")} topbarTitle={`New GST Return — ${mod?.label ?? "Accounting / GST Compliance"}`}>
+    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups(undefined, "accounting-gst")} topbarTitle={`New GST Return — ${mod?.label ?? "Accounting / GST Compliance"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">New GST Return</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new gst return record for Accounting / GST Compliance.</p>

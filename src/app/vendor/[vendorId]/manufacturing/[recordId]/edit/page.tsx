@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/AppShell";
-import { buildVendorNavGroups, getModule } from "@/lib/designer/moduleRegistry";
+import { getModule } from "@/lib/designer/moduleRegistry";
+import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { manufacturingFormFields, getManufacturingRecord } from "@/lib/sample-data/manufacturing";
@@ -21,13 +22,13 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/manufacturing/[recordId]/edit/page.tsx",
 });
 
-export default async function EditManufacturingPage({ params }: { params: { recordId: string } }) {
+export default async function EditManufacturingPage({ params }: { params: { vendorId: string; recordId: string } }) {
   const mod = await getModule("manufacturing");
   const record = getManufacturingRecord(params.recordId);
   const fields = await applyCustomizations("manufacturing.edit", manufacturingFormFields);
 
   return (
-    <AppShell navGroups={await buildVendorNavGroups("manufacturing")} topbarTitle={`Edit Work Order — ${mod?.label ?? "Manufacturing / Production"}`}>
+    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups(undefined, "manufacturing")} topbarTitle={`Edit Work Order — ${mod?.label ?? "Manufacturing / Production"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">Edit Work Order</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>

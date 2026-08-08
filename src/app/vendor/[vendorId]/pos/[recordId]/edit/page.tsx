@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/AppShell";
-import { buildVendorNavGroups, getModule } from "@/lib/designer/moduleRegistry";
+import { getModule } from "@/lib/designer/moduleRegistry";
+import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { posFormFields, getPosRecord } from "@/lib/sample-data/pos";
@@ -21,13 +22,13 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/pos/[recordId]/edit/page.tsx",
 });
 
-export default async function EditPosPage({ params }: { params: { recordId: string } }) {
+export default async function EditPosPage({ params }: { params: { vendorId: string; recordId: string } }) {
   const mod = await getModule("pos");
   const record = getPosRecord(params.recordId);
   const fields = await applyCustomizations("pos.edit", posFormFields);
 
   return (
-    <AppShell navGroups={await buildVendorNavGroups("pos")} topbarTitle={`Edit Sale — ${mod?.label ?? "POS"}`}>
+    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups(undefined, "pos")} topbarTitle={`Edit Sale — ${mod?.label ?? "POS"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">Edit Sale</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>

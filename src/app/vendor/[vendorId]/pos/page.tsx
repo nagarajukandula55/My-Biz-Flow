@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/AppShell";
-import { buildVendorNavGroups, getModule } from "@/lib/designer/moduleRegistry";
+import { getModule } from "@/lib/designer/moduleRegistry";
+import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { PosClientTable } from "./PosClientTable";
@@ -28,7 +29,8 @@ export default async function PosPage({ params }: { params: { vendorId: string }
 
   return (
     <AppShell
-      navGroups={await buildVendorNavGroups("pos")}
+      vendorId={params.vendorId}
+      navGroups={await buildVendorAdminNavGroups(undefined, "pos")}
       topbarTitle={mod?.label ?? "POS"}
       topbarActions={
         <Link href={`/vendor/${params.vendorId}/pos/new`} className="btn-accent">

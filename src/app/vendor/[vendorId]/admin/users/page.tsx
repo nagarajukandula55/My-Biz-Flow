@@ -21,6 +21,7 @@ registerPage({
 export default async function UsersPage({ params }: { params: { vendorId: string } }) {
   return (
     <AppShell
+      vendorId={params.vendorId}
       navGroups={await buildVendorAdminNavGroups("users")}
       topbarTitle="Users"
       topbarActions={

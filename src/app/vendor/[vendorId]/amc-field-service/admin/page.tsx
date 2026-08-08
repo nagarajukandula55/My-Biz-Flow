@@ -1,6 +1,7 @@
 import { AppShell } from "@/components/AppShell";
 import { SuperAdminGate } from "@/components/SuperAdminGate";
-import { buildVendorNavGroups, getModule } from "@/lib/designer/moduleRegistry";
+import { getModule } from "@/lib/designer/moduleRegistry";
+import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 
 registerPage({
@@ -19,11 +20,11 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/amc-field-service/admin/page.tsx",
 });
 
-export default async function AmcFieldServiceAdminPage() {
+export default async function AmcFieldServiceAdminPage({ params }: { params: { vendorId: string } }) {
   const mod = await getModule("amc-field-service");
 
   return (
-    <AppShell navGroups={await buildVendorNavGroups("amc-field-service")} topbarTitle={`${mod?.label ?? "AMC / Field Service"} · Admin`}>
+    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups(undefined, "amc-field-service")} topbarTitle={`${mod?.label ?? "AMC / Field Service"} · Admin`}>
       <SuperAdminGate>
         <div>
           <h1 className="font-display text-2xl font-bold text-text">

@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/AppShell";
-import { buildVendorNavGroups, getModule } from "@/lib/designer/moduleRegistry";
+import { getModule } from "@/lib/designer/moduleRegistry";
+import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { ManufacturingClientTable } from "./ManufacturingClientTable";
@@ -28,7 +29,8 @@ export default async function ManufacturingPage({ params }: { params: { vendorId
 
   return (
     <AppShell
-      navGroups={await buildVendorNavGroups("manufacturing")}
+      vendorId={params.vendorId}
+      navGroups={await buildVendorAdminNavGroups(undefined, "manufacturing")}
       topbarTitle={mod?.label ?? "Manufacturing / Production"}
       topbarActions={
         <Link href={`/vendor/${params.vendorId}/manufacturing/new`} className="btn-accent">

@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/AppShell";
-import { buildVendorNavGroups, getModule } from "@/lib/designer/moduleRegistry";
+import { getModule } from "@/lib/designer/moduleRegistry";
+import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { amcFieldServiceFormFields, getAmcFieldServiceRecord } from "@/lib/sample-data/amc-field-service";
@@ -21,13 +22,13 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/amc-field-service/[recordId]/edit/page.tsx",
 });
 
-export default async function EditAmcFieldServicePage({ params }: { params: { recordId: string } }) {
+export default async function EditAmcFieldServicePage({ params }: { params: { vendorId: string; recordId: string } }) {
   const mod = await getModule("amc-field-service");
   const record = getAmcFieldServiceRecord(params.recordId);
   const fields = await applyCustomizations("amc-field-service.edit", amcFieldServiceFormFields);
 
   return (
-    <AppShell navGroups={await buildVendorNavGroups("amc-field-service")} topbarTitle={`Edit Contract — ${mod?.label ?? "AMC / Field Service"}`}>
+    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups(undefined, "amc-field-service")} topbarTitle={`Edit Contract — ${mod?.label ?? "AMC / Field Service"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">Edit Contract</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>

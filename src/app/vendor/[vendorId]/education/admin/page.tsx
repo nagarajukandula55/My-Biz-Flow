@@ -1,6 +1,7 @@
 import { AppShell } from "@/components/AppShell";
 import { SuperAdminGate } from "@/components/SuperAdminGate";
-import { buildVendorNavGroups, getModule } from "@/lib/designer/moduleRegistry";
+import { getModule } from "@/lib/designer/moduleRegistry";
+import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 
 registerPage({
@@ -19,11 +20,11 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/education/admin/page.tsx",
 });
 
-export default async function EducationAdminPage() {
+export default async function EducationAdminPage({ params }: { params: { vendorId: string } }) {
   const mod = await getModule("education");
 
   return (
-    <AppShell navGroups={await buildVendorNavGroups("education")} topbarTitle={`${mod?.label ?? "Education / Coaching"} · Admin`}>
+    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups(undefined, "education")} topbarTitle={`${mod?.label ?? "Education / Coaching"} · Admin`}>
       <SuperAdminGate>
         <div>
           <h1 className="font-display text-2xl font-bold text-text">

@@ -185,7 +185,7 @@ export default function DesignSystemPage() {
       <Section title="AppShell">
         <div className="overflow-hidden rounded-lg border border-border" style={{ height: 420 }}>
           <div className="h-full w-full overflow-auto">
-            <AppShell navGroups={sampleNavGroups} topbarTitle="Dashboard">
+            <AppShell vendorId="demo" navGroups={sampleNavGroups} topbarTitle="Dashboard">
               <p className="mbf-prose text-sm text-text-muted">
                 AppShell renders its sidebar (dark sidebar-bg), grouped nav with teal / amber /
                 neutral module-taxonomy dots, and a topbar around whatever content is passed as

@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/AppShell";
-import { buildVendorNavGroups, getModule } from "@/lib/designer/moduleRegistry";
+import { getModule } from "@/lib/designer/moduleRegistry";
+import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { loyaltyRewardsFormFields, getLoyaltyRewardsRecord } from "@/lib/sample-data/loyalty-rewards";
@@ -21,13 +22,13 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/loyalty-rewards/[recordId]/edit/page.tsx",
 });
 
-export default async function EditLoyaltyRewardsPage({ params }: { params: { recordId: string } }) {
+export default async function EditLoyaltyRewardsPage({ params }: { params: { vendorId: string; recordId: string } }) {
   const mod = await getModule("loyalty-rewards");
   const record = getLoyaltyRewardsRecord(params.recordId);
   const fields = await applyCustomizations("loyalty-rewards.edit", loyaltyRewardsFormFields);
 
   return (
-    <AppShell navGroups={await buildVendorNavGroups("loyalty-rewards")} topbarTitle={`Edit Member — ${mod?.label ?? "Loyalty & Rewards"}`}>
+    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups(undefined, "loyalty-rewards")} topbarTitle={`Edit Member — ${mod?.label ?? "Loyalty & Rewards"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">Edit Member</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>

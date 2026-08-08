@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/AppShell";
-import { buildVendorNavGroups, getModule } from "@/lib/designer/moduleRegistry";
+import { getModule } from "@/lib/designer/moduleRegistry";
+import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { RealEstateClientTable } from "./RealEstateClientTable";
@@ -28,7 +29,8 @@ export default async function RealEstatePage({ params }: { params: { vendorId: s
 
   return (
     <AppShell
-      navGroups={await buildVendorNavGroups("real-estate")}
+      vendorId={params.vendorId}
+      navGroups={await buildVendorAdminNavGroups(undefined, "real-estate")}
       topbarTitle={mod?.label ?? "Real Estate"}
       topbarActions={
         <Link href={`/vendor/${params.vendorId}/real-estate/new`} className="btn-accent">

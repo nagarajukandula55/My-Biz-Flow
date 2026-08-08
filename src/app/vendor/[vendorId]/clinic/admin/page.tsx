@@ -1,6 +1,7 @@
 import { AppShell } from "@/components/AppShell";
 import { SuperAdminGate } from "@/components/SuperAdminGate";
-import { buildVendorNavGroups, getModule } from "@/lib/designer/moduleRegistry";
+import { getModule } from "@/lib/designer/moduleRegistry";
+import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 
 registerPage({
@@ -19,11 +20,11 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/clinic/admin/page.tsx",
 });
 
-export default async function ClinicAdminPage() {
+export default async function ClinicAdminPage({ params }: { params: { vendorId: string } }) {
   const mod = await getModule("clinic");
 
   return (
-    <AppShell navGroups={await buildVendorNavGroups("clinic")} topbarTitle={`${mod?.label ?? "Clinic"} · Admin`}>
+    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups(undefined, "clinic")} topbarTitle={`${mod?.label ?? "Clinic"} · Admin`}>
       <SuperAdminGate>
         <div>
           <h1 className="font-display text-2xl font-bold text-text">

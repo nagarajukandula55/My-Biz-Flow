@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/AppShell";
-import { buildVendorNavGroups, getModule } from "@/lib/designer/moduleRegistry";
+import { getModule } from "@/lib/designer/moduleRegistry";
+import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { BrandClientTable } from "./BrandClientTable";
@@ -28,7 +29,8 @@ export default async function BrandPage({ params }: { params: { vendorId: string
 
   return (
     <AppShell
-      navGroups={await buildVendorNavGroups("brand")}
+      vendorId={params.vendorId}
+      navGroups={await buildVendorAdminNavGroups(undefined, "brand")}
       topbarTitle={mod?.label ?? "Brand"}
       topbarActions={
         <Link href={`/vendor/${params.vendorId}/brand/new`} className="btn-accent">

@@ -17,10 +17,10 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/admin/access-groups/[recordId]/edit/page.tsx",
 });
 
-export default async function EditAccessGroupPage({ params }: { params: { recordId: string } }) {
+export default async function EditAccessGroupPage({ params }: { params: { vendorId: string; recordId: string } }) {
   const record = getAccessGroupRecord(params.recordId);
   return (
-    <AppShell navGroups={await buildVendorAdminNavGroups("access-groups")} topbarTitle="Edit Access Group">
+    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups("access-groups")} topbarTitle="Edit Access Group">
       <SuperAdminGate>
         <div>
           <h1 className="font-display text-2xl font-bold text-text">Edit Access Group</h1>

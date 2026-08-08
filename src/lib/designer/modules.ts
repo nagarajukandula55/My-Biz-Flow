@@ -103,9 +103,25 @@ export function taxonomyToNavDot(taxonomy: ModuleTaxonomy): NavDot {
   }
 }
 
+export interface VendorNavSubItem {
+  key: string;
+  label: string;
+  /** Path segment(s) relative to /vendor/[vendorId]/, e.g. "billing/new". */
+  href: string;
+}
+
 export interface VendorNavGroup {
   title: string;
-  items: { key: string; label: string; dot: NavDot; icon?: string; active?: boolean }[];
+  items: {
+    key: string;
+    label: string;
+    dot: NavDot;
+    icon?: string;
+    active?: boolean;
+    /** Path segment(s) relative to /vendor/[vendorId]/. Defaults to `key` when unset (true for module items, since a module's slug is its list-page route). */
+    href?: string;
+    subItems?: VendorNavSubItem[];
+  }[];
 }
 
 /**

@@ -35,7 +35,7 @@ export default async function AccessGroupDetailPage({
   const recordLabel = String(record["id"] ?? params.recordId);
 
   return (
-    <AppShell navGroups={await buildVendorAdminNavGroups("access-groups")} topbarTitle="Access Groups">
+    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups("access-groups")} topbarTitle="Access Groups">
       <SuperAdminGate>
         <div>
           <Link

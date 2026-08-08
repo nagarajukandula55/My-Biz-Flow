@@ -52,6 +52,12 @@ export async function buildVendorNavGroups(activeModuleSlug?: string): Promise<V
         dot: taxonomyToNavDot(m.taxonomy),
         icon: override?.icon,
         active: m.slug === activeModuleSlug,
+        href: m.slug,
+        subItems: [
+          { key: `${m.slug}.list`, label: "All records", href: m.slug },
+          { key: `${m.slug}.new`, label: "+ New", href: `${m.slug}/new` },
+          { key: `${m.slug}.admin`, label: "Admin", href: `${m.slug}/admin` },
+        ],
       };
     });
 

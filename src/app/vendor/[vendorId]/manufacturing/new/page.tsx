@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/AppShell";
-import { buildVendorNavGroups, getModule } from "@/lib/designer/moduleRegistry";
+import { getModule } from "@/lib/designer/moduleRegistry";
+import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { manufacturingFormFields } from "@/lib/sample-data/manufacturing";
@@ -21,12 +22,12 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/manufacturing/new/page.tsx",
 });
 
-export default async function NewManufacturingPage() {
+export default async function NewManufacturingPage({ params }: { params: { vendorId: string } }) {
   const mod = await getModule("manufacturing");
   const fields = await applyCustomizations("manufacturing.create", manufacturingFormFields);
 
   return (
-    <AppShell navGroups={await buildVendorNavGroups("manufacturing")} topbarTitle={`New Work Order — ${mod?.label ?? "Manufacturing / Production"}`}>
+    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups(undefined, "manufacturing")} topbarTitle={`New Work Order — ${mod?.label ?? "Manufacturing / Production"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">New Work Order</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new work order record for Manufacturing / Production.</p>

@@ -34,7 +34,7 @@ export default async function VendorNumberingPage({ params }: { params: { vendor
     }))
   );
   return (
-    <AppShell navGroups={await buildVendorAdminNavGroups("numbering")} topbarTitle="Settings — Numbering">
+    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups("numbering")} topbarTitle="Settings — Numbering">
       <div>
         <Link
           href={`/vendor/${params.vendorId}/settings`}

@@ -21,9 +21,9 @@ registerPage({
  * needs fs to apply Super-Admin label/icon overrides, which cannot run in a
  * Client Component) and hands the interactive body to SettingsPageClient.
  */
-export default async function SettingsPage() {
+export default async function SettingsPage({ params }: { params: { vendorId: string } }) {
   return (
-    <AppShell navGroups={await buildVendorAdminNavGroups("settings")} topbarTitle="Settings">
+    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups("settings")} topbarTitle="Settings">
       <SettingsPageClient />
     </AppShell>
   );

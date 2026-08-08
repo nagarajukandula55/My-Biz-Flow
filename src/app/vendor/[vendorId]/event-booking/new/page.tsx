@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/AppShell";
-import { buildVendorNavGroups, getModule } from "@/lib/designer/moduleRegistry";
+import { getModule } from "@/lib/designer/moduleRegistry";
+import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { eventBookingFormFields } from "@/lib/sample-data/event-booking";
@@ -21,12 +22,12 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/event-booking/new/page.tsx",
 });
 
-export default async function NewEventBookingPage() {
+export default async function NewEventBookingPage({ params }: { params: { vendorId: string } }) {
   const mod = await getModule("event-booking");
   const fields = await applyCustomizations("event-booking.create", eventBookingFormFields);
 
   return (
-    <AppShell navGroups={await buildVendorNavGroups("event-booking")} topbarTitle={`New Event — ${mod?.label ?? "Event / Venue Booking"}`}>
+    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups(undefined, "event-booking")} topbarTitle={`New Event — ${mod?.label ?? "Event / Venue Booking"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">New Event</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new event record for Event / Venue Booking.</p>

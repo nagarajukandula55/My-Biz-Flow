@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/AppShell";
-import { buildVendorNavGroups, getModule } from "@/lib/designer/moduleRegistry";
+import { getModule } from "@/lib/designer/moduleRegistry";
+import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { subscriptionsFormFields, getSubscriptionsRecord } from "@/lib/sample-data/subscriptions";
@@ -21,13 +22,13 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/subscriptions/[recordId]/edit/page.tsx",
 });
 
-export default async function EditSubscriptionsPage({ params }: { params: { recordId: string } }) {
+export default async function EditSubscriptionsPage({ params }: { params: { vendorId: string; recordId: string } }) {
   const mod = await getModule("subscriptions");
   const record = getSubscriptionsRecord(params.recordId);
   const fields = await applyCustomizations("subscriptions.edit", subscriptionsFormFields);
 
   return (
-    <AppShell navGroups={await buildVendorNavGroups("subscriptions")} topbarTitle={`Edit Membership — ${mod?.label ?? "Subscriptions / Membership"}`}>
+    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups(undefined, "subscriptions")} topbarTitle={`Edit Membership — ${mod?.label ?? "Subscriptions / Membership"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">Edit Membership</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>

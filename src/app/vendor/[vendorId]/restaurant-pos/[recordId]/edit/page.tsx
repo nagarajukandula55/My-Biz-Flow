@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/AppShell";
-import { buildVendorNavGroups, getModule } from "@/lib/designer/moduleRegistry";
+import { getModule } from "@/lib/designer/moduleRegistry";
+import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { restaurantPosFormFields, getRestaurantPosRecord } from "@/lib/sample-data/restaurant-pos";
@@ -21,13 +22,13 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/restaurant-pos/[recordId]/edit/page.tsx",
 });
 
-export default async function EditRestaurantPosPage({ params }: { params: { recordId: string } }) {
+export default async function EditRestaurantPosPage({ params }: { params: { vendorId: string; recordId: string } }) {
   const mod = await getModule("restaurant-pos");
   const record = getRestaurantPosRecord(params.recordId);
   const fields = await applyCustomizations("restaurant-pos.edit", restaurantPosFormFields);
 
   return (
-    <AppShell navGroups={await buildVendorNavGroups("restaurant-pos")} topbarTitle={`Edit Order — ${mod?.label ?? "Restaurant POS"}`}>
+    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups(undefined, "restaurant-pos")} topbarTitle={`Edit Order — ${mod?.label ?? "Restaurant POS"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">Edit Order</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>

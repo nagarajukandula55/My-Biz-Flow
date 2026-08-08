@@ -21,6 +21,7 @@ registerPage({
 export default async function AccessGroupsPage({ params }: { params: { vendorId: string } }) {
   return (
     <AppShell
+      vendorId={params.vendorId}
       navGroups={await buildVendorAdminNavGroups("access-groups")}
       topbarTitle="Access Groups"
       topbarActions={

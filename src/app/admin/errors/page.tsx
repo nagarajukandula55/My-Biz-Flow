@@ -5,6 +5,10 @@ import { getLoggedErrors } from "@/lib/errorLog";
 import { formatDate } from "@/lib/format";
 import { registerPage } from "@/lib/designer/registry";
 
+// Reads the live DB-backed error log — must not be baked into a static
+// build; every request should see the current log, not a build-time snapshot.
+export const dynamic = "force-dynamic";
+
 registerPage({
   id: "platform.errors",
   moduleSlug: "platform",

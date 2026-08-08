@@ -33,7 +33,7 @@ export default async function VendorSubscriptionPage({ params }: { params: { ven
   );
 
   return (
-    <AppShell navGroups={await buildVendorAdminNavGroups("billing")} topbarTitle="Subscription">
+    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups("billing")} topbarTitle="Subscription">
       <div>
         <h1 className="font-display text-2xl font-bold text-text">Subscription</h1>
         <p className="mt-1 text-sm text-text-muted">

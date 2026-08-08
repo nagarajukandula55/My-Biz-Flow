@@ -17,9 +17,9 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/admin/users/new/page.tsx",
 });
 
-export default async function NewUserPage() {
+export default async function NewUserPage({ params }: { params: { vendorId: string } }) {
   return (
-    <AppShell navGroups={await buildVendorAdminNavGroups("users")} topbarTitle="New User">
+    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups("users")} topbarTitle="New User">
       <SuperAdminGate>
         <div>
           <h1 className="font-display text-2xl font-bold text-text">New User</h1>

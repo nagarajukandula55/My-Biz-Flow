@@ -17,10 +17,10 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/admin/users/[recordId]/edit/page.tsx",
 });
 
-export default async function EditUserPage({ params }: { params: { recordId: string } }) {
+export default async function EditUserPage({ params }: { params: { vendorId: string; recordId: string } }) {
   const record = getUserRecord(params.recordId);
   return (
-    <AppShell navGroups={await buildVendorAdminNavGroups("users")} topbarTitle="Edit User">
+    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups("users")} topbarTitle="Edit User">
       <SuperAdminGate>
         <div>
           <h1 className="font-display text-2xl font-bold text-text">Edit User</h1>

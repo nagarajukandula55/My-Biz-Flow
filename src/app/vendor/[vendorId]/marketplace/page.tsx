@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/AppShell";
-import { buildVendorNavGroups, getModule } from "@/lib/designer/moduleRegistry";
+import { getModule } from "@/lib/designer/moduleRegistry";
+import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { MarketplaceClientTable } from "./MarketplaceClientTable";
@@ -28,7 +29,8 @@ export default async function MarketplacePage({ params }: { params: { vendorId: 
 
   return (
     <AppShell
-      navGroups={await buildVendorNavGroups("marketplace")}
+      vendorId={params.vendorId}
+      navGroups={await buildVendorAdminNavGroups(undefined, "marketplace")}
       topbarTitle={mod?.label ?? "Marketplace / Vendor Aggregator"}
       topbarActions={
         <Link href={`/vendor/${params.vendorId}/marketplace/new`} className="btn-accent">

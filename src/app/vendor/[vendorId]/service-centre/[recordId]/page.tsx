@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/AppShell";
-import { buildVendorNavGroups, getModule } from "@/lib/designer/moduleRegistry";
+import { getModule } from "@/lib/designer/moduleRegistry";
+import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { RecordDetail } from "@/components/RecordDetail";
@@ -35,7 +36,7 @@ export default async function ServiceCentreDetailPage({
   const recordLabel = String(record["id"] ?? params.recordId);
 
   return (
-    <AppShell navGroups={await buildVendorNavGroups("service-centre")} topbarTitle={mod?.label ?? "Service Centre"}>
+    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups(undefined, "service-centre")} topbarTitle={mod?.label ?? "Service Centre"}>
       <div>
         <Link
           href={`/vendor/${params.vendorId}/service-centre`}

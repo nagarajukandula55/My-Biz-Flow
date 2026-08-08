@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/AppShell";
-import { buildVendorNavGroups, getModule } from "@/lib/designer/moduleRegistry";
+import { getModule } from "@/lib/designer/moduleRegistry";
+import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { EventBookingClientTable } from "./EventBookingClientTable";
@@ -28,7 +29,8 @@ export default async function EventBookingPage({ params }: { params: { vendorId:
 
   return (
     <AppShell
-      navGroups={await buildVendorNavGroups("event-booking")}
+      vendorId={params.vendorId}
+      navGroups={await buildVendorAdminNavGroups(undefined, "event-booking")}
       topbarTitle={mod?.label ?? "Event / Venue Booking"}
       topbarActions={
         <Link href={`/vendor/${params.vendorId}/event-booking/new`} className="btn-accent">

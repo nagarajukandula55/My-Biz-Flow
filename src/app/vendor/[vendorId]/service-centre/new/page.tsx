@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/AppShell";
-import { buildVendorNavGroups, getModule } from "@/lib/designer/moduleRegistry";
+import { getModule } from "@/lib/designer/moduleRegistry";
+import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { serviceCentreFormFields } from "@/lib/sample-data/service-centre";
@@ -21,12 +22,12 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/service-centre/new/page.tsx",
 });
 
-export default async function NewServiceCentrePage() {
+export default async function NewServiceCentrePage({ params }: { params: { vendorId: string } }) {
   const mod = await getModule("service-centre");
   const fields = await applyCustomizations("service-centre.create", serviceCentreFormFields);
 
   return (
-    <AppShell navGroups={await buildVendorNavGroups("service-centre")} topbarTitle={`New Workorder — ${mod?.label ?? "Service Centre"}`}>
+    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups(undefined, "service-centre")} topbarTitle={`New Workorder — ${mod?.label ?? "Service Centre"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">New Workorder</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new workorder record for Service Centre.</p>

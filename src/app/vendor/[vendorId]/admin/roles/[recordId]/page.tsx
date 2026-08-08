@@ -30,7 +30,7 @@ export default async function RoleDetailPage({
   const recordLabel = String(record["id"] ?? params.recordId);
 
   return (
-    <AppShell navGroups={await buildVendorAdminNavGroups("roles")} topbarTitle="Roles">
+    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups("roles")} topbarTitle="Roles">
       <SuperAdminGate>
         <div>
           <Link href={`/vendor/${params.vendorId}/admin/roles`} className="text-sm font-semibold text-teal hover:underline">

@@ -6,6 +6,10 @@ import { getRegisteredPages, registerPage } from "@/lib/designer/registry";
 import "@/lib/designer/registerAll";
 import { getAllPublicPageIds } from "@/lib/designer/pageAccess";
 
+// Reads live DB-backed page-access toggles — must not be baked into a
+// static build; every request should see the current state.
+export const dynamic = "force-dynamic";
+
 registerPage({
   id: "platform.settings",
   moduleSlug: "platform",

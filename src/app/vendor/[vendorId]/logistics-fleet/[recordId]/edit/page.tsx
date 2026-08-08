@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/AppShell";
-import { buildVendorNavGroups, getModule } from "@/lib/designer/moduleRegistry";
+import { getModule } from "@/lib/designer/moduleRegistry";
+import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { logisticsFleetFormFields, getLogisticsFleetRecord } from "@/lib/sample-data/logistics-fleet";
@@ -21,13 +22,13 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/logistics-fleet/[recordId]/edit/page.tsx",
 });
 
-export default async function EditLogisticsFleetPage({ params }: { params: { recordId: string } }) {
+export default async function EditLogisticsFleetPage({ params }: { params: { vendorId: string; recordId: string } }) {
   const mod = await getModule("logistics-fleet");
   const record = getLogisticsFleetRecord(params.recordId);
   const fields = await applyCustomizations("logistics-fleet.edit", logisticsFleetFormFields);
 
   return (
-    <AppShell navGroups={await buildVendorNavGroups("logistics-fleet")} topbarTitle={`Edit Shipment — ${mod?.label ?? "Logistics / Fleet"}`}>
+    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups(undefined, "logistics-fleet")} topbarTitle={`Edit Shipment — ${mod?.label ?? "Logistics / Fleet"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">Edit Shipment</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>

@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/AppShell";
-import { buildVendorNavGroups, getModule } from "@/lib/designer/moduleRegistry";
+import { getModule } from "@/lib/designer/moduleRegistry";
+import { buildVendorAdminNavGroups } from "@/lib/designer/vendorAdminNav";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { realEstateFormFields } from "@/lib/sample-data/real-estate";
@@ -21,12 +22,12 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/real-estate/new/page.tsx",
 });
 
-export default async function NewRealEstatePage() {
+export default async function NewRealEstatePage({ params }: { params: { vendorId: string } }) {
   const mod = await getModule("real-estate");
   const fields = await applyCustomizations("real-estate.create", realEstateFormFields);
 
   return (
-    <AppShell navGroups={await buildVendorNavGroups("real-estate")} topbarTitle={`New Listing — ${mod?.label ?? "Real Estate"}`}>
+    <AppShell vendorId={params.vendorId} navGroups={await buildVendorAdminNavGroups(undefined, "real-estate")} topbarTitle={`New Listing — ${mod?.label ?? "Real Estate"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">New Listing</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new listing record for Real Estate.</p>

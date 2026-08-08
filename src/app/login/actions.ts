@@ -23,3 +23,9 @@ export async function signInAsVendor(formData: FormData) {
 
   redirect(`/vendor/${DEMO_VENDOR_ID}/pos`);
 }
+
+/** Clears the demo vendor session cookie and returns to the public login page. */
+export async function signOutAction() {
+  cookies().delete(VENDOR_SESSION_COOKIE);
+  redirect("/login");
+}

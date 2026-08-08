@@ -5,6 +5,10 @@ import { registerPage } from "@/lib/designer/registry";
 import { PLANS } from "@/lib/sample-data/plans";
 import { getModule } from "@/lib/designer/moduleRegistry";
 
+// Reads live DB-backed module label overrides — must not be baked into a
+// static build.
+export const dynamic = "force-dynamic";
+
 registerPage({
   id: "platform.pricing",
   moduleSlug: "platform",
