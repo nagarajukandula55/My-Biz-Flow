@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { MODULES } from "@/lib/designer/modules";
-import { PAGE_ACTIONS, type PageAction, type PagePermission } from "@/lib/sample-data/access-groups";
+import { PAGE_ACTIONS, type PageAction, type PagePermission } from "@/lib/designer/accessGroupsData";
 
 const ACTION_LABEL: Record<PageAction, string> = {
   view: "View",

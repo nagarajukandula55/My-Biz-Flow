@@ -42,7 +42,7 @@ const SCOPED_CHARTS: ScopedChart[] = [
 export default async function AnalyticsPage({ params }: { params: { vendorId: string } }) {
   const enabledModules = getDemoEnabledModules(params.vendorId);
   const viewerRole = getDemoViewerRole();
-  const accessibleModules = getAccessibleModuleSlugs(viewerRole);
+  const accessibleModules = await getAccessibleModuleSlugs(viewerRole);
 
   const visibleScopedCharts = filterByAccessibleModules(SCOPED_CHARTS, accessibleModules);
   const showRevenueTrend = visibleScopedCharts.some((c) => c.id === "revenue-trend");

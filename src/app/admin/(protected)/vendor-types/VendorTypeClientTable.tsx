@@ -1,15 +1,23 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { DataTable, type Row } from "@/components/DataTable";
-import { vendorTypeColumns, vendorTypeRows } from "@/lib/sample-data/vendor-types";
+import { DataTable, type Row, type Column } from "@/components/DataTable";
 
-export function VendorTypeClientTable() {
+const columns: Column[] = [
+  { key: "id", label: "Vendor Type", type: "text" },
+  { key: "description", label: "Description", type: "text" },
+  { key: "defaultModules", label: "Default Modules", type: "multi-chip" },
+  { key: "assignableRoleIds", label: "Assignable Roles", type: "multi-chip" },
+  { key: "planIds", label: "Available Plans", type: "multi-chip" },
+  { key: "status", label: "Status", type: "select-chip" },
+];
+
+export function VendorTypeClientTable({ rows }: { rows: Row[] }) {
   const router = useRouter();
   return (
     <DataTable
-      columns={vendorTypeColumns}
-      rows={vendorTypeRows}
+      columns={columns}
+      rows={rows}
       onRowClick={(row: Row) => router.push(`/admin/vendor-types/${row["id"]}`)}
     />
   );

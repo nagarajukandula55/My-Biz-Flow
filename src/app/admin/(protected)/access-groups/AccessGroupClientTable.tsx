@@ -1,15 +1,20 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { DataTable, type Row } from "@/components/DataTable";
-import { accessGroupColumns, accessGroupRows } from "@/lib/sample-data/access-groups";
+import { DataTable, type Row, type Column } from "@/components/DataTable";
 
-export function AccessGroupClientTable() {
+const columns: Column[] = [
+  { key: "id", label: "Access Group", type: "text" },
+  { key: "description", label: "Description", type: "text" },
+  { key: "pagesGranted", label: "Pages With Access", type: "text" },
+];
+
+export function AccessGroupClientTable({ rows }: { rows: Row[] }) {
   const router = useRouter();
   return (
     <DataTable
-      columns={accessGroupColumns}
-      rows={accessGroupRows}
+      columns={columns}
+      rows={rows}
       onRowClick={(row: Row) => router.push(`/admin/access-groups/${row["id"]}`)}
     />
   );

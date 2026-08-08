@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { SuperAdminGate } from "@/components/SuperAdminGate";
 import { registerPage } from "@/lib/designer/registry";
+import { listRoles } from "@/lib/designer/rolesData";
 import { RoleClientTable } from "./RoleClientTable";
+
+export const dynamic = "force-dynamic";
 
 registerPage({
   id: "platform.roles.list",
@@ -12,11 +15,14 @@ registerPage({
   superAdminOnly: true,
   customizableRegions: [{ key: "columns", label: "Table columns" }],
   explanation:
-    "Platform-level RBAC: a Role is a named bundle of Access Groups, created once here and reused across every vendor type. Which Roles are assignable per vendor type is configured separately (module-set gating) — see CLAUDE.md's three-level model.",
+    "Platform-level RBAC: a Role is a named bundle of Access Groups, created once here and reused across every vendor type. Real data — Prisma-backed (Role table).",
   sourceFile: "src/app/admin/(protected)/roles/page.tsx",
 });
 
-export default function RolesPage() {
+export default async function RolesPage() {
+  const roles = await listRoles();
+  const rows = roles.map((r) => ({ id: r.id, description: r.description, accessGroupIds: r.accessGroupIds }));
+
   return (
     <SuperAdminGate>
       <div className="mbf-page">
@@ -32,7 +38,13 @@ export default function RolesPage() {
             Users are then assigned a Role at the vendor level.
           </p>
           <div className="mt-6">
-            <RoleClientTable />
+            {rows.length === 0 ? (
+              <p className="rounded-md border border-dashed border-border bg-bg-raised p-6 text-center text-sm text-text-muted">
+                No Roles yet. Create Access Groups first, then build Roles out of them.
+              </p>
+            ) : (
+              <RoleClientTable rows={rows} />
+            )}
           </div>
         </div>
       </div>

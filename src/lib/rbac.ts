@@ -1,25 +1,32 @@
-import { accessGroupRows } from "@/lib/sample-data/access-groups";
-import { roleRows } from "@/lib/sample-data/roles";
+import { getRole } from "@/lib/designer/rolesData";
+import { getAccessGroup } from "@/lib/designer/accessGroupsData";
+import { getRegisteredPages } from "@/lib/designer/registry";
+import "@/lib/designer/registerAll";
 
 /**
- * Real RBAC resolution logic (Role -> Access Groups -> module slugs), but
- * fed by a DEMO role selection — there is no logged-in-user session yet
- * (see src/lib/adminAuth.ts for the one real-but-minimal auth mechanism
- * that exists, which only covers Super Admin, not vendor-level roles).
- * The function below is correct and real; only its INPUT is a stopgap.
- * Once vendor-user sessions exist, swap getDemoViewerRole() for a real
- * session lookup and everything downstream keeps working unchanged.
+ * Real RBAC resolution logic (Role -> Access Groups -> pages -> module
+ * slugs), fed by a DEMO role selection — there is no logged-in-user
+ * session yet (see src/lib/adminAuth.ts for the one real-but-minimal auth
+ * mechanism that exists, which only covers Super Admin, not vendor-level
+ * roles). The function below is correct and real, backed by the Prisma
+ * Role/AccessGroup tables; only its INPUT (getDemoViewerRole) is a
+ * stopgap. Once vendor-user sessions exist, swap that for a real session
+ * lookup and everything downstream keeps working unchanged.
  */
 
-export function getAccessibleModuleSlugs(roleId: string): string[] {
-  const role = roleRows.find((r) => r["id"] === roleId);
+export async function getAccessibleModuleSlugs(roleId: string): Promise<string[]> {
+  const role = await getRole(roleId);
   if (!role) return [];
-  const groupNames = (role["accessGroups"] as string[]) ?? [];
+
+  const pageModuleBySlug = new Map(getRegisteredPages().map((p) => [p.id, p.moduleSlug]));
   const slugs = new Set<string>();
-  for (const groupName of groupNames) {
-    const group = accessGroupRows.find((g) => g["id"] === groupName);
-    for (const slug of (group?.["modules"] as string[]) ?? []) {
-      slugs.add(slug);
+  for (const groupId of role.accessGroupIds) {
+    const group = await getAccessGroup(groupId);
+    if (!group) continue;
+    for (const perm of group.pagePermissions) {
+      if (!(perm.view || perm.edit || perm.delete || perm.other)) continue;
+      const moduleSlug = pageModuleBySlug.get(perm.pageId);
+      if (moduleSlug) slugs.add(moduleSlug);
     }
   }
   return Array.from(slugs);

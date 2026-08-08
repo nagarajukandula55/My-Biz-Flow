@@ -2,10 +2,13 @@ import type { Column, Row } from "@/components/DataTable";
 import type { RecordField, TimelineEntry, RelatedRecord } from "@/components/RecordDetail";
 import type { StatusVariant } from "@/components/StatusChip";
 import type { FormFieldDef } from "@/components/RecordForm";
-import { roleRows } from "./roles";
 
 // Vendor team-member ("User") sample data — top tier of the three-level
-// vendor RBAC model: User -> Role -> Access Group -> modules.
+// vendor RBAC model: User -> Role -> Access Group -> modules. Roles are
+// now real, Prisma-backed data (see src/lib/designer/rolesData.ts) — but
+// that store isn't client-importable (pulls in Prisma), and this file is
+// (see UserClientTable), so ROLE_NAMES stays a static fallback list here.
+// Users themselves are still a demo module, out of scope for this pass.
 //
 // IMPORTANT: this is a VENDOR's own team member (e.g. "Meena R., Cashier at
 // this store"), completely distinct from central-api's `PlatformUser`
@@ -13,7 +16,7 @@ import { roleRows } from "./roles";
 // integration is built here — that's out of scope for this pass, see
 // CLAUDE.md's integration constraints.
 
-const ROLE_NAMES = roleRows.map((r) => String(r["id"]));
+const ROLE_NAMES = ["Cashier", "Technician", "Accountant", "Owner / Admin"];
 
 const STATUS_VARIANT: Record<string, StatusVariant> = {
   Active: "success",

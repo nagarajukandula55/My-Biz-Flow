@@ -102,3 +102,43 @@ model ErrorLogEntry {
   @@index([timestamp])
   @@map("error_log_entries")
 }
+
+/// Platform-level RBAC, defined once by Super Admin and reused across
+/// every vendor — see src/lib/designer/accessGroupsData.ts.
+/// pagePermissions: PagePermission[] JSON, {pageId, view, edit, delete, other}.
+model AccessGroup {
+  id               String   @id
+  description      String?  @db.Text
+  pagePermissions  Json     @default("[]")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map("access_groups")
+}
+
+/// A named bundle of Access Group ids — see src/lib/designer/rolesData.ts.
+model Role {
+  id             String   @id
+  description    String?  @db.Text
+  accessGroupIds Json     @default("[]")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("roles")
+}
+
+/// The top-level entity a vendor account is created against — see
+/// src/lib/designer/vendorTypesData.ts. defaultModules/assignableRoleIds/
+/// planIds are all JSON string arrays (module slugs / Role ids / Plan ids).
+model VendorType {
+  id                 String   @id
+  description        String?  @db.Text
+  defaultModules     Json     @default("[]")
+  assignableRoleIds  Json     @default("[]")
+  planIds            Json     @default("[]")
+  status             String   @default("Active")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@map("vendor_types")
+}
