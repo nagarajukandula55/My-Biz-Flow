@@ -14,6 +14,84 @@ const STATUS_VARIANT: Record<string, StatusVariant> = {
   "On hold": "danger"
 };
 
+/** Single-page workorder lifecycle stages — see WorkorderLifecycle.tsx. */
+export type WorkorderStage = "Created" | "In Progress" | "Completed" | "Closed";
+export const WORKORDER_STAGES: WorkorderStage[] = ["Created", "In Progress", "Completed", "Closed"];
+
+export interface PartLine {
+  id: string;
+  materialId: string;
+  materialLabel: string;
+  qty: number;
+  serialized: boolean;
+  serial?: string;
+  pending?: boolean;
+  pendingReason?: string;
+}
+
+export interface ServiceLine {
+  id: string;
+  solutionId: string;
+  solutionLabel: string;
+  laborCharge: number;
+}
+
+/** Per-workorder lifecycle state, keyed by workorder id. Demo in-memory store — resets on reload, no backend yet. */
+export const workorderLifecycle: Record<
+  string,
+  {
+    stage: WorkorderStage;
+    brandName?: string;
+    modelName?: string;
+    appointmentRef?: string;
+    partLines: PartLine[];
+    serviceLines: ServiceLine[];
+    handoverNotes?: string;
+  }
+> = {
+  "WO-2291": {
+    stage: "In Progress",
+    brandName: "Honda",
+    modelName: "Activa 6G",
+    partLines: [
+      { id: "PL-1", materialId: "MAT-1001", materialLabel: "MAT-1001 — Front Brake Pad Set", qty: 1, serialized: false },
+    ],
+    serviceLines: [{ id: "SL-1", solutionId: "SOL-002", solutionLabel: "Battery replacement", laborCharge: 150 }],
+  },
+  "WO-2290": {
+    stage: "Completed",
+    brandName: "TVS",
+    modelName: "Jupiter",
+    partLines: [],
+    serviceLines: [{ id: "SL-1", solutionId: "SOL-004", solutionLabel: "General service / cleaning", laborCharge: 200 }],
+  },
+  "WO-2289": {
+    stage: "Created",
+    brandName: "Royal Enfield",
+    modelName: "Classic 350",
+    partLines: [],
+    serviceLines: [],
+  },
+  "WO-2288": {
+    stage: "Closed",
+    brandName: "Bajaj",
+    modelName: "Chetak EV",
+    partLines: [],
+    serviceLines: [{ id: "SL-1", solutionId: "SOL-001", solutionLabel: "Screen replacement", laborCharge: 300 }],
+    handoverNotes: "Handed over to customer at front desk.",
+  },
+};
+
+export function getWorkorderLifecycle(workorderId: string) {
+  return (
+    workorderLifecycle[workorderId] ?? {
+      stage: "Created" as WorkorderStage,
+      partLines: [],
+      serviceLines: [],
+    }
+  );
+}
+
 export const serviceCentreColumns: Column[] = [
   { key: "id", label: "Job ID", type: "text" },
   { key: "customer", label: "Customer", type: "relation-link" },

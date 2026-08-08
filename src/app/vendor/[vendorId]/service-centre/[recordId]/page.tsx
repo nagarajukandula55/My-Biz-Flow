@@ -4,8 +4,16 @@ import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { RecordDetail } from "@/components/RecordDetail";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
-import { getServiceCentreRecord, getServiceCentreDetailFields, getServiceCentreTimeline, serviceCentreRelated, serviceCentreColumns } from "@/lib/sample-data/service-centre";
+import {
+  getServiceCentreRecord,
+  getServiceCentreDetailFields,
+  getServiceCentreTimeline,
+  serviceCentreRelated,
+  serviceCentreColumns,
+  getWorkorderLifecycle,
+} from "@/lib/sample-data/service-centre";
 import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
+import { WorkorderLifecycle } from "./WorkorderLifecycle";
 
 registerPage({
   id: "service-centre.detail",
@@ -33,11 +41,22 @@ export default async function ServiceCentreDetailPage({
   const fields = await applyCustomizationsToDetailFields("service-centre.detail", getServiceCentreDetailFields(record), serviceCentreColumns);
   const timeline = getServiceCentreTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
+  const lifecycle = getWorkorderLifecycle(recordLabel);
 
   return (
     <AppShell topbarTitle={mod?.label ?? "Service Centre"}>
       <div>
+        <WorkorderLifecycle
+          vendorId={params.vendorId}
+          workorderId={recordLabel}
+          initialStage={lifecycle.stage}
+          initialPartLines={lifecycle.partLines}
+          initialServiceLines={lifecycle.serviceLines}
+          brandName={lifecycle.brandName}
+          modelName={lifecycle.modelName}
+        />
 
+        <div className="mt-8">
         <RecordDetail
           fields={fields}
           timeline={timeline}
@@ -69,6 +88,7 @@ export default async function ServiceCentreDetailPage({
             </div>
           }
         />
+        </div>
       </div>
     </AppShell>
   );
