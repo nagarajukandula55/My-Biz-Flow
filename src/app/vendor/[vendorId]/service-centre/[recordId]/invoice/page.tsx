@@ -4,6 +4,7 @@ import { formatNumber } from "@/lib/designer/numberingFormat";
 import { registerPage } from "@/lib/designer/registry";
 import { notFound } from "next/navigation";
 import { getDocumentTemplate } from "@/lib/designer/documentTemplates";
+import { getVendor } from "@/lib/vendorData";
 import { getBusinessRecord, getBusinessRecordSequenceIndex } from "@/lib/businessRecords";
 import { ServiceCentreInvoiceDocument, type InvoiceLine } from "./ServiceCentreInvoiceDocument";
 
@@ -27,6 +28,7 @@ export default async function ServiceCentreInvoicePage({
 }) {
   const record = await getBusinessRecord(params.vendorId, "service-centre", params.recordId);
   if (!record) notFound();
+  const vendor = await getVendor(params.vendorId);
   const sequenceIndex = await getBusinessRecordSequenceIndex(params.vendorId, "service-centre", params.recordId);
   const scheme = await getEffectiveScheme("service-centre.invoice", params.vendorId);
   const invoiceNumber = formatNumber(scheme, scheme.sequenceStart + sequenceIndex);
@@ -35,7 +37,7 @@ export default async function ServiceCentreInvoicePage({
 
   return (
     <ServiceCentreInvoiceDocument
-      vendorName="Chennai Auto Service"
+      vendorName={vendor?.businessName ?? "Your Business"}
       invoiceNumber={invoiceNumber}
       invoiceDate={String(record["receivedDate"] ?? new Date().toISOString())}
       customerName={String(record["customer"] ?? "Walk-in Customer")}

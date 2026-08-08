@@ -1,6 +1,9 @@
 import { SuperAdminGate } from "@/components/SuperAdminGate";
 import { registerPage } from "@/lib/designer/registry";
+import { listVendors } from "@/lib/vendorData";
 import { SubscriberClientTable } from "./SubscriberClientTable";
+
+export const dynamic = "force-dynamic";
 
 registerPage({
   id: "platform.subscribers.list",
@@ -11,11 +14,20 @@ registerPage({
   superAdminOnly: true,
   customizableRegions: [{ key: "columns", label: "Table columns" }],
   explanation:
-    "Super-Admin-only list of every vendor/subscription on the platform — vendor name, plan, status, start date, seat count. Row click opens that vendor's subscription view (/vendor/[vendorId]/admin/subscription), which carries the demo 'Extend / change plan' (Upgrade) action. Sample data only, no DB.",
+    "Super-Admin-only list of every registered Vendor — real data (Vendor table). No plan/seat/billing-cycle tracking exists yet (no payment gateway or subscription engine wired up), so this only shows what's actually real: Vendor ID, business name, Vendor Type, and account status.",
   sourceFile: "src/app/admin/(protected)/subscribers/page.tsx",
 });
 
-export default function SubscribersPage() {
+export default async function SubscribersPage() {
+  const vendors = await listVendors();
+  const rows = vendors.map((v) => ({
+    id: v.id,
+    businessName: v.businessName,
+    vendorTypeId: v.vendorTypeId,
+    status: v.status,
+    createdAt: v.createdAt.toISOString(),
+  }));
+
   return (
     <SuperAdminGate>
       <div className="mbf-page">
@@ -24,12 +36,17 @@ export default function SubscribersPage() {
         </div>
         <div className="p-6">
           <p className="text-sm text-text-muted">
-            Every vendor and its subscription state. Click a row to open that
-            vendor&apos;s billing view (demo &quot;Extend / change plan&quot; action lives
-            there).
+            Every registered vendor. Plan/seat/billing tracking isn&apos;t built yet — no payment gateway or
+            subscription engine exists, so only real account data is shown here.
           </p>
           <div className="mt-6">
-            <SubscriberClientTable />
+            {vendors.length === 0 ? (
+              <p className="rounded-md border border-dashed border-border bg-bg-raised p-6 text-center text-sm text-text-muted">
+                No vendors have signed up yet.
+              </p>
+            ) : (
+              <SubscriberClientTable rows={rows} />
+            )}
           </div>
         </div>
       </div>

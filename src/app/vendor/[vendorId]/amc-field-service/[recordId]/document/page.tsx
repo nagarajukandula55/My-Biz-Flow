@@ -2,6 +2,7 @@ import { DocumentView } from "@/components/DocumentView";
 import { amcFieldServiceColumns } from "@/lib/sample-data/amc-field-service";
 import { registerPage } from "@/lib/designer/registry";
 import { notFound } from "next/navigation";
+import { getVendor } from "@/lib/vendorData";
 import { getBusinessRecord, getBusinessRecordSequenceIndex } from "@/lib/businessRecords";
 
 registerPage({
@@ -26,13 +27,14 @@ export default async function AmcFieldServiceDocumentPage({
 }) {
   const record = await getBusinessRecord(params.vendorId, "amc-field-service", params.recordId);
   if (!record) notFound();
+  const vendor = await getVendor(params.vendorId);
   const sequenceIndex = await getBusinessRecordSequenceIndex(params.vendorId, "amc-field-service", params.recordId);
   return (
     <DocumentView
       pageId="amc-field-service.document"
       documentType="amc-field-service.document"
       documentLabel="Service Report"
-      vendorName="Chennai Auto Service"
+      vendorName={vendor?.businessName ?? "Your Business"}
       vendorId={params.vendorId}
       record={record}
       columns={amcFieldServiceColumns}

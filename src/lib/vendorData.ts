@@ -26,6 +26,7 @@ export type VendorRecord = {
   loginContact: string;
   mustChangePassword: boolean;
   status: string;
+  createdAt: Date;
 };
 
 function toRecord(row: {
@@ -44,6 +45,7 @@ function toRecord(row: {
   loginContact: string;
   mustChangePassword: boolean;
   status: string;
+  createdAt: Date;
 }): VendorRecord {
   return { ...row, addressLine: row.addressLine ?? "" };
 }

@@ -2,6 +2,7 @@ import { DocumentView } from "@/components/DocumentView";
 import { posColumns } from "@/lib/sample-data/pos";
 import { registerPage } from "@/lib/designer/registry";
 import { notFound } from "next/navigation";
+import { getVendor } from "@/lib/vendorData";
 import { getBusinessRecord, getBusinessRecordSequenceIndex } from "@/lib/businessRecords";
 
 registerPage({
@@ -24,13 +25,14 @@ export default async function PosDocumentPage({
 }) {
   const record = await getBusinessRecord(params.vendorId, "pos", params.recordId);
   if (!record) notFound();
+  const vendor = await getVendor(params.vendorId);
   const sequenceIndex = await getBusinessRecordSequenceIndex(params.vendorId, "pos", params.recordId);
   return (
     <DocumentView
       pageId="pos.document"
       documentType="pos.document"
       documentLabel="Receipt"
-      vendorName="Chennai Auto Service"
+      vendorName={vendor?.businessName ?? "Your Business"}
       vendorId={params.vendorId}
       record={record}
       columns={posColumns}

@@ -3,6 +3,7 @@ import { billingColumns } from "@/lib/sample-data/billing";
 import type { LineItem } from "@/lib/sample-data/billing";
 import { registerPage } from "@/lib/designer/registry";
 import { notFound } from "next/navigation";
+import { getVendor } from "@/lib/vendorData";
 import { getBusinessRecord, getBusinessRecordSequenceIndex } from "@/lib/businessRecords";
 
 registerPage({
@@ -27,13 +28,14 @@ export default async function BillingDocumentPage({
 }) {
   const record = await getBusinessRecord(params.vendorId, "billing", params.recordId);
   if (!record) notFound();
+  const vendor = await getVendor(params.vendorId);
   const sequenceIndex = await getBusinessRecordSequenceIndex(params.vendorId, "billing", params.recordId);
   return (
     <DocumentView
       pageId="billing.document"
       documentType="billing.document"
       documentLabel="Invoice"
-      vendorName="Chennai Auto Service"
+      vendorName={vendor?.businessName ?? "Your Business"}
       vendorId={params.vendorId}
       record={record}
       columns={billingColumns}

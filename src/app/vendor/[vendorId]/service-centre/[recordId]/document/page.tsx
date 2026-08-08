@@ -2,6 +2,7 @@ import { DocumentView } from "@/components/DocumentView";
 import { serviceCentreColumns } from "@/lib/sample-data/service-centre";
 import { registerPage } from "@/lib/designer/registry";
 import { notFound } from "next/navigation";
+import { getVendor } from "@/lib/vendorData";
 import { getBusinessRecord, getBusinessRecordSequenceIndex } from "@/lib/businessRecords";
 
 registerPage({
@@ -26,13 +27,14 @@ export default async function ServiceCentreDocumentPage({
 }) {
   const record = await getBusinessRecord(params.vendorId, "service-centre", params.recordId);
   if (!record) notFound();
+  const vendor = await getVendor(params.vendorId);
   const sequenceIndex = await getBusinessRecordSequenceIndex(params.vendorId, "service-centre", params.recordId);
   return (
     <DocumentView
       pageId="service-centre.document"
       documentType="service-centre.document"
       documentLabel="Job Card"
-      vendorName="Chennai Auto Service"
+      vendorName={vendor?.businessName ?? "Your Business"}
       vendorId={params.vendorId}
       record={record}
       columns={serviceCentreColumns}
