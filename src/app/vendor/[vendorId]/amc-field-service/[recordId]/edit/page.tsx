@@ -2,8 +2,11 @@ import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
-import { amcFieldServiceFormFields, getAmcFieldServiceRecord } from "@/lib/sample-data/amc-field-service";
+import { notFound } from "next/navigation";
+import { amcFieldServiceFormFields } from "@/lib/sample-data/amc-field-service";
 import { applyCustomizations } from "@/lib/designer/customizations";
+import { getBusinessRecord } from "@/lib/businessRecords";
+import { updateBusinessRecordAction } from "@/lib/businessRecordActions";
 
 registerPage({
   id: "amc-field-service.edit",
@@ -23,7 +26,8 @@ registerPage({
 
 export default async function EditAmcFieldServicePage({ params }: { params: { vendorId: string; recordId: string } }) {
   const mod = await getModule("amc-field-service");
-  const record = getAmcFieldServiceRecord(params.recordId);
+  const record = await getBusinessRecord(params.vendorId, "amc-field-service", params.recordId);
+  if (!record) notFound();
   const fields = await applyCustomizations("amc-field-service.edit", amcFieldServiceFormFields);
 
   return (
@@ -32,7 +36,12 @@ export default async function EditAmcFieldServicePage({ params }: { params: { ve
         <h1 className="font-display text-2xl font-bold text-text">Edit Contract</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>
         <div className="mt-6">
-          <RecordForm fields={fields} initialValues={record} submitLabel="Save changes" />
+          <RecordForm
+            fields={fields}
+            initialValues={record}
+            submitLabel="Save changes"
+            action={updateBusinessRecordAction.bind(null, params.vendorId, "amc-field-service", params.recordId)}
+          />
         </div>
       </div>
     </AppShell>

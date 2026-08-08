@@ -2,10 +2,12 @@ import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { RecordDetail } from "@/components/RecordDetail";
-import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
-import { getAmcFieldServiceRecord, getAmcFieldServiceDetailFields, getAmcFieldServiceTimeline, amcFieldServiceRelated, amcFieldServiceColumns } from "@/lib/sample-data/amc-field-service";
+import { DeleteBusinessRecordButton } from "@/components/DeleteBusinessRecordButton";
+import { getAmcFieldServiceDetailFields, getAmcFieldServiceTimeline, amcFieldServiceRelated, amcFieldServiceColumns } from "@/lib/sample-data/amc-field-service";
 import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
+import { getBusinessRecord } from "@/lib/businessRecords";
 
 registerPage({
   id: "amc-field-service.detail",
@@ -23,13 +25,16 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/amc-field-service/[recordId]/page.tsx",
 });
 
+export const dynamic = "force-dynamic";
+
 export default async function AmcFieldServiceDetailPage({
   params,
 }: {
   params: { vendorId: string; recordId: string };
 }) {
   const mod = await getModule("amc-field-service");
-  const record = getAmcFieldServiceRecord(params.recordId);
+  const record = await getBusinessRecord(params.vendorId, "amc-field-service", params.recordId);
+  if (!record) notFound();
   const fields = await applyCustomizationsToDetailFields("amc-field-service.detail", getAmcFieldServiceDetailFields(record), amcFieldServiceColumns);
   const timeline = getAmcFieldServiceTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
@@ -64,7 +69,7 @@ export default async function AmcFieldServiceDetailPage({
                 >
                   Edit
                 </Link>
-                <ConfirmDeleteDialog recordLabel={recordLabel} />
+                <DeleteBusinessRecordButton vendorId={params.vendorId} moduleSlug="amc-field-service" recordKey={params.recordId} recordLabel={recordLabel} />
               </div>
             </div>
           }

@@ -2,8 +2,11 @@ import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
-import { realEstateFormFields, getRealEstateRecord } from "@/lib/sample-data/real-estate";
+import { notFound } from "next/navigation";
+import { realEstateFormFields } from "@/lib/sample-data/real-estate";
 import { applyCustomizations } from "@/lib/designer/customizations";
+import { getBusinessRecord } from "@/lib/businessRecords";
+import { updateBusinessRecordAction } from "@/lib/businessRecordActions";
 
 registerPage({
   id: "real-estate.edit",
@@ -23,7 +26,8 @@ registerPage({
 
 export default async function EditRealEstatePage({ params }: { params: { vendorId: string; recordId: string } }) {
   const mod = await getModule("real-estate");
-  const record = getRealEstateRecord(params.recordId);
+  const record = await getBusinessRecord(params.vendorId, "real-estate", params.recordId);
+  if (!record) notFound();
   const fields = await applyCustomizations("real-estate.edit", realEstateFormFields);
 
   return (
@@ -32,7 +36,12 @@ export default async function EditRealEstatePage({ params }: { params: { vendorI
         <h1 className="font-display text-2xl font-bold text-text">Edit Listing</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>
         <div className="mt-6">
-          <RecordForm fields={fields} initialValues={record} submitLabel="Save changes" />
+          <RecordForm
+            fields={fields}
+            initialValues={record}
+            submitLabel="Save changes"
+            action={updateBusinessRecordAction.bind(null, params.vendorId, "real-estate", params.recordId)}
+          />
         </div>
       </div>
     </AppShell>

@@ -2,10 +2,12 @@ import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { RecordDetail } from "@/components/RecordDetail";
-import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
-import { getRentalsRecord, getRentalsDetailFields, getRentalsTimeline, rentalsRelated, rentalsColumns } from "@/lib/sample-data/rentals";
+import { DeleteBusinessRecordButton } from "@/components/DeleteBusinessRecordButton";
+import { getRentalsDetailFields, getRentalsTimeline, rentalsRelated, rentalsColumns } from "@/lib/sample-data/rentals";
 import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
+import { getBusinessRecord } from "@/lib/businessRecords";
 
 registerPage({
   id: "rentals.detail",
@@ -23,13 +25,16 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/rentals/[recordId]/page.tsx",
 });
 
+export const dynamic = "force-dynamic";
+
 export default async function RentalsDetailPage({
   params,
 }: {
   params: { vendorId: string; recordId: string };
 }) {
   const mod = await getModule("rentals");
-  const record = getRentalsRecord(params.recordId);
+  const record = await getBusinessRecord(params.vendorId, "rentals", params.recordId);
+  if (!record) notFound();
   const fields = await applyCustomizationsToDetailFields("rentals.detail", getRentalsDetailFields(record), rentalsColumns);
   const timeline = getRentalsTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
@@ -58,7 +63,7 @@ export default async function RentalsDetailPage({
                 >
                   Edit
                 </Link>
-                <ConfirmDeleteDialog recordLabel={recordLabel} />
+                <DeleteBusinessRecordButton vendorId={params.vendorId} moduleSlug="rentals" recordKey={params.recordId} recordLabel={recordLabel} />
               </div>
             </div>
           }

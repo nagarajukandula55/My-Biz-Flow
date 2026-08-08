@@ -4,6 +4,7 @@ import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { rentalsFormFields } from "@/lib/sample-data/rentals";
 import { applyCustomizations } from "@/lib/designer/customizations";
+import { createBusinessRecordAction } from "@/lib/businessRecordActions";
 
 registerPage({
   id: "rentals.create",
@@ -31,7 +32,11 @@ export default async function NewRentalsPage({ params }: { params: { vendorId: s
         <h1 className="font-display text-2xl font-bold text-text">New Booking</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new booking record for Rentals / Booking.</p>
         <div className="mt-6">
-          <RecordForm fields={fields} submitLabel="Create Booking" />
+          <RecordForm
+            fields={fields}
+            submitLabel="Create Booking"
+            action={createBusinessRecordAction.bind(null, params.vendorId, "rentals")}
+          />
         </div>
       </div>
     </AppShell>

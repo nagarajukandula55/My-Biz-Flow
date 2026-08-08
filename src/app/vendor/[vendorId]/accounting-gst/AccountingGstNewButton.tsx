@@ -1,10 +1,11 @@
 "use client";
 
 import { RecordFormModal, useRecordFormModal } from "@/components/RecordFormModal";
+import { createBusinessRecordAction } from "@/lib/businessRecordActions";
 import { accountingGstFormFields } from "@/lib/sample-data/accounting-gst";
 
 /** Create-as-modal for accounting-gst (see src/components/RecordFormModal.tsx). */
-export function AccountingGstNewButton() {
+export function AccountingGstNewButton({ vendorId }: { vendorId: string }) {
   const { open, openModal, closeModal } = useRecordFormModal();
   return (
     <>
@@ -17,6 +18,7 @@ export function AccountingGstNewButton() {
         title="New GST Return"
         fields={accountingGstFormFields}
         submitLabel="Create GST Return"
+        action={createBusinessRecordAction.bind(null, vendorId, "accounting-gst")}
       />
     </>
   );

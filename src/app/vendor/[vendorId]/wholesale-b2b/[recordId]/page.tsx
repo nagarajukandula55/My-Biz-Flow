@@ -2,10 +2,12 @@ import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { RecordDetail } from "@/components/RecordDetail";
-import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
-import { getWholesaleB2bRecord, getWholesaleB2bDetailFields, getWholesaleB2bTimeline, wholesaleB2bRelated, wholesaleB2bColumns } from "@/lib/sample-data/wholesale-b2b";
+import { DeleteBusinessRecordButton } from "@/components/DeleteBusinessRecordButton";
+import { getWholesaleB2bDetailFields, getWholesaleB2bTimeline, wholesaleB2bRelated, wholesaleB2bColumns } from "@/lib/sample-data/wholesale-b2b";
 import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
+import { getBusinessRecord } from "@/lib/businessRecords";
 
 registerPage({
   id: "wholesale-b2b.detail",
@@ -23,13 +25,16 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/wholesale-b2b/[recordId]/page.tsx",
 });
 
+export const dynamic = "force-dynamic";
+
 export default async function WholesaleB2bDetailPage({
   params,
 }: {
   params: { vendorId: string; recordId: string };
 }) {
   const mod = await getModule("wholesale-b2b");
-  const record = getWholesaleB2bRecord(params.recordId);
+  const record = await getBusinessRecord(params.vendorId, "wholesale-b2b", params.recordId);
+  if (!record) notFound();
   const fields = await applyCustomizationsToDetailFields("wholesale-b2b.detail", getWholesaleB2bDetailFields(record), wholesaleB2bColumns);
   const timeline = getWholesaleB2bTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
@@ -58,7 +63,7 @@ export default async function WholesaleB2bDetailPage({
                 >
                   Edit
                 </Link>
-                <ConfirmDeleteDialog recordLabel={recordLabel} />
+                <DeleteBusinessRecordButton vendorId={params.vendorId} moduleSlug="wholesale-b2b" recordKey={params.recordId} recordLabel={recordLabel} />
               </div>
             </div>
           }

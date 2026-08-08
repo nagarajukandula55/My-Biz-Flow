@@ -2,10 +2,12 @@ import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { RecordDetail } from "@/components/RecordDetail";
-import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
-import { getEventBookingRecord, getEventBookingDetailFields, getEventBookingTimeline, eventBookingRelated, eventBookingColumns } from "@/lib/sample-data/event-booking";
+import { DeleteBusinessRecordButton } from "@/components/DeleteBusinessRecordButton";
+import { getEventBookingDetailFields, getEventBookingTimeline, eventBookingRelated, eventBookingColumns } from "@/lib/sample-data/event-booking";
 import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
+import { getBusinessRecord } from "@/lib/businessRecords";
 
 registerPage({
   id: "event-booking.detail",
@@ -23,13 +25,16 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/event-booking/[recordId]/page.tsx",
 });
 
+export const dynamic = "force-dynamic";
+
 export default async function EventBookingDetailPage({
   params,
 }: {
   params: { vendorId: string; recordId: string };
 }) {
   const mod = await getModule("event-booking");
-  const record = getEventBookingRecord(params.recordId);
+  const record = await getBusinessRecord(params.vendorId, "event-booking", params.recordId);
+  if (!record) notFound();
   const fields = await applyCustomizationsToDetailFields("event-booking.detail", getEventBookingDetailFields(record), eventBookingColumns);
   const timeline = getEventBookingTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
@@ -58,7 +63,7 @@ export default async function EventBookingDetailPage({
                 >
                   Edit
                 </Link>
-                <ConfirmDeleteDialog recordLabel={recordLabel} />
+                <DeleteBusinessRecordButton vendorId={params.vendorId} moduleSlug="event-booking" recordKey={params.recordId} recordLabel={recordLabel} />
               </div>
             </div>
           }

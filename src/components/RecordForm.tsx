@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState, useTransition, type FormEvent } from "react";
 
 export type FormFieldType =
   | "text"
@@ -37,6 +37,13 @@ type RecordFormProps = {
   initialValues?: Record<string, unknown>;
   submitLabel: string;
   onSubmitDemo?: (values: Record<string, unknown>) => void;
+  /**
+   * Real persistence path — a server action (already bound with whatever
+   * scoping it needs, e.g. .bind(null, vendorId, moduleSlug)) that
+   * receives the form's values directly. When provided, this replaces
+   * the demo-stub submit entirely; onSubmitDemo is ignored.
+   */
+  action?: (values: Record<string, unknown>) => Promise<void>;
 };
 
 /**
@@ -44,10 +51,11 @@ type RecordFormProps = {
  * input per field definition — never hand-roll a bespoke form per module,
  * see DESIGN_SYSTEM.md §8 (RecordForm convention).
  *
- * There is no backend/database wired up in this pass, so submission is a
- * client-side stub: it logs the values and shows a "Saved (demo)" message.
+ * Pass `action` for real persistence (a bound server action); omit it and
+ * submission falls back to the original client-side demo stub (logs the
+ * values, shows "Saved (demo)") for anything not yet migrated.
  */
-export function RecordForm({ fields, initialValues, submitLabel, onSubmitDemo }: RecordFormProps) {
+export function RecordForm({ fields, initialValues, submitLabel, onSubmitDemo, action }: RecordFormProps) {
   const [values, setValues] = useState<Record<string, unknown>>(() => {
     const base: Record<string, unknown> = {};
     for (const f of fields) {
@@ -58,6 +66,7 @@ export function RecordForm({ fields, initialValues, submitLabel, onSubmitDemo }:
     return base;
   });
   const [saved, setSaved] = useState(false);
+  const [pending, startTransition] = useTransition();
 
   function setValue(key: string, value: unknown) {
     setValues((prev) => ({ ...prev, [key]: value }));
@@ -66,6 +75,12 @@ export function RecordForm({ fields, initialValues, submitLabel, onSubmitDemo }:
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (action) {
+      startTransition(async () => {
+        await action(values);
+      });
+      return;
+    }
     // eslint-disable-next-line no-console
     console.log("RecordForm submit (demo, no backend):", values);
     onSubmitDemo?.(values);
@@ -93,10 +108,10 @@ export function RecordForm({ fields, initialValues, submitLabel, onSubmitDemo }:
       </div>
 
       <div className="flex items-center gap-3 pt-2">
-        <button type="submit" className="btn-accent">
-          {submitLabel}
+        <button type="submit" className="btn-accent" disabled={pending}>
+          {pending ? "Saving…" : submitLabel}
         </button>
-        {saved && (
+        {saved && !action && (
           <span className="text-sm font-semibold text-success">
             Saved (demo — no backend yet)
           </span>

@@ -5,6 +5,7 @@ import { BrandClientTable } from "./BrandClientTable";
 import { BrandNewButton } from "./BrandNewButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { brandColumns } from "@/lib/sample-data/brand";
+import { listBusinessRecords } from "@/lib/businessRecords";
 
 registerPage({
   id: "brand.list",
@@ -22,21 +23,24 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/brand/page.tsx",
 });
 
+export const dynamic = "force-dynamic";
+
 export default async function BrandPage({ params }: { params: { vendorId: string } }) {
   const mod = await getModule("brand");
   const columns = await applyCustomizations("brand.list", brandColumns);
+  const rows = await listBusinessRecords(params.vendorId, "brand");
 
   return (
     <AppShell
       topbarTitle={mod?.label ?? "Brand"}
       topbarActions={
-        <BrandNewButton />
+        <BrandNewButton vendorId={params.vendorId} />
       }
     >
       <div>
         <p className="text-sm text-text-muted">{mod?.description}</p>
         <div className="mt-6">
-          <BrandClientTable vendorId={params.vendorId} columns={columns} />
+          <BrandClientTable vendorId={params.vendorId} columns={columns} rows={rows} />
         </div>
       </div>
     </AppShell>

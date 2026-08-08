@@ -5,6 +5,7 @@ import { RealEstateClientTable } from "./RealEstateClientTable";
 import { RealEstateNewButton } from "./RealEstateNewButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { realEstateColumns } from "@/lib/sample-data/real-estate";
+import { listBusinessRecords } from "@/lib/businessRecords";
 
 registerPage({
   id: "real-estate.list",
@@ -22,21 +23,24 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/real-estate/page.tsx",
 });
 
+export const dynamic = "force-dynamic";
+
 export default async function RealEstatePage({ params }: { params: { vendorId: string } }) {
   const mod = await getModule("real-estate");
   const columns = await applyCustomizations("real-estate.list", realEstateColumns);
+  const rows = await listBusinessRecords(params.vendorId, "real-estate");
 
   return (
     <AppShell
       topbarTitle={mod?.label ?? "Real Estate"}
       topbarActions={
-        <RealEstateNewButton />
+        <RealEstateNewButton vendorId={params.vendorId} />
       }
     >
       <div>
         <p className="text-sm text-text-muted">{mod?.description}</p>
         <div className="mt-6">
-          <RealEstateClientTable vendorId={params.vendorId} columns={columns} />
+          <RealEstateClientTable vendorId={params.vendorId} columns={columns} rows={rows} />
         </div>
       </div>
     </AppShell>

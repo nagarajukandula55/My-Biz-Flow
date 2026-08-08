@@ -5,6 +5,7 @@ import { ClinicClientTable } from "./ClinicClientTable";
 import { ClinicNewButton } from "./ClinicNewButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { clinicColumns } from "@/lib/sample-data/clinic";
+import { listBusinessRecords } from "@/lib/businessRecords";
 
 registerPage({
   id: "clinic.list",
@@ -22,21 +23,24 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/clinic/page.tsx",
 });
 
+export const dynamic = "force-dynamic";
+
 export default async function ClinicPage({ params }: { params: { vendorId: string } }) {
   const mod = await getModule("clinic");
   const columns = await applyCustomizations("clinic.list", clinicColumns);
+  const rows = await listBusinessRecords(params.vendorId, "clinic");
 
   return (
     <AppShell
       topbarTitle={mod?.label ?? "Clinic"}
       topbarActions={
-        <ClinicNewButton />
+        <ClinicNewButton vendorId={params.vendorId} />
       }
     >
       <div>
         <p className="text-sm text-text-muted">{mod?.description}</p>
         <div className="mt-6">
-          <ClinicClientTable vendorId={params.vendorId} columns={columns} />
+          <ClinicClientTable vendorId={params.vendorId} columns={columns} rows={rows} />
         </div>
       </div>
     </AppShell>

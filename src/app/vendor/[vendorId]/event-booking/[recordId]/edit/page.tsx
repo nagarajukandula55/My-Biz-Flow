@@ -2,8 +2,11 @@ import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
-import { eventBookingFormFields, getEventBookingRecord } from "@/lib/sample-data/event-booking";
+import { notFound } from "next/navigation";
+import { eventBookingFormFields } from "@/lib/sample-data/event-booking";
 import { applyCustomizations } from "@/lib/designer/customizations";
+import { getBusinessRecord } from "@/lib/businessRecords";
+import { updateBusinessRecordAction } from "@/lib/businessRecordActions";
 
 registerPage({
   id: "event-booking.edit",
@@ -23,7 +26,8 @@ registerPage({
 
 export default async function EditEventBookingPage({ params }: { params: { vendorId: string; recordId: string } }) {
   const mod = await getModule("event-booking");
-  const record = getEventBookingRecord(params.recordId);
+  const record = await getBusinessRecord(params.vendorId, "event-booking", params.recordId);
+  if (!record) notFound();
   const fields = await applyCustomizations("event-booking.edit", eventBookingFormFields);
 
   return (
@@ -32,7 +36,12 @@ export default async function EditEventBookingPage({ params }: { params: { vendo
         <h1 className="font-display text-2xl font-bold text-text">Edit Event</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>
         <div className="mt-6">
-          <RecordForm fields={fields} initialValues={record} submitLabel="Save changes" />
+          <RecordForm
+            fields={fields}
+            initialValues={record}
+            submitLabel="Save changes"
+            action={updateBusinessRecordAction.bind(null, params.vendorId, "event-booking", params.recordId)}
+          />
         </div>
       </div>
     </AppShell>

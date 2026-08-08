@@ -2,8 +2,11 @@ import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
-import { logisticsFleetFormFields, getLogisticsFleetRecord } from "@/lib/sample-data/logistics-fleet";
+import { notFound } from "next/navigation";
+import { logisticsFleetFormFields } from "@/lib/sample-data/logistics-fleet";
 import { applyCustomizations } from "@/lib/designer/customizations";
+import { getBusinessRecord } from "@/lib/businessRecords";
+import { updateBusinessRecordAction } from "@/lib/businessRecordActions";
 
 registerPage({
   id: "logistics-fleet.edit",
@@ -23,7 +26,8 @@ registerPage({
 
 export default async function EditLogisticsFleetPage({ params }: { params: { vendorId: string; recordId: string } }) {
   const mod = await getModule("logistics-fleet");
-  const record = getLogisticsFleetRecord(params.recordId);
+  const record = await getBusinessRecord(params.vendorId, "logistics-fleet", params.recordId);
+  if (!record) notFound();
   const fields = await applyCustomizations("logistics-fleet.edit", logisticsFleetFormFields);
 
   return (
@@ -32,7 +36,12 @@ export default async function EditLogisticsFleetPage({ params }: { params: { ven
         <h1 className="font-display text-2xl font-bold text-text">Edit Shipment</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>
         <div className="mt-6">
-          <RecordForm fields={fields} initialValues={record} submitLabel="Save changes" />
+          <RecordForm
+            fields={fields}
+            initialValues={record}
+            submitLabel="Save changes"
+            action={updateBusinessRecordAction.bind(null, params.vendorId, "logistics-fleet", params.recordId)}
+          />
         </div>
       </div>
     </AppShell>

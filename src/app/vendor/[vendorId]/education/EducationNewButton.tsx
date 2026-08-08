@@ -1,10 +1,11 @@
 "use client";
 
 import { RecordFormModal, useRecordFormModal } from "@/components/RecordFormModal";
+import { createBusinessRecordAction } from "@/lib/businessRecordActions";
 import { educationFormFields } from "@/lib/sample-data/education";
 
 /** Create-as-modal for education (see src/components/RecordFormModal.tsx). */
-export function EducationNewButton() {
+export function EducationNewButton({ vendorId }: { vendorId: string }) {
   const { open, openModal, closeModal } = useRecordFormModal();
   return (
     <>
@@ -17,6 +18,7 @@ export function EducationNewButton() {
         title="New Enrollment"
         fields={educationFormFields}
         submitLabel="Create Enrollment"
+        action={createBusinessRecordAction.bind(null, vendorId, "education")}
       />
     </>
   );

@@ -5,6 +5,7 @@ import { RestaurantPosClientTable } from "./RestaurantPosClientTable";
 import { RestaurantPosNewButton } from "./RestaurantPosNewButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { restaurantPosColumns } from "@/lib/sample-data/restaurant-pos";
+import { listBusinessRecords } from "@/lib/businessRecords";
 
 registerPage({
   id: "restaurant-pos.list",
@@ -22,21 +23,24 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/restaurant-pos/page.tsx",
 });
 
+export const dynamic = "force-dynamic";
+
 export default async function RestaurantPosPage({ params }: { params: { vendorId: string } }) {
   const mod = await getModule("restaurant-pos");
   const columns = await applyCustomizations("restaurant-pos.list", restaurantPosColumns);
+  const rows = await listBusinessRecords(params.vendorId, "restaurant-pos");
 
   return (
     <AppShell
       topbarTitle={mod?.label ?? "Restaurant POS"}
       topbarActions={
-        <RestaurantPosNewButton />
+        <RestaurantPosNewButton vendorId={params.vendorId} />
       }
     >
       <div>
         <p className="text-sm text-text-muted">{mod?.description}</p>
         <div className="mt-6">
-          <RestaurantPosClientTable vendorId={params.vendorId} columns={columns} />
+          <RestaurantPosClientTable vendorId={params.vendorId} columns={columns} rows={rows} />
         </div>
       </div>
     </AppShell>

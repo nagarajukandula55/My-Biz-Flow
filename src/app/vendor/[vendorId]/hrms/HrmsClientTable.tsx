@@ -2,14 +2,14 @@
 
 import { useRouter } from "next/navigation";
 import { DataTable, type Row, type Column } from "@/components/DataTable";
-import { hrmsColumns, hrmsRows } from "@/lib/sample-data/hrms";
+import { hrmsColumns } from "@/lib/sample-data/hrms";
 
-export function HrmsClientTable({ vendorId, columns }: { vendorId: string; columns?: Column[] }) {
+export function HrmsClientTable({ vendorId, columns, rows }: { vendorId: string; columns?: Column[]; rows: Row[] }) {
   const router = useRouter();
   return (
     <DataTable
       columns={columns ?? hrmsColumns}
-      rows={hrmsRows}
+      rows={rows}
       onRowClick={(row: Row) => router.push(`/vendor/${vendorId}/hrms/${row["id"]}`)}
       enableQuickView
     />

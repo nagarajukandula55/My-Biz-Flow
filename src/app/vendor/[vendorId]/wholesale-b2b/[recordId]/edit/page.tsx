@@ -2,8 +2,11 @@ import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
-import { wholesaleB2bFormFields, getWholesaleB2bRecord } from "@/lib/sample-data/wholesale-b2b";
+import { notFound } from "next/navigation";
+import { wholesaleB2bFormFields } from "@/lib/sample-data/wholesale-b2b";
 import { applyCustomizations } from "@/lib/designer/customizations";
+import { getBusinessRecord } from "@/lib/businessRecords";
+import { updateBusinessRecordAction } from "@/lib/businessRecordActions";
 
 registerPage({
   id: "wholesale-b2b.edit",
@@ -23,7 +26,8 @@ registerPage({
 
 export default async function EditWholesaleB2bPage({ params }: { params: { vendorId: string; recordId: string } }) {
   const mod = await getModule("wholesale-b2b");
-  const record = getWholesaleB2bRecord(params.recordId);
+  const record = await getBusinessRecord(params.vendorId, "wholesale-b2b", params.recordId);
+  if (!record) notFound();
   const fields = await applyCustomizations("wholesale-b2b.edit", wholesaleB2bFormFields);
 
   return (
@@ -32,7 +36,12 @@ export default async function EditWholesaleB2bPage({ params }: { params: { vendo
         <h1 className="font-display text-2xl font-bold text-text">Edit Order</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>
         <div className="mt-6">
-          <RecordForm fields={fields} initialValues={record} submitLabel="Save changes" />
+          <RecordForm
+            fields={fields}
+            initialValues={record}
+            submitLabel="Save changes"
+            action={updateBusinessRecordAction.bind(null, params.vendorId, "wholesale-b2b", params.recordId)}
+          />
         </div>
       </div>
     </AppShell>

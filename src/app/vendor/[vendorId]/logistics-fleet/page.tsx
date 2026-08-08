@@ -5,6 +5,7 @@ import { LogisticsFleetClientTable } from "./LogisticsFleetClientTable";
 import { LogisticsFleetNewButton } from "./LogisticsFleetNewButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { logisticsFleetColumns } from "@/lib/sample-data/logistics-fleet";
+import { listBusinessRecords } from "@/lib/businessRecords";
 
 registerPage({
   id: "logistics-fleet.list",
@@ -22,21 +23,24 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/logistics-fleet/page.tsx",
 });
 
+export const dynamic = "force-dynamic";
+
 export default async function LogisticsFleetPage({ params }: { params: { vendorId: string } }) {
   const mod = await getModule("logistics-fleet");
   const columns = await applyCustomizations("logistics-fleet.list", logisticsFleetColumns);
+  const rows = await listBusinessRecords(params.vendorId, "logistics-fleet");
 
   return (
     <AppShell
       topbarTitle={mod?.label ?? "Logistics / Fleet"}
       topbarActions={
-        <LogisticsFleetNewButton />
+        <LogisticsFleetNewButton vendorId={params.vendorId} />
       }
     >
       <div>
         <p className="text-sm text-text-muted">{mod?.description}</p>
         <div className="mt-6">
-          <LogisticsFleetClientTable vendorId={params.vendorId} columns={columns} />
+          <LogisticsFleetClientTable vendorId={params.vendorId} columns={columns} rows={rows} />
         </div>
       </div>
     </AppShell>

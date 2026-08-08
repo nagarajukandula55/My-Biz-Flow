@@ -1,6 +1,8 @@
 import { DocumentView } from "@/components/DocumentView";
-import { posColumns, posRows, getPosRecord } from "@/lib/sample-data/pos";
+import { posColumns } from "@/lib/sample-data/pos";
 import { registerPage } from "@/lib/designer/registry";
+import { notFound } from "next/navigation";
+import { getBusinessRecord, getBusinessRecordSequenceIndex } from "@/lib/businessRecords";
 
 registerPage({
   id: "pos.document",
@@ -11,17 +13,18 @@ registerPage({
   superAdminOnly: false,
   customizableRegions: [{ key: "document-template", label: "Receipt HTML template (placeholders)" }],
   explanation:
-    "Renders a POS sale as a printable customer receipt. Same template-or-default rendering as every other document page; see billing.document for the full mechanism.",
+    "Renders a POS sale as a printable customer receipt. Same template-or-default rendering as every other document page; see billing.document for the full mechanism. Real data — Prisma-backed (BusinessRecord table).",
   sourceFile: "src/app/vendor/[vendorId]/pos/[recordId]/document/page.tsx",
 });
 
-export default function PosDocumentPage({
+export default async function PosDocumentPage({
   params,
 }: {
   params: { vendorId: string; recordId: string };
 }) {
-  const record = getPosRecord(params.recordId);
-  const sequenceIndex = posRows.findIndex((r) => String(r["id"]) === params.recordId);
+  const record = await getBusinessRecord(params.vendorId, "pos", params.recordId);
+  if (!record) notFound();
+  const sequenceIndex = await getBusinessRecordSequenceIndex(params.vendorId, "pos", params.recordId);
   return (
     <DocumentView
       pageId="pos.document"
@@ -31,7 +34,7 @@ export default function PosDocumentPage({
       vendorId={params.vendorId}
       record={record}
       columns={posColumns}
-      sequenceIndex={sequenceIndex >= 0 ? sequenceIndex : 0}
+      sequenceIndex={sequenceIndex}
     />
   );
 }

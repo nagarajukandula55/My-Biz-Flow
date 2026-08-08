@@ -2,10 +2,12 @@ import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { RecordDetail } from "@/components/RecordDetail";
-import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
-import { getLogisticsFleetRecord, getLogisticsFleetDetailFields, getLogisticsFleetTimeline, logisticsFleetRelated, logisticsFleetColumns } from "@/lib/sample-data/logistics-fleet";
+import { DeleteBusinessRecordButton } from "@/components/DeleteBusinessRecordButton";
+import { getLogisticsFleetDetailFields, getLogisticsFleetTimeline, logisticsFleetRelated, logisticsFleetColumns } from "@/lib/sample-data/logistics-fleet";
 import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
+import { getBusinessRecord } from "@/lib/businessRecords";
 
 registerPage({
   id: "logistics-fleet.detail",
@@ -23,13 +25,16 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/logistics-fleet/[recordId]/page.tsx",
 });
 
+export const dynamic = "force-dynamic";
+
 export default async function LogisticsFleetDetailPage({
   params,
 }: {
   params: { vendorId: string; recordId: string };
 }) {
   const mod = await getModule("logistics-fleet");
-  const record = getLogisticsFleetRecord(params.recordId);
+  const record = await getBusinessRecord(params.vendorId, "logistics-fleet", params.recordId);
+  if (!record) notFound();
   const fields = await applyCustomizationsToDetailFields("logistics-fleet.detail", getLogisticsFleetDetailFields(record), logisticsFleetColumns);
   const timeline = getLogisticsFleetTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
@@ -58,7 +63,7 @@ export default async function LogisticsFleetDetailPage({
                 >
                   Edit
                 </Link>
-                <ConfirmDeleteDialog recordLabel={recordLabel} />
+                <DeleteBusinessRecordButton vendorId={params.vendorId} moduleSlug="logistics-fleet" recordKey={params.recordId} recordLabel={recordLabel} />
               </div>
             </div>
           }

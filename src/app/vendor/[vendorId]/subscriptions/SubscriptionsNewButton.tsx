@@ -1,10 +1,11 @@
 "use client";
 
 import { RecordFormModal, useRecordFormModal } from "@/components/RecordFormModal";
+import { createBusinessRecordAction } from "@/lib/businessRecordActions";
 import { subscriptionsFormFields } from "@/lib/sample-data/subscriptions";
 
 /** Create-as-modal for subscriptions (see src/components/RecordFormModal.tsx). */
-export function SubscriptionsNewButton() {
+export function SubscriptionsNewButton({ vendorId }: { vendorId: string }) {
   const { open, openModal, closeModal } = useRecordFormModal();
   return (
     <>
@@ -17,6 +18,7 @@ export function SubscriptionsNewButton() {
         title="New Membership"
         fields={subscriptionsFormFields}
         submitLabel="Create Membership"
+        action={createBusinessRecordAction.bind(null, vendorId, "subscriptions")}
       />
     </>
   );

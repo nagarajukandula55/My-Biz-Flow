@@ -2,10 +2,12 @@ import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { RecordDetail } from "@/components/RecordDetail";
-import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
-import { getManufacturingRecord, getManufacturingDetailFields, getManufacturingTimeline, manufacturingRelated, manufacturingColumns } from "@/lib/sample-data/manufacturing";
+import { DeleteBusinessRecordButton } from "@/components/DeleteBusinessRecordButton";
+import { getManufacturingDetailFields, getManufacturingTimeline, manufacturingRelated, manufacturingColumns } from "@/lib/sample-data/manufacturing";
 import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
+import { getBusinessRecord } from "@/lib/businessRecords";
 
 registerPage({
   id: "manufacturing.detail",
@@ -23,13 +25,16 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/manufacturing/[recordId]/page.tsx",
 });
 
+export const dynamic = "force-dynamic";
+
 export default async function ManufacturingDetailPage({
   params,
 }: {
   params: { vendorId: string; recordId: string };
 }) {
   const mod = await getModule("manufacturing");
-  const record = getManufacturingRecord(params.recordId);
+  const record = await getBusinessRecord(params.vendorId, "manufacturing", params.recordId);
+  if (!record) notFound();
   const fields = await applyCustomizationsToDetailFields("manufacturing.detail", getManufacturingDetailFields(record), manufacturingColumns);
   const timeline = getManufacturingTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
@@ -58,7 +63,7 @@ export default async function ManufacturingDetailPage({
                 >
                   Edit
                 </Link>
-                <ConfirmDeleteDialog recordLabel={recordLabel} />
+                <DeleteBusinessRecordButton vendorId={params.vendorId} moduleSlug="manufacturing" recordKey={params.recordId} recordLabel={recordLabel} />
               </div>
             </div>
           }

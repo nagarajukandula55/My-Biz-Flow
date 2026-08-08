@@ -1,10 +1,11 @@
 "use client";
 
 import { RecordFormModal, useRecordFormModal } from "@/components/RecordFormModal";
+import { createBusinessRecordAction } from "@/lib/businessRecordActions";
 import { realEstateFormFields } from "@/lib/sample-data/real-estate";
 
 /** Create-as-modal for real-estate (see src/components/RecordFormModal.tsx). */
-export function RealEstateNewButton() {
+export function RealEstateNewButton({ vendorId }: { vendorId: string }) {
   const { open, openModal, closeModal } = useRecordFormModal();
   return (
     <>
@@ -17,6 +18,7 @@ export function RealEstateNewButton() {
         title="New Listing"
         fields={realEstateFormFields}
         submitLabel="Create Listing"
+        action={createBusinessRecordAction.bind(null, vendorId, "real-estate")}
       />
     </>
   );

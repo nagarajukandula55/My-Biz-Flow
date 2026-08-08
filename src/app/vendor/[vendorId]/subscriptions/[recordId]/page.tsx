@@ -2,10 +2,12 @@ import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { RecordDetail } from "@/components/RecordDetail";
-import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
-import { getSubscriptionsRecord, getSubscriptionsDetailFields, getSubscriptionsTimeline, subscriptionsRelated, subscriptionsColumns } from "@/lib/sample-data/subscriptions";
+import { DeleteBusinessRecordButton } from "@/components/DeleteBusinessRecordButton";
+import { getSubscriptionsDetailFields, getSubscriptionsTimeline, subscriptionsRelated, subscriptionsColumns } from "@/lib/sample-data/subscriptions";
 import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
+import { getBusinessRecord } from "@/lib/businessRecords";
 
 registerPage({
   id: "subscriptions.detail",
@@ -23,13 +25,16 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/subscriptions/[recordId]/page.tsx",
 });
 
+export const dynamic = "force-dynamic";
+
 export default async function SubscriptionsDetailPage({
   params,
 }: {
   params: { vendorId: string; recordId: string };
 }) {
   const mod = await getModule("subscriptions");
-  const record = getSubscriptionsRecord(params.recordId);
+  const record = await getBusinessRecord(params.vendorId, "subscriptions", params.recordId);
+  if (!record) notFound();
   const fields = await applyCustomizationsToDetailFields("subscriptions.detail", getSubscriptionsDetailFields(record), subscriptionsColumns);
   const timeline = getSubscriptionsTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
@@ -58,7 +63,7 @@ export default async function SubscriptionsDetailPage({
                 >
                   Edit
                 </Link>
-                <ConfirmDeleteDialog recordLabel={recordLabel} />
+                <DeleteBusinessRecordButton vendorId={params.vendorId} moduleSlug="subscriptions" recordKey={params.recordId} recordLabel={recordLabel} />
               </div>
             </div>
           }

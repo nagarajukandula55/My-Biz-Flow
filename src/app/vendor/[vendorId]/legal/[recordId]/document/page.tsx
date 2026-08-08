@@ -1,6 +1,8 @@
 import { DocumentView } from "@/components/DocumentView";
-import { legalColumns, legalRows, getLegalRecord } from "@/lib/sample-data/legal";
+import { legalColumns } from "@/lib/sample-data/legal";
 import { registerPage } from "@/lib/designer/registry";
+import { notFound } from "next/navigation";
+import { getBusinessRecord, getBusinessRecordSequenceIndex } from "@/lib/businessRecords";
 
 registerPage({
   id: "legal.document",
@@ -17,13 +19,14 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/legal/[recordId]/document/page.tsx",
 });
 
-export default function LegalDocumentPage({
+export default async function LegalDocumentPage({
   params,
 }: {
   params: { vendorId: string; recordId: string };
 }) {
-  const record = getLegalRecord(params.recordId);
-  const sequenceIndex = legalRows.findIndex((r) => String(r["id"]) === params.recordId);
+  const record = await getBusinessRecord(params.vendorId, "legal", params.recordId);
+  if (!record) notFound();
+  const sequenceIndex = await getBusinessRecordSequenceIndex(params.vendorId, "legal", params.recordId);
   return (
     <DocumentView
       pageId="legal.document"
@@ -33,7 +36,7 @@ export default function LegalDocumentPage({
       vendorId={params.vendorId}
       record={record}
       columns={legalColumns}
-      sequenceIndex={sequenceIndex >= 0 ? sequenceIndex : 0}
+      sequenceIndex={sequenceIndex}
     />
   );
 }

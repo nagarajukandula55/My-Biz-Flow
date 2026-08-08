@@ -2,10 +2,12 @@ import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { RecordDetail } from "@/components/RecordDetail";
-import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
-import { getAccountingGstRecord, getAccountingGstDetailFields, getAccountingGstTimeline, accountingGstRelated, accountingGstColumns } from "@/lib/sample-data/accounting-gst";
+import { DeleteBusinessRecordButton } from "@/components/DeleteBusinessRecordButton";
+import { getAccountingGstDetailFields, getAccountingGstTimeline, accountingGstRelated, accountingGstColumns } from "@/lib/sample-data/accounting-gst";
 import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
+import { getBusinessRecord } from "@/lib/businessRecords";
 
 registerPage({
   id: "accounting-gst.detail",
@@ -23,13 +25,16 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/accounting-gst/[recordId]/page.tsx",
 });
 
+export const dynamic = "force-dynamic";
+
 export default async function AccountingGstDetailPage({
   params,
 }: {
   params: { vendorId: string; recordId: string };
 }) {
   const mod = await getModule("accounting-gst");
-  const record = getAccountingGstRecord(params.recordId);
+  const record = await getBusinessRecord(params.vendorId, "accounting-gst", params.recordId);
+  if (!record) notFound();
   const fields = await applyCustomizationsToDetailFields("accounting-gst.detail", getAccountingGstDetailFields(record), accountingGstColumns);
   const timeline = getAccountingGstTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
@@ -58,7 +63,7 @@ export default async function AccountingGstDetailPage({
                 >
                   Edit
                 </Link>
-                <ConfirmDeleteDialog recordLabel={recordLabel} />
+                <DeleteBusinessRecordButton vendorId={params.vendorId} moduleSlug="accounting-gst" recordKey={params.recordId} recordLabel={recordLabel} />
               </div>
             </div>
           }

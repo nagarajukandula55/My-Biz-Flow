@@ -1,10 +1,11 @@
 "use client";
 
 import { RecordFormModal, useRecordFormModal } from "@/components/RecordFormModal";
+import { createBusinessRecordAction } from "@/lib/businessRecordActions";
 import { clinicFormFields } from "@/lib/sample-data/clinic";
 
 /** Create-as-modal for clinic (see src/components/RecordFormModal.tsx). */
-export function ClinicNewButton() {
+export function ClinicNewButton({ vendorId }: { vendorId: string }) {
   const { open, openModal, closeModal } = useRecordFormModal();
   return (
     <>
@@ -17,6 +18,7 @@ export function ClinicNewButton() {
         title="New Appointment"
         fields={clinicFormFields}
         submitLabel="Create Appointment"
+        action={createBusinessRecordAction.bind(null, vendorId, "clinic")}
       />
     </>
   );

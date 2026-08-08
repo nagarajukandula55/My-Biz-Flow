@@ -1,10 +1,11 @@
 "use client";
 
 import { RecordFormModal, useRecordFormModal } from "@/components/RecordFormModal";
+import { createBusinessRecordAction } from "@/lib/businessRecordActions";
 import { legalFormFields } from "@/lib/sample-data/legal";
 
 /** Create-as-modal for legal (see src/components/RecordFormModal.tsx). */
-export function LegalNewButton() {
+export function LegalNewButton({ vendorId }: { vendorId: string }) {
   const { open, openModal, closeModal } = useRecordFormModal();
   return (
     <>
@@ -17,6 +18,7 @@ export function LegalNewButton() {
         title="New Matter"
         fields={legalFormFields}
         submitLabel="Create Matter"
+        action={createBusinessRecordAction.bind(null, vendorId, "legal")}
       />
     </>
   );

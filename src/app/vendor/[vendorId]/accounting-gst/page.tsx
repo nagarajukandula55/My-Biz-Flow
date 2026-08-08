@@ -5,6 +5,7 @@ import { AccountingGstClientTable } from "./AccountingGstClientTable";
 import { AccountingGstNewButton } from "./AccountingGstNewButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { accountingGstColumns } from "@/lib/sample-data/accounting-gst";
+import { listBusinessRecords } from "@/lib/businessRecords";
 
 registerPage({
   id: "accounting-gst.list",
@@ -22,21 +23,24 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/accounting-gst/page.tsx",
 });
 
+export const dynamic = "force-dynamic";
+
 export default async function AccountingGstPage({ params }: { params: { vendorId: string } }) {
   const mod = await getModule("accounting-gst");
   const columns = await applyCustomizations("accounting-gst.list", accountingGstColumns);
+  const rows = await listBusinessRecords(params.vendorId, "accounting-gst");
 
   return (
     <AppShell
       topbarTitle={mod?.label ?? "Accounting / GST Compliance"}
       topbarActions={
-        <AccountingGstNewButton />
+        <AccountingGstNewButton vendorId={params.vendorId} />
       }
     >
       <div>
         <p className="text-sm text-text-muted">{mod?.description}</p>
         <div className="mt-6">
-          <AccountingGstClientTable vendorId={params.vendorId} columns={columns} />
+          <AccountingGstClientTable vendorId={params.vendorId} columns={columns} rows={rows} />
         </div>
       </div>
     </AppShell>

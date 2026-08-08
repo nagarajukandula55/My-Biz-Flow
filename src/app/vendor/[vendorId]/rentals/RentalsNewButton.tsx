@@ -1,10 +1,11 @@
 "use client";
 
 import { RecordFormModal, useRecordFormModal } from "@/components/RecordFormModal";
+import { createBusinessRecordAction } from "@/lib/businessRecordActions";
 import { rentalsFormFields } from "@/lib/sample-data/rentals";
 
 /** Create-as-modal for rentals (see src/components/RecordFormModal.tsx). */
-export function RentalsNewButton() {
+export function RentalsNewButton({ vendorId }: { vendorId: string }) {
   const { open, openModal, closeModal } = useRecordFormModal();
   return (
     <>
@@ -17,6 +18,7 @@ export function RentalsNewButton() {
         title="New Booking"
         fields={rentalsFormFields}
         submitLabel="Create Booking"
+        action={createBusinessRecordAction.bind(null, vendorId, "rentals")}
       />
     </>
   );

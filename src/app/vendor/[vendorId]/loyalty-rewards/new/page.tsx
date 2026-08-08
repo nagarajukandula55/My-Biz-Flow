@@ -4,6 +4,7 @@ import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { loyaltyRewardsFormFields } from "@/lib/sample-data/loyalty-rewards";
 import { applyCustomizations } from "@/lib/designer/customizations";
+import { createBusinessRecordAction } from "@/lib/businessRecordActions";
 
 registerPage({
   id: "loyalty-rewards.create",
@@ -31,7 +32,11 @@ export default async function NewLoyaltyRewardsPage({ params }: { params: { vend
         <h1 className="font-display text-2xl font-bold text-text">New Member</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new member record for Loyalty & Rewards.</p>
         <div className="mt-6">
-          <RecordForm fields={fields} submitLabel="Create Member" />
+          <RecordForm
+            fields={fields}
+            submitLabel="Create Member"
+            action={createBusinessRecordAction.bind(null, params.vendorId, "loyalty-rewards")}
+          />
         </div>
       </div>
     </AppShell>

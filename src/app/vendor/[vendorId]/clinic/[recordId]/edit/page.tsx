@@ -2,8 +2,11 @@ import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
-import { clinicFormFields, getClinicRecord } from "@/lib/sample-data/clinic";
+import { notFound } from "next/navigation";
+import { clinicFormFields } from "@/lib/sample-data/clinic";
 import { applyCustomizations } from "@/lib/designer/customizations";
+import { getBusinessRecord } from "@/lib/businessRecords";
+import { updateBusinessRecordAction } from "@/lib/businessRecordActions";
 
 registerPage({
   id: "clinic.edit",
@@ -23,7 +26,8 @@ registerPage({
 
 export default async function EditClinicPage({ params }: { params: { vendorId: string; recordId: string } }) {
   const mod = await getModule("clinic");
-  const record = getClinicRecord(params.recordId);
+  const record = await getBusinessRecord(params.vendorId, "clinic", params.recordId);
+  if (!record) notFound();
   const fields = await applyCustomizations("clinic.edit", clinicFormFields);
 
   return (
@@ -32,7 +36,12 @@ export default async function EditClinicPage({ params }: { params: { vendorId: s
         <h1 className="font-display text-2xl font-bold text-text">Edit Appointment</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>
         <div className="mt-6">
-          <RecordForm fields={fields} initialValues={record} submitLabel="Save changes" />
+          <RecordForm
+            fields={fields}
+            initialValues={record}
+            submitLabel="Save changes"
+            action={updateBusinessRecordAction.bind(null, params.vendorId, "clinic", params.recordId)}
+          />
         </div>
       </div>
     </AppShell>

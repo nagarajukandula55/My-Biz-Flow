@@ -2,10 +2,12 @@ import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { RecordDetail } from "@/components/RecordDetail";
-import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
-import { getRestaurantPosRecord, getRestaurantPosDetailFields, getRestaurantPosTimeline, restaurantPosRelated, restaurantPosColumns } from "@/lib/sample-data/restaurant-pos";
+import { DeleteBusinessRecordButton } from "@/components/DeleteBusinessRecordButton";
+import { getRestaurantPosDetailFields, getRestaurantPosTimeline, restaurantPosRelated, restaurantPosColumns } from "@/lib/sample-data/restaurant-pos";
 import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
+import { getBusinessRecord } from "@/lib/businessRecords";
 
 registerPage({
   id: "restaurant-pos.detail",
@@ -23,13 +25,16 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/restaurant-pos/[recordId]/page.tsx",
 });
 
+export const dynamic = "force-dynamic";
+
 export default async function RestaurantPosDetailPage({
   params,
 }: {
   params: { vendorId: string; recordId: string };
 }) {
   const mod = await getModule("restaurant-pos");
-  const record = getRestaurantPosRecord(params.recordId);
+  const record = await getBusinessRecord(params.vendorId, "restaurant-pos", params.recordId);
+  if (!record) notFound();
   const fields = await applyCustomizationsToDetailFields("restaurant-pos.detail", getRestaurantPosDetailFields(record), restaurantPosColumns);
   const timeline = getRestaurantPosTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
@@ -58,7 +63,7 @@ export default async function RestaurantPosDetailPage({
                 >
                   Edit
                 </Link>
-                <ConfirmDeleteDialog recordLabel={recordLabel} />
+                <DeleteBusinessRecordButton vendorId={params.vendorId} moduleSlug="restaurant-pos" recordKey={params.recordId} recordLabel={recordLabel} />
               </div>
             </div>
           }

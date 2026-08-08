@@ -4,6 +4,7 @@ import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { subscriptionsFormFields } from "@/lib/sample-data/subscriptions";
 import { applyCustomizations } from "@/lib/designer/customizations";
+import { createBusinessRecordAction } from "@/lib/businessRecordActions";
 
 registerPage({
   id: "subscriptions.create",
@@ -31,7 +32,11 @@ export default async function NewSubscriptionsPage({ params }: { params: { vendo
         <h1 className="font-display text-2xl font-bold text-text">New Membership</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new membership record for Subscriptions / Membership.</p>
         <div className="mt-6">
-          <RecordForm fields={fields} submitLabel="Create Membership" />
+          <RecordForm
+            fields={fields}
+            submitLabel="Create Membership"
+            action={createBusinessRecordAction.bind(null, params.vendorId, "subscriptions")}
+          />
         </div>
       </div>
     </AppShell>

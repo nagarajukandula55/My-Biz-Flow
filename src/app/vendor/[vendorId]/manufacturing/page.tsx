@@ -5,6 +5,7 @@ import { ManufacturingClientTable } from "./ManufacturingClientTable";
 import { ManufacturingNewButton } from "./ManufacturingNewButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { manufacturingColumns } from "@/lib/sample-data/manufacturing";
+import { listBusinessRecords } from "@/lib/businessRecords";
 
 registerPage({
   id: "manufacturing.list",
@@ -22,21 +23,24 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/manufacturing/page.tsx",
 });
 
+export const dynamic = "force-dynamic";
+
 export default async function ManufacturingPage({ params }: { params: { vendorId: string } }) {
   const mod = await getModule("manufacturing");
   const columns = await applyCustomizations("manufacturing.list", manufacturingColumns);
+  const rows = await listBusinessRecords(params.vendorId, "manufacturing");
 
   return (
     <AppShell
       topbarTitle={mod?.label ?? "Manufacturing / Production"}
       topbarActions={
-        <ManufacturingNewButton />
+        <ManufacturingNewButton vendorId={params.vendorId} />
       }
     >
       <div>
         <p className="text-sm text-text-muted">{mod?.description}</p>
         <div className="mt-6">
-          <ManufacturingClientTable vendorId={params.vendorId} columns={columns} />
+          <ManufacturingClientTable vendorId={params.vendorId} columns={columns} rows={rows} />
         </div>
       </div>
     </AppShell>

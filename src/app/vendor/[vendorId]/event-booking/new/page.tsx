@@ -4,6 +4,7 @@ import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { eventBookingFormFields } from "@/lib/sample-data/event-booking";
 import { applyCustomizations } from "@/lib/designer/customizations";
+import { createBusinessRecordAction } from "@/lib/businessRecordActions";
 
 registerPage({
   id: "event-booking.create",
@@ -31,7 +32,11 @@ export default async function NewEventBookingPage({ params }: { params: { vendor
         <h1 className="font-display text-2xl font-bold text-text">New Event</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new event record for Event / Venue Booking.</p>
         <div className="mt-6">
-          <RecordForm fields={fields} submitLabel="Create Event" />
+          <RecordForm
+            fields={fields}
+            submitLabel="Create Event"
+            action={createBusinessRecordAction.bind(null, params.vendorId, "event-booking")}
+          />
         </div>
       </div>
     </AppShell>

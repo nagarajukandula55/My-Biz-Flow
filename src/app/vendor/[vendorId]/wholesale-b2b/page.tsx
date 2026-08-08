@@ -5,6 +5,7 @@ import { WholesaleB2bClientTable } from "./WholesaleB2bClientTable";
 import { WholesaleB2bNewButton } from "./WholesaleB2bNewButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { wholesaleB2bColumns } from "@/lib/sample-data/wholesale-b2b";
+import { listBusinessRecords } from "@/lib/businessRecords";
 
 registerPage({
   id: "wholesale-b2b.list",
@@ -22,21 +23,24 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/wholesale-b2b/page.tsx",
 });
 
+export const dynamic = "force-dynamic";
+
 export default async function WholesaleB2bPage({ params }: { params: { vendorId: string } }) {
   const mod = await getModule("wholesale-b2b");
   const columns = await applyCustomizations("wholesale-b2b.list", wholesaleB2bColumns);
+  const rows = await listBusinessRecords(params.vendorId, "wholesale-b2b");
 
   return (
     <AppShell
       topbarTitle={mod?.label ?? "Wholesale / Distributor B2B"}
       topbarActions={
-        <WholesaleB2bNewButton />
+        <WholesaleB2bNewButton vendorId={params.vendorId} />
       }
     >
       <div>
         <p className="text-sm text-text-muted">{mod?.description}</p>
         <div className="mt-6">
-          <WholesaleB2bClientTable vendorId={params.vendorId} columns={columns} />
+          <WholesaleB2bClientTable vendorId={params.vendorId} columns={columns} rows={rows} />
         </div>
       </div>
     </AppShell>

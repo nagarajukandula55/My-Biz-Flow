@@ -4,6 +4,7 @@ import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { realEstateFormFields } from "@/lib/sample-data/real-estate";
 import { applyCustomizations } from "@/lib/designer/customizations";
+import { createBusinessRecordAction } from "@/lib/businessRecordActions";
 
 registerPage({
   id: "real-estate.create",
@@ -31,7 +32,11 @@ export default async function NewRealEstatePage({ params }: { params: { vendorId
         <h1 className="font-display text-2xl font-bold text-text">New Listing</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new listing record for Real Estate.</p>
         <div className="mt-6">
-          <RecordForm fields={fields} submitLabel="Create Listing" />
+          <RecordForm
+            fields={fields}
+            submitLabel="Create Listing"
+            action={createBusinessRecordAction.bind(null, params.vendorId, "real-estate")}
+          />
         </div>
       </div>
     </AppShell>

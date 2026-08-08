@@ -5,6 +5,7 @@ import { LegalClientTable } from "./LegalClientTable";
 import { LegalNewButton } from "./LegalNewButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { legalColumns } from "@/lib/sample-data/legal";
+import { listBusinessRecords } from "@/lib/businessRecords";
 
 registerPage({
   id: "legal.list",
@@ -22,21 +23,24 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/legal/page.tsx",
 });
 
+export const dynamic = "force-dynamic";
+
 export default async function LegalPage({ params }: { params: { vendorId: string } }) {
   const mod = await getModule("legal");
   const columns = await applyCustomizations("legal.list", legalColumns);
+  const rows = await listBusinessRecords(params.vendorId, "legal");
 
   return (
     <AppShell
       topbarTitle={mod?.label ?? "Legal / Case Management"}
       topbarActions={
-        <LegalNewButton />
+        <LegalNewButton vendorId={params.vendorId} />
       }
     >
       <div>
         <p className="text-sm text-text-muted">{mod?.description}</p>
         <div className="mt-6">
-          <LegalClientTable vendorId={params.vendorId} columns={columns} />
+          <LegalClientTable vendorId={params.vendorId} columns={columns} rows={rows} />
         </div>
       </div>
     </AppShell>

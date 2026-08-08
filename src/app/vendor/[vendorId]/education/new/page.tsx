@@ -4,6 +4,7 @@ import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { educationFormFields } from "@/lib/sample-data/education";
 import { applyCustomizations } from "@/lib/designer/customizations";
+import { createBusinessRecordAction } from "@/lib/businessRecordActions";
 
 registerPage({
   id: "education.create",
@@ -31,7 +32,11 @@ export default async function NewEducationPage({ params }: { params: { vendorId:
         <h1 className="font-display text-2xl font-bold text-text">New Enrollment</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new enrollment record for Education / Coaching.</p>
         <div className="mt-6">
-          <RecordForm fields={fields} submitLabel="Create Enrollment" />
+          <RecordForm
+            fields={fields}
+            submitLabel="Create Enrollment"
+            action={createBusinessRecordAction.bind(null, params.vendorId, "education")}
+          />
         </div>
       </div>
     </AppShell>

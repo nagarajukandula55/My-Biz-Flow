@@ -2,10 +2,12 @@ import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { RecordDetail } from "@/components/RecordDetail";
-import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
-import { getMarketplaceRecord, getMarketplaceDetailFields, getMarketplaceTimeline, marketplaceRelated, marketplaceColumns } from "@/lib/sample-data/marketplace";
+import { DeleteBusinessRecordButton } from "@/components/DeleteBusinessRecordButton";
+import { getMarketplaceDetailFields, getMarketplaceTimeline, marketplaceRelated, marketplaceColumns } from "@/lib/sample-data/marketplace";
 import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
+import { getBusinessRecord } from "@/lib/businessRecords";
 
 registerPage({
   id: "marketplace.detail",
@@ -23,13 +25,16 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/marketplace/[recordId]/page.tsx",
 });
 
+export const dynamic = "force-dynamic";
+
 export default async function MarketplaceDetailPage({
   params,
 }: {
   params: { vendorId: string; recordId: string };
 }) {
   const mod = await getModule("marketplace");
-  const record = getMarketplaceRecord(params.recordId);
+  const record = await getBusinessRecord(params.vendorId, "marketplace", params.recordId);
+  if (!record) notFound();
   const fields = await applyCustomizationsToDetailFields("marketplace.detail", getMarketplaceDetailFields(record), marketplaceColumns);
   const timeline = getMarketplaceTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
@@ -58,7 +63,7 @@ export default async function MarketplaceDetailPage({
                 >
                   Edit
                 </Link>
-                <ConfirmDeleteDialog recordLabel={recordLabel} />
+                <DeleteBusinessRecordButton vendorId={params.vendorId} moduleSlug="marketplace" recordKey={params.recordId} recordLabel={recordLabel} />
               </div>
             </div>
           }

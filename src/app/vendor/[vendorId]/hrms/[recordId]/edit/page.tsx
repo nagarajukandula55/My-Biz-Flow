@@ -2,8 +2,11 @@ import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
-import { hrmsFormFields, getHrmsRecord } from "@/lib/sample-data/hrms";
+import { notFound } from "next/navigation";
+import { hrmsFormFields } from "@/lib/sample-data/hrms";
 import { applyCustomizations } from "@/lib/designer/customizations";
+import { getBusinessRecord } from "@/lib/businessRecords";
+import { updateBusinessRecordAction } from "@/lib/businessRecordActions";
 
 registerPage({
   id: "hrms.edit",
@@ -23,7 +26,8 @@ registerPage({
 
 export default async function EditHrmsPage({ params }: { params: { vendorId: string; recordId: string } }) {
   const mod = await getModule("hrms");
-  const record = getHrmsRecord(params.recordId);
+  const record = await getBusinessRecord(params.vendorId, "hrms", params.recordId);
+  if (!record) notFound();
   const fields = await applyCustomizations("hrms.edit", hrmsFormFields);
 
   return (
@@ -32,7 +36,12 @@ export default async function EditHrmsPage({ params }: { params: { vendorId: str
         <h1 className="font-display text-2xl font-bold text-text">Edit Employee</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>
         <div className="mt-6">
-          <RecordForm fields={fields} initialValues={record} submitLabel="Save changes" />
+          <RecordForm
+            fields={fields}
+            initialValues={record}
+            submitLabel="Save changes"
+            action={updateBusinessRecordAction.bind(null, params.vendorId, "hrms", params.recordId)}
+          />
         </div>
       </div>
     </AppShell>

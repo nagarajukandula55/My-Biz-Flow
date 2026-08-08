@@ -2,10 +2,12 @@ import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { RecordDetail } from "@/components/RecordDetail";
-import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
-import { getRealEstateRecord, getRealEstateDetailFields, getRealEstateTimeline, realEstateRelated, realEstateColumns } from "@/lib/sample-data/real-estate";
+import { DeleteBusinessRecordButton } from "@/components/DeleteBusinessRecordButton";
+import { getRealEstateDetailFields, getRealEstateTimeline, realEstateRelated, realEstateColumns } from "@/lib/sample-data/real-estate";
 import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
+import { getBusinessRecord } from "@/lib/businessRecords";
 
 registerPage({
   id: "real-estate.detail",
@@ -23,13 +25,16 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/real-estate/[recordId]/page.tsx",
 });
 
+export const dynamic = "force-dynamic";
+
 export default async function RealEstateDetailPage({
   params,
 }: {
   params: { vendorId: string; recordId: string };
 }) {
   const mod = await getModule("real-estate");
-  const record = getRealEstateRecord(params.recordId);
+  const record = await getBusinessRecord(params.vendorId, "real-estate", params.recordId);
+  if (!record) notFound();
   const fields = await applyCustomizationsToDetailFields("real-estate.detail", getRealEstateDetailFields(record), realEstateColumns);
   const timeline = getRealEstateTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
@@ -58,7 +63,7 @@ export default async function RealEstateDetailPage({
                 >
                   Edit
                 </Link>
-                <ConfirmDeleteDialog recordLabel={recordLabel} />
+                <DeleteBusinessRecordButton vendorId={params.vendorId} moduleSlug="real-estate" recordKey={params.recordId} recordLabel={recordLabel} />
               </div>
             </div>
           }

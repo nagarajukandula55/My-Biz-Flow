@@ -1,10 +1,11 @@
 "use client";
 
 import { RecordFormModal, useRecordFormModal } from "@/components/RecordFormModal";
+import { createBusinessRecordAction } from "@/lib/businessRecordActions";
 import { manufacturingFormFields } from "@/lib/sample-data/manufacturing";
 
 /** Create-as-modal for manufacturing (see src/components/RecordFormModal.tsx). */
-export function ManufacturingNewButton() {
+export function ManufacturingNewButton({ vendorId }: { vendorId: string }) {
   const { open, openModal, closeModal } = useRecordFormModal();
   return (
     <>
@@ -17,6 +18,7 @@ export function ManufacturingNewButton() {
         title="New Work Order"
         fields={manufacturingFormFields}
         submitLabel="Create Work Order"
+        action={createBusinessRecordAction.bind(null, vendorId, "manufacturing")}
       />
     </>
   );

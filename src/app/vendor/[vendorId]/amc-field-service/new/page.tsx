@@ -4,6 +4,7 @@ import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { amcFieldServiceFormFields } from "@/lib/sample-data/amc-field-service";
 import { applyCustomizations } from "@/lib/designer/customizations";
+import { createBusinessRecordAction } from "@/lib/businessRecordActions";
 
 registerPage({
   id: "amc-field-service.create",
@@ -31,7 +32,11 @@ export default async function NewAmcFieldServicePage({ params }: { params: { ven
         <h1 className="font-display text-2xl font-bold text-text">New Contract</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new contract record for AMC / Field Service.</p>
         <div className="mt-6">
-          <RecordForm fields={fields} submitLabel="Create Contract" />
+          <RecordForm
+            fields={fields}
+            submitLabel="Create Contract"
+            action={createBusinessRecordAction.bind(null, params.vendorId, "amc-field-service")}
+          />
         </div>
       </div>
     </AppShell>

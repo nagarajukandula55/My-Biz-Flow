@@ -2,10 +2,12 @@ import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { RecordDetail } from "@/components/RecordDetail";
-import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
-import { getEducationRecord, getEducationDetailFields, getEducationTimeline, educationRelated, educationColumns } from "@/lib/sample-data/education";
+import { DeleteBusinessRecordButton } from "@/components/DeleteBusinessRecordButton";
+import { getEducationDetailFields, getEducationTimeline, educationRelated, educationColumns } from "@/lib/sample-data/education";
 import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
+import { getBusinessRecord } from "@/lib/businessRecords";
 
 registerPage({
   id: "education.detail",
@@ -23,13 +25,16 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/education/[recordId]/page.tsx",
 });
 
+export const dynamic = "force-dynamic";
+
 export default async function EducationDetailPage({
   params,
 }: {
   params: { vendorId: string; recordId: string };
 }) {
   const mod = await getModule("education");
-  const record = getEducationRecord(params.recordId);
+  const record = await getBusinessRecord(params.vendorId, "education", params.recordId);
+  if (!record) notFound();
   const fields = await applyCustomizationsToDetailFields("education.detail", getEducationDetailFields(record), educationColumns);
   const timeline = getEducationTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
@@ -58,7 +63,7 @@ export default async function EducationDetailPage({
                 >
                   Edit
                 </Link>
-                <ConfirmDeleteDialog recordLabel={recordLabel} />
+                <DeleteBusinessRecordButton vendorId={params.vendorId} moduleSlug="education" recordKey={params.recordId} recordLabel={recordLabel} />
               </div>
             </div>
           }

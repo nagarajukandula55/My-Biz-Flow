@@ -2,8 +2,11 @@ import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
-import { manufacturingFormFields, getManufacturingRecord } from "@/lib/sample-data/manufacturing";
+import { notFound } from "next/navigation";
+import { manufacturingFormFields } from "@/lib/sample-data/manufacturing";
 import { applyCustomizations } from "@/lib/designer/customizations";
+import { getBusinessRecord } from "@/lib/businessRecords";
+import { updateBusinessRecordAction } from "@/lib/businessRecordActions";
 
 registerPage({
   id: "manufacturing.edit",
@@ -23,7 +26,8 @@ registerPage({
 
 export default async function EditManufacturingPage({ params }: { params: { vendorId: string; recordId: string } }) {
   const mod = await getModule("manufacturing");
-  const record = getManufacturingRecord(params.recordId);
+  const record = await getBusinessRecord(params.vendorId, "manufacturing", params.recordId);
+  if (!record) notFound();
   const fields = await applyCustomizations("manufacturing.edit", manufacturingFormFields);
 
   return (
@@ -32,7 +36,12 @@ export default async function EditManufacturingPage({ params }: { params: { vend
         <h1 className="font-display text-2xl font-bold text-text">Edit Work Order</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>
         <div className="mt-6">
-          <RecordForm fields={fields} initialValues={record} submitLabel="Save changes" />
+          <RecordForm
+            fields={fields}
+            initialValues={record}
+            submitLabel="Save changes"
+            action={updateBusinessRecordAction.bind(null, params.vendorId, "manufacturing", params.recordId)}
+          />
         </div>
       </div>
     </AppShell>

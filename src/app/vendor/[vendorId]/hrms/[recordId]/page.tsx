@@ -2,10 +2,12 @@ import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { RecordDetail } from "@/components/RecordDetail";
-import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
-import { getHrmsRecord, getHrmsDetailFields, getHrmsTimeline, hrmsRelated, hrmsColumns } from "@/lib/sample-data/hrms";
+import { DeleteBusinessRecordButton } from "@/components/DeleteBusinessRecordButton";
+import { getHrmsDetailFields, getHrmsTimeline, hrmsRelated, hrmsColumns } from "@/lib/sample-data/hrms";
 import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
+import { getBusinessRecord } from "@/lib/businessRecords";
 
 registerPage({
   id: "hrms.detail",
@@ -23,13 +25,16 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/hrms/[recordId]/page.tsx",
 });
 
+export const dynamic = "force-dynamic";
+
 export default async function HrmsDetailPage({
   params,
 }: {
   params: { vendorId: string; recordId: string };
 }) {
   const mod = await getModule("hrms");
-  const record = getHrmsRecord(params.recordId);
+  const record = await getBusinessRecord(params.vendorId, "hrms", params.recordId);
+  if (!record) notFound();
   const fields = await applyCustomizationsToDetailFields("hrms.detail", getHrmsDetailFields(record), hrmsColumns);
   const timeline = getHrmsTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
@@ -58,7 +63,7 @@ export default async function HrmsDetailPage({
                 >
                   Edit
                 </Link>
-                <ConfirmDeleteDialog recordLabel={recordLabel} />
+                <DeleteBusinessRecordButton vendorId={params.vendorId} moduleSlug="hrms" recordKey={params.recordId} recordLabel={recordLabel} />
               </div>
             </div>
           }

@@ -188,6 +188,28 @@ model Vendor {
 /// A signup submitted against a Vendor Type with requiresApproval=true —
 /// holds everything a Vendor row would, but no VND#### id is assigned
 /// until Super Admin approves it (see vendorSignupRequestsData.ts).
+/// Generic, vendor-scoped business record store — backs every module's
+/// actual data (POS sales, Service Centre workorders, Billing invoices,
+/// etc.) instead of a bespoke Prisma model per module. `data` mirrors the
+/// module's existing Column/FormFieldDef key vocabulary exactly (see
+/// src/lib/sample-data/<slug>.ts), so no per-module schema is needed —
+/// the shape is already defined by each module's field definitions.
+/// recordKey is the user-facing id shown in the UI (data.id); the surrogate
+/// `id` here exists only because Prisma needs a stable primary key.
+model BusinessRecord {
+  id         String   @id @default(cuid())
+  vendorId   String
+  moduleSlug String
+  recordKey  String
+  data       Json
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([vendorId, moduleSlug, recordKey])
+  @@index([vendorId, moduleSlug])
+  @@map("business_records")
+}
+
 model VendorSignupRequest {
   id              String   @id @default(cuid())
   vendorTypeId    String

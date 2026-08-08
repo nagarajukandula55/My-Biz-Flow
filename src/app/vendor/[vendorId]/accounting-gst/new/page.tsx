@@ -4,6 +4,7 @@ import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { accountingGstFormFields } from "@/lib/sample-data/accounting-gst";
 import { applyCustomizations } from "@/lib/designer/customizations";
+import { createBusinessRecordAction } from "@/lib/businessRecordActions";
 
 registerPage({
   id: "accounting-gst.create",
@@ -31,7 +32,11 @@ export default async function NewAccountingGstPage({ params }: { params: { vendo
         <h1 className="font-display text-2xl font-bold text-text">New GST Return</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new gst return record for Accounting / GST Compliance.</p>
         <div className="mt-6">
-          <RecordForm fields={fields} submitLabel="Create GST Return" />
+          <RecordForm
+            fields={fields}
+            submitLabel="Create GST Return"
+            action={createBusinessRecordAction.bind(null, params.vendorId, "accounting-gst")}
+          />
         </div>
       </div>
     </AppShell>

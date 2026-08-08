@@ -4,6 +4,7 @@ import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { brandFormFields } from "@/lib/sample-data/brand";
 import { applyCustomizations } from "@/lib/designer/customizations";
+import { createBusinessRecordAction } from "@/lib/businessRecordActions";
 
 registerPage({
   id: "brand.create",
@@ -31,7 +32,11 @@ export default async function NewBrandPage({ params }: { params: { vendorId: str
         <h1 className="font-display text-2xl font-bold text-text">New Location</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new location record for Brand.</p>
         <div className="mt-6">
-          <RecordForm fields={fields} submitLabel="Create Location" />
+          <RecordForm
+            fields={fields}
+            submitLabel="Create Location"
+            action={createBusinessRecordAction.bind(null, params.vendorId, "brand")}
+          />
         </div>
       </div>
     </AppShell>

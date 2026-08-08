@@ -2,10 +2,12 @@ import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { RecordDetail } from "@/components/RecordDetail";
-import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
-import { getClinicRecord, getClinicDetailFields, getClinicTimeline, clinicRelated, clinicColumns } from "@/lib/sample-data/clinic";
+import { DeleteBusinessRecordButton } from "@/components/DeleteBusinessRecordButton";
+import { getClinicDetailFields, getClinicTimeline, clinicRelated, clinicColumns } from "@/lib/sample-data/clinic";
 import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
+import { getBusinessRecord } from "@/lib/businessRecords";
 
 registerPage({
   id: "clinic.detail",
@@ -23,13 +25,16 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/clinic/[recordId]/page.tsx",
 });
 
+export const dynamic = "force-dynamic";
+
 export default async function ClinicDetailPage({
   params,
 }: {
   params: { vendorId: string; recordId: string };
 }) {
   const mod = await getModule("clinic");
-  const record = getClinicRecord(params.recordId);
+  const record = await getBusinessRecord(params.vendorId, "clinic", params.recordId);
+  if (!record) notFound();
   const fields = await applyCustomizationsToDetailFields("clinic.detail", getClinicDetailFields(record), clinicColumns);
   const timeline = getClinicTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
@@ -58,7 +63,7 @@ export default async function ClinicDetailPage({
                 >
                   Edit
                 </Link>
-                <ConfirmDeleteDialog recordLabel={recordLabel} />
+                <DeleteBusinessRecordButton vendorId={params.vendorId} moduleSlug="clinic" recordKey={params.recordId} recordLabel={recordLabel} />
               </div>
             </div>
           }

@@ -5,6 +5,7 @@ import { LoyaltyRewardsClientTable } from "./LoyaltyRewardsClientTable";
 import { LoyaltyRewardsNewButton } from "./LoyaltyRewardsNewButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { loyaltyRewardsColumns } from "@/lib/sample-data/loyalty-rewards";
+import { listBusinessRecords } from "@/lib/businessRecords";
 
 registerPage({
   id: "loyalty-rewards.list",
@@ -22,21 +23,24 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/loyalty-rewards/page.tsx",
 });
 
+export const dynamic = "force-dynamic";
+
 export default async function LoyaltyRewardsPage({ params }: { params: { vendorId: string } }) {
   const mod = await getModule("loyalty-rewards");
   const columns = await applyCustomizations("loyalty-rewards.list", loyaltyRewardsColumns);
+  const rows = await listBusinessRecords(params.vendorId, "loyalty-rewards");
 
   return (
     <AppShell
       topbarTitle={mod?.label ?? "Loyalty & Rewards"}
       topbarActions={
-        <LoyaltyRewardsNewButton />
+        <LoyaltyRewardsNewButton vendorId={params.vendorId} />
       }
     >
       <div>
         <p className="text-sm text-text-muted">{mod?.description}</p>
         <div className="mt-6">
-          <LoyaltyRewardsClientTable vendorId={params.vendorId} columns={columns} />
+          <LoyaltyRewardsClientTable vendorId={params.vendorId} columns={columns} rows={rows} />
         </div>
       </div>
     </AppShell>

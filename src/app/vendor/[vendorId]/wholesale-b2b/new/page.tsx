@@ -4,6 +4,7 @@ import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { wholesaleB2bFormFields } from "@/lib/sample-data/wholesale-b2b";
 import { applyCustomizations } from "@/lib/designer/customizations";
+import { createBusinessRecordAction } from "@/lib/businessRecordActions";
 
 registerPage({
   id: "wholesale-b2b.create",
@@ -31,7 +32,11 @@ export default async function NewWholesaleB2bPage({ params }: { params: { vendor
         <h1 className="font-display text-2xl font-bold text-text">New Order</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new order record for Wholesale / Distributor B2B.</p>
         <div className="mt-6">
-          <RecordForm fields={fields} submitLabel="Create Order" />
+          <RecordForm
+            fields={fields}
+            submitLabel="Create Order"
+            action={createBusinessRecordAction.bind(null, params.vendorId, "wholesale-b2b")}
+          />
         </div>
       </div>
     </AppShell>

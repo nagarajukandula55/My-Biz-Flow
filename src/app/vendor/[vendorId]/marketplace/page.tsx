@@ -5,6 +5,7 @@ import { MarketplaceClientTable } from "./MarketplaceClientTable";
 import { MarketplaceNewButton } from "./MarketplaceNewButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { marketplaceColumns } from "@/lib/sample-data/marketplace";
+import { listBusinessRecords } from "@/lib/businessRecords";
 
 registerPage({
   id: "marketplace.list",
@@ -22,21 +23,24 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/marketplace/page.tsx",
 });
 
+export const dynamic = "force-dynamic";
+
 export default async function MarketplacePage({ params }: { params: { vendorId: string } }) {
   const mod = await getModule("marketplace");
   const columns = await applyCustomizations("marketplace.list", marketplaceColumns);
+  const rows = await listBusinessRecords(params.vendorId, "marketplace");
 
   return (
     <AppShell
       topbarTitle={mod?.label ?? "Marketplace / Vendor Aggregator"}
       topbarActions={
-        <MarketplaceNewButton />
+        <MarketplaceNewButton vendorId={params.vendorId} />
       }
     >
       <div>
         <p className="text-sm text-text-muted">{mod?.description}</p>
         <div className="mt-6">
-          <MarketplaceClientTable vendorId={params.vendorId} columns={columns} />
+          <MarketplaceClientTable vendorId={params.vendorId} columns={columns} rows={rows} />
         </div>
       </div>
     </AppShell>

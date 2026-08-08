@@ -18,6 +18,7 @@ export function RecordFormModal({
   fields,
   initialValues,
   submitLabel,
+  action,
 }: {
   open: boolean;
   onClose: () => void;
@@ -25,10 +26,11 @@ export function RecordFormModal({
   fields: FormFieldDef[];
   initialValues?: Record<string, unknown>;
   submitLabel: string;
+  action?: (values: Record<string, unknown>) => Promise<void>;
 }) {
   return (
     <Modal open={open} onClose={onClose} title={title} size="lg">
-      <RecordForm fields={fields} initialValues={initialValues} submitLabel={submitLabel} />
+      <RecordForm fields={fields} initialValues={initialValues} submitLabel={submitLabel} action={action} />
     </Modal>
   );
 }

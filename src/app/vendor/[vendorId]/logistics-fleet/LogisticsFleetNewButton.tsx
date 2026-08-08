@@ -1,10 +1,11 @@
 "use client";
 
 import { RecordFormModal, useRecordFormModal } from "@/components/RecordFormModal";
+import { createBusinessRecordAction } from "@/lib/businessRecordActions";
 import { logisticsFleetFormFields } from "@/lib/sample-data/logistics-fleet";
 
 /** Create-as-modal for logistics-fleet (see src/components/RecordFormModal.tsx). */
-export function LogisticsFleetNewButton() {
+export function LogisticsFleetNewButton({ vendorId }: { vendorId: string }) {
   const { open, openModal, closeModal } = useRecordFormModal();
   return (
     <>
@@ -17,6 +18,7 @@ export function LogisticsFleetNewButton() {
         title="New Shipment"
         fields={logisticsFleetFormFields}
         submitLabel="Create Shipment"
+        action={createBusinessRecordAction.bind(null, vendorId, "logistics-fleet")}
       />
     </>
   );

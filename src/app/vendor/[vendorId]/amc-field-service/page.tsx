@@ -5,6 +5,7 @@ import { AmcFieldServiceClientTable } from "./AmcFieldServiceClientTable";
 import { AmcFieldServiceNewButton } from "./AmcFieldServiceNewButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { amcFieldServiceColumns } from "@/lib/sample-data/amc-field-service";
+import { listBusinessRecords } from "@/lib/businessRecords";
 
 registerPage({
   id: "amc-field-service.list",
@@ -22,21 +23,24 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/amc-field-service/page.tsx",
 });
 
+export const dynamic = "force-dynamic";
+
 export default async function AmcFieldServicePage({ params }: { params: { vendorId: string } }) {
   const mod = await getModule("amc-field-service");
   const columns = await applyCustomizations("amc-field-service.list", amcFieldServiceColumns);
+  const rows = await listBusinessRecords(params.vendorId, "amc-field-service");
 
   return (
     <AppShell
       topbarTitle={mod?.label ?? "AMC / Field Service"}
       topbarActions={
-        <AmcFieldServiceNewButton />
+        <AmcFieldServiceNewButton vendorId={params.vendorId} />
       }
     >
       <div>
         <p className="text-sm text-text-muted">{mod?.description}</p>
         <div className="mt-6">
-          <AmcFieldServiceClientTable vendorId={params.vendorId} columns={columns} />
+          <AmcFieldServiceClientTable vendorId={params.vendorId} columns={columns} rows={rows} />
         </div>
       </div>
     </AppShell>

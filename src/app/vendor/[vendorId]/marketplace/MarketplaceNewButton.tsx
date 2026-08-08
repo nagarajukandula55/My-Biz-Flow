@@ -1,10 +1,11 @@
 "use client";
 
 import { RecordFormModal, useRecordFormModal } from "@/components/RecordFormModal";
+import { createBusinessRecordAction } from "@/lib/businessRecordActions";
 import { marketplaceFormFields } from "@/lib/sample-data/marketplace";
 
 /** Create-as-modal for marketplace (see src/components/RecordFormModal.tsx). */
-export function MarketplaceNewButton() {
+export function MarketplaceNewButton({ vendorId }: { vendorId: string }) {
   const { open, openModal, closeModal } = useRecordFormModal();
   return (
     <>
@@ -17,6 +18,7 @@ export function MarketplaceNewButton() {
         title="New Vendor Listing"
         fields={marketplaceFormFields}
         submitLabel="Create Vendor Listing"
+        action={createBusinessRecordAction.bind(null, vendorId, "marketplace")}
       />
     </>
   );

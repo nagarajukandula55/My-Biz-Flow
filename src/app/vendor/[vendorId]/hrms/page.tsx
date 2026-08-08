@@ -5,6 +5,7 @@ import { HrmsClientTable } from "./HrmsClientTable";
 import { HrmsNewButton } from "./HrmsNewButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { hrmsColumns } from "@/lib/sample-data/hrms";
+import { listBusinessRecords } from "@/lib/businessRecords";
 
 registerPage({
   id: "hrms.list",
@@ -22,21 +23,24 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/hrms/page.tsx",
 });
 
+export const dynamic = "force-dynamic";
+
 export default async function HrmsPage({ params }: { params: { vendorId: string } }) {
   const mod = await getModule("hrms");
   const columns = await applyCustomizations("hrms.list", hrmsColumns);
+  const rows = await listBusinessRecords(params.vendorId, "hrms");
 
   return (
     <AppShell
       topbarTitle={mod?.label ?? "HRMS / Payroll"}
       topbarActions={
-        <HrmsNewButton />
+        <HrmsNewButton vendorId={params.vendorId} />
       }
     >
       <div>
         <p className="text-sm text-text-muted">{mod?.description}</p>
         <div className="mt-6">
-          <HrmsClientTable vendorId={params.vendorId} columns={columns} />
+          <HrmsClientTable vendorId={params.vendorId} columns={columns} rows={rows} />
         </div>
       </div>
     </AppShell>

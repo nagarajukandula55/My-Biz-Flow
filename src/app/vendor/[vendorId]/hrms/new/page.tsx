@@ -4,6 +4,7 @@ import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { hrmsFormFields } from "@/lib/sample-data/hrms";
 import { applyCustomizations } from "@/lib/designer/customizations";
+import { createBusinessRecordAction } from "@/lib/businessRecordActions";
 
 registerPage({
   id: "hrms.create",
@@ -31,7 +32,11 @@ export default async function NewHrmsPage({ params }: { params: { vendorId: stri
         <h1 className="font-display text-2xl font-bold text-text">New Employee</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new employee record for HRMS / Payroll.</p>
         <div className="mt-6">
-          <RecordForm fields={fields} submitLabel="Create Employee" />
+          <RecordForm
+            fields={fields}
+            submitLabel="Create Employee"
+            action={createBusinessRecordAction.bind(null, params.vendorId, "hrms")}
+          />
         </div>
       </div>
     </AppShell>

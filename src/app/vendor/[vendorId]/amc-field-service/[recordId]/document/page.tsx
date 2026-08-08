@@ -1,6 +1,8 @@
 import { DocumentView } from "@/components/DocumentView";
-import { amcFieldServiceColumns, amcFieldServiceRows, getAmcFieldServiceRecord } from "@/lib/sample-data/amc-field-service";
+import { amcFieldServiceColumns } from "@/lib/sample-data/amc-field-service";
 import { registerPage } from "@/lib/designer/registry";
+import { notFound } from "next/navigation";
+import { getBusinessRecord, getBusinessRecordSequenceIndex } from "@/lib/businessRecords";
 
 registerPage({
   id: "amc-field-service.document",
@@ -17,13 +19,14 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/amc-field-service/[recordId]/document/page.tsx",
 });
 
-export default function AmcFieldServiceDocumentPage({
+export default async function AmcFieldServiceDocumentPage({
   params,
 }: {
   params: { vendorId: string; recordId: string };
 }) {
-  const record = getAmcFieldServiceRecord(params.recordId);
-  const sequenceIndex = amcFieldServiceRows.findIndex((r) => String(r["id"]) === params.recordId);
+  const record = await getBusinessRecord(params.vendorId, "amc-field-service", params.recordId);
+  if (!record) notFound();
+  const sequenceIndex = await getBusinessRecordSequenceIndex(params.vendorId, "amc-field-service", params.recordId);
   return (
     <DocumentView
       pageId="amc-field-service.document"
@@ -33,7 +36,7 @@ export default function AmcFieldServiceDocumentPage({
       vendorId={params.vendorId}
       record={record}
       columns={amcFieldServiceColumns}
-      sequenceIndex={sequenceIndex >= 0 ? sequenceIndex : 0}
+      sequenceIndex={sequenceIndex}
     />
   );
 }
