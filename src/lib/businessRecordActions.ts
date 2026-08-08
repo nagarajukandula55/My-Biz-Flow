@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createBusinessRecord, updateBusinessRecord, deleteBusinessRecord } from "@/lib/businessRecords";
+import { createBusinessRecord, updateBusinessRecord, deleteBusinessRecord, getBusinessRecord } from "@/lib/businessRecords";
 
 /** Bind with .bind(null, vendorId, moduleSlug) before passing as a RecordForm `action` prop. */
 export async function createBusinessRecordAction(
@@ -33,4 +33,24 @@ export async function deleteBusinessRecordAction(vendorId: string, moduleSlug: s
   await deleteBusinessRecord(vendorId, moduleSlug, recordKey);
   revalidatePath(`/vendor/${vendorId}/${moduleSlug}`);
   redirect(`/vendor/${vendorId}/${moduleSlug}`);
+}
+
+/**
+ * Merges a partial patch into an existing record's data and persists —
+ * does NOT redirect (unlike the other actions here), since it's called
+ * repeatedly from an already-loaded page (the Service Centre workorder
+ * lifecycle's stage/parts/service-line mutations) that manages its own
+ * local state and just needs writes to survive a reload. Bind with
+ * .bind(null, vendorId, moduleSlug, recordKey).
+ */
+export async function patchBusinessRecordAction(
+  vendorId: string,
+  moduleSlug: string,
+  recordKey: string,
+  patch: Record<string, unknown>
+): Promise<void> {
+  const existing = await getBusinessRecord(vendorId, moduleSlug, recordKey);
+  if (!existing) return;
+  await updateBusinessRecord(vendorId, moduleSlug, recordKey, { ...existing, ...patch });
+  revalidatePath(`/vendor/${vendorId}/${moduleSlug}/${recordKey}`);
 }

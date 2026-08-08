@@ -2,7 +2,6 @@ import type { Column, Row } from "@/components/DataTable";
 import type { RecordField, TimelineEntry, RelatedRecord } from "@/components/RecordDetail";
 import type { StatusVariant } from "@/components/StatusChip";
 import type { FormFieldDef } from "@/components/RecordForm";
-import { bomRows } from "./bom";
 
 // Workorder sample data for the service-centre module — realistic field modeling,
 // no backend wired up in this pass (see CLAUDE.md).
@@ -93,27 +92,31 @@ export function getWorkorderLifecycle(workorderId: string) {
   );
 }
 
-/** Sales Invoice line items derived from a closed workorder's Parts & Service Lines — A4/A5 print only. */
-export function getWorkorderInvoiceLineItems(
-  workorderId: string
-): { description: string; hsn: string; quantity: number; rate: number; gstRate: number }[] {
-  const lifecycle = getWorkorderLifecycle(workorderId);
-  const items: { description: string; hsn: string; quantity: number; rate: number; gstRate: number }[] = [];
-  for (const line of lifecycle.serviceLines) {
-    items.push({ description: line.solutionLabel, hsn: "9987", quantity: 1, rate: line.laborCharge, gstRate: 18 });
-  }
-  for (const line of lifecycle.partLines) {
-    const material = bomRows.find((r) => String(r["id"]) === line.materialId);
-    items.push({
-      description: line.materialLabel,
-      hsn: String(material?.["hsnCode"] ?? ""),
-      quantity: line.qty,
-      rate: Number(material?.["rate"] ?? 0),
-      gstRate: Number(material?.["taxPercent"] ?? 18),
-    });
-  }
-  return items;
+/**
+ * Reads the lifecycle fields (stage/partLines/serviceLines/etc.) directly
+ * off a real workorder's own BusinessRecord data — this is the real,
+ * persisted path (see WorkorderLifecycle.tsx + updateWorkorderLifecycleAction),
+ * distinct from getWorkorderLifecycle() above which only knows about the
+ * few hand-authored sample workorders (WO-2288..WO-2291).
+ */
+export function extractLifecycleFromRecord(record: Row): {
+  stage: WorkorderStage;
+  brandName?: string;
+  modelName?: string;
+  partLines: PartLine[];
+  serviceLines: ServiceLine[];
+  handoverNotes?: string;
+} {
+  return {
+    stage: (record["stage"] as WorkorderStage | undefined) ?? "Created",
+    brandName: record["brandName"] as string | undefined,
+    modelName: record["modelName"] as string | undefined,
+    partLines: (record["partLines"] as PartLine[] | undefined) ?? [],
+    serviceLines: (record["serviceLines"] as ServiceLine[] | undefined) ?? [],
+    handoverNotes: record["handoverNotes"] as string | undefined,
+  };
 }
+
 
 export const serviceCentreColumns: Column[] = [
   { key: "id", label: "Job ID", type: "text" },

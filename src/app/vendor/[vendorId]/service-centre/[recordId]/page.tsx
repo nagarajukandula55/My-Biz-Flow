@@ -10,10 +10,10 @@ import {
   getServiceCentreTimeline,
   serviceCentreRelated,
   serviceCentreColumns,
-  getWorkorderLifecycle,
+  extractLifecycleFromRecord,
 } from "@/lib/sample-data/service-centre";
 import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
-import { getBusinessRecord } from "@/lib/businessRecords";
+import { getBusinessRecord, listBusinessRecords } from "@/lib/businessRecords";
 import { WorkorderLifecycle } from "./WorkorderLifecycle";
 
 registerPage({
@@ -45,7 +45,19 @@ export default async function ServiceCentreDetailPage({
   const fields = await applyCustomizationsToDetailFields("service-centre.detail", getServiceCentreDetailFields(record), serviceCentreColumns);
   const timeline = getServiceCentreTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
-  const lifecycle = getWorkorderLifecycle(recordLabel);
+  const lifecycle = extractLifecycleFromRecord(record);
+  const bomRecords = await listBusinessRecords(params.vendorId, "inventory-bom");
+  const bomMaterials = bomRecords
+    .filter((r) => r["status"] === "Active")
+    .map((r) => ({
+      id: String(r["id"]),
+      label: `${r["id"]} — ${r["description"] ?? ""}`,
+      serialized: Boolean(r["serialized"]),
+    }));
+  const solutionRecords = await listBusinessRecords(params.vendorId, "service-centre-solutions");
+  const solutionOptions = solutionRecords
+    .filter((r) => r["status"] === "Active")
+    .map((r) => ({ value: String(r["id"]), label: String(r["title"] ?? r["id"]) }));
 
   return (
     <AppShell topbarTitle={mod?.label ?? "Service Centre"}>
@@ -56,8 +68,11 @@ export default async function ServiceCentreDetailPage({
           initialStage={lifecycle.stage}
           initialPartLines={lifecycle.partLines}
           initialServiceLines={lifecycle.serviceLines}
+          initialHandoverNotes={lifecycle.handoverNotes}
           brandName={lifecycle.brandName}
           modelName={lifecycle.modelName}
+          bomMaterials={bomMaterials}
+          solutionOptions={solutionOptions}
         />
 
         <div className="mt-8">

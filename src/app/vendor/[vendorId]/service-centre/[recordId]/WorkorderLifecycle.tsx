@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import { StatusChip } from "@/components/StatusChip";
 import { Modal } from "@/components/Modal";
@@ -11,8 +11,7 @@ import {
   type PartLine,
   type ServiceLine,
 } from "@/lib/sample-data/service-centre";
-import { getBomOptions, bomRows } from "@/lib/sample-data/bom";
-import { getSolutionOptions } from "@/lib/sample-data/solutions";
+import { patchBusinessRecordAction } from "@/lib/businessRecordActions";
 
 const STAGE_VARIANT: Record<WorkorderStage, "neutral" | "warning" | "teal" | "success"> = {
   Created: "neutral",
@@ -27,16 +26,24 @@ export function WorkorderLifecycle({
   initialStage,
   initialPartLines,
   initialServiceLines,
+  initialHandoverNotes,
   brandName,
   modelName,
+  bomMaterials,
+  solutionOptions,
 }: {
   vendorId: string;
   workorderId: string;
   initialStage: WorkorderStage;
   initialPartLines: PartLine[];
   initialServiceLines: ServiceLine[];
+  initialHandoverNotes?: string;
   brandName?: string;
   modelName?: string;
+  /** This vendor's own live BOM materials (Inventory > Material Catalog) — not the global sample catalog. */
+  bomMaterials: { id: string; label: string; serialized: boolean }[];
+  /** This vendor's own live Solutions catalog. */
+  solutionOptions: SearchSelectOption[];
 }) {
   const [stage, setStage] = useState<WorkorderStage>(initialStage);
   const [partLines, setPartLines] = useState<PartLine[]>(initialPartLines);
@@ -46,44 +53,61 @@ export function WorkorderLifecycle({
   const [pendingLineId, setPendingLineId] = useState<string | null>(null);
   const [closeBlockedMessage, setCloseBlockedMessage] = useState<string | null>(null);
   const [confirmCloseOpen, setConfirmCloseOpen] = useState(false);
-  const [handoverNotes, setHandoverNotes] = useState("");
+  const [handoverNotes, setHandoverNotes] = useState(initialHandoverNotes ?? "");
+  const [, startPersist] = useTransition();
 
-  const bomOptions: SearchSelectOption[] = getBomOptions().map((o) => ({ value: o.value, label: o.label }));
-  const solutionOptions: SearchSelectOption[] = getSolutionOptions().map((o) => ({ value: o.value, label: o.label }));
+  function persist(patch: Record<string, unknown>) {
+    startPersist(async () => {
+      await patchBusinessRecordAction(vendorId, "service-centre", workorderId, patch);
+    });
+  }
+
+  const bomOptions: SearchSelectOption[] = bomMaterials.map((m) => ({ value: m.id, label: m.label }));
 
   const editable = stage === "In Progress";
   const unresolvedSerials = partLines.filter((p) => p.serialized && !p.serial && !p.pending);
 
   function addPart(option: SearchSelectOption) {
-    const material = bomRows.find((r) => String(r["id"]) === option.value);
-    setPartLines((prev) => [
-      ...prev,
+    const material = bomMaterials.find((m) => m.id === option.value);
+    const next = [
+      ...partLines,
       {
         id: `PL-${Date.now()}`,
         materialId: option.value,
         materialLabel: option.label,
         qty: 1,
-        serialized: Boolean(material?.["serialized"]),
+        serialized: Boolean(material?.serialized),
       },
-    ]);
+    ];
+    setPartLines(next);
     setPartPickerOpen(false);
+    persist({ partLines: next });
   }
 
   function addSolution(option: SearchSelectOption) {
-    setServiceLines((prev) => [
-      ...prev,
+    const next = [
+      ...serviceLines,
       { id: `SL-${Date.now()}`, solutionId: option.value, solutionLabel: option.label, laborCharge: 0 },
-    ]);
+    ];
+    setServiceLines(next);
     setSolutionPickerOpen(false);
+    persist({ serviceLines: next });
   }
 
   function markPending(lineId: string) {
-    setPartLines((prev) => prev.map((p) => (p.id === lineId ? { ...p, pending: true, pendingReason: "Awaiting stock" } : p)));
+    const next = partLines.map((p) => (p.id === lineId ? { ...p, pending: true, pendingReason: "Awaiting stock" } : p));
+    setPartLines(next);
     setPendingLineId(null);
+    persist({ partLines: next });
   }
 
   function setSerial(lineId: string, serial: string) {
     setPartLines((prev) => prev.map((p) => (p.id === lineId ? { ...p, serial } : p)));
+  }
+
+  function persistSerial(lineId: string) {
+    const line = partLines.find((p) => p.id === lineId);
+    if (line) persist({ partLines: partLines.map((p) => (p.id === lineId ? { ...p, serial: line.serial } : p)) });
   }
 
   function advanceStage() {
@@ -101,11 +125,17 @@ export function WorkorderLifecycle({
       return;
     }
     setStage(next);
+    persist({ stage: next });
   }
 
   function confirmClose() {
     setStage("Closed");
     setConfirmCloseOpen(false);
+    persist({ stage: "Closed", handoverNotes });
+  }
+
+  function persistHandoverNotes() {
+    persist({ handoverNotes });
   }
 
   return (
@@ -184,6 +214,7 @@ export function WorkorderLifecycle({
                       value={line.serial ?? ""}
                       disabled={!editable}
                       onChange={(e) => setSerial(line.id, e.target.value)}
+                      onBlur={() => persistSerial(line.id)}
                       className="w-full rounded-md border border-border bg-bg-raised px-2 py-1.5 text-sm text-text disabled:opacity-60"
                     />
                   </div>
@@ -201,6 +232,7 @@ export function WorkorderLifecycle({
           <textarea
             value={handoverNotes}
             onChange={(e) => setHandoverNotes(e.target.value)}
+            onBlur={persistHandoverNotes}
             placeholder="Handover notes (optional)"
             className="mt-3 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text"
             rows={3}
