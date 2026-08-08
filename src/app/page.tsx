@@ -151,10 +151,27 @@ export default function RootPage() {
         </div>
       </section>
 
-      <footer className="border-t border-border px-6 py-8 text-center text-xs text-text-muted">
-        <Link href="/design-system" className="hover:text-text">
-          Design system reference
-        </Link>
+      <footer className="flex flex-col items-center gap-3 border-t border-border px-6 py-8 text-center text-xs text-text-muted">
+        <nav className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5">
+          <Link href="/pricing" className="hover:text-text">
+            Pricing
+          </Link>
+          <Link href="/help" className="hover:text-text">
+            Help
+          </Link>
+          <Link href="/contact" className="hover:text-text">
+            Contact
+          </Link>
+          <Link href="/terms" className="hover:text-text">
+            Terms
+          </Link>
+          <Link href="/privacy" className="hover:text-text">
+            Privacy
+          </Link>
+          <Link href="/design-system" className="hover:text-text">
+            Design system reference
+          </Link>
+        </nav>
       </footer>
     </div>
   );

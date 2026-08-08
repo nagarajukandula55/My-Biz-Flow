@@ -156,3 +156,7 @@ import "@/app/vendor/[vendorId]/legal/[recordId]/document/page";
 
 import "@/app/admin/numbering/page";
 import "@/app/vendor/[vendorId]/settings/numbering/page";
+
+import "@/app/terms/page";
+import "@/app/privacy/page";
+import "@/app/contact/page";
