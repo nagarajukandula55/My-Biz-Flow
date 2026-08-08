@@ -2,6 +2,8 @@ import { SuperAdminGate } from "@/components/SuperAdminGate";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { accessGroupFormFields } from "@/lib/sample-data/access-groups";
+import { getAssignablePagesByModule } from "@/lib/designer/accessGroupPermissions";
+import { AccessGroupPermissionsEditor } from "../AccessGroupPermissionsEditor";
 
 registerPage({
   id: "platform.access-groups.create",
@@ -24,8 +26,11 @@ export default function NewAccessGroupPage() {
           <h1 className="font-display text-lg font-bold text-text">New Access Group</h1>
         </div>
         <div className="p-6">
-          <p className="mb-6 text-sm text-text-muted">Select the modules this Access Group grants.</p>
+          <p className="mb-6 text-sm text-text-muted">Name and describe the Access Group, then pick exact pages and actions below.</p>
           <RecordForm fields={accessGroupFormFields} submitLabel="Create Access Group" />
+          <div className="mt-8">
+            <AccessGroupPermissionsEditor pagesByModule={getAssignablePagesByModule()} />
+          </div>
         </div>
       </div>
     </SuperAdminGate>
