@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { SuperAdminGate } from "@/components/SuperAdminGate";
 import { StatusChip } from "@/components/StatusChip";
-import { LogoMark } from "@/components/LogoMark";
 import { MODULES, taxonomyDotClass } from "@/lib/designer/modules";
 import { getPagesForModule, getRegisteredPages, registerPage } from "@/lib/designer/registry";
 import "@/lib/designer/registerAll";
@@ -16,7 +15,7 @@ registerPage({
   customizableRegions: [],
   explanation:
     "Super-Admin-only view of every page registered in the product, grouped by module (plus a Platform section for non-vendor pages like this one and Help). It exists so nothing built in the app can go undiscoverable or uncustomizable — a page that never calls registerPage() is a bug, not an edge case.",
-  sourceFile: "src/app/admin/designer/page.tsx",
+  sourceFile: "src/app/admin/(protected)/designer/page.tsx",
 });
 
 /**
@@ -43,12 +42,6 @@ export default function DesignerPage() {
     <SuperAdminGate>
       <div className="min-h-screen w-full bg-bg">
         <header className="border-b border-border bg-bg-raised px-6 py-4">
-          <div className="flex items-center gap-2">
-            <LogoMark size={22} />
-            <span className="font-display text-base font-extrabold text-text">
-              My Biz Flow — Designer
-            </span>
-          </div>
           <p className="mt-1 text-sm text-text-muted">
             Every page in the product registers here. {totalPages} page
             {totalPages === 1 ? "" : "s"} across {MODULES.length} modules

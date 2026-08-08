@@ -4,7 +4,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SuperAdminGate } from "@/components/SuperAdminGate";
 import { StatusChip } from "@/components/StatusChip";
-import { LogoMark } from "@/components/LogoMark";
 import { getRegisteredPages, registerPage } from "@/lib/designer/registry";
 import "@/lib/designer/registerAll";
 import { getFieldSchema } from "@/lib/designer/fieldSchema";
@@ -29,7 +28,7 @@ registerPage({
   customizableRegions: [],
   explanation:
     "Super-Admin-only developer tool: looks up a single registered page by id, shows its metadata (module, kind, customizable regions, plain-language explanation), and reads its actual source file from disk to render for inspection — a live, always-accurate view of what each page in the product does, not a maintained-by-hand doc that can drift.",
-  sourceFile: "src/app/admin/designer/[pageId]/page.tsx",
+  sourceFile: "src/app/admin/(protected)/designer/[pageId]/page.tsx",
 });
 
 export default async function PageDetailPage({ params }: { params: { pageId: string } }) {
@@ -54,12 +53,6 @@ export default async function PageDetailPage({ params }: { params: { pageId: str
     <SuperAdminGate>
       <div className="min-h-screen w-full bg-bg">
         <header className="border-b border-border bg-bg-raised px-6 py-4">
-          <div className="flex items-center gap-2">
-            <LogoMark size={22} />
-            <span className="font-display text-base font-extrabold text-text">
-              My Biz Flow — Designer
-            </span>
-          </div>
           <Link
             href="/admin/designer"
             className="mt-1 inline-block text-sm font-semibold text-teal hover:underline"

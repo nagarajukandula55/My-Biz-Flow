@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { LogoMark } from "@/components/LogoMark";
-import { reportClientError } from "@/app/admin/errors/actions";
+import { reportClientError } from "@/app/admin/(protected)/errors/actions";
 
 /**
  * App Router error boundary — required by Next.js to be a Client Component.

@@ -1,5 +1,4 @@
 import { SuperAdminGate } from "@/components/SuperAdminGate";
-import { LogoMark } from "@/components/LogoMark";
 import { StatusChip } from "@/components/StatusChip";
 import { PageAccessToggle } from "@/components/PageAccessToggle";
 import { getRegisteredPages, registerPage } from "@/lib/designer/registry";
@@ -20,7 +19,7 @@ registerPage({
   customizableRegions: [],
   explanation:
     "Platform-level settings, distinct from a Vendor's own /settings. Currently holds the 'make any page public' access toggle: real (enforced by src/middleware.ts via /api/page-access) for pages already gated by SuperAdminGate; shown-but-inert for ordinary vendor pages, which have no gate to begin with yet — see the 'not currently gated' label on those rows, and DESIGN_SYSTEM.md §9.",
-  sourceFile: "src/app/admin/settings/page.tsx",
+  sourceFile: "src/app/admin/(protected)/settings/page.tsx",
 });
 
 export default async function PlatformSettingsPage() {
@@ -31,12 +30,6 @@ export default async function PlatformSettingsPage() {
     <SuperAdminGate>
       <div className="min-h-screen w-full bg-bg">
         <header className="border-b border-border bg-bg-raised px-6 py-4">
-          <div className="flex items-center gap-2">
-            <LogoMark size={22} />
-            <span className="font-display text-base font-extrabold text-text">
-              My Biz Flow — Platform Settings
-            </span>
-          </div>
           <p className="mt-1 max-w-[70ch] text-sm text-text-muted">
             Flip any registered page to public access. This is REAL enforcement for pages
             already gated by the Super Admin cookie (middleware checks this list on every

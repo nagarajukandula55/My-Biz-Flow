@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { setPagePublicAction } from "@/app/admin/settings/actions";
+import { setPagePublicAction } from "@/app/admin/(protected)/settings/actions";
 
 export function PageAccessToggle({
   pageId,

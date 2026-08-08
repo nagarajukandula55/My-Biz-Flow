@@ -1,6 +1,5 @@
 import { SuperAdminGate } from "@/components/SuperAdminGate";
 import { StatusChip } from "@/components/StatusChip";
-import { LogoMark } from "@/components/LogoMark";
 import { getLoggedErrors } from "@/lib/errorLog";
 import { formatDate } from "@/lib/format";
 import { registerPage } from "@/lib/designer/registry";
@@ -19,7 +18,7 @@ registerPage({
   customizableRegions: [],
   explanation:
     "Every error caught by the global error boundary (src/app/error.tsx) is reported here via a Server Action into src/lib/errorLog.ts (same JSON-file store pattern as the Designer's customization store, same Vercel-runtime caveat). Currently wired at the root error boundary; per-route error boundaries and Server Action catch blocks are not yet instrumented individually — this covers unhandled render errors app-wide, not every possible failure path.",
-  sourceFile: "src/app/admin/errors/page.tsx",
+  sourceFile: "src/app/admin/(protected)/errors/page.tsx",
 });
 
 export default async function ErrorsPage() {
@@ -29,12 +28,6 @@ export default async function ErrorsPage() {
     <SuperAdminGate>
       <div className="min-h-screen w-full bg-bg">
         <header className="border-b border-border bg-bg-raised px-6 py-4">
-          <div className="flex items-center gap-2">
-            <LogoMark size={22} />
-            <span className="font-display text-base font-extrabold text-text">
-              My Biz Flow — Error Log
-            </span>
-          </div>
           <p className="mt-1 text-sm text-text-muted">
             {errors.length} error{errors.length === 1 ? "" : "s"} recorded. Reported from the
             global error boundary — see this page&apos;s Designer entry for what is and isn&apos;t

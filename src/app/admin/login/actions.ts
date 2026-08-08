@@ -30,3 +30,9 @@ export async function signInAsAdmin(formData: FormData) {
 
   redirect(next);
 }
+
+/** Clears the Super Admin session cookie and returns to the login page. */
+export async function signOutAdminAction() {
+  cookies().delete(ADMIN_COOKIE_NAME);
+  redirect("/admin/login");
+}

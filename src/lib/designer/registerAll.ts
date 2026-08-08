@@ -140,14 +140,14 @@ import "@/app/forgot-password/page";
 import "@/app/signup/page";
 import "@/app/pricing/page";
 import "@/app/subscribe/[planId]/page";
-import "@/app/admin/designer/page";
-import "@/app/admin/designer/[pageId]/page";
-import "@/app/admin/plans/page";
-import "@/app/admin/plans/new/page";
-import "@/app/admin/plans/[recordId]/page";
-import "@/app/admin/plans/[recordId]/edit/page";
-import "@/app/admin/subscribers/page";
-import "@/app/admin/errors/page";
+import "@/app/admin/(protected)/designer/page";
+import "@/app/admin/(protected)/designer/[pageId]/page";
+import "@/app/admin/(protected)/plans/page";
+import "@/app/admin/(protected)/plans/new/page";
+import "@/app/admin/(protected)/plans/[recordId]/page";
+import "@/app/admin/(protected)/plans/[recordId]/edit/page";
+import "@/app/admin/(protected)/subscribers/page";
+import "@/app/admin/(protected)/errors/page";
 
 import "@/app/vendor/[vendorId]/billing/[recordId]/document/page";
 import "@/app/vendor/[vendorId]/service-centre/[recordId]/document/page";
@@ -155,11 +155,11 @@ import "@/app/vendor/[vendorId]/pos/[recordId]/document/page";
 import "@/app/vendor/[vendorId]/amc-field-service/[recordId]/document/page";
 import "@/app/vendor/[vendorId]/legal/[recordId]/document/page";
 
-import "@/app/admin/numbering/page";
+import "@/app/admin/(protected)/numbering/page";
 import "@/app/vendor/[vendorId]/settings/numbering/page";
 
 import "@/app/terms/page";
 import "@/app/privacy/page";
 import "@/app/contact/page";
 
-import "@/app/admin/settings/page";
+import "@/app/admin/(protected)/settings/page";

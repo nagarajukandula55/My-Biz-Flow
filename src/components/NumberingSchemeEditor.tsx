@@ -8,7 +8,7 @@ import {
   saveVendorSchemeAction,
   clearVendorSchemeAction,
   fetchNextNumberAction,
-} from "@/app/admin/numbering/actions";
+} from "@/app/admin/(protected)/numbering/actions";
 
 const SEPARATOR_OPTIONS: { value: Separator; label: string }[] = [
   { value: "-", label: "Hyphen ( - )" },

@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { SuperAdminGate } from "@/components/SuperAdminGate";
-import { LogoMark } from "@/components/LogoMark";
 import { registerPage } from "@/lib/designer/registry";
 import { PlanClientTable } from "./PlanClientTable";
 
@@ -14,7 +13,7 @@ registerPage({
   customizableRegions: [{ key: "columns", label: "Table columns" }],
   explanation:
     "Super-Admin-only CRUD over the three subscription Plans (Basic/Pro/Ultimate) — price, billing cycle, included modules (multi-select over MODULES), and seat/location limits. This is the same sample-data source the public /pricing page reads from, so they can never drift out of sync.",
-  sourceFile: "src/app/admin/plans/page.tsx",
+  sourceFile: "src/app/admin/(protected)/plans/page.tsx",
 });
 
 export default function PlansPage() {
@@ -22,10 +21,7 @@ export default function PlansPage() {
     <SuperAdminGate>
       <div className="mbf-page">
         <div className="flex items-center justify-between border-b border-border bg-bg-raised px-6 py-4">
-          <div className="flex items-center gap-2">
-            <LogoMark size={20} />
-            <h1 className="font-display text-lg font-bold text-text">Plans</h1>
-          </div>
+          <h1 className="font-display text-lg font-bold text-text">Plans</h1>
           <Link href="/admin/plans/new" className="btn-accent">
             + New Plan
           </Link>
