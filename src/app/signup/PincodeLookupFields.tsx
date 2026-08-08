@@ -1,15 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { INDIAN_STATES, lookupPincode } from "@/lib/sample-data/geo";
+import { INDIAN_STATES } from "@/lib/sample-data/geo";
 
 /**
- * Pincode -> state/city autofill. Looks up the curated sample table
- * (lookupPincode — see src/lib/sample-data/geo.ts) first; if the pincode
- * isn't found there, falls back to a State dropdown + free-text City,
- * since we don't have a full city list per state yet. Swapping the lookup
- * for central-api's real pincode database later is a one-line change —
- * same input/output shape.
+ * Pincode -> state/city lookup, backed by /api/pincode (India Post's
+ * public pincode API, proxied server-side — see that route for why: a
+ * live stand-in until central-api's own pincode table is wired up, one
+ * function to swap later). On any failure/not-found, falls back to a
+ * State dropdown + free-text City.
  */
 export function PincodeLookupFields({
   initialState = "",
@@ -23,20 +22,39 @@ export function PincodeLookupFields({
   const [pincode, setPincode] = useState(initialPincode);
   const [state, setState] = useState(initialState);
   const [city, setCity] = useState(initialCity);
+  const [cityOptions, setCityOptions] = useState<string[]>([]);
   const [found, setFound] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [manualFallback, setManualFallback] = useState(false);
 
-  function handlePincodeChange(value: string) {
+  async function handlePincodeChange(value: string) {
     setPincode(value);
-    if (value.length === 6) {
-      const match = lookupPincode(value);
-      if (match) {
-        setState(match.state);
-        setCity(match.city);
-        setFound(true);
-        return;
-      }
+    if (value.length !== 6) {
+      setFound(false);
+      setManualFallback(false);
+      return;
     }
-    setFound(false);
+
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/pincode?code=${value}`);
+      const data: { found: boolean; state?: string; cities?: string[] } = await res.json();
+      if (data.found && data.state && data.cities && data.cities.length > 0) {
+        setState(data.state);
+        setCityOptions(data.cities);
+        setCity(data.cities[0]);
+        setFound(true);
+        setManualFallback(false);
+      } else {
+        setFound(false);
+        setManualFallback(true);
+      }
+    } catch {
+      setFound(false);
+      setManualFallback(true);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -52,14 +70,19 @@ export function PincodeLookupFields({
           onChange={(e) => handlePincodeChange(e.target.value.replace(/\D/g, ""))}
           className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text outline-none focus:border-teal"
         />
+        {loading && <span className="mt-1 block text-[11px] font-normal normal-case text-text-muted">Looking up…</span>}
       </label>
 
       <label className="text-xs font-semibold uppercase tracking-wide text-text-muted">
         State
         {found ? (
-          <>
-            <input type="text" name="state" value={state} readOnly className="mt-1 w-full rounded-md border border-border bg-bg-sunken px-3 py-2 text-sm text-text" />
-          </>
+          <input
+            type="text"
+            name="state"
+            value={state}
+            readOnly
+            className="mt-1 w-full rounded-md border border-border bg-bg-sunken px-3 py-2 text-sm text-text"
+          />
         ) : (
           <select
             name="state"
@@ -80,22 +103,35 @@ export function PincodeLookupFields({
 
       <label className="text-xs font-semibold uppercase tracking-wide text-text-muted">
         City
-        <input
-          type="text"
-          name="city"
-          required
-          readOnly={found}
-          value={city}
-          onChange={(e) => setCity(e.target.value)}
-          className={`mt-1 w-full rounded-md border border-border px-3 py-2 text-sm text-text outline-none focus:border-teal ${
-            found ? "bg-bg-sunken" : "bg-bg"
-          }`}
-        />
+        {found && cityOptions.length > 0 ? (
+          <select
+            name="city"
+            required
+            value={city}
+            onChange={(e) => setCity(e.target.value)}
+            className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text outline-none focus:border-teal"
+          >
+            {cityOptions.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <input
+            type="text"
+            name="city"
+            required
+            value={city}
+            onChange={(e) => setCity(e.target.value)}
+            className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text outline-none focus:border-teal"
+          />
+        )}
       </label>
 
-      {!found && pincode.length === 6 && (
-        <p className="sm:col-span-3 text-xs text-text-muted">
-          Pincode not in our lookup yet — please select your state and enter your city manually.
+      {manualFallback && (
+        <p className="text-xs text-text-muted sm:col-span-3">
+          Couldn&apos;t look up that pincode — please select your state and enter your city manually.
         </p>
       )}
     </div>

@@ -88,26 +88,3 @@ export const GST_STATE_CODES: { code: string; state: string }[] = [
 export function gstStateCodeFor(state: string): string | undefined {
   return GST_STATE_CODES.find((s) => s.state === state)?.code;
 }
-
-/** Curated pincode -> {state, city} sample. Real coverage requires central-api's pincode table (later phase) — see PincodeLookupInput.tsx for the dropdown fallback used when a pincode isn't found here. */
-export const PINCODE_LOOKUP: Record<string, { state: string; city: string }> = {
-  "530008": { state: "Andhra Pradesh", city: "Visakhapatnam" },
-  "520001": { state: "Andhra Pradesh", city: "Vijayawada" },
-  "560001": { state: "Karnataka", city: "Bengaluru" },
-  "600001": { state: "Tamil Nadu", city: "Chennai" },
-  "500001": { state: "Telangana", city: "Hyderabad" },
-  "400001": { state: "Maharashtra", city: "Mumbai" },
-  "411001": { state: "Maharashtra", city: "Pune" },
-  "110001": { state: "Delhi", city: "New Delhi" },
-  "700001": { state: "West Bengal", city: "Kolkata" },
-  "380001": { state: "Gujarat", city: "Ahmedabad" },
-  "302001": { state: "Rajasthan", city: "Jaipur" },
-  "682001": { state: "Kerala", city: "Kochi" },
-  "834001": { state: "Jharkhand", city: "Ranchi" },
-  "751001": { state: "Odisha", city: "Bhubaneswar" },
-  "160001": { state: "Chandigarh", city: "Chandigarh" },
-};
-
-export function lookupPincode(pincode: string): { state: string; city: string } | undefined {
-  return PINCODE_LOOKUP[pincode];
-}
