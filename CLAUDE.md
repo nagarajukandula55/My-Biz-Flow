@@ -30,14 +30,18 @@ freelance on a page-level PR.
   registration, platform auth/SSO, cross-tenant business mapping). Contract
   only — do not copy code or design from it or from other AN Group
   products (AN-CRM, ANgroup). This codebase is built from scratch.
-- **Documented, narrow exception**: general UX/layout *pattern* lookups
-  (e.g. "what shape does a multi-line-item invoice form take") are
-  allowed when the user explicitly asks for one, one lookup at a time —
-  never a standing license to browse AN-CRM/ANgroup for inspiration. No
-  code, component structure, copy, or visual design gets copied; only the
-  general interaction pattern (e.g. "line items in a table with an add
-  row", "tax computed live") may inform an independently-built
-  implementation using this repo's own design system.
+- **Documented exception, widened 2026-08-08**: logged-in browsing of
+  AN-CRM (crm.angroup.in) is permitted for UX/layout *pattern* reference
+  during this build — the user explicitly authorized this after being
+  asked to confirm, since it's a deliberate widening of the previous
+  single-lookup-only rule. Still governed by the same limit on what may be
+  taken: no code, component structure, copy, exact visual design, or
+  asset gets copied — only the general interaction pattern (e.g. "jobsheet
+  lifecycle stages shown on one page", "line items in a table with an add
+  row") may inform an independently-built implementation using this
+  repo's own design system and components. Every My Biz Flow module is
+  still built from scratch against this repo's own data model — AN-CRM is
+  a reference for shape, not a source to port from.
 
 ## Repo layout
 
