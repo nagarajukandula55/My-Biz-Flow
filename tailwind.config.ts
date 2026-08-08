@@ -32,6 +32,11 @@ const config: Config = {
         "sidebar-text": "var(--sidebar-text)",
         "sidebar-text-dim": "var(--sidebar-text-dim)",
         "sidebar-active": "var(--sidebar-active)",
+        "chart-1": "var(--chart-1)",
+        "chart-2": "var(--chart-2)",
+        "chart-3": "var(--chart-3)",
+        "chart-4": "var(--chart-4)",
+        "chart-grid": "var(--chart-grid)",
       },
       borderRadius: {
         sm: "6px",

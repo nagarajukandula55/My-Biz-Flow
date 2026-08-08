@@ -30,6 +30,17 @@
   --sidebar-text: #C6CAD4;
   --sidebar-text-dim: #7A8091;
   --sidebar-active: #232838;
+
+  /* Chart categorical series — validated via the `dataviz` skill's
+     validate_palette.js (fixed hue order, never cycled/reassigned per
+     filter). Chosen close to --teal/--accent then nudged for chroma +
+     CVD separation; --chart-3/4 are chart-only extensions, documented in
+     DESIGN_SYSTEM.md §5. Light-mode instance, all 4 checks PASS. */
+  --chart-1: #0E8F72;
+  --chart-2: #D9781A;
+  --chart-3: #2F6FE0;
+  --chart-4: #B23E82;
+  --chart-grid: #D8DBE2;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -55,6 +66,13 @@
     --sidebar-text: #C6CAD4;
     --sidebar-text-dim: #676D7C;
     --sidebar-active: #1C202B;
+    /* Dark-surface instance, re-validated (not an automatic flip): all 4
+       checks PASS against surface #14171F. */
+    --chart-1: #379C82;
+    --chart-2: #C97A38;
+    --chart-3: #4F86DE;
+    --chart-4: #BD5F97;
+    --chart-grid: #2A2F3D;
   }
 }
 
@@ -76,6 +94,11 @@
   --success-soft: #17281F;
   --warning: #E0A83F;
   --warning-soft: #2A2213;
+  --chart-1: #379C82;
+  --chart-2: #C97A38;
+  --chart-3: #4F86DE;
+  --chart-4: #BD5F97;
+  --chart-grid: #2A2F3D;
   --sidebar-bg: #0E1015;
   --sidebar-text: #C6CAD4;
   --sidebar-text-dim: #676D7C;
