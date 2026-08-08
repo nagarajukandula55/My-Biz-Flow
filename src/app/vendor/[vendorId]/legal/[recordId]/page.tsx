@@ -56,6 +56,12 @@ export default function LegalDetailPage({
               </div>
               <div className="flex items-center gap-3">
                 <Link
+                  href={`/vendor/${params.vendorId}/legal/${params.recordId}/document`}
+                  className="btn-outline"
+                >
+                  View document
+                </Link>
+                <Link
                   href={`/vendor/${params.vendorId}/legal/${params.recordId}/edit`}
                   className="btn-outline"
                 >

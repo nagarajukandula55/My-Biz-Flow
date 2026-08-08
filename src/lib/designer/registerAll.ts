@@ -147,3 +147,9 @@ import "@/app/admin/plans/[recordId]/page";
 import "@/app/admin/plans/[recordId]/edit/page";
 import "@/app/admin/subscribers/page";
 import "@/app/admin/errors/page";
+
+import "@/app/vendor/[vendorId]/billing/[recordId]/document/page";
+import "@/app/vendor/[vendorId]/service-centre/[recordId]/document/page";
+import "@/app/vendor/[vendorId]/pos/[recordId]/document/page";
+import "@/app/vendor/[vendorId]/amc-field-service/[recordId]/document/page";
+import "@/app/vendor/[vendorId]/legal/[recordId]/document/page";

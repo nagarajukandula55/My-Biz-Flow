@@ -56,6 +56,12 @@ export default function AmcFieldServiceDetailPage({
               </div>
               <div className="flex items-center gap-3">
                 <Link
+                  href={`/vendor/${params.vendorId}/amc-field-service/${params.recordId}/document`}
+                  className="btn-outline"
+                >
+                  View document
+                </Link>
+                <Link
                   href={`/vendor/${params.vendorId}/amc-field-service/${params.recordId}/edit`}
                   className="btn-outline"
                 >

@@ -13,7 +13,15 @@
  * registry as its schema, not replace it.
  */
 
-export type PageKind = "list" | "detail" | "kanban" | "admin" | "dashboard" | "form" | "other";
+export type PageKind =
+  | "list"
+  | "detail"
+  | "kanban"
+  | "admin"
+  | "dashboard"
+  | "form"
+  | "document"
+  | "other";
 
 export interface CustomizableRegion {
   /** Stable key a Super Admin's customization override attaches to */

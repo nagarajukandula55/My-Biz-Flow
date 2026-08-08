@@ -56,6 +56,12 @@ export default function ServiceCentreDetailPage({
               </div>
               <div className="flex items-center gap-3">
                 <Link
+                  href={`/vendor/${params.vendorId}/service-centre/${params.recordId}/document`}
+                  className="btn-outline"
+                >
+                  View document
+                </Link>
+                <Link
                   href={`/vendor/${params.vendorId}/service-centre/${params.recordId}/edit`}
                   className="btn-outline"
                 >

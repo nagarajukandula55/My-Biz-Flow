@@ -56,6 +56,12 @@ export default function PosDetailPage({
               </div>
               <div className="flex items-center gap-3">
                 <Link
+                  href={`/vendor/${params.vendorId}/pos/${params.recordId}/document`}
+                  className="btn-outline"
+                >
+                  View document
+                </Link>
+                <Link
                   href={`/vendor/${params.vendorId}/pos/${params.recordId}/edit`}
                   className="btn-outline"
                 >
