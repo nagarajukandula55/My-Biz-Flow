@@ -2,39 +2,46 @@
 
 import { useState, useTransition } from "react";
 import { Modal } from "@/components/Modal";
-import { resetDemoData } from "./actions";
+import { clearAllVendorData } from "./actions";
 
 /**
- * Danger-zone action for the live demo: wipes every Prisma-backed store
- * back to a clean state (see actions.ts for exactly what that covers).
- * Business records aren't persisted yet, so this is currently the whole
- * "clear all vendor data" story — extend actions.ts as more moves to
- * Prisma.
+ * Danger-zone action for the live demo: deletes every Vendor and its
+ * business data ONLY — never platform configuration (Designer
+ * customizations, document templates, numbering, page-access, error log),
+ * which is the system being built out for every future vendor and must
+ * survive this untouched. See actions.ts — currently a no-op since there
+ * is no persisted vendor/business data yet.
  */
 export function ResetDemoDataButton() {
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
-  const [done, setDone] = useState(false);
+  const [result, setResult] = useState<number | null>(null);
 
   function handleConfirm() {
     startTransition(async () => {
-      await resetDemoData();
+      const { deletedVendors } = await clearAllVendorData();
       setOpen(false);
-      setDone(true);
+      setResult(deletedVendors);
     });
   }
 
   return (
     <>
       <button type="button" className="btn-danger" onClick={() => setOpen(true)}>
-        Reset Demo Data
+        Clear All Vendor Data
       </button>
-      {done && <span className="ml-3 text-sm font-semibold text-success">Demo data reset.</span>}
+      {result !== null && (
+        <span className="ml-3 text-sm font-semibold text-success">
+          {result === 0
+            ? "No persisted vendor data yet — nothing to clear (see actions.ts)."
+            : `${result} vendor(s) and their data deleted.`}
+        </span>
+      )}
 
       <Modal
         open={open}
         onClose={() => setOpen(false)}
-        title="Reset Demo Data"
+        title="Clear All Vendor Data"
         size="sm"
         footer={
           <>
@@ -42,15 +49,16 @@ export function ResetDemoDataButton() {
               Cancel
             </button>
             <button type="button" className="btn-danger" onClick={handleConfirm} disabled={pending}>
-              {pending ? "Resetting…" : "Reset Everything"}
+              {pending ? "Clearing…" : "Delete Every Vendor"}
             </button>
           </>
         }
       >
         <p className="text-sm text-text-muted">
-          This permanently deletes every Designer customization, document template, module appearance
-          override, numbering scheme/counter, page-access toggle, and error log entry for every vendor —
-          resetting the whole demo back to defaults. This cannot be undone.
+          Permanently deletes every vendor account and the business data scoped to it (workorders,
+          invoices, inventory, appointments, etc.) — for clearing out demo/test signups before going live
+          for real. Platform configuration (Designer, templates, numbering, page access) is never touched.
+          This cannot be undone.
         </p>
       </Modal>
     </>

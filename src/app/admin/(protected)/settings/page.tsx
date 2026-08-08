@@ -68,10 +68,10 @@ export default async function PlatformSettingsPage() {
           <div className="mt-8 rounded-lg border border-danger bg-danger-soft p-5">
             <h2 className="font-display text-base font-bold text-text">Danger Zone</h2>
             <p className="mt-1 max-w-[70ch] text-sm text-text-muted">
-              For the live demo: wipe every Designer customization, document template, module appearance
-              override, numbering scheme, page-access toggle, and error log back to defaults. Business
-              records (workorders, invoices, inventory, etc.) aren&apos;t persisted yet — they reset on every
-              deploy already — so this currently covers everything that does persist.
+              For the live demo: delete every vendor account and its business data (workorders, invoices,
+              inventory, etc.) — never platform configuration. Designer customizations, document templates,
+              numbering, and page-access stay exactly as configured, since that&apos;s the system being built
+              out for every real vendor going forward.
             </p>
             <div className="mt-4">
               <ResetDemoDataButton />
