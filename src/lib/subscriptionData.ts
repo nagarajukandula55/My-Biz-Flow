@@ -13,6 +13,7 @@
  */
 import { prisma } from "@/lib/prisma";
 import type { VendorRecord } from "@/lib/vendorData";
+import { getPlan } from "@/lib/plansData";
 
 export type BillingCycle = "Monthly" | "Quarterly" | "HalfYearly" | "Yearly";
 export const BILLING_CYCLES: BillingCycle[] = ["Monthly", "Quarterly", "HalfYearly", "Yearly"];
@@ -128,6 +129,18 @@ export function applyOfferDiscount(cyclePrice: number, offer: OfferRecord | unde
   if (offer.validTo && offer.validTo < now) return cyclePrice;
   if (offer.discountType === "flat") return Math.max(0, cyclePrice - offer.discountValue);
   return Math.round(cyclePrice * (1 - offer.discountValue / 100));
+}
+
+/** The rupee amount due for a vendor's currently chosen plan+cycle+offer — used to create the Razorpay order. */
+export async function computeVendorDueAmount(vendor: VendorRecord): Promise<{ amount: number; planName: string } | undefined> {
+  if (!vendor.planId || !vendor.billingCycle) return undefined;
+  const plan = await getPlan(vendor.planId);
+  if (!plan) return undefined;
+  const cycle = vendor.billingCycle as BillingCycle;
+  const cyclePrice = computeCyclePrice(plan.price, cycle);
+  const offer = vendor.offerId ? await getOffer(vendor.offerId) : undefined;
+  const amount = applyOfferDiscount(cyclePrice, offer, plan.id, cycle);
+  return { amount, planName: plan.name };
 }
 
 export type SubscriptionState = {

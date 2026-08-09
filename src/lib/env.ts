@@ -30,4 +30,12 @@ export const env = {
   databaseUrl: () => requireEnv("DATABASE_URL"),
   centralApiUrl: () => requireEnv("CENTRAL_API_URL"),
   centralApiKey: () => requireEnv("CENTRAL_API_KEY"),
+  /** Payment gateway — optional until a Super Admin/the business owner adds real Razorpay keys
+   * (Vercel env vars). Unset returns undefined rather than throwing, so the rest of the app keeps
+   * working before the gateway is configured; only the actual checkout/verify calls need it. */
+  razorpayKeyId: () => process.env.RAZORPAY_KEY_ID,
+  razorpayKeySecret: () => process.env.RAZORPAY_KEY_SECRET,
+  razorpayWebhookSecret: () => process.env.RAZORPAY_WEBHOOK_SECRET,
+  /** Public key id, exposed to the browser for the Razorpay Checkout widget — same value as RAZORPAY_KEY_ID. */
+  razorpayPublicKeyId: () => process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
 };

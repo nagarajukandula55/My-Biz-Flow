@@ -5,9 +5,18 @@ import type { SchemaField } from "@/lib/designer/fieldSchema";
 import { saveDocumentTemplateAction } from "@/lib/designer/actions";
 import { renderTemplate } from "@/lib/designer/renderTemplate";
 
-const DEFAULT_STARTER = `<dl style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-  <!-- Click a placeholder below to insert it here -->
-</dl>`;
+/** A populated starting design built from this document's own fields, so opening the editor for the
+ * first time shows a real invoice-style layout using real tokens instead of an empty placeholder. */
+function buildDefaultTemplate(availableFields: SchemaField[]): string {
+  const rows = availableFields
+    .filter((f) => f.key !== "id" && f.key !== "lineItemsSummary")
+    .map(
+      (f) =>
+        `  <div><dt style="font-size:11px;text-transform:uppercase;letter-spacing:0.05em;color:#6b7280;">${f.label}</dt><dd style="margin:2px 0 0;font-weight:600;">{{${f.key}}}</dd></div>`
+    )
+    .join("\n");
+  return `<dl style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">\n${rows}\n</dl>`;
+}
 
 export function DesignerDocumentEditor({
   pageId,
@@ -20,7 +29,7 @@ export function DesignerDocumentEditor({
   initialTemplate: string;
   sampleRecord: Record<string, unknown>;
 }) {
-  const [template, setTemplate] = useState(initialTemplate || DEFAULT_STARTER);
+  const [template, setTemplate] = useState(initialTemplate || buildDefaultTemplate(availableFields));
   const [isPending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
 

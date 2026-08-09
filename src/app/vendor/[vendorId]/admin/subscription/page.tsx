@@ -9,11 +9,14 @@ import { listPlans } from "@/lib/plansData";
 import {
   getSubscriptionState,
   getOffer,
+  computeVendorDueAmount,
   BILLING_CYCLES,
   cycleLabel,
   type BillingCycle,
 } from "@/lib/subscriptionData";
 import { chooseSubscriptionAction } from "./actions";
+import { RazorpayCheckoutButton } from "@/components/RazorpayCheckoutButton";
+import { env } from "@/lib/env";
 
 registerPage({
   id: "subscription.vendor-view",
@@ -39,6 +42,7 @@ export default async function VendorSubscriptionPage({ params }: { params: { ven
   const bundledPlans = allPlans.filter((p) => vendorType?.planIds.includes(p.id));
   const offer = vendor.offerId ? await getOffer(vendor.offerId) : undefined;
   const action = chooseSubscriptionAction.bind(null, vendor.id);
+  const due = vendor.subscriptionStatus === "PastDue" ? await computeVendorDueAmount(vendor) : undefined;
 
   const statusVariant =
     subState.status === "Active" ? "success" : subState.status === "Trial" ? "warning" : subState.status === "Trial Expired" || subState.status === "PastDue" ? "danger" : "neutral";
@@ -103,9 +107,23 @@ export default async function VendorSubscriptionPage({ params }: { params: { ven
             <h2 className="font-display text-base font-bold text-text">Payment pending</h2>
             <p className="mt-2 text-sm text-text-muted">
               You&apos;ve chosen {allPlans.find((p) => p.id === vendor.planId)?.name ?? vendor.planId} (
-              {cycleLabel((vendor.billingCycle as BillingCycle) ?? "Monthly")}). Complete payment offline with our
-              team to activate — this account will be marked Active once payment is confirmed.
+              {cycleLabel((vendor.billingCycle as BillingCycle) ?? "Monthly")}).
+              {offer ? ` Offer "${offer.name}" applied.` : ""}
             </p>
+            <div className="mt-4">
+              {due ? (
+                <RazorpayCheckoutButton
+                  vendorId={vendor.id}
+                  vendorName={vendor.businessName}
+                  vendorEmail={vendor.businessEmail}
+                  vendorContact={vendor.businessContact}
+                  amount={due.amount}
+                  publicKeyId={env.razorpayPublicKeyId()}
+                />
+              ) : (
+                <p className="text-xs text-text-muted">Could not compute an amount due — contact us to complete payment.</p>
+              )}
+            </div>
           </div>
         )}
 
