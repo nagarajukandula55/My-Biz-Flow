@@ -2,14 +2,14 @@
 
 import { useRouter } from "next/navigation";
 import { DataTable, type Row } from "@/components/DataTable";
-import { planColumns, planRows } from "@/lib/sample-data/plans";
+import { planColumns } from "@/lib/sample-data/plans";
 
-export function PlanClientTable() {
+export function PlanClientTable({ rows }: { rows: Row[] }) {
   const router = useRouter();
   return (
     <DataTable
       columns={planColumns}
-      rows={planRows}
+      rows={rows}
       onRowClick={(row: Row) => router.push(`/admin/plans/${row["id"]}`)}
     />
   );

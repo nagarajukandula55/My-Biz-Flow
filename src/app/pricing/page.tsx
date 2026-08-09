@@ -2,7 +2,7 @@ import Link from "next/link";
 import { LogoMark } from "@/components/LogoMark";
 import { StatusChip } from "@/components/StatusChip";
 import { registerPage } from "@/lib/designer/registry";
-import { PLANS } from "@/lib/sample-data/plans";
+import { listPublicPlans } from "@/lib/plansData";
 import { getModule } from "@/lib/designer/moduleRegistry";
 
 // Reads live DB-backed module label overrides — must not be baked into a
@@ -18,11 +18,12 @@ registerPage({
   superAdminOnly: false,
   customizableRegions: [],
   explanation:
-    "Public pricing page — three plan cards (Basic/Pro/Ultimate) reading live from src/lib/sample-data/plans.ts, the same source /admin/plans edits, so pricing can never drift out of sync. Each card links to /signup?plan=<planId>.",
+    "Public pricing page — plan cards reading live from the Plan Prisma table, the same source /admin/plans edits, so pricing can never drift out of sync. Each card links to /signup?plan=<planId>.",
   sourceFile: "src/app/pricing/page.tsx",
 });
 
 export default async function PricingPage() {
+  const PLANS = await listPublicPlans();
   const allSlugs = Array.from(new Set(PLANS.flatMap((p) => p.includedModuleSlugs)));
   const moduleLabels = new Map(
     await Promise.all(allSlugs.map(async (slug) => [slug, (await getModule(slug))?.label ?? slug] as const))
@@ -52,6 +53,11 @@ export default async function PricingPage() {
         </p>
       </div>
 
+      {PLANS.length === 0 ? (
+        <p className="mx-auto max-w-md rounded-lg border border-dashed border-border bg-bg-raised p-6 text-center text-sm text-text-muted">
+          No plans are published yet — check back soon.
+        </p>
+      ) : (
       <div className="mx-auto grid max-w-6xl grid-cols-1 gap-6 px-6 pb-20 sm:grid-cols-3">
         {PLANS.map((plan, i) => (
           <div
@@ -94,6 +100,7 @@ export default async function PricingPage() {
           </div>
         ))}
       </div>
+      )}
     </div>
   );
 }

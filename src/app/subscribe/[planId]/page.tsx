@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { LogoMark } from "@/components/LogoMark";
 import { registerPage } from "@/lib/designer/registry";
-import { getPlan } from "@/lib/sample-data/plans";
+import { getPlan } from "@/lib/plansData";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { SubscribeForm } from "./SubscribeForm";
 
@@ -19,7 +19,7 @@ registerPage({
 });
 
 export default async function SubscribePage({ params }: { params: { planId: string } }) {
-  const plan = getPlan(params.planId);
+  const plan = await getPlan(params.planId);
 
   if (!plan) {
     return (

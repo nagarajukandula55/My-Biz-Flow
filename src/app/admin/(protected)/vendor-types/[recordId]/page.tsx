@@ -5,6 +5,7 @@ import { StatusChip } from "@/components/StatusChip";
 import { registerPage } from "@/lib/designer/registry";
 import { getVendorType, PLAN_TIERS } from "@/lib/designer/vendorTypesData";
 import { getAssignablePagesByModule } from "@/lib/designer/accessGroupPermissions";
+import { listPlans } from "@/lib/plansData";
 import { DeleteVendorTypeButton } from "./DeleteVendorTypeButton";
 
 export const dynamic = "force-dynamic";
@@ -26,6 +27,8 @@ const TIER_LABEL: Record<string, string> = { basic: "Basic", pro: "Pro", ultimat
 export default async function VendorTypeDetailPage({ params }: { params: { recordId: string } }) {
   const type = await getVendorType(params.recordId);
   if (!type) notFound();
+  const plans = await listPlans();
+  const bundledPlans = plans.filter((p) => type.planIds.includes(p.id));
 
   const pageTitleById = new Map(
     getAssignablePagesByModule()
@@ -90,6 +93,28 @@ export default async function VendorTypeDetailPage({ params }: { params: { recor
                   );
                 })}
               </div>
+            )}
+          </div>
+
+          <div className="mt-6 rounded-lg border border-border bg-bg-raised p-5">
+            <h2 className="font-display text-base font-bold text-text">Bundled Pricing Plans</h2>
+            <p className="mt-1 text-xs text-text-muted">
+              The real Plans (billing/pricing) this Vendor Type offers at signup — separate from the page-tier
+              breakdown above.
+            </p>
+            {bundledPlans.length === 0 ? (
+              <p className="mt-2 text-sm text-text-muted">No Plans bundled yet.</p>
+            ) : (
+              <ul className="mt-3 flex flex-wrap gap-2">
+                {bundledPlans.map((p) => (
+                  <li
+                    key={p.id}
+                    className="rounded-full border border-border bg-bg px-3 py-1.5 text-xs font-medium text-text"
+                  >
+                    {p.name} — ₹{p.price.toLocaleString("en-IN")}/{p.billingCycle}
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
         </div>

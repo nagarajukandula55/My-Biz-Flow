@@ -3,8 +3,7 @@ import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { Boxes, Warehouse, ClipboardList, SlidersHorizontal, Undo2, PackageCheck } from "lucide-react";
-import { bomRows } from "@/lib/sample-data/bom";
-import { warehouseRows, stockRows, stockAdjustmentRows, returnOrderRows, partOrderRows } from "@/lib/sample-data/warehouse";
+import { listBusinessRecords } from "@/lib/businessRecords";
 
 registerPage({
   id: "inventory.hub",
@@ -25,47 +24,53 @@ const SECTIONS = [
     icon: Boxes,
     label: "Material Catalog (BOM)",
     description: "Flat item master — spares, consumables, and finished-goods products, shared across POS and Service Centre.",
-    count: (vendorId: string) => bomRows.length,
+    moduleSlug: "inventory-bom",
   },
   {
     href: "warehouses",
     icon: Warehouse,
     label: "Warehouses",
     description: "Central / Regional / Local warehouse master data.",
-    count: () => warehouseRows.length,
+    moduleSlug: "inventory-warehouses",
   },
   {
     href: "stock",
     icon: ClipboardList,
     label: "Inventory (Stock)",
     description: "Per-warehouse stock ledger — quantity on hand, reserved, available, reorder level.",
-    count: () => stockRows.length,
+    moduleSlug: "inventory-stock",
   },
   {
     href: "stock-adjustments",
     icon: SlidersHorizontal,
     label: "Stock Adjustments",
     description: "Manual increase/decrease log — damaged, lost, recount, initial stock.",
-    count: () => stockAdjustmentRows.length,
+    moduleSlug: "inventory-stock-adjustments",
   },
   {
     href: "return-orders",
     icon: Undo2,
     label: "Return Orders",
     description: "Defective/good material sent back from a Service Centre location to its mapped warehouse.",
-    count: () => returnOrderRows.length,
+    moduleSlug: "inventory-return-orders",
   },
   {
     href: "part-orders",
     icon: PackageCheck,
     label: "Part Orders",
     description: "Warehouse dispatching replacement material back to a Service Centre location.",
-    count: () => partOrderRows.length,
+    moduleSlug: "inventory-part-orders",
   },
 ];
 
+export const dynamic = "force-dynamic";
+
 export default async function InventoryHubPage({ params }: { params: { vendorId: string } }) {
   const mod = await getModule("inventory");
+  const counts = await Promise.all(
+    SECTIONS.map(async (s) => [s.href, (await listBusinessRecords(params.vendorId, s.moduleSlug)).length] as const)
+  );
+  const countByHref = new Map(counts);
 
   return (
     <AppShell topbarTitle={mod?.label ?? "Inventory / Warehouse"}>
@@ -83,7 +88,7 @@ export default async function InventoryHubPage({ params }: { params: { vendorId:
                 <div className="flex items-center justify-between">
                   <Icon className="h-5 w-5 text-accent" strokeWidth={2} />
                   <span className="rounded-full bg-bg-sunken px-2 py-0.5 text-xs font-semibold text-text-muted">
-                    {s.count(params.vendorId)}
+                    {countByHref.get(s.href) ?? 0}
                   </span>
                 </div>
                 <div className="font-display text-sm font-bold text-text">{s.label}</div>

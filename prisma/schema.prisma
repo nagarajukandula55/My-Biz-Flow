@@ -132,15 +132,19 @@ model Role {
 /// are JSON string arrays (module slugs / Role ids). planTierByPage is a
 /// JSON map of pageId -> "basic" | "pro" | "ultimate", scoped to ONLY this
 /// type's own defaultModules pages — every Vendor Type defines its own
-/// Basic/Pro/Ultimate breakdown independently, never a shared global Plan
-/// membership list (confirmed 2026-08-08: no type may just "include" one
-/// of a shared set of plans).
+/// Basic/Pro/Ultimate PAGE breakdown independently (confirmed 2026-08-08:
+/// no type may just "include" one of a shared set of plans for page
+/// access). planIds (added 2026-08-08) is a separate concern: which of
+/// the 3 real Plan price points (src/lib/plansData.ts) this type bundles
+/// for actual billing — a type can offer Basic+Pro pricing while still
+/// defining its own Basic/Pro page split above.
 model VendorType {
   id                 String   @id
   description        String?  @db.Text
   defaultModules     Json     @default("[]")
   assignableRoleIds  Json     @default("[]")
   planTierByPage     Json     @default("{}")
+  planIds            Json     @default("[]")
   /// When true, a signup against this type creates a VendorSignupRequest
   /// instead of a Vendor directly — no VND#### id is assigned until Super
   /// Admin approves it. Off by default (confirmed 2026-08-08: no approval
@@ -183,6 +187,24 @@ model Vendor {
   updatedAt          DateTime @updatedAt
 
   @@map("vendors")
+}
+
+/// A subscription Plan (Basic/Pro/Ultimate) — Super-Admin configurable via
+/// /admin/plans, and the single source of truth for the public /pricing
+/// page. includedModuleSlugs is a JSON string array.
+model Plan {
+  id                  String   @id
+  name                String
+  price               Int
+  billingCycle        String
+  includedModuleSlugs Json     @default("[]")
+  maxUsers            Int
+  maxLocations        Int
+  isPublic            Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@map("plans")
 }
 
 /// A signup submitted against a Vendor Type with requiresApproval=true —

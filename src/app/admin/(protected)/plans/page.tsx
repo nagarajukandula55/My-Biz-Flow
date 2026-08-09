@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { SuperAdminGate } from "@/components/SuperAdminGate";
 import { registerPage } from "@/lib/designer/registry";
+import { listPlans } from "@/lib/plansData";
 import { PlanClientTable } from "./PlanClientTable";
+
+export const dynamic = "force-dynamic";
 
 registerPage({
   id: "platform.plans.list",
@@ -12,11 +15,14 @@ registerPage({
   superAdminOnly: true,
   customizableRegions: [{ key: "columns", label: "Table columns" }],
   explanation:
-    "Super-Admin-only CRUD over the three subscription Plans (Basic/Pro/Ultimate) — price, billing cycle, included modules (multi-select over MODULES), and seat/location limits. This is the same sample-data source the public /pricing page reads from, so they can never drift out of sync.",
+    "Super-Admin-only CRUD over subscription Plans — price, billing cycle, included modules, and seat/location limits. Real data — Prisma-backed (Plan table), the same source the public /pricing page reads from, so they can never drift out of sync.",
   sourceFile: "src/app/admin/(protected)/plans/page.tsx",
 });
 
-export default function PlansPage() {
+export default async function PlansPage() {
+  const plans = await listPlans();
+  const rows = plans.map((p) => ({ ...p, isPublic: p.isPublic ? "Yes" : "No" }));
+
   return (
     <SuperAdminGate>
       <div className="mbf-page">
@@ -32,7 +38,13 @@ export default function PlansPage() {
             every tier — modules and seats are what&apos;s gated, not builder features.
           </p>
           <div className="mt-6">
-            <PlanClientTable />
+            {rows.length === 0 ? (
+              <p className="rounded-md border border-dashed border-border bg-bg-raised p-6 text-center text-sm text-text-muted">
+                No Plans yet. Create one to start populating /pricing.
+              </p>
+            ) : (
+              <PlanClientTable rows={rows} />
+            )}
           </div>
         </div>
       </div>

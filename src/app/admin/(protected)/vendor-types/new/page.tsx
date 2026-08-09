@@ -2,6 +2,7 @@ import { SuperAdminGate } from "@/components/SuperAdminGate";
 import { registerPage } from "@/lib/designer/registry";
 import { listRoles } from "@/lib/designer/rolesData";
 import { getAssignablePagesByModule } from "@/lib/designer/accessGroupPermissions";
+import { listPlans } from "@/lib/plansData";
 import { ModulesAndTiersEditor } from "../ModulesAndTiersEditor";
 import { createVendorTypeAction } from "../actions";
 
@@ -23,6 +24,7 @@ registerPage({
 export default async function NewVendorTypePage() {
   const roles = await listRoles();
   const pagesByModule = getAssignablePagesByModule();
+  const plans = await listPlans();
 
   return (
     <SuperAdminGate>
@@ -68,6 +70,29 @@ export default async function NewVendorTypePage() {
                       <label key={r.id} className="flex items-center gap-2 text-sm text-text">
                         <input type="checkbox" name="assignableRoleIds" value={r.id} className="h-4 w-4 accent-accent" />
                         {r.id}
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-text-muted">
+                  Pricing Plans Bundled
+                </label>
+                <p className="mb-2 text-xs text-text-muted">
+                  Which of the 3 real Plans (billing/pricing) this Vendor Type offers at signup — separate from
+                  the page-tier breakdown above.
+                </p>
+                {plans.length === 0 ? (
+                  <p className="text-sm text-text-muted">
+                    No Plans exist yet — create one at Plans first.
+                  </p>
+                ) : (
+                  <div className="space-y-1.5 rounded-md border border-border bg-bg p-3">
+                    {plans.map((p) => (
+                      <label key={p.id} className="flex items-center gap-2 text-sm text-text">
+                        <input type="checkbox" name="planIds" value={p.id} className="h-4 w-4 accent-accent" />
+                        {p.name} — ₹{p.price.toLocaleString("en-IN")}/{p.billingCycle}
                       </label>
                     ))}
                   </div>

@@ -1,9 +1,11 @@
 /**
  * Vendor Types — real Prisma-backed store (`VendorType` table). The
  * top-level entity a vendor account is created against; bundles a default
- * module set, which Roles are assignable, and its OWN Basic/Pro/Ultimate
- * page-tier breakdown (never a shared global Plan membership list — every
- * type proposes its own three tiers, confirmed 2026-08-08).
+ * module set, which Roles are assignable, its OWN Basic/Pro/Ultimate PAGE
+ * breakdown (planTierByPage — every type proposes its own page split,
+ * confirmed 2026-08-08), and which of the 3 real Plan price points
+ * (src/lib/plansData.ts) it bundles for actual billing (planIds, added
+ * 2026-08-08) — a separate concern from the page split above.
  */
 import { prisma } from "@/lib/prisma";
 
@@ -17,6 +19,8 @@ export type VendorTypeRecord = {
   assignableRoleIds: string[];
   /** pageId -> tier that unlocks it, scoped to this type's own defaultModules pages only. */
   planTierByPage: Record<string, PlanTier>;
+  /** Which of the 3 real Plan ids (Basic/Pro/Ultimate pricing) this type bundles/offers at signup. */
+  planIds: string[];
   /** When true, signups against this type go to a review queue instead of getting a VND#### id immediately. */
   requiresApproval: boolean;
   status: string;
@@ -28,6 +32,7 @@ function toRecord(row: {
   defaultModules: unknown;
   assignableRoleIds: unknown;
   planTierByPage: unknown;
+  planIds: unknown;
   requiresApproval: boolean;
   status: string;
 }): VendorTypeRecord {
@@ -37,6 +42,7 @@ function toRecord(row: {
     defaultModules: (row.defaultModules as string[] | null) ?? [],
     assignableRoleIds: (row.assignableRoleIds as string[] | null) ?? [],
     planTierByPage: (row.planTierByPage as Record<string, PlanTier> | null) ?? {},
+    planIds: (row.planIds as string[] | null) ?? [],
     requiresApproval: row.requiresApproval,
     status: row.status,
   };
@@ -62,6 +68,7 @@ export type VendorTypeInput = {
   defaultModules: string[];
   assignableRoleIds: string[];
   planTierByPage: Record<string, PlanTier>;
+  planIds: string[];
   requiresApproval: boolean;
   status: string;
 };

@@ -2,6 +2,7 @@ import { SuperAdminGate } from "@/components/SuperAdminGate";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { planFormFields } from "@/lib/sample-data/plans";
+import { createPlanAction } from "../actions";
 
 registerPage({
   id: "platform.plans.create",
@@ -11,7 +12,7 @@ registerPage({
   kind: "form",
   superAdminOnly: true,
   customizableRegions: [{ key: "form-fields", label: "Form fields" }],
-  explanation: "Creation form for a new subscription Plan. Demo stub, no backend wired up.",
+  explanation: "Creation form for a new subscription Plan. Writes to the Plan Prisma table.",
   sourceFile: "src/app/admin/(protected)/plans/new/page.tsx",
 });
 
@@ -23,7 +24,7 @@ export default function NewPlanPage() {
           <h1 className="font-display text-lg font-bold text-text">New Plan</h1>
         </div>
         <div className="p-6">
-          <RecordForm fields={planFormFields} submitLabel="Create Plan" />
+          <RecordForm fields={planFormFields} submitLabel="Create Plan" action={createPlanAction} />
         </div>
       </div>
     </SuperAdminGate>
