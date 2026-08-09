@@ -183,10 +183,48 @@ model Vendor {
   /// shown/emailed once).
   mustChangePassword Boolean  @default(true)
   status             String   @default("Active")
+
+  /// Subscription lifecycle: "Trial" | "Active" | "PastDue" | "Cancelled".
+  /// Set to "Trial" automatically on signup with a 7-day trialEndAt; a
+  /// Super Admin can freely override status/dates/plan/cycle from
+  /// /admin/subscribers. There is no payment gateway wired up yet (same
+  /// documented gap as central-api) — moving PastDue -> Active once a
+  /// vendor actually pays is a manual Super Admin action for now.
+  subscriptionStatus String    @default("Trial")
+  trialStartAt       DateTime?
+  trialEndAt         DateTime?
+  /// "Monthly" | "Quarterly" | "HalfYearly" | "Yearly" — chosen when the
+  /// vendor converts off trial; null while still on trial.
+  billingCycle       String?
+  planId             String?
+  offerId            String?
+
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
   @@map("vendors")
+}
+
+/// A discount or bundle a Super Admin can apply at subscribe time — a
+/// straight percent/flat discount off a Plan's computed cycle price, or a
+/// combo bundling several Plans together. Applied via Vendor.offerId;
+/// pricing math lives in src/lib/subscriptionData.ts.
+model Offer {
+  id            String    @id @default(cuid())
+  name          String
+  description   String?   @db.Text
+  discountType  String    @default("percent")
+  discountValue Int       @default(0)
+  planIds       Json      @default("[]")
+  billingCycles Json      @default("[]")
+  isCombo       Boolean   @default(false)
+  isActive      Boolean   @default(true)
+  validFrom     DateTime?
+  validTo       DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@map("offers")
 }
 
 /// A subscription Plan (Basic/Pro/Ultimate) — Super-Admin configurable via

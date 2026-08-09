@@ -7,6 +7,8 @@
  */
 import { prisma } from "@/lib/prisma";
 import { hashPassword, verifyPassword, generatePassword } from "@/lib/passwords";
+import { createBusinessRecord } from "@/lib/businessRecords";
+import { getVendorType } from "@/lib/designer/vendorTypesData";
 
 const BUSINESS_ID = "BIZ002";
 
@@ -26,6 +28,12 @@ export type VendorRecord = {
   loginContact: string;
   mustChangePassword: boolean;
   status: string;
+  subscriptionStatus: string;
+  trialStartAt: Date | null;
+  trialEndAt: Date | null;
+  billingCycle: string | null;
+  planId: string | null;
+  offerId: string | null;
   createdAt: Date;
 };
 
@@ -45,9 +53,44 @@ function toRecord(row: {
   loginContact: string;
   mustChangePassword: boolean;
   status: string;
+  subscriptionStatus: string;
+  trialStartAt: Date | null;
+  trialEndAt: Date | null;
+  billingCycle: string | null;
+  planId: string | null;
+  offerId: string | null;
   createdAt: Date;
 }): VendorRecord {
   return { ...row, addressLine: row.addressLine ?? "" };
+}
+
+/**
+ * Auto role assignment: the first team member ("Owner") on a freshly
+ * created Vendor account, given the Role its chosen Vendor Type puts
+ * first in assignableRoleIds (falling back to "Owner / Admin" if that
+ * type has no Roles configured yet). Persisted as a real Users
+ * BusinessRecord, same as any team member added later from
+ * /vendor/[vendorId]/admin/users.
+ */
+async function assignOwnerRole(vendor: VendorRecord): Promise<void> {
+  const vendorType = await getVendorType(vendor.vendorTypeId);
+  const roleId = vendorType?.assignableRoleIds[0] ?? "Owner / Admin";
+  await createBusinessRecord(vendor.id, "users", {
+    id: "Owner",
+    email: vendor.businessEmail,
+    role: roleId,
+    status: "Active",
+    lastLogin: "",
+  });
+}
+
+const TRIAL_DAYS = 7;
+
+function trialDates(): { trialStartAt: Date; trialEndAt: Date } {
+  const trialStartAt = new Date();
+  const trialEndAt = new Date(trialStartAt);
+  trialEndAt.setDate(trialEndAt.getDate() + TRIAL_DAYS);
+  return { trialStartAt, trialEndAt };
 }
 
 export type VendorSignupInput = {
@@ -95,11 +138,13 @@ export async function createVendor(input: VendorSignupInput): Promise<{ vendor: 
         businessContact: input.businessContact,
         loginContact: input.loginContact,
         passwordHash,
+        ...trialDates(),
       },
     });
     return toRecord(row);
   });
 
+  await assignOwnerRole(vendor);
   return { vendor, password };
 }
 
@@ -117,7 +162,7 @@ export async function createVendorFromRequest(request: {
   loginContact: string;
   passwordHash: string;
 }): Promise<VendorRecord> {
-  return prisma.$transaction(async (tx) => {
+  const vendor = await prisma.$transaction(async (tx) => {
     const count = await tx.vendor.count();
     const id = `VND${String(count + 1).padStart(4, "0")}`;
     const internalKey = `${BUSINESS_ID}-${id}`;
@@ -137,10 +182,14 @@ export async function createVendorFromRequest(request: {
         businessContact: request.businessContact,
         loginContact: request.loginContact,
         passwordHash: request.passwordHash,
+        ...trialDates(),
       },
     });
     return toRecord(row);
   });
+
+  await assignOwnerRole(vendor);
+  return vendor;
 }
 
 /** Looks a vendor up by their public VND#### id OR their registered login contact number — never the internal key. */
@@ -179,4 +228,18 @@ export async function listVendors(): Promise<VendorRecord[]> {
 export async function deleteAllVendors(): Promise<number> {
   const { count } = await prisma.vendor.deleteMany({});
   return count;
+}
+
+export type SubscriptionUpdateInput = {
+  subscriptionStatus: string;
+  trialStartAt: Date | null;
+  trialEndAt: Date | null;
+  billingCycle: string | null;
+  planId: string | null;
+  offerId: string | null;
+};
+
+/** Super Admin override of a vendor's subscription — status, trial window, plan, cycle, offer. */
+export async function updateVendorSubscription(id: string, data: SubscriptionUpdateInput): Promise<void> {
+  await prisma.vendor.update({ where: { id }, data });
 }

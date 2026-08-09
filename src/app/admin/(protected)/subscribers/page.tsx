@@ -14,7 +14,7 @@ registerPage({
   superAdminOnly: true,
   customizableRegions: [{ key: "columns", label: "Table columns" }],
   explanation:
-    "Super-Admin-only list of every registered Vendor — real data (Vendor table). No plan/seat/billing-cycle tracking exists yet (no payment gateway or subscription engine wired up), so this only shows what's actually real: Vendor ID, business name, Vendor Type, and account status.",
+    "Super-Admin-only list of every registered Vendor — real data (Vendor table), including subscription status, trial window, and billing cycle. Click a row to open its subscription editor. There is still no real payment gateway wired up (same documented gap as central-api) — moving a vendor from PastDue to Active once they've actually paid is a manual Super Admin action there.",
   sourceFile: "src/app/admin/(protected)/subscribers/page.tsx",
 });
 
@@ -25,6 +25,8 @@ export default async function SubscribersPage() {
     businessName: v.businessName,
     vendorTypeId: v.vendorTypeId,
     status: v.status,
+    subscriptionStatus: v.subscriptionStatus,
+    billingCycle: v.billingCycle ?? "—",
     createdAt: v.createdAt.toISOString(),
   }));
 

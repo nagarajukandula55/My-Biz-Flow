@@ -15,6 +15,7 @@ import {
   KeyRound,
   Building2,
   UserCheck,
+  Percent,
 } from "lucide-react";
 import { LogoMark } from "./LogoMark";
 import { signOutAdminAction } from "@/app/admin/login/actions";
@@ -33,6 +34,7 @@ const NAV_ITEMS: PlatformNavItem[] = [
   { key: "settings", label: "Settings", href: "/admin/settings", icon: SettingsIcon },
   { key: "errors", label: "Error Log", href: "/admin/errors", icon: AlertTriangle },
   { key: "plans", label: "Plans", href: "/admin/plans", icon: CreditCard },
+  { key: "offers", label: "Offers", href: "/admin/offers", icon: Percent },
   { key: "subscribers", label: "Subscribers", href: "/admin/subscribers", icon: Users },
   { key: "vendor-types", label: "Vendor Types", href: "/admin/vendor-types", icon: Building2 },
   { key: "vendor-signups", label: "Signup Requests", href: "/admin/vendor-signups", icon: UserCheck },

@@ -7,7 +7,9 @@ const columns: Column[] = [
   { key: "id", label: "Vendor ID", type: "text" },
   { key: "businessName", label: "Business Name", type: "text" },
   { key: "vendorTypeId", label: "Vendor Type", type: "text" },
-  { key: "status", label: "Status", type: "select-chip" },
+  { key: "status", label: "Account Status", type: "select-chip" },
+  { key: "subscriptionStatus", label: "Subscription", type: "select-chip" },
+  { key: "billingCycle", label: "Billing Cycle", type: "text" },
   { key: "createdAt", label: "Registered", type: "date" },
 ];
 
@@ -17,7 +19,7 @@ export function SubscriberClientTable({ rows }: { rows: Row[] }) {
     <DataTable
       columns={columns}
       rows={rows}
-      onRowClick={(row: Row) => router.push(`/vendor/${row["id"]}/admin/subscription`)}
+      onRowClick={(row: Row) => router.push(`/admin/subscribers/${row["id"]}/edit`)}
     />
   );
 }
