@@ -3,18 +3,20 @@ import type { RecordField, TimelineEntry, RelatedRecord } from "@/components/Rec
 import type { StatusVariant } from "@/components/StatusChip";
 import type { FormFieldDef } from "@/components/RecordForm";
 
-// Vendor team-member ("User") sample data — top tier of the three-level
-// vendor RBAC model: User -> Role -> Access Group -> modules. Roles are
-// now real, Prisma-backed data (see src/lib/designer/rolesData.ts) — but
-// that store isn't client-importable (pulls in Prisma), and this file is
-// (see UserClientTable), so ROLE_NAMES stays a static fallback list here.
-// Users themselves are still a demo module, out of scope for this pass.
+// Vendor team-member ("User") data — top tier of the three-level vendor
+// RBAC model: User -> Role -> Access Group -> modules. Roles are real,
+// Prisma-backed data (see src/lib/designer/rolesData.ts) — but that store
+// isn't client-importable (pulls in Prisma), and this file is (see
+// UserClientTable), so ROLE_NAMES stays a static fallback list here.
 //
-// IMPORTANT: this is a VENDOR's own team member (e.g. "Meena R., Cashier at
-// this store"), completely distinct from central-api's `PlatformUser`
-// (the cross-tenant login identity for the whole platform). No central-api
-// integration is built here — that's out of scope for this pass, see
-// CLAUDE.md's integration constraints.
+// Persisted as a real BusinessRecord (moduleSlug "users") like every other
+// module — see src/lib/businessRecords.ts. This is a VENDOR's own team
+// member (e.g. "Meena R., Cashier at this store"), completely distinct
+// from central-api's `PlatformUser` (the cross-tenant login identity for
+// the whole platform). No central-api integration or real per-user
+// authentication is built here — that's out of scope, see CLAUDE.md's
+// integration constraints. Logging in as this User is not yet possible;
+// this only tracks who's on the team and what Role they hold.
 
 const ROLE_NAMES = ["Cashier", "Technician", "Accountant", "Owner / Admin"];
 
@@ -32,44 +34,6 @@ export const userColumns: Column[] = [
   { key: "lastLogin", label: "Last Login", type: "date" },
 ];
 
-export const userRows: Row[] = [
-  {
-    id: "Meena R.",
-    email: "meena.r@example-store.com",
-    role: "Cashier",
-    status: "Active",
-    lastLogin: "2026-08-07T09:40:00",
-  },
-  {
-    id: "Arjun D.",
-    email: "arjun.d@example-store.com",
-    role: "Technician",
-    status: "Active",
-    lastLogin: "2026-08-06T18:05:00",
-  },
-  {
-    id: "Ravi K.",
-    email: "ravi.k@example-store.com",
-    role: "Accountant",
-    status: "Invited",
-    lastLogin: "",
-  },
-  {
-    id: "Priya S.",
-    email: "priya.s@example-store.com",
-    role: "Owner / Admin",
-    status: "Active",
-    lastLogin: "2026-08-07T08:15:00",
-  },
-  {
-    id: "Deepak M.",
-    email: "deepak.m@example-store.com",
-    role: "Cashier",
-    status: "Suspended",
-    lastLogin: "2026-05-12T14:22:00",
-  },
-];
-
 export const userFormFields: FormFieldDef[] = [
   { key: "id", label: "Name", type: "text", required: true },
   { key: "email", label: "Email", type: "text", required: true },
@@ -77,10 +41,6 @@ export const userFormFields: FormFieldDef[] = [
   { key: "status", label: "Status", type: "select", required: true, options: ["Active", "Invited", "Suspended"] },
   { key: "lastLogin", label: "Last Login", type: "date", required: false },
 ];
-
-export function getUserRecord(recordId: string): Row {
-  return userRows.find((r) => String(r["id"]) === recordId) ?? userRows[0];
-}
 
 export function getUserDetailFields(record: Row): RecordField[] {
   return [
@@ -93,10 +53,7 @@ export function getUserDetailFields(record: Row): RecordField[] {
 }
 
 export function getUserTimeline(record: Row): TimelineEntry[] {
-  return [
-    { id: "t1", label: `User "${record["id"]}" invited to the vendor account`, timestamp: "2026-05-01T09:00:00", actor: "Priya S." },
-    { id: "t2", label: `Role set to ${String(record["role"])}`, timestamp: "2026-05-01T09:02:00", actor: "Priya S." },
-  ];
+  return [{ id: "t1", label: `User "${record["id"]}" added to the vendor account`, timestamp: String(record["lastLogin"] ?? "") }];
 }
 
 export const userRelated: RelatedRecord[] = [];

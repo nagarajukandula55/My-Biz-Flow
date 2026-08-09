@@ -52,23 +52,3 @@ export const MODULE_DATA: Record<string, { columns: Column[]; rows: Row[] }> = {
   hrms: { columns: hrmsColumns, rows: hrmsRows },
   marketplace: { columns: marketplaceColumns, rows: marketplaceRows },
 };
-
-/**
- * A module's record count, and — if it has a `currency`-typed column — the
- * sum of that column. Used to generate a DashboardWidget per enabled
- * module without 21 hand-written aggregation functions.
- */
-export function computeModuleStat(slug: string): { count: number; currencySum?: number } {
-  const data = MODULE_DATA[slug];
-  if (!data) return { count: 0 };
-
-  const currencyColumn = data.columns.find((c) => c.type === "currency");
-  if (!currencyColumn) return { count: data.rows.length };
-
-  const sum = data.rows.reduce((total, row) => {
-    const value = row[currencyColumn.key];
-    return total + (typeof value === "number" ? value : 0);
-  }, 0);
-
-  return { count: data.rows.length, currencySum: sum };
-}

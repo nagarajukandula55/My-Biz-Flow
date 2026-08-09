@@ -3,6 +3,7 @@ import { SuperAdminGate } from "@/components/SuperAdminGate";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { UserClientTable } from "./UserClientTable";
+import { listBusinessRecords } from "@/lib/businessRecords";
 
 registerPage({
   id: "users.list",
@@ -17,7 +18,10 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/admin/users/page.tsx",
 });
 
+export const dynamic = "force-dynamic";
+
 export default async function UsersPage({ params }: { params: { vendorId: string } }) {
+  const rows = await listBusinessRecords(params.vendorId, "users");
   return (
     <AppShell
       topbarTitle="Users"
@@ -38,7 +42,7 @@ export default async function UsersPage({ params }: { params: { vendorId: string
             below), not real per-user auth.
           </p>
           <div className="mt-6">
-            <UserClientTable vendorId={params.vendorId} />
+            <UserClientTable vendorId={params.vendorId} rows={rows} />
           </div>
         </div>
       </SuperAdminGate>

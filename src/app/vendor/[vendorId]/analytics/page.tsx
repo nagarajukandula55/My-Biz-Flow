@@ -5,12 +5,12 @@ import { LineChartCard, BarChartCard, PieChartCard } from "@/components/charts";
 import { getDemoEnabledModules } from "@/lib/designer/modules";
 import { formatCurrencyINR } from "@/lib/format";
 import {
-  revenueTrend,
+  getRevenueTrend,
   getRecordsByModuleBarData,
-  workorderStatusBreakdown,
+  getWorkorderStatusBreakdown,
   recentActivityColumns,
-  recentActivityRows,
-} from "@/lib/sample-data/analytics";
+  getRecentActivity,
+} from "@/lib/analyticsData";
 import { getAccessibleModuleSlugs, getDemoViewerRole, filterByAccessibleModules } from "@/lib/rbac";
 import { registerPage } from "@/lib/designer/registry";
 
@@ -39,6 +39,8 @@ const SCOPED_CHARTS: ScopedChart[] = [
   { id: "status-breakdown", moduleSlug: "service-centre" },
 ];
 
+export const dynamic = "force-dynamic";
+
 export default async function AnalyticsPage({ params }: { params: { vendorId: string } }) {
   const enabledModules = getDemoEnabledModules(params.vendorId);
   const viewerRole = getDemoViewerRole();
@@ -48,9 +50,13 @@ export default async function AnalyticsPage({ params }: { params: { vendorId: st
   const showRevenueTrend = visibleScopedCharts.some((c) => c.id === "revenue-trend");
   const showStatusBreakdown = visibleScopedCharts.some((c) => c.id === "status-breakdown");
 
-  const barData = await getRecordsByModuleBarData(
-    enabledModules.filter((slug) => accessibleModules.includes(slug))
-  );
+  const visibleModules = enabledModules.filter((slug) => accessibleModules.includes(slug));
+  const [barData, revenueTrend, workorderStatusBreakdown, recentActivityRows] = await Promise.all([
+    getRecordsByModuleBarData(params.vendorId, visibleModules),
+    getRevenueTrend(params.vendorId),
+    getWorkorderStatusBreakdown(params.vendorId),
+    getRecentActivity(params.vendorId, visibleModules),
+  ]);
 
   const totalRevenue = revenueTrend.reduce((sum, p) => sum + p.y, 0);
 

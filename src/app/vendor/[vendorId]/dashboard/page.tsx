@@ -2,7 +2,7 @@ import { AppShell } from "@/components/AppShell";
 import { DashboardWidget } from "@/components/DashboardWidget";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { getDemoEnabledModules } from "@/lib/designer/modules";
-import { computeModuleStat } from "@/lib/moduleData";
+import { computeModuleStat } from "@/lib/analyticsData";
 import { formatCurrencyINR } from "@/lib/format";
 import { registerPage } from "@/lib/designer/registry";
 
@@ -22,9 +22,12 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/dashboard/page.tsx",
 });
 
+export const dynamic = "force-dynamic";
+
 export default async function VendorDashboardPage({ params }: { params: { vendorId: string } }) {
   const enabledSlugs = getDemoEnabledModules(params.vendorId);
   const modules = await Promise.all(enabledSlugs.map((slug) => getModule(slug)));
+  const stats = await Promise.all(enabledSlugs.map((slug) => computeModuleStat(params.vendorId, slug)));
 
   return (
     <AppShell topbarTitle="Dashboard">
@@ -39,7 +42,7 @@ export default async function VendorDashboardPage({ params }: { params: { vendor
         <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {enabledSlugs.map((slug, i) => {
             const mod = modules[i];
-            const stat = computeModuleStat(slug);
+            const stat = stats[i];
             const value =
               stat.currencySum !== undefined
                 ? formatCurrencyINR(stat.currencySum)

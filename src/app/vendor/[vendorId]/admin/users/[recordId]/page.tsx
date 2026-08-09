@@ -2,9 +2,11 @@ import { AppShell } from "@/components/AppShell";
 import { SuperAdminGate } from "@/components/SuperAdminGate";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { RecordDetail } from "@/components/RecordDetail";
-import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
-import { getUserRecord, getUserDetailFields, getUserTimeline, userRelated } from "@/lib/sample-data/users";
+import { DeleteBusinessRecordButton } from "@/components/DeleteBusinessRecordButton";
+import { getUserDetailFields, getUserTimeline, userRelated } from "@/lib/sample-data/users";
+import { getBusinessRecord } from "@/lib/businessRecords";
 
 registerPage({
   id: "users.detail",
@@ -18,12 +20,15 @@ registerPage({
   sourceFile: "src/app/vendor/[vendorId]/admin/users/[recordId]/page.tsx",
 });
 
+export const dynamic = "force-dynamic";
+
 export default async function UserDetailPage({
   params,
 }: {
   params: { vendorId: string; recordId: string };
 }) {
-  const record = getUserRecord(params.recordId);
+  const record = await getBusinessRecord(params.vendorId, "users", params.recordId);
+  if (!record) notFound();
   const fields = getUserDetailFields(record);
   const timeline = getUserTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
@@ -49,7 +54,12 @@ export default async function UserDetailPage({
                   <Link href={`/vendor/${params.vendorId}/admin/users/${params.recordId}/edit`} className="btn-outline">
                     Edit
                   </Link>
-                  <ConfirmDeleteDialog recordLabel={recordLabel} />
+                  <DeleteBusinessRecordButton
+                    vendorId={params.vendorId}
+                    moduleSlug="users"
+                    recordKey={params.recordId}
+                    recordLabel={recordLabel}
+                  />
                 </div>
               </div>
             }
