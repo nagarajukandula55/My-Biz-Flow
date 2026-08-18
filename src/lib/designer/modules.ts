@@ -128,6 +128,25 @@ export const MODULE_SUB_NAV: Record<string, { key: string; label: string; href: 
     { key: "service-centre.models", label: "Models", href: "service-centre/models" },
     { key: "service-centre.admin", label: "Admin", href: "service-centre/admin" },
   ],
+  "accounting-gst": [
+    { key: "accounting-gst.dashboard", label: "Dashboard", href: "accounting-gst/dashboard" },
+    { key: "accounting-gst.list", label: "Filed Returns", href: "accounting-gst" },
+    { key: "accounting-gst.generate", label: "Generate Return", href: "accounting-gst/generate" },
+    { key: "accounting-gst.hsn-summary", label: "HSN-wise Summary", href: "accounting-gst/hsn-summary" },
+    { key: "accounting-gst.itc", label: "ITC Register", href: "accounting-gst/itc" },
+    { key: "accounting-gst.admin", label: "Admin", href: "accounting-gst/admin" },
+  ],
+  billing: [
+    { key: "billing.list", label: "Invoices", href: "billing" },
+    { key: "billing.new", label: "+ New Invoice", href: "billing/new" },
+    { key: "billing.contacts", label: "Contacts", href: "billing/contacts" },
+    { key: "billing.items", label: "Items", href: "billing/items" },
+    { key: "billing.payments", label: "Payments", href: "billing/payments" },
+    { key: "billing.credit-notes", label: "Credit/Debit Notes", href: "billing/credit-notes" },
+    { key: "billing.reports", label: "Reports", href: "billing/reports" },
+    { key: "billing.recurring", label: "Recurring Invoices", href: "billing/recurring" },
+    { key: "billing.admin", label: "Admin", href: "billing/admin" },
+  ],
 };
 
 export interface VendorNavSubItem {

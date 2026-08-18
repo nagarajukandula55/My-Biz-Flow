@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { LineItemsEditor, computeTotals } from "./LineItemsEditor";
+import { LineItemsEditor, computeTotals, type ItemOption } from "./LineItemsEditor";
 import type { LineItem } from "@/lib/sample-data/billing";
+
+export type ContactOption = { id: string; label: string; gstin?: string };
 
 export type InvoiceType = "GST" | "Non-GST";
 
@@ -29,11 +31,17 @@ export function BillingInvoiceForm({
   initialValues,
   submitLabel,
   action,
+  contactOptions,
+  itemOptions,
 }: {
   initialValues?: Partial<BillingInvoiceValues>;
   submitLabel: string;
   /** Real persistence path — a bound server action receiving the full record (including computed totals). Omit for the demo-stub path. */
   action?: (values: Record<string, unknown>) => Promise<void>;
+  /** Billing Contacts to pick a customer from (see billing-contacts.ts) — the field stays a free-text input with these as suggestions, so existing invoices with a plain name keep working. */
+  contactOptions?: ContactOption[];
+  /** Billing Items catalog for the line-items "pick from catalog" autofill. */
+  itemOptions?: ItemOption[];
 }) {
   const [customer, setCustomer] = useState(initialValues?.customer ?? "");
   const [invoiceType, setInvoiceType] = useState<InvoiceType>(initialValues?.invoiceType ?? "GST");
@@ -109,11 +117,23 @@ export function BillingInvoiceForm({
         <Field label="Customer" required>
           <input
             value={customer}
-            onChange={(e) => setCustomer(e.target.value)}
+            onChange={(e) => {
+              setCustomer(e.target.value);
+              const match = contactOptions?.find((c) => c.label === e.target.value);
+              if (match?.gstin) setCustomerGstin(match.gstin);
+            }}
             placeholder="Customer or partner name"
             required
+            list={contactOptions ? "billing-contact-options" : undefined}
             className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text outline-none focus:border-teal"
           />
+          {contactOptions && (
+            <datalist id="billing-contact-options">
+              {contactOptions.map((c) => (
+                <option key={c.id} value={c.label} />
+              ))}
+            </datalist>
+          )}
         </Field>
         {invoiceType === "GST" && (
           <Field label="Customer GSTIN">
@@ -175,7 +195,7 @@ export function BillingInvoiceForm({
         <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted">
           Line Items
         </div>
-        <LineItemsEditor items={items} onChange={setItems} showTax={showTax} />
+        <LineItemsEditor items={items} onChange={setItems} showTax={showTax} itemOptions={itemOptions} />
       </div>
 
       <div className="mt-6 flex items-center gap-3">

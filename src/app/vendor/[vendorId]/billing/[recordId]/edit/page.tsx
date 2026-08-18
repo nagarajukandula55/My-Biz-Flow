@@ -4,7 +4,7 @@ import { registerPage } from "@/lib/designer/registry";
 import { notFound } from "next/navigation";
 import { BillingInvoiceForm } from "@/components/BillingInvoiceForm";
 import type { LineItem } from "@/lib/sample-data/billing";
-import { getBusinessRecord } from "@/lib/businessRecords";
+import { getBusinessRecord, listBusinessRecords } from "@/lib/businessRecords";
 import { updateBusinessRecordAction } from "@/lib/businessRecordActions";
 
 registerPage({
@@ -29,6 +29,18 @@ export default async function EditBillingPage({ params }: { params: { vendorId: 
   if (!record) notFound();
   const items = (record["items"] as LineItem[] | undefined) ?? [];
   const invoiceType = items.some((it) => it.taxRate > 0) ? "GST" : "Non-GST";
+  const [contacts, catalogItems] = await Promise.all([
+    listBusinessRecords(params.vendorId, "billing-contacts"),
+    listBusinessRecords(params.vendorId, "billing-items"),
+  ]);
+  const contactOptions = contacts.map((c) => ({ id: String(c["id"]), label: String(c["name"] ?? c["id"]), gstin: c["gstin"] ? String(c["gstin"]) : undefined }));
+  const itemOptions = catalogItems.map((it) => ({
+    id: String(it["id"]),
+    label: String(it["name"] ?? it["id"]),
+    unit: String(it["unit"] ?? "pcs"),
+    unitPrice: Number(it["rate"] ?? 0),
+    taxRate: Number(it["taxRate"] ?? 0),
+  }));
 
   return (
     <AppShell topbarTitle={`Edit Invoice — ${mod?.label ?? "Billing"}`}>
@@ -48,6 +60,8 @@ export default async function EditBillingPage({ params }: { params: { vendorId: 
             }}
             submitLabel="Save changes"
             action={updateBusinessRecordAction.bind(null, params.vendorId, "billing", params.recordId)}
+            contactOptions={contactOptions}
+            itemOptions={itemOptions}
           />
         </div>
       </div>

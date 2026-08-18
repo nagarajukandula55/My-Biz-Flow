@@ -6,8 +6,10 @@ import { notFound } from "next/navigation";
 import { RecordDetail } from "@/components/RecordDetail";
 import { DeleteBusinessRecordButton } from "@/components/DeleteBusinessRecordButton";
 import { getBillingDetailFields, getBillingTimeline, billingRelated, billingColumns } from "@/lib/sample-data/billing";
+import { getInvoiceBalance } from "@/lib/sample-data/billing-payments";
 import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
-import { getBusinessRecord } from "@/lib/businessRecords";
+import { getBusinessRecord, listBusinessRecords } from "@/lib/businessRecords";
+import { formatCurrencyINR } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +40,12 @@ export default async function BillingDetailPage({
   const fields = await applyCustomizationsToDetailFields("billing.detail", getBillingDetailFields(record), billingColumns);
   const timeline = getBillingTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
+  const payments = await listBusinessRecords(params.vendorId, "billing-payments");
+  const { paid, balance, payments: linkedPayments } = getInvoiceBalance(
+    payments,
+    recordLabel,
+    Number(record["totalAmount"] ?? 0)
+  );
 
   return (
     <AppShell topbarTitle={mod?.label ?? "Billing"}>
@@ -79,6 +87,38 @@ export default async function BillingDetailPage({
             </div>
           }
         />
+
+        <div className="mt-6 rounded-lg border border-border bg-bg-raised p-4">
+          <div className="flex items-center justify-between text-sm">
+            <div className="flex gap-6">
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">Paid</div>
+                <div className="mt-0.5 font-mono text-base font-bold text-success">{formatCurrencyINR(paid)}</div>
+              </div>
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">Balance Due</div>
+                <div className="mt-0.5 font-mono text-base font-bold text-text">{formatCurrencyINR(balance)}</div>
+              </div>
+            </div>
+            <Link href={`/vendor/${params.vendorId}/billing/payments/new`} className="btn-outline px-3 py-1.5 text-xs">
+              + Record Payment
+            </Link>
+          </div>
+          {linkedPayments.length > 0 && (
+            <div className="mt-4 divide-y divide-border border-t border-border">
+              {linkedPayments.map((p) => (
+                <div key={String(p["id"])} className="flex items-center justify-between py-2 text-sm">
+                  <Link href={`/vendor/${params.vendorId}/billing/payments/${p["id"]}`} className="text-accent hover:underline">
+                    {String(p["id"])}
+                  </Link>
+                  <span className="text-text-muted">{String(p["date"] ?? "")}</span>
+                  <span className="text-text-muted">{String(p["mode"] ?? "")}</span>
+                  <span className="font-mono font-semibold text-text">{formatCurrencyINR(Number(p["amount"]) || 0)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </AppShell>
   );

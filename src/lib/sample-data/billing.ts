@@ -20,6 +20,8 @@ export type LineItem = {
   unit: string;
   unitPrice: number;
   taxRate: number; // percent
+  /** Optional link back to a billing-items catalog record used to autofill this line. */
+  itemId?: string;
 };
 
 /** invoice id -> its line items — kept separate from billingRows so the

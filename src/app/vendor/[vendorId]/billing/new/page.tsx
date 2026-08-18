@@ -3,6 +3,7 @@ import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
 import { BillingInvoiceForm } from "@/components/BillingInvoiceForm";
 import { createBusinessRecordAction } from "@/lib/businessRecordActions";
+import { listBusinessRecords } from "@/lib/businessRecords";
 
 registerPage({
   id: "billing.create",
@@ -22,6 +23,18 @@ registerPage({
 
 export default async function NewBillingPage({ params }: { params: { vendorId: string } }) {
   const mod = await getModule("billing");
+  const [contacts, items] = await Promise.all([
+    listBusinessRecords(params.vendorId, "billing-contacts"),
+    listBusinessRecords(params.vendorId, "billing-items"),
+  ]);
+  const contactOptions = contacts.map((c) => ({ id: String(c["id"]), label: String(c["name"] ?? c["id"]), gstin: c["gstin"] ? String(c["gstin"]) : undefined }));
+  const itemOptions = items.map((it) => ({
+    id: String(it["id"]),
+    label: String(it["name"] ?? it["id"]),
+    unit: String(it["unit"] ?? "pcs"),
+    unitPrice: Number(it["rate"] ?? 0),
+    taxRate: Number(it["taxRate"] ?? 0),
+  }));
 
   return (
     <AppShell topbarTitle={`New Invoice — ${mod?.label ?? "Billing"}`}>
@@ -32,6 +45,8 @@ export default async function NewBillingPage({ params }: { params: { vendorId: s
           <BillingInvoiceForm
             submitLabel="Create Invoice"
             action={createBusinessRecordAction.bind(null, params.vendorId, "billing")}
+            contactOptions={contactOptions}
+            itemOptions={itemOptions}
           />
         </div>
       </div>

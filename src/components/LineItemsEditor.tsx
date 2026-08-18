@@ -20,10 +20,19 @@ export function computeTotals(items: LineItem[], showTax = true) {
  * exception in DESIGN_SYSTEM.md §8, used only by Billing's invoice
  * create/edit flow, not a general-purpose RecordForm replacement.
  */
+export type ItemOption = {
+  id: string;
+  label: string;
+  unit: string;
+  unitPrice: number;
+  taxRate: number;
+};
+
 export function LineItemsEditor({
   items,
   onChange,
   showTax = true,
+  itemOptions,
 }: {
   items: LineItem[];
   onChange: (items: LineItem[]) => void;
@@ -31,6 +40,10 @@ export function LineItemsEditor({
    * Tax % column and the Tax row in the totals summary, and excludes tax
    * from the computed line/grand totals. */
   showTax?: boolean;
+  /** When provided, each row gets a "pick from catalog" select that
+   * autofills description/unit/rate/tax from a Billing Items record —
+   * a line can still be typed freehand instead. */
+  itemOptions?: ItemOption[];
 }) {
   function updateItem(idx: number, patch: Partial<LineItem>) {
     onChange(items.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
@@ -44,6 +57,18 @@ export function LineItemsEditor({
     onChange([...items, { ...EMPTY_ITEM }]);
   }
 
+  function applyItemOption(idx: number, itemId: string) {
+    const option = itemOptions?.find((o) => o.id === itemId);
+    if (!option) return;
+    updateItem(idx, {
+      itemId: option.id,
+      description: option.label,
+      unit: option.unit,
+      unitPrice: option.unitPrice,
+      taxRate: showTax ? option.taxRate : 0,
+    });
+  }
+
   const { subtotal, taxTotal, grandTotal } = computeTotals(items, showTax);
 
   return (
@@ -52,6 +77,7 @@ export function LineItemsEditor({
         <table className="w-full min-w-[720px] border-collapse text-sm">
           <thead>
             <tr className="border-b border-border bg-bg-sunken text-left text-xs font-semibold uppercase tracking-wide text-text-muted">
+              {itemOptions && <th className="w-44 px-3 py-2.5">Catalog Item</th>}
               <th className="px-3 py-2.5">Description</th>
               <th className="w-20 px-3 py-2.5 text-right">Qty</th>
               <th className="w-24 px-3 py-2.5">Unit</th>
@@ -66,6 +92,22 @@ export function LineItemsEditor({
               const lineTotal = item.quantity * item.unitPrice * (1 + (showTax ? item.taxRate : 0) / 100);
               return (
                 <tr key={i} className="border-b border-border last:border-b-0">
+                  {itemOptions && (
+                    <td className="px-3 py-2">
+                      <select
+                        value={item.itemId ?? ""}
+                        onChange={(e) => applyItemOption(i, e.target.value)}
+                        className="w-full rounded-md border border-border bg-bg px-2.5 py-1.5 text-sm text-text outline-none focus:border-accent"
+                      >
+                        <option value="">Type freehand…</option>
+                        {itemOptions.map((o) => (
+                          <option key={o.id} value={o.id}>
+                            {o.label}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                  )}
                   <td className="px-3 py-2">
                     <input
                       value={item.description}

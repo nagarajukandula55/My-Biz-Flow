@@ -38,4 +38,7 @@ export const env = {
   razorpayWebhookSecret: () => process.env.RAZORPAY_WEBHOOK_SECRET,
   /** Public key id, exposed to the browser for the Razorpay Checkout widget — same value as RAZORPAY_KEY_ID. */
   razorpayPublicKeyId: () => process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+  /** Optional bearer secret Vercel Cron sends as `Authorization: Bearer <value>` (set alongside the
+   * cron schedule in vercel.json). Unset means the route runs unauthenticated, e.g. in local dev. */
+  cronSecret: () => process.env.CRON_SECRET,
 };
