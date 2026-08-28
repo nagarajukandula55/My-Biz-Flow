@@ -270,6 +270,25 @@ model BusinessRecord {
   @@map("business_records")
 }
 
+/// A captured Razorpay payment for a vendor's subscription. Previously
+/// nothing persisted this — the webhook/verify routes only flipped
+/// Vendor.subscriptionStatus and discarded the amount/payment id/date from
+/// the Razorpay payload. Recorded here now so there's an actual payment
+/// history, and so the central-api sync (see notifyCentralApi in
+/// src/lib/centralApi.ts) has a stable id to dedupe retries against.
+model SubscriptionPayment {
+  id                String   @id @default(cuid())
+  vendorId          String
+  razorpayPaymentId String   @unique
+  amount            Int
+  currency          String   @default("INR")
+  capturedAt        DateTime
+  createdAt         DateTime @default(now())
+
+  @@index([vendorId])
+  @@map("subscription_payments")
+}
+
 model VendorSignupRequest {
   id              String   @id @default(cuid())
   vendorTypeId    String
