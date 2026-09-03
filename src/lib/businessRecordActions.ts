@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createBusinessRecord, updateBusinessRecord, deleteBusinessRecord, getBusinessRecord } from "@/lib/businessRecords";
+import { getVendor } from "@/lib/vendorData";
+import { notifyCentralApiBillingInvoice } from "@/lib/centralApi";
 
 /** Bind with .bind(null, vendorId, moduleSlug) before passing as a RecordForm `action` prop. */
 export async function createBusinessRecordAction(
@@ -11,6 +13,26 @@ export async function createBusinessRecordAction(
   values: Record<string, unknown>
 ) {
   const record = await createBusinessRecord(vendorId, moduleSlug, values);
+
+  if (moduleSlug === "billing") {
+    const vendor = await getVendor(vendorId);
+    if (vendor) {
+      const items = Array.isArray(record["items"]) ? (record["items"] as Record<string, unknown>[]) : [];
+      await notifyCentralApiBillingInvoice(vendor, {
+        externalOrderId: String(record.id),
+        customer: String(record["customer"] ?? ""),
+        customerGstin: record["customerGstin"] ? String(record["customerGstin"]) : undefined,
+        items: items.map((it) => ({
+          description: String(it["description"] ?? ""),
+          quantity: Number(it["quantity"] ?? 0),
+          unitPrice: Number(it["unitPrice"] ?? 0),
+          taxRate: Number(it["taxRate"] ?? 0),
+        })),
+        totalAmount: Number(record["totalAmount"] ?? 0),
+      });
+    }
+  }
+
   revalidatePath(`/vendor/${vendorId}/${moduleSlug}`);
   redirect(`/vendor/${vendorId}/${moduleSlug}/${record.id}`);
 }

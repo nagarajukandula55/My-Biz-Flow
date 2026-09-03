@@ -5,6 +5,7 @@ import { env } from "@/lib/env";
 import { listVendors } from "@/lib/vendorData";
 import { listBusinessRecords, createBusinessRecord, updateBusinessRecord } from "@/lib/businessRecords";
 import { advanceNextRunDate, type RecurringFrequency } from "@/lib/sample-data/billing-recurring";
+import { notifyCentralApiBillingInvoice } from "@/lib/centralApi";
 
 /**
  * Vercel Cron entry point (schedule it in vercel.json, e.g. daily) — for
@@ -33,7 +34,7 @@ export async function GET(request: Request) {
       const nextRunDate = String(template["nextRunDate"] ?? "");
       if (!nextRunDate || nextRunDate > today) continue;
 
-      await createBusinessRecord(vendor.id, "billing", {
+      const record = await createBusinessRecord(vendor.id, "billing", {
         customer: template["customer"],
         invoiceType: "GST",
         customerGstin: "",
@@ -48,6 +49,19 @@ export async function GET(request: Request) {
         items: template["items"],
       });
       createdCount += 1;
+
+      const items = Array.isArray(record["items"]) ? (record["items"] as Record<string, unknown>[]) : [];
+      await notifyCentralApiBillingInvoice(vendor, {
+        externalOrderId: String(record.id),
+        customer: String(record["customer"] ?? ""),
+        items: items.map((it) => ({
+          description: String(it["description"] ?? ""),
+          quantity: Number(it["quantity"] ?? 0),
+          unitPrice: Number(it["unitPrice"] ?? 0),
+          taxRate: Number(it["taxRate"] ?? 0),
+        })),
+        totalAmount: Number(record["totalAmount"] ?? 0),
+      });
 
       await updateBusinessRecord(vendor.id, "billing-recurring", String(template["id"]), {
         ...template,

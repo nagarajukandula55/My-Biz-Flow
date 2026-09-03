@@ -86,3 +86,71 @@ export async function notifyCentralApiSale(
     console.error("[centralApi] Could not reach AN-Accounting sales ingestion endpoint:", error);
   }
 }
+
+/**
+ * Pushes a vendor's own Billing invoice (a BusinessRecord in the "billing"
+ * module — see src/components/BillingInvoiceForm.tsx) into AN-Accounting,
+ * same endpoint/contract as notifyCentralApiSale above. Called right after
+ * a billing record is created (src/lib/businessRecordActions.ts) and from
+ * the recurring-invoice cron (src/app/api/cron/billing-recurring-invoices).
+ *
+ * The Billing form only captures a free-text customer name + GSTIN, not a
+ * state — AN-Accounting's GST split needs one, so this falls back to the
+ * vendor's own state. That's a real limitation (not necessarily the
+ * customer's actual state): fix by adding a state field to Billing
+ * Contacts/the invoice form if intra- vs inter-state accuracy here matters.
+ */
+export async function notifyCentralApiBillingInvoice(
+  vendor: VendorRecord,
+  invoice: {
+    externalOrderId: string;
+    customer: string;
+    customerGstin?: string;
+    items: { description: string; quantity: number; unitPrice: number; taxRate: number }[];
+    totalAmount: number;
+    issueDate?: string;
+  },
+): Promise<void> {
+  let url: string;
+  let key: string;
+  try {
+    url = env.centralApiUrl();
+    key = env.centralApiKey();
+  } catch {
+    return;
+  }
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        externalOrderId: invoice.externalOrderId,
+        externalSource: "my-biz-flow",
+        customer: {
+          name: invoice.customer,
+          gstin: invoice.customerGstin || null,
+          state: vendor.state,
+        },
+        lines: invoice.items
+          .filter((it) => it.description)
+          .map((it) => ({
+            description: it.description,
+            quantity: it.quantity,
+            rate: it.unitPrice,
+            gstRatePercent: it.taxRate,
+          })),
+      }),
+    });
+
+    if (!response.ok) {
+      const body = await response.text().catch(() => "");
+      console.error(`[centralApi] AN-Accounting billing push failed (${response.status}): ${body.slice(0, 300)}`);
+    }
+  } catch (error) {
+    console.error("[centralApi] Could not reach AN-Accounting sales ingestion endpoint:", error);
+  }
+}
