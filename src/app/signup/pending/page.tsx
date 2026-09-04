@@ -11,7 +11,7 @@ registerPage({
   superAdminOnly: false,
   customizableRegions: [],
   explanation:
-    "Landing page for a signup submitted against a Vendor Type with requiresApproval on — no Vendor ID exists yet. Super Admin reviews it at /admin/vendor-signups; approving assigns the id at that point.",
+    "Landing page for a signup submitted against a Partner Type with requiresApproval on — no Partner ID exists yet. Super Admin reviews it at /admin/partner-signups; approving assigns the id at that point.",
   sourceFile: "src/app/signup/pending/page.tsx",
 });
 
@@ -27,7 +27,7 @@ export default function SignupPendingPage({ searchParams }: { searchParams: { bu
         <h1 className="font-display text-2xl font-bold text-text">Application submitted</h1>
         <p className="mt-2 text-sm text-text-muted">
           {searchParams.businessName ? `${searchParams.businessName}'s` : "Your"} registration for this business
-          type requires approval before a Vendor ID is assigned. We&apos;ll notify you once it&apos;s reviewed —
+          type requires approval before a Partner ID is assigned. We&apos;ll notify you once it&apos;s reviewed —
           email notifications are coming soon.
         </p>
 

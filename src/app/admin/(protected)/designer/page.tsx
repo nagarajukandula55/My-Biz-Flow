@@ -14,14 +14,14 @@ registerPage({
   superAdminOnly: true,
   customizableRegions: [],
   explanation:
-    "Super-Admin-only view of every page registered in the product, grouped by module (plus a Platform section for non-vendor pages like this one and Help). It exists so nothing built in the app can go undiscoverable or uncustomizable — a page that never calls registerPage() is a bug, not an edge case.",
+    "Super-Admin-only view of every page registered in the product, grouped by module (plus a Platform section for non-partner pages like this one and Help). It exists so nothing built in the app can go undiscoverable or uncustomizable — a page that never calls registerPage() is a bug, not an edge case.",
   sourceFile: "src/app/admin/(protected)/designer/page.tsx",
 });
 
 /**
- * Platform-level Super Admin tool — NOT vendor-scoped, so it deliberately
- * does not use the vendor AppShell (that shell assumes a single vendor's
- * module nav; this page spans every vendor's every module). This is the
+ * Platform-level Super Admin tool — NOT partner-scoped, so it deliberately
+ * does not use the partner AppShell (that shell assumes a single partner's
+ * module nav; this page spans every partner's every module). This is the
  * live implementation of the binding rule in DESIGN_SYSTEM.md §8: every
  * page in the app must register in the Designer, and this page is where
  * that registration becomes visible and (eventually) editable.
@@ -129,7 +129,7 @@ export default function DesignerPage() {
                   <span className="h-2 w-2 flex-shrink-0 rounded-full bg-accent" />
                   <h2 className="font-display text-base font-bold text-text">Platform</h2>
                   <span className="text-xs text-text-muted">
-                    non-vendor pages — not part of any module&apos;s MODULES entry
+                    non-partner pages — not part of any module&apos;s MODULES entry
                   </span>
                 </div>
                 <span className="text-xs font-semibold text-text-muted">

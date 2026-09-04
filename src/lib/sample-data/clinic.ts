@@ -19,6 +19,7 @@ export const clinicColumns: Column[] = [
   { key: "patientName", label: "Patient Name", type: "text" },
   { key: "doctor", label: "Doctor", type: "relation-link" },
   { key: "appointmentDateTime", label: "Appointment Date/Time", type: "date" },
+  { key: "durationMinutes", label: "Duration (min)", type: "text" },
   { key: "diagnosis", label: "Diagnosis", type: "text" },
   { key: "consultationFee", label: "Consultation Fee", type: "currency" },
   { key: "status", label: "Status", type: "select-chip", chipVariantMap: STATUS_VARIANT },
@@ -35,6 +36,8 @@ export const clinicRows: Row[] = [
     consultationFee: 600,
     status: "Completed",
     insuranceProvider: "Star Health",
+    durationMinutes: 30,
+    prescriptionNotes: "Cetirizine 10mg once daily for 5 days; avoid known allergens.",
   },
   {
     id: "PT-5501",
@@ -45,6 +48,7 @@ export const clinicRows: Row[] = [
     consultationFee: 500,
     status: "Scheduled",
     insuranceProvider: "—",
+    durationMinutes: 30,
   },
   {
     id: "PT-5500",
@@ -55,6 +59,7 @@ export const clinicRows: Row[] = [
     consultationFee: 700,
     status: "In consultation",
     insuranceProvider: "HDFC Ergo",
+    durationMinutes: 30,
   },
   {
     id: "PT-5499",
@@ -65,6 +70,7 @@ export const clinicRows: Row[] = [
     consultationFee: 500,
     status: "No-show",
     insuranceProvider: "—",
+    durationMinutes: 30,
   },
 ];
 
@@ -72,12 +78,16 @@ export const clinicFormFields: FormFieldDef[] = [
   { key: "id", label: "Patient ID", type: "text", required: true },
   { key: "patientName", label: "Patient Name", type: "text", required: true },
   { key: "doctor", label: "Doctor", type: "relation", required: true },
-  { key: "appointmentDateTime", label: "Appointment Date/Time", type: "date", required: true },
+  { key: "appointmentDateTime", label: "Appointment Date/Time", type: "datetime", required: true },
+  { key: "durationMinutes", label: "Duration (min)", type: "number", required: false, placeholder: "30" },
   { key: "diagnosis", label: "Diagnosis", type: "textarea", required: false },
   { key: "consultationFee", label: "Consultation Fee", type: "currency", required: true },
   { key: "status", label: "Status", type: "select", required: true, options: ["Scheduled","In consultation","Completed","No-show","Cancelled"] },
   { key: "insuranceProvider", label: "Insurance Provider", type: "text", required: false },
 ];
+
+/** Default appointment slot length (minutes) used for conflict-window checks when a record has no explicit durationMinutes. */
+export const DEFAULT_APPOINTMENT_DURATION_MINUTES = 30;
 
 export function getClinicRecord(recordId: string): Row {
   return clinicRows.find((r) => String(r["id"]) === recordId) ?? clinicRows[0];
@@ -90,10 +100,13 @@ export function getClinicDetailFields(record: Row): RecordField[] {
     { label: "Patient Name", value: r["patientName"], type: "text" },
     { label: "Doctor", value: r["doctor"], type: "relation" },
     { label: "Appointment Date/Time", value: r["appointmentDateTime"], type: "date" },
+    { label: "Duration (min)", value: r["durationMinutes"] ?? DEFAULT_APPOINTMENT_DURATION_MINUTES, type: "text" },
     { label: "Diagnosis", value: r["diagnosis"], type: "text" },
     { label: "Consultation Fee", value: r["consultationFee"], type: "currency" },
     { label: "Status", value: r["status"], type: "select", chipVariant: STATUS_VARIANT[String(r["status"])] ?? "neutral" },
     { label: "Insurance Provider", value: r["insuranceProvider"], type: "text" },
+    { label: "Prescription / Treatment Notes", value: r["prescriptionNotes"] || "—", type: "text" },
+    { label: "Invoice", value: r["invoiceId"] || "Not yet invoiced", type: "text" },
   ];
 }
 

@@ -12,7 +12,7 @@ registerPage({
   superAdminOnly: false,
   customizableRegions: [],
   explanation:
-    "General-purpose help/documentation page, visible to any signed-in user (not vendor-scoped, not Super-Admin-gated). Explains the Vendor/module concept, sidebar navigation, the Create/Edit/Delete pattern used across every module, and answers common questions — the first place a new user should land when they're unsure how the product works.",
+    "General-purpose help/documentation page, visible to any signed-in user (not partner-scoped, not Super-Admin-gated). Explains the Partner/module concept, sidebar navigation, the Create/Edit/Delete pattern used across every module, and answers common questions — the first place a new user should land when they're unsure how the product works.",
   sourceFile: "src/app/help/page.tsx",
 });
 
@@ -22,8 +22,8 @@ const FAQS: { q: string; a: string }[] = [
     a: "A modular, no-code, multi-vertical business/CRM platform. Instead of shipping a separate product per industry, every business runs on one shared metadata engine — modules, fields, pipelines, and dashboards are all config-driven, and a business simply enables the modules it needs.",
   },
   {
-    q: "What is a Vendor, and what does a module 'type' mean?",
-    a: "A signed-up company on the platform is called a Vendor. A Vendor doesn't have a fixed 'type' from a hardcoded list — its type is just the set of modules it has enabled (POS, Service Centre, Clinic, HRMS, and so on). Enabling or disabling a module changes what a Vendor can do without changing any code.",
+    q: "What is a Partner, and what does a module 'type' mean?",
+    a: "A signed-up company on the platform is called a Partner. A Partner doesn't have a fixed 'type' from a hardcoded list — its type is just the set of modules it has enabled (POS, Service Centre, Clinic, HRMS, and so on). Enabling or disabling a module changes what a Partner can do without changing any code.",
   },
   {
     q: "How do I navigate the sidebar?",
@@ -71,12 +71,19 @@ export default function HelpPage() {
             it's visible to any signed-in user, not just admins.
           </p>
 
+          <p className="mt-4">
+            <Link href="/help/modules" className="text-accent hover:underline">
+              See the full Module Guide &rarr;
+            </Link>{" "}
+            — every module, and what Basic/Pro/Ultimate unlocks for each.
+          </p>
+
           <h2 className="mt-10 font-display text-xl font-bold text-text">
-            The Vendor &amp; module concept
+            The Partner &amp; module concept
           </h2>
           <p className="mt-2 text-base leading-relaxed text-text-muted">
-            A company that signs up is a <strong className="text-text">Vendor</strong>.
-            Vendors don't pick a fixed business "type" from a list — they enable
+            A company that signs up is a <strong className="text-text">Partner</strong>.
+            Partners don't pick a fixed business "type" from a list — they enable
             the modules relevant to how they operate. A repair shop might enable
             Service Centre + Inventory + Billing; a clinic might enable Clinic +
             Billing + HRMS. Each module owns its own records, fields, and

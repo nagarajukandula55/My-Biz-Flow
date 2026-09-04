@@ -121,3 +121,43 @@ export function getEventBookingTimeline(record: Row): TimelineEntry[] {
 }
 
 export const eventBookingRelated: RelatedRecord[] = [];
+
+export interface ChecklistItem {
+  id: string;
+  item: string;
+  assigned?: string;
+  done: boolean;
+}
+
+export interface EventBookingLifecycle {
+  totalCost?: number;
+  depositAmount?: number;
+  depositDueDate?: string;
+  depositPaid?: boolean;
+  depositInvoiceId?: string;
+  balanceAmount?: number;
+  balanceDueDate?: string;
+  balancePaid?: boolean;
+  balanceInvoiceId?: string;
+  checklist: ChecklistItem[];
+}
+
+/**
+ * Reads the payment-schedule + checklist lifecycle fields directly off a
+ * real event's own BusinessRecord data — mirrors extractLifecycleFromRecord
+ * in service-centre.ts.
+ */
+export function extractEventBookingLifecycle(record: Row): EventBookingLifecycle {
+  return {
+    totalCost: record["totalCost"] as number | undefined,
+    depositAmount: record["depositAmount"] as number | undefined,
+    depositDueDate: record["depositDueDate"] as string | undefined,
+    depositPaid: Boolean(record["depositPaid"]),
+    depositInvoiceId: record["depositInvoiceId"] as string | undefined,
+    balanceAmount: record["balanceAmount"] as number | undefined,
+    balanceDueDate: record["balanceDueDate"] as string | undefined,
+    balancePaid: Boolean(record["balancePaid"]),
+    balanceInvoiceId: record["balanceInvoiceId"] as string | undefined,
+    checklist: (record["checklist"] as ChecklistItem[] | undefined) ?? [],
+  };
+}

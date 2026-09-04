@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 // Re-exported for the handful of pages that still import nav types from
 // here — the sidebar itself now lives in src/components/Sidebar.tsx,
-// rendered once from src/app/vendor/[vendorId]/layout.tsx so it persists
+// rendered once from src/app/partner/[partnerId]/layout.tsx so it persists
 // across client-side navigations instead of remounting on every page.
 export type { NavDotVariant, NavItem, NavSubItem, NavGroup } from "./Sidebar";
 
@@ -14,7 +14,7 @@ type AppShellProps = {
 
 /**
  * The per-page topbar + content area. Deliberately NOT the sidebar
- * anymore (see Sidebar.tsx's header for why) — every vendor page still
+ * anymore (see Sidebar.tsx's header for why) — every partner page still
  * wraps its content in this for the topbar title/actions row.
  */
 export function AppShell({ topbarTitle, topbarActions, children }: AppShellProps) {

@@ -2,12 +2,12 @@
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { VENDOR_SESSION_COOKIE } from "@/lib/vendorSession";
-import { setVendorPassword } from "@/lib/vendorData";
+import { PARTNER_SESSION_COOKIE } from "@/lib/partnerSession";
+import { setPartnerPassword } from "@/lib/partnerData";
 
 export async function changePasswordAction(formData: FormData) {
-  const vendorId = cookies().get(VENDOR_SESSION_COOKIE)?.value;
-  if (!vendorId) redirect("/login");
+  const partnerId = cookies().get(PARTNER_SESSION_COOKIE)?.value;
+  if (!partnerId) redirect("/login");
 
   const newPassword = String(formData.get("newPassword") ?? "");
   const confirmPassword = String(formData.get("confirmPassword") ?? "");
@@ -19,6 +19,6 @@ export async function changePasswordAction(formData: FormData) {
     redirect("/change-password?error=mismatch");
   }
 
-  await setVendorPassword(vendorId, newPassword);
-  redirect(`/vendor/${vendorId}/dashboard`);
+  await setPartnerPassword(partnerId, newPassword);
+  redirect(`/partner/${partnerId}/dashboard`);
 }

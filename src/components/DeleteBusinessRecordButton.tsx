@@ -5,12 +5,12 @@ import { deleteBusinessRecordAction } from "@/lib/businessRecordActions";
 
 /** Generic real-delete button for any module's detail page — wraps the shared BusinessRecord delete action. */
 export function DeleteBusinessRecordButton({
-  vendorId,
+  partnerId,
   moduleSlug,
   recordKey,
   recordLabel,
 }: {
-  vendorId: string;
+  partnerId: string;
   moduleSlug: string;
   recordKey: string;
   recordLabel: string;
@@ -19,7 +19,7 @@ export function DeleteBusinessRecordButton({
     <ConfirmDeleteDialog
       recordLabel={recordLabel}
       onConfirm={() => {
-        deleteBusinessRecordAction(vendorId, moduleSlug, recordKey);
+        deleteBusinessRecordAction(partnerId, moduleSlug, recordKey);
       }}
     />
   );

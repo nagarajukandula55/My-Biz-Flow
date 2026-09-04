@@ -73,7 +73,21 @@ export const wholesaleB2bFormFields: FormFieldDef[] = [
   { key: "dealerName", label: "Dealer / Distributor", type: "relation", required: true },
   { key: "orderDate", label: "Order Date", type: "date", required: true },
   { key: "itemsSummary", label: "Items", type: "textarea", required: true },
-  { key: "bulkPriceTotal", label: "Bulk Price Total", type: "currency", required: true },
+  {
+    key: "itemQuantity",
+    label: "Quantity",
+    type: "number",
+    required: true,
+    placeholder: "Tiered pricing applies at 50+ (10% off) and 200+ (20% off) units",
+  },
+  { key: "itemListPrice", label: "List Price (per unit)", type: "currency", required: true },
+  {
+    key: "bulkPriceTotal",
+    label: "Bulk Price Total (computed)",
+    type: "currency",
+    required: false,
+    placeholder: "Recomputed server-side from Quantity x List Price with the tiered discount — ignore what's typed here",
+  },
   { key: "creditTermDays", label: "Credit Term (days)", type: "number", required: false },
   { key: "creditLimit", label: "Credit Limit", type: "currency", required: false },
   { key: "status", label: "Status", type: "select", required: true, options: ["Placed","Approved","Dispatched","Delivered","On credit hold"] },
@@ -107,3 +121,69 @@ export function getWholesaleB2bTimeline(record: Row): TimelineEntry[] {
 }
 
 export const wholesaleB2bRelated: RelatedRecord[] = [];
+
+/**
+ * Real tiered/bulk pricing — a pure function of quantity + list price, no
+ * side effects, so it can be recomputed server-side (never trust a
+ * client-submitted total) and previewed client-side identically. Higher
+ * breakpoints win, so ordering by descending minQty and taking the first
+ * match that the requested quantity clears is deliberate.
+ */
+export const PRICING_BREAKPOINTS: { minQty: number; discountPercent: number }[] = [
+  { minQty: 200, discountPercent: 20 },
+  { minQty: 50, discountPercent: 10 },
+  { minQty: 1, discountPercent: 0 },
+];
+
+export function computeTieredUnitPrice(quantity: number, listPrice: number): { unitPrice: number; discountPercent: number } {
+  const tier = PRICING_BREAKPOINTS.find((b) => quantity >= b.minQty) ?? PRICING_BREAKPOINTS[PRICING_BREAKPOINTS.length - 1];
+  const unitPrice = Math.round(listPrice * (1 - tier.discountPercent / 100) * 100) / 100;
+  return { unitPrice, discountPercent: tier.discountPercent };
+}
+
+export function computeOrderLineTotal(
+  quantity: number,
+  listPrice: number
+): { unitPrice: number; discountPercent: number; lineTotal: number } {
+  const { unitPrice, discountPercent } = computeTieredUnitPrice(quantity, listPrice);
+  return { unitPrice, discountPercent, lineTotal: Math.round(unitPrice * quantity * 100) / 100 };
+}
+
+/** Real order lifecycle stages driving credit-hold + invoicing logic (see ./actions.ts). */
+export type WholesaleOrderStatus = "Placed" | "Approved" | "Dispatched" | "Delivered" | "On credit hold";
+export const WHOLESALE_ORDER_STATUSES: WholesaleOrderStatus[] = [
+  "Placed",
+  "Approved",
+  "Dispatched",
+  "Delivered",
+  "On credit hold",
+];
+
+export interface WholesaleOrderLifecycle {
+  dealerName: string;
+  itemQuantity: number;
+  itemListPrice: number;
+  unitPrice: number;
+  discountPercent: number;
+  bulkPriceTotal: number;
+  creditLimit: number;
+  creditTermDays?: number;
+  status: WholesaleOrderStatus;
+  invoiceId?: string;
+}
+
+/** Reads the real, persisted order fields off a wholesale order's own BusinessRecord. */
+export function extractWholesaleOrderFromRecord(record: Row): WholesaleOrderLifecycle {
+  return {
+    dealerName: String(record["dealerName"] ?? ""),
+    itemQuantity: Number(record["itemQuantity"] ?? 0),
+    itemListPrice: Number(record["itemListPrice"] ?? 0),
+    unitPrice: Number(record["unitPrice"] ?? 0),
+    discountPercent: Number(record["discountPercent"] ?? 0),
+    bulkPriceTotal: Number(record["bulkPriceTotal"] ?? 0),
+    creditLimit: Number(record["creditLimit"] ?? 0),
+    creditTermDays: record["creditTermDays"] !== undefined ? Number(record["creditTermDays"]) : undefined,
+    status: (record["status"] as WholesaleOrderStatus | undefined) ?? "Placed",
+    invoiceId: record["invoiceId"] as string | undefined,
+  };
+}

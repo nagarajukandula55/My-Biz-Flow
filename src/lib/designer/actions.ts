@@ -25,9 +25,9 @@ function revalidateForPage(pageId: string) {
   revalidatePath(`/admin/designer/${pageId}`);
   const def = getPage(pageId);
   if (def) {
-    // Revalidate the whole module's vendor tree (list/create/detail/edit
-    // all live under the same [vendorId]/<slug> segment).
-    const moduleBase = def.path.split("/").slice(0, 4).join("/"); // /vendor/[vendorId]/<slug>
+    // Revalidate the whole module's partner tree (list/create/detail/edit
+    // all live under the same [partnerId]/<slug> segment).
+    const moduleBase = def.path.split("/").slice(0, 4).join("/"); // /partner/[partnerId]/<slug>
     revalidatePath(moduleBase, "layout");
   }
 }
@@ -70,5 +70,5 @@ export async function saveDocumentTemplateAction(pageId: string, htmlTemplate: s
 export async function setModuleAppearanceAction(slug: string, appearance: ModuleAppearance) {
   await setModuleAppearanceStore(slug, appearance);
   revalidatePath("/admin/designer", "layout");
-  revalidatePath(`/vendor/[vendorId]/${slug}`, "layout");
+  revalidatePath(`/partner/[partnerId]/${slug}`, "layout");
 }

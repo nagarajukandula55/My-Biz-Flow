@@ -1,8 +1,8 @@
 /**
  * Server-only layer on top of modules.ts's pure data: applies any
  * Super-Admin-set label/icon override (moduleAppearance.ts, Prisma-backed)
- * to getModule() and buildVendorNavGroups(). Split into its own file
- * because modules.ts is imported by a Client Component (vendor settings'
+ * to getModule() and buildPartnerNavGroups(). Split into its own file
+ * because modules.ts is imported by a Client Component (partner settings'
  * module toggle grid) and must stay free of server-only imports — see
  * modules.ts's header and DESIGN_SYSTEM.md §8 for the pattern this
  * follows.
@@ -18,7 +18,7 @@ import {
   MODULE_SUB_NAV,
   type ModuleDefinition,
   type ModuleTaxonomy,
-  type VendorNavGroup,
+  type PartnerNavGroup,
   taxonomyToNavDot,
 } from "./modules";
 import { getModuleAppearance, getAllModuleAppearances } from "./moduleAppearance";
@@ -34,7 +34,7 @@ export async function getModule(slug: string): Promise<ModuleDefinition | undefi
   };
 }
 
-export async function buildVendorNavGroups(): Promise<VendorNavGroup[]> {
+export async function buildPartnerNavGroups(): Promise<PartnerNavGroup[]> {
   const groups: Record<ModuleTaxonomy, ModuleDefinition[]> = {
     brand: [],
     vertical: [],

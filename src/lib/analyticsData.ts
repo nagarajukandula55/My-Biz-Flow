@@ -1,5 +1,5 @@
 /**
- * Real per-vendor analytics aggregation, backed directly by the generic
+ * Real per-partner analytics aggregation, backed directly by the generic
  * `BusinessRecord` table (see src/lib/businessRecords.ts) — replaces the
  * old hand-authored revenue trend / activity feed sample data. Uses
  * MODULE_DATA (src/lib/moduleData.ts) only for its static column
@@ -15,13 +15,13 @@ import { getModule } from "@/lib/designer/moduleRegistry";
 import { WORKORDER_STAGES, type WorkorderStage } from "@/lib/sample-data/service-centre";
 
 export async function computeModuleStat(
-  vendorId: string,
+  partnerId: string,
   slug: string
 ): Promise<{ count: number; currencySum?: number }> {
   const columns = MODULE_DATA[slug]?.columns;
   if (!columns) return { count: 0 };
   const rows = await prisma.businessRecord.findMany({
-    where: { vendorId, moduleSlug: slug },
+    where: { partnerId, moduleSlug: slug },
     select: { data: true },
   });
   const currencyColumn = columns.find((c) => c.type === "currency");
@@ -33,11 +33,11 @@ export async function computeModuleStat(
   return { count: rows.length, currencySum: sum };
 }
 
-export async function getRecordsByModuleBarData(vendorId: string, moduleSlugs: string[]): Promise<BarPoint[]> {
+export async function getRecordsByModuleBarData(partnerId: string, moduleSlugs: string[]): Promise<BarPoint[]> {
   return Promise.all(
     moduleSlugs.map(async (slug) => ({
       category: (await getModule(slug))?.label ?? slug,
-      value: (await computeModuleStat(vendorId, slug)).count,
+      value: (await computeModuleStat(partnerId, slug)).count,
     }))
   );
 }
@@ -45,13 +45,13 @@ export async function getRecordsByModuleBarData(vendorId: string, moduleSlugs: s
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 /** Last 7 days of Billing totalAmount, bucketed by the record's creation day. */
-export async function getRevenueTrend(vendorId: string): Promise<LineSeriesPoint[]> {
+export async function getRevenueTrend(partnerId: string): Promise<LineSeriesPoint[]> {
   const since = new Date();
   since.setHours(0, 0, 0, 0);
   since.setDate(since.getDate() - 6);
 
   const rows = await prisma.businessRecord.findMany({
-    where: { vendorId, moduleSlug: "billing", createdAt: { gte: since } },
+    where: { partnerId, moduleSlug: "billing", createdAt: { gte: since } },
     select: { data: true, createdAt: true },
   });
 
@@ -75,9 +75,9 @@ export async function getRevenueTrend(vendorId: string): Promise<LineSeriesPoint
   }));
 }
 
-export async function getWorkorderStatusBreakdown(vendorId: string): Promise<PieSlice[]> {
+export async function getWorkorderStatusBreakdown(partnerId: string): Promise<PieSlice[]> {
   const rows = await prisma.businessRecord.findMany({
-    where: { vendorId, moduleSlug: "service-centre" },
+    where: { partnerId, moduleSlug: "service-centre" },
     select: { data: true },
   });
   const counts = new Map<WorkorderStage, number>(WORKORDER_STAGES.map((s) => [s, 0]));
@@ -96,10 +96,10 @@ export const recentActivityColumns = [
   { key: "timestamp", label: "When", type: "date" as const },
 ];
 
-/** Most recently created records across a vendor's enabled modules, newest first. */
-export async function getRecentActivity(vendorId: string, moduleSlugs: string[], limit = 8): Promise<Row[]> {
+/** Most recently created records across a partner's enabled modules, newest first. */
+export async function getRecentActivity(partnerId: string, moduleSlugs: string[], limit = 8): Promise<Row[]> {
   const rows = await prisma.businessRecord.findMany({
-    where: { vendorId, moduleSlug: { in: moduleSlugs } },
+    where: { partnerId, moduleSlug: { in: moduleSlugs } },
     orderBy: { createdAt: "desc" },
     take: limit,
   });

@@ -82,6 +82,45 @@ export function getLoyaltyRewardsRecord(recordId: string): Row {
   return loyaltyRewardsRows.find((r) => String(r["id"]) === recordId) ?? loyaltyRewardsRows[0];
 }
 
+// --- Points engine / tiered membership / transaction ledger ---------------
+// Stored as extra keys on the generic BusinessRecord JSON blob.
+
+export const EARN_RATE = 0.05; // 5% of a linked purchase amount, earned as points
+
+export type LoyaltyTierName = "Silver" | "Gold" | "Platinum";
+
+/** Real tier thresholds, derived from lifetime points earned — never manually set. */
+export function computeTier(lifetimePointsEarned: number): LoyaltyTierName {
+  if (lifetimePointsEarned >= 5000) return "Platinum";
+  if (lifetimePointsEarned >= 1000) return "Gold";
+  return "Silver";
+}
+
+export interface LoyaltyTransaction {
+  id: string;
+  type: "Earn" | "Redeem";
+  points: number;
+  amount?: number; // linked purchase amount, for Earn entries
+  timestamp: string;
+}
+
+export interface LoyaltyLifecycle {
+  pointsBalance: number;
+  lifetimePointsEarned: number;
+  tier: LoyaltyTierName;
+  transactions: LoyaltyTransaction[];
+}
+
+export function extractLoyaltyLifecycleFromRecord(record: Row): LoyaltyLifecycle {
+  const lifetimePointsEarned = Number(record["lifetimePointsEarned"] ?? 0);
+  return {
+    pointsBalance: Number(record["pointsBalance"] ?? 0),
+    lifetimePointsEarned,
+    tier: computeTier(lifetimePointsEarned),
+    transactions: Array.isArray(record["transactions"]) ? (record["transactions"] as LoyaltyTransaction[]) : [],
+  };
+}
+
 export function getLoyaltyRewardsDetailFields(record: Row): RecordField[] {
   const r = record;
   return [
@@ -93,6 +132,7 @@ export function getLoyaltyRewardsDetailFields(record: Row): RecordField[] {
     { label: "Cashback Earned (lifetime)", value: r["cashbackEarned"], type: "currency" },
     { label: "Enrolled Via Module", value: r["enrolledModule"], type: "select", chipVariant: STATUS_VARIANT[String(r["enrolledModule"])] ?? "neutral" },
     { label: "Status", value: r["status"], type: "select", chipVariant: STATUS_VARIANT[String(r["status"])] ?? "neutral" },
+    { label: "Lifetime Points Earned", value: r["lifetimePointsEarned"] ?? 0, type: "text" },
   ];
 }
 

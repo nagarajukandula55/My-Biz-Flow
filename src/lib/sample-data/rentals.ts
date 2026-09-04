@@ -121,3 +121,42 @@ export function getRentalsTimeline(record: Row): TimelineEntry[] {
 }
 
 export const rentalsRelated: RelatedRecord[] = [];
+
+export interface RentalsLifecycle {
+  assetId?: string;
+  depositAmount?: number;
+  damageCharge?: number;
+  refundableAmount?: number;
+  returned?: boolean;
+  returnedAt?: string;
+  returnNotes?: string;
+}
+
+/**
+ * Reads the deposit/return lifecycle fields directly off a real booking's
+ * own BusinessRecord data — mirrors extractLifecycleFromRecord in
+ * service-centre.ts. `assetId` defaults to the assetName field since this
+ * module doesn't have a separate asset catalog — bookings for the same
+ * assetName are treated as the same asset for double-booking checks.
+ */
+export function extractRentalsLifecycle(record: Row): RentalsLifecycle {
+  return {
+    assetId: (record["assetId"] as string | undefined) ?? (record["assetName"] as string | undefined),
+    depositAmount: record["depositAmount"] as number | undefined,
+    damageCharge: record["damageCharge"] as number | undefined,
+    refundableAmount: record["refundableAmount"] as number | undefined,
+    returned: Boolean(record["returned"]),
+    returnedAt: record["returnedAt"] as string | undefined,
+    returnNotes: record["returnNotes"] as string | undefined,
+  };
+}
+
+/** Days overdue (0 if not overdue / already returned), computed off bookingEnd vs. now. */
+export function computeOverdueDays(bookingEnd: unknown, returned: boolean, now: Date = new Date()): number {
+  if (returned || !bookingEnd) return 0;
+  const end = new Date(String(bookingEnd));
+  if (Number.isNaN(end.getTime())) return 0;
+  const diffMs = now.setHours(0, 0, 0, 0) - end.setHours(0, 0, 0, 0);
+  const days = Math.floor(diffMs / 86400000);
+  return days > 0 ? days : 0;
+}

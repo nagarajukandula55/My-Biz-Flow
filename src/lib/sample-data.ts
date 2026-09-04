@@ -116,7 +116,7 @@ export const sampleRecordFields: RecordField[] = [
 export const sampleTimeline: TimelineEntry[] = [
   { id: "t1", label: "Job created", timestamp: "2026-08-04", actor: "Front desk" },
   { id: "t2", label: "Diagnosis completed — clutch plate wear", timestamp: "2026-08-05", actor: "Suresh M." },
-  { id: "t3", label: "Parts ordered from vendor", timestamp: "2026-08-06", actor: "Suresh M." },
+  { id: "t3", label: "Parts ordered from partner", timestamp: "2026-08-06", actor: "Suresh M." },
   { id: "t4", label: "Repair in progress", timestamp: "2026-08-07", actor: "Suresh M." },
 ];
 

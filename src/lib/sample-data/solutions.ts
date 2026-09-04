@@ -2,8 +2,8 @@ import type { Column, Row } from "@/components/DataTable";
 import type { RecordField, TimelineEntry, RelatedRecord } from "@/components/RecordDetail";
 import type { FormFieldDef } from "@/components/RecordForm";
 
-// Solutions catalog for the service-centre module — vendor-owned data (not
-// shared across vendors like BOM). Selected on a Workorder's Parts &
+// Solutions catalog for the service-centre module — partner-owned data (not
+// shared across partners like BOM). Selected on a Workorder's Parts &
 // Service Lines when logging what was done to resolve a job. Every row
 // belongs exclusively to the service-centre module, hence `moduleSlug`.
 
@@ -90,7 +90,7 @@ export function getSolutionDetailFields(record: Row): RecordField[] {
 
 export function getSolutionTimeline(record: Row): TimelineEntry[] {
   return [
-    { id: "t1", label: `Solution "${record["title"]}" added to catalog`, timestamp: "2026-07-01T09:00:00", actor: "Vendor Admin" },
+    { id: "t1", label: `Solution "${record["title"]}" added to catalog`, timestamp: "2026-07-01T09:00:00", actor: "Partner Admin" },
   ];
 }
 

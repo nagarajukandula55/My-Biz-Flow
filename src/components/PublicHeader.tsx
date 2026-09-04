@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { LogoMark } from "@/components/LogoMark";
 
-/** Shared header for public (non-vendor-scoped, no AppShell) pages. */
+/** Shared header for public (non-partner-scoped, no AppShell) pages. */
 export function PublicHeader() {
   return (
     <header className="flex items-center justify-between border-b border-border px-6 py-5">

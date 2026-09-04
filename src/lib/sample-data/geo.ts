@@ -88,3 +88,27 @@ export const GST_STATE_CODES: { code: string; state: string }[] = [
 export function gstStateCodeFor(state: string): string | undefined {
   return GST_STATE_CODES.find((s) => s.state === state)?.code;
 }
+
+/**
+ * Curated district sample set, NOT an exhaustive census list — enough to
+ * exercise the Field Force serviceable-area picker's state → district
+ * cascade for the states most likely used in demos/early rollout. A state
+ * with no entry here still works in the picker: the UI falls back to a
+ * free-text district field instead of a dropdown (see EngineerOnboardForm).
+ */
+export const DISTRICTS_BY_STATE: Record<string, string[]> = {
+  Karnataka: ["Bengaluru Urban", "Bengaluru Rural", "Mysuru", "Mangaluru (Dakshina Kannada)", "Hubballi-Dharwad", "Belagavi", "Kalaburagi"],
+  Maharashtra: ["Mumbai City", "Mumbai Suburban", "Pune", "Nagpur", "Thane", "Nashik", "Aurangabad"],
+  "Tamil Nadu": ["Chennai", "Coimbatore", "Madurai", "Tiruchirappalli", "Salem", "Tirunelveli"],
+  Telangana: ["Hyderabad", "Rangareddy", "Medchal-Malkajgiri", "Warangal Urban", "Nizamabad"],
+  "Andhra Pradesh": ["Visakhapatnam", "Vijayawada (NTR)", "Guntur", "Krishna", "Chittoor"],
+  Delhi: ["New Delhi", "North Delhi", "South Delhi", "East Delhi", "West Delhi"],
+  "Uttar Pradesh": ["Lucknow", "Kanpur Nagar", "Ghaziabad", "Noida (Gautam Buddh Nagar)", "Varanasi", "Agra"],
+  "West Bengal": ["Kolkata", "Howrah", "North 24 Parganas", "South 24 Parganas"],
+  Gujarat: ["Ahmedabad", "Surat", "Vadodara", "Rajkot"],
+  Kerala: ["Thiruvananthapuram", "Ernakulam", "Kozhikode", "Thrissur"],
+};
+
+export function districtsForState(state: string): string[] {
+  return DISTRICTS_BY_STATE[state] ?? [];
+}

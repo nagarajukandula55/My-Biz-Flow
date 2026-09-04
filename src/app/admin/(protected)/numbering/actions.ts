@@ -3,8 +3,8 @@
 import { revalidatePath } from "next/cache";
 import {
   saveMainScheme,
-  saveVendorScheme,
-  clearVendorScheme,
+  savePartnerScheme,
+  clearPartnerScheme,
   getNextNumber,
   type NumberingScheme,
 } from "@/lib/designer/numbering";
@@ -14,17 +14,17 @@ export async function saveMainSchemeAction(documentType: string, scheme: Numberi
   revalidatePath("/admin/numbering");
 }
 
-export async function saveVendorSchemeAction(vendorId: string, documentType: string, scheme: NumberingScheme) {
-  await saveVendorScheme(vendorId, documentType, scheme);
-  revalidatePath(`/vendor/${vendorId}/settings/numbering`);
+export async function savePartnerSchemeAction(partnerId: string, documentType: string, scheme: NumberingScheme) {
+  await savePartnerScheme(partnerId, documentType, scheme);
+  revalidatePath(`/partner/${partnerId}/settings/numbering`);
 }
 
-export async function clearVendorSchemeAction(vendorId: string, documentType: string) {
-  await clearVendorScheme(vendorId, documentType);
-  revalidatePath(`/vendor/${vendorId}/settings/numbering`);
+export async function clearPartnerSchemeAction(partnerId: string, documentType: string) {
+  await clearPartnerScheme(partnerId, documentType);
+  revalidatePath(`/partner/${partnerId}/settings/numbering`);
 }
 
 /** Real increment — see src/lib/designer/numbering.ts's header for why this is "live," not mocked. */
-export async function fetchNextNumberAction(documentType: string, vendorId?: string) {
-  return getNextNumber(documentType, vendorId);
+export async function fetchNextNumberAction(documentType: string, partnerId?: string) {
+  return getNextNumber(documentType, partnerId);
 }

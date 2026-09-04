@@ -4,7 +4,7 @@ import type { FormFieldDef } from "@/components/RecordForm";
 import { getScBrandOptions } from "./service-centre-brands";
 
 // Device Model catalog owned by the service-centre module, each model
-// belonging to one Brand from service-centre-brands.ts. Vendor-owned data.
+// belonging to one Brand from service-centre-brands.ts. Partner-owned data.
 
 export const scModelColumns: Column[] = [
   { key: "id", label: "Model Code", type: "text" },
@@ -42,7 +42,7 @@ export function getScModelDetailFields(record: Row): RecordField[] {
 }
 
 export function getScModelTimeline(record: Row): TimelineEntry[] {
-  return [{ id: "t1", label: `Model "${record["name"]}" added`, timestamp: "2026-07-01T09:00:00", actor: "Vendor Admin" }];
+  return [{ id: "t1", label: `Model "${record["name"]}" added`, timestamp: "2026-07-01T09:00:00", actor: "Partner Admin" }];
 }
 
 export const scModelRelated: RelatedRecord[] = [];

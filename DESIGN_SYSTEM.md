@@ -114,25 +114,26 @@ decision).
 
 ## 7. Folder convention and the Designer registry (binding)
 
-### Vendor terminology (locked)
+### Partner terminology (locked)
 
-A signed-up company is called a **Vendor** internally — matching central-api's
-own vocabulary for this concept, deliberately, so our schema and central-api's
-`vendors` dataset speak the same language. There is no separate "sign up for
-My Biz Flow" flow; signup is **"register your business"**, and during signup
-the person picks which module type(s) they're registering for (Brand, SC,
-POS, AMC, Billing, Clinic, etc.) — that selection becomes the Vendor's
-enabled-modules set. A Vendor's "type" is just its enabled modules, not a
-separate enum; a Vendor can be typed by more than one module at once (e.g. a
-"POS + Inventory + Billing" Vendor).
+A signed-up company is called a **Partner** internally. (Previously "Vendor" —
+renamed in-repo; central-api's own contract vocabulary for this concept still
+uses "vendor," so mapping to/from central-api's `vendors` dataset needs an
+explicit translation at that boundary, not a shared name.) There is no
+separate "sign up for My Biz Flow" flow; signup is **"register your
+business"**, and during signup the person picks which module type(s) they're
+registering for (Brand, SC, POS, AMC, Billing, Clinic, etc.) — that selection
+becomes the Partner's enabled-modules set. A Partner's "type" is just its
+enabled modules, not a separate enum; a Partner can be typed by more than one
+module at once (e.g. a "POS + Inventory + Billing" Partner).
 
 ### Module folder structure
 
 Every module in `src/lib/designer/modules.ts` (the canonical module list —
 this is the only place a module's slug/label/taxonomy is defined) gets
-exactly one folder: `src/app/vendor/[vendorId]/<slug>/`. That folder holds:
+exactly one folder: `src/app/partner/[partnerId]/<slug>/`. That folder holds:
 
-1. **Normal (vendor-facing) pages** directly inside it — `page.tsx` for the
+1. **Normal (partner-facing) pages** directly inside it — `page.tsx` for the
    list view, `[recordId]/page.tsx` for detail, etc.
 2. **One `admin/` subfolder**, gated to Super Admin only via the
    `SuperAdminGate` component (`src/components/SuperAdminGate.tsx`) — this is
@@ -194,7 +195,7 @@ original set:
 - `explanation: string` — a real plain-language paragraph on what the page
   does and why it exists. Not a repeat of the title.
 - `sourceFile: string` — the file path relative to repo root, e.g.
-  `"src/app/vendor/[vendorId]/pos/page.tsx"`. `/admin/designer/[pageId]`
+  `"src/app/partner/[partnerId]/pos/page.tsx"`. `/admin/designer/[pageId]`
   reads this file from disk server-side and renders it for inspection —
   keep it accurate or that view breaks for that page.
 
@@ -282,9 +283,9 @@ picker unusable; extend `ICONS` there if a genuinely new module category
 needs a glyph that isn't covered.
 
 **Architectural note — read before touching `modules.ts`:** that file is
-imported by at least one Client Component (vendor Settings' module
+imported by at least one Client Component (partner Settings' module
 toggle grid), so it must stay 100% free of `node:fs`/`node:path`.
-`getModule()`/`buildVendorNavGroups()` there are pure (no override
+`getModule()`/`buildPartnerNavGroups()` there are pure (no override
 applied). The override-aware versions — same names, same signatures —
 live in `moduleRegistry.ts`, which layers the fs-based
 `moduleAppearance.ts` store on top. Server Components (nearly everything
@@ -294,13 +295,13 @@ only the pure module list imports from `modules.ts` directly. Same split
 pattern as `renderTemplate.ts`/`numberingFormat.ts` — see §7's Designer
 registry section for the general rule.
 
-### Document numbering — Main + per-Vendor
+### Document numbering — Main + per-Partner
 
 `src/lib/designer/numbering.ts` (store) + `numberingFormat.ts` (pure
 formatting logic, split out for the same Client-Component/`node:fs`
 reason as `renderTemplate.ts`). Two tiers: the Super Admin's **Main**
 scheme per document type (`/admin/numbering`) is the platform default;
-any Vendor can override it for itself (`/vendor/[vendorId]/settings/numbering`)
+any Partner can override it for itself (`/partner/[partnerId]/settings/numbering`)
 and a document type with no override just inherits Main. A scheme is
 `prefix + separator + financial-year-token + sequence + suffix`:
 - **Separator**: hyphen, slash, dot, or **`none`** — "no separator" is a
@@ -310,7 +311,7 @@ and a document type with no override just inherits Main. A scheme is
 - **Sequence**: zero-padded to a configurable width, configurable start.
 
 `getNextNumber()` is a real, working counter — every call reads the
-current persisted sequence for that scope (Main or a specific Vendor) and
+current persisted sequence for that scope (Main or a specific Partner) and
 document type, increments it, and returns the new formatted number; two
 calls in a row return two different numbers. This is exposed as a "Fetch
 next live number" button in `NumberingSchemeEditor`, not just a static
@@ -353,12 +354,12 @@ in the same PR.
 
 ### Tenant scoping
 
-Every route under `/vendor/[vendorId]/...` carries a vendorId, but nothing
-enforces yet that data returned actually belongs to that vendor — there's
+Every route under `/partner/[partnerId]/...` carries a partnerId, but nothing
+enforces yet that data returned actually belongs to that partner — there's
 no database, so the gap is currently invisible. `src/lib/tenant.ts`
 establishes the convention now, before the first real query is written:
-every future data-access function must take a vendorId and call
-`assertVendorScope()` (or the Prisma-era equivalent, a `where: { vendorId }`
+every future data-access function must take a partnerId and call
+`assertPartnerScope()` (or the Prisma-era equivalent, a `where: { partnerId }`
 clause) before returning anything. Fail closed, not open. This is not
 optional cleanup for later — retrofitting tenant scoping onto code written
 without the habit is how cross-tenant data leaks happen.
@@ -374,7 +375,7 @@ directly (Edge runtime, Node-only code), so it calls a Node.js API route
 (`/api/page-access`, which safely imports `registerAll.ts` + the registry
 and pattern-matches the request path against each page's template via
 `pathMatchesTemplate`) to ask "is this public?" before falling back to
-the cookie check. It has **no effect** on ordinary vendor pages — they
+the cookie check. It has **no effect** on ordinary partner pages — they
 aren't gated at all yet — and the Settings UI says so explicitly per row
 rather than implying uniform protection that doesn't exist.
 

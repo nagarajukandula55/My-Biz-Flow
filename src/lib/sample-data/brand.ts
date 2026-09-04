@@ -99,6 +99,31 @@ export function getBrandRecord(recordId: string): Row {
   return brandRows.find((r) => String(r["id"]) === recordId) ?? brandRows[0];
 }
 
+// --- Multi-location rollup + cross-location role assignment ---------------
+
+export interface BrandRollup {
+  locationCount: number;
+  totalMonthlyRevenue: number;
+  statusBreakdown: Record<string, number>;
+}
+
+/** Aggregates all sibling locations sharing this record's brandName — a focused local helper, not analyticsData.ts. */
+export function computeBrandRollup(brandName: string, allBrandRecords: Row[]): BrandRollup {
+  const siblings = allBrandRecords.filter((r) => r["brandName"] === brandName);
+  const statusBreakdown: Record<string, number> = {};
+  for (const s of siblings) {
+    const status = String(s["status"] ?? "Unknown");
+    statusBreakdown[status] = (statusBreakdown[status] ?? 0) + 1;
+  }
+  return {
+    locationCount: siblings.length,
+    totalMonthlyRevenue: siblings.reduce((sum, s) => sum + Number(s["monthlyRevenue"] ?? 0), 0),
+    statusBreakdown,
+  };
+}
+
+export type AccessScope = "brand-wide" | "single-location";
+
 export function getBrandDetailFields(record: Row): RecordField[] {
   const r = record;
   return [

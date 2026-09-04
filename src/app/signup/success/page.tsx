@@ -11,16 +11,16 @@ registerPage({
   superAdminOnly: false,
   customizableRegions: [],
   explanation:
-    "Informative post-signup landing page — shows the assigned Vendor ID and one-time password once (not stored/retrievable again), with clear next steps. Reached only via redirect from the signup Server Action, never linked to directly.",
+    "Informative post-signup landing page — shows the assigned Partner ID and one-time password once (not stored/retrievable again), with clear next steps. Reached only via redirect from the signup Server Action, never linked to directly.",
   sourceFile: "src/app/signup/success/page.tsx",
 });
 
 export default function SignupSuccessPage({
   searchParams,
 }: {
-  searchParams: { vendorId?: string; password?: string };
+  searchParams: { partnerId?: string; password?: string };
 }) {
-  const { vendorId, password } = searchParams;
+  const { partnerId, password } = searchParams;
 
   return (
     <div className="flex min-h-screen w-full items-center justify-center bg-bg px-6 py-12">
@@ -38,8 +38,8 @@ export default function SignupSuccessPage({
 
         <div className="mt-6 space-y-3 rounded-md border border-border bg-bg p-5 text-left">
           <div>
-            <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">Vendor ID</div>
-            <div className="mt-0.5 font-mono text-lg font-bold text-text">{vendorId ?? "—"}</div>
+            <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">Partner ID</div>
+            <div className="mt-0.5 font-mono text-lg font-bold text-text">{partnerId ?? "—"}</div>
           </div>
           <div>
             <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">One-Time Password</div>

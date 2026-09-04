@@ -1,7 +1,7 @@
 /**
  * Roles — real Prisma-backed store (`Role` table). Platform RBAC: a named
  * bundle of Access Group ids, defined once by Super Admin and reused
- * across every vendor.
+ * across every partner.
  */
 import { prisma } from "@/lib/prisma";
 

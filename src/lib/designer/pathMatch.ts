@@ -1,8 +1,8 @@
 import type { PageDefinition } from "./registry";
 
 /**
- * Matches a real request pathname (e.g. "/vendor/v1/pos/admin") against a
- * registered page's template path (e.g. "/vendor/[vendorId]/pos/admin"),
+ * Matches a real request pathname (e.g. "/partner/v1/pos/admin") against a
+ * registered page's template path (e.g. "/partner/[partnerId]/pos/admin"),
  * treating [bracket] segments as wildcards. Used by the /api/page-access
  * route to resolve "which registered page is this actual URL" — needed
  * because middleware runs on the Edge runtime and can't import the full

@@ -106,3 +106,64 @@ export function getSubscriptionsTimeline(record: Row): TimelineEntry[] {
 }
 
 export const subscriptionsRelated: RelatedRecord[] = [];
+
+// ---------------------------------------------------------------------------
+// Real recurring-billing domain model (deepened pass) — a membership tracks
+// a plan/cycle/nextBillingDate, freeze/resume, and a running check-in log.
+// ---------------------------------------------------------------------------
+
+export type BillingCycle = "Monthly" | "Quarterly" | "Yearly";
+
+export const CYCLE_MONTHS: Record<BillingCycle, number> = {
+  Monthly: 1,
+  Quarterly: 3,
+  Yearly: 12,
+};
+
+export const CYCLE_AMOUNT: Record<BillingCycle, number> = {
+  Monthly: 2200,
+  Quarterly: 6000,
+  Yearly: 22000,
+};
+
+export type CheckIn = { timestamp: string };
+
+export type Membership = {
+  id: string;
+  memberName: string;
+  plan: string;
+  billingCycle: BillingCycle;
+  planAmount: number;
+  startDate?: string;
+  nextBillingDate?: string;
+  status: "Active" | "Paused" | "Expired" | "Cancelled";
+  frozenAt?: string;
+  resumeDate?: string;
+  checkIns: CheckIn[];
+  invoiceIds?: string[];
+};
+
+/** Adds `months` calendar months to an ISO date string, returned as YYYY-MM-DD. */
+export function addMonths(isoDate: string, months: number): string {
+  const d = new Date(isoDate);
+  d.setMonth(d.getMonth() + months);
+  return d.toISOString().slice(0, 10);
+}
+
+export function extractMembershipFromRecord(record: Row): Membership {
+  const billingCycle = (record["billingCycle"] as BillingCycle | undefined) ?? "Monthly";
+  return {
+    id: String(record["id"]),
+    memberName: String(record["memberName"] ?? ""),
+    plan: String(record["plan"] ?? billingCycle),
+    billingCycle,
+    planAmount: Number(record["planAmount"] ?? CYCLE_AMOUNT[billingCycle]),
+    startDate: record["startDate"] as string | undefined,
+    nextBillingDate: (record["nextBillingDate"] as string | undefined) ?? (record["renewalDate"] as string | undefined),
+    status: (record["status"] as Membership["status"] | undefined) ?? "Active",
+    frozenAt: record["frozenAt"] as string | undefined,
+    resumeDate: record["resumeDate"] as string | undefined,
+    checkIns: (record["checkIns"] as CheckIn[] | undefined) ?? [],
+    invoiceIds: (record["invoiceIds"] as string[] | undefined) ?? [],
+  };
+}

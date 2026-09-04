@@ -93,7 +93,7 @@ export function CreditNoteForm({
           <input
             value={contact}
             onChange={(e) => setContact(e.target.value)}
-            placeholder="Customer or vendor name"
+            placeholder="Customer or partner name"
             required
             list={contactOptions ? "credit-note-contact-options" : undefined}
             className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text outline-none focus:border-teal"

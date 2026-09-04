@@ -6,7 +6,7 @@ import { ADMIN_COOKIE_NAME, isValidAdminCookie } from "@/lib/adminAuth";
  * src/lib/adminAuth.ts for what this does and does not guarantee (shared
  * secret, not real per-user auth). Matches:
  *   - anything under /admin (the platform Designer, etc.)
- *   - any module's admin/ subfolder: /vendor/[vendorId]/<slug>/admin...
+ *   - any module's admin/ subfolder: /partner/[partnerId]/<slug>/admin...
  * The login page itself (/admin/login) must stay reachable without the
  * cookie, or nobody could ever get in.
  */
@@ -15,7 +15,7 @@ export async function middleware(request: NextRequest) {
 
   const isAdminLogin = pathname === "/admin/login";
   const isAdminRoute = pathname.startsWith("/admin");
-  const isModuleAdminRoute = /^\/vendor\/[^/]+\/[^/]+\/admin(\/|$)/.test(pathname);
+  const isModuleAdminRoute = /^\/partner\/[^/]+\/[^/]+\/admin(\/|$)/.test(pathname);
 
   if (isAdminLogin || (!isAdminRoute && !isModuleAdminRoute)) {
     return NextResponse.next();
@@ -49,5 +49,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/vendor/:path*"],
+  matcher: ["/admin/:path*", "/partner/:path*"],
 };

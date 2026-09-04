@@ -15,7 +15,7 @@ registerPage({
   superAdminOnly: true,
   customizableRegions: [{ key: "columns", label: "Table columns" }],
   explanation:
-    "Platform-level RBAC: an Access Group is a named bundle of per-page, per-action permissions, created once here and reused across every vendor type. Roles are built out of Access Groups (see Roles), and per vendor type only certain Roles are made assignable — see CLAUDE.md's three-level model. Real data — Prisma-backed (AccessGroup table).",
+    "Platform-level RBAC: an Access Group is a named bundle of per-page, per-action permissions, created once here and reused across every partner type. Roles are built out of Access Groups (see Roles), and per partner type only certain Roles are made assignable — see CLAUDE.md's three-level model. Real data — Prisma-backed (AccessGroup table).",
   sourceFile: "src/app/admin/(protected)/access-groups/page.tsx",
 });
 
@@ -38,7 +38,7 @@ export default async function AccessGroupsPage() {
         </div>
         <div className="p-6">
           <p className="text-sm text-text-muted">
-            A named bundle of per-page permissions, defined once here and reused across every vendor. Roles
+            A named bundle of per-page permissions, defined once here and reused across every partner. Roles
             are built by combining one or more Access Groups — see Roles in the sidebar.
           </p>
           <div className="mt-6">

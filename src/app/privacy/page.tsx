@@ -34,7 +34,7 @@ export default function PrivacyPage() {
             page it happened on, so it can be fixed. This is visible only to Super Admins.
           </Section>
           <Section title="Who can see your data">
-            Your Vendor account&apos;s data is scoped to your account. Platform Super Admins can
+            Your Partner account&apos;s data is scoped to your account. Platform Super Admins can
             access account configuration and support-relevant data as needed to operate the
             service.
           </Section>

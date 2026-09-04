@@ -9,7 +9,7 @@
 import { getRegisteredPages } from "./registry";
 import "./registerAll";
 
-/** Every vendor-assignable page (excludes Super-Admin-only platform pages) grouped by module, for the permission matrix editor. */
+/** Every partner-assignable page (excludes Super-Admin-only platform pages) grouped by module, for the permission matrix editor. */
 export function getAssignablePagesByModule(): { moduleSlug: string; pages: { id: string; title: string }[] }[] {
   const pages = getRegisteredPages().filter((p) => !p.superAdminOnly);
   const byModule = new Map<string, { id: string; title: string }[]>();

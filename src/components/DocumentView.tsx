@@ -20,7 +20,7 @@ import { formatNumber } from "@/lib/designer/numberingFormat";
  * print dialog, not a hand-built PDF pipeline.
  *
  * The document number shown is the NUMBERING SYSTEM's token (Main scheme,
- * or this Vendor's override — src/lib/designer/numbering.ts), not the raw
+ * or this Partner's override — src/lib/designer/numbering.ts), not the raw
  * sample record's `id` field. `sequenceIndex` (the record's position among
  * its module's sample rows, 0-based) is passed by the caller and used as
  * the sequence — a deterministic peek via formatNumber(), NOT
@@ -33,8 +33,8 @@ export async function DocumentView({
   pageId,
   documentType,
   documentLabel,
-  vendorName,
-  vendorId,
+  partnerName,
+  partnerId,
   record,
   columns,
   sequenceIndex,
@@ -45,8 +45,8 @@ export async function DocumentView({
   /** The numbering system's document-type id, e.g. "billing.document" — see NUMBERED_DOCUMENT_TYPES. */
   documentType: string;
   documentLabel: string;
-  vendorName: string;
-  vendorId: string;
+  partnerName: string;
+  partnerId: string;
   record: Row;
   columns: Column[];
   sequenceIndex: number;
@@ -59,7 +59,7 @@ export async function DocumentView({
   printSizes?: PrintSize[];
 }) {
   const customTemplate = await getDocumentTemplate(pageId);
-  const scheme = await getEffectiveScheme(documentType, vendorId);
+  const scheme = await getEffectiveScheme(documentType, partnerId);
   const documentNumber = formatNumber(scheme, scheme.sequenceStart + sequenceIndex);
   const templateRecord = { ...record, documentNumber };
 
@@ -75,7 +75,7 @@ export async function DocumentView({
           <div className="flex items-center justify-between border-b border-border pb-6">
             <div className="flex items-center gap-2.5">
               <LogoMark size={28} />
-              <span className="font-display text-lg font-extrabold text-text">{vendorName}</span>
+              <span className="font-display text-lg font-extrabold text-text">{partnerName}</span>
             </div>
             <div className="text-right">
               <div className="font-display text-xl font-bold text-text">{documentLabel}</div>

@@ -3,103 +3,163 @@ import type { RecordField, TimelineEntry, RelatedRecord } from "@/components/Rec
 import type { StatusVariant } from "@/components/StatusChip";
 import type { FormFieldDef } from "@/components/RecordForm";
 
-// Sale sample data for the pos module — realistic field modeling,
-// no backend wired up in this pass (see CLAUDE.md).
+// POS sale field modeling for the pos module — a sale is a real multi-item
+// cart transaction (see PosCheckout.tsx), not a single flat product row.
 
 const STATUS_VARIANT: Record<string, StatusVariant> = {
-  "Cash": "success",
-  "UPI": "teal",
-  "Card": "amber",
-  "Wallet": "neutral"
+  Completed: "success",
+  Draft: "neutral",
+  Voided: "danger",
 };
+
+const TENDER_VARIANT: Record<string, StatusVariant> = {
+  Cash: "success",
+  UPI: "teal",
+  Card: "amber",
+  Wallet: "neutral",
+};
+
+export type SaleLine = {
+  id: string;
+  sku: string;
+  productName: string;
+  qty: number;
+  unitPrice: number;
+  taxRate: number; // % — carried per line so mixed-tax-rate baskets work
+  discount: number; // flat amount off this line
+};
+
+export type Tender = { method: "Cash" | "UPI" | "Card" | "Wallet"; amount: number };
+
+export type PosSaleStatus = "Draft" | "Completed" | "Voided";
+
+export type PosSale = {
+  status: PosSaleStatus;
+  lines: SaleLine[];
+  subtotal: number;
+  taxAmount: number;
+  discountTotal: number;
+  totalAmount: number;
+  tenders: Tender[];
+  amountTendered: number;
+  changeDue: number;
+  cashier?: string;
+  branch?: string;
+  /** Guards against double-deducting Inventory stock on a retried completion. */
+  stockDeducted: boolean;
+  invoiceId?: string;
+  voidedAt?: string;
+  voidReason?: string;
+};
+
+/** Server-computed from cart lines — never trust client-submitted totals. */
+export function computeSaleTotals(lines: SaleLine[]): {
+  subtotal: number;
+  taxAmount: number;
+  discountTotal: number;
+  totalAmount: number;
+} {
+  let subtotal = 0;
+  let taxAmount = 0;
+  let discountTotal = 0;
+  for (const line of lines) {
+    const gross = line.qty * line.unitPrice;
+    const net = Math.max(0, gross - (line.discount || 0));
+    subtotal += net;
+    taxAmount += net * ((line.taxRate || 0) / 100);
+    discountTotal += line.discount || 0;
+  }
+  const round = (n: number) => Math.round(n * 100) / 100;
+  return {
+    subtotal: round(subtotal),
+    taxAmount: round(taxAmount),
+    discountTotal: round(discountTotal),
+    totalAmount: round(subtotal + taxAmount),
+  };
+}
+
+export function extractSaleFromRecord(record: Row): PosSale {
+  return {
+    status: (record["status"] as PosSaleStatus | undefined) ?? "Draft",
+    lines: (record["lines"] as SaleLine[] | undefined) ?? [],
+    subtotal: Number(record["subtotal"] ?? 0),
+    taxAmount: Number(record["taxAmount"] ?? 0),
+    discountTotal: Number(record["discountTotal"] ?? 0),
+    totalAmount: Number(record["totalAmount"] ?? 0),
+    tenders: (record["tenders"] as Tender[] | undefined) ?? [],
+    amountTendered: Number(record["amountTendered"] ?? 0),
+    changeDue: Number(record["changeDue"] ?? 0),
+    cashier: record["cashier"] as string | undefined,
+    branch: record["branch"] as string | undefined,
+    stockDeducted: Boolean(record["stockDeducted"]),
+    invoiceId: record["invoiceId"] as string | undefined,
+    voidedAt: record["voidedAt"] as string | undefined,
+    voidReason: record["voidReason"] as string | undefined,
+  };
+}
 
 export const posColumns: Column[] = [
   { key: "id", label: "Receipt Number", type: "text" },
-  { key: "sku", label: "SKU", type: "text" },
-  { key: "productName", label: "Product Name", type: "text" },
-  { key: "category", label: "Category", type: "select-chip" },
-  { key: "price", label: "Unit Price", type: "currency" },
-  { key: "taxRate", label: "Tax Rate (%)", type: "text" },
-  { key: "stockOnHand", label: "Stock on Hand", type: "text" },
-  { key: "discountApplied", label: "Discount Applied", type: "currency" },
-  { key: "paymentMethod", label: "Payment Method", type: "select-chip", chipVariantMap: STATUS_VARIANT },
+  { key: "lineCount", label: "Items", type: "text" },
+  { key: "totalAmount", label: "Total", type: "currency" },
+  { key: "paymentSummary", label: "Payment", type: "text" },
+  { key: "status", label: "Status", type: "select-chip", chipVariantMap: STATUS_VARIANT },
   { key: "cashier", label: "Cashier", type: "text" },
+  { key: "branch", label: "Branch", type: "text" },
   { key: "transactionTimestamp", label: "Transaction Time", type: "date" },
-  { key: "ipAddress", label: "IP Address (audit)", type: "text" },
 ];
+
+/**
+ * No create/edit form fields — checkout (pos/checkout/PosCheckout.tsx) is
+ * a real cart UI, not the generic RecordForm every other module still
+ * uses. Kept as an empty export so fieldSchema.ts's MODULE_SCHEMA map
+ * (which every module registers into) still type-checks; the Designer
+ * simply has nothing to customize for pos.create/pos.edit since those
+ * pages no longer exist.
+ */
+export const posFormFields: FormFieldDef[] = [];
 
 export const posRows: Row[] = [
   {
     id: "RCPT-10231",
-    sku: "GRC-0091",
-    productName: "Basmati Rice 5kg",
-    category: "Groceries",
-    price: 640,
-    taxRate: 5,
-    stockOnHand: 84,
-    discountApplied: 20,
-    paymentMethod: "UPI",
+    lineCount: 2,
+    totalAmount: 682,
+    paymentSummary: "UPI",
+    status: "Completed",
     cashier: "Meena R.",
+    branch: "Koramangala",
     transactionTimestamp: "2026-08-07T10:12:00",
-    ipAddress: "103.21.44.10",
   },
   {
     id: "RCPT-10230",
-    sku: "BEV-0044",
-    productName: "Cold Coffee 250ml",
-    category: "Beverages",
-    price: 60,
-    taxRate: 12,
-    stockOnHand: 210,
-    discountApplied: 0,
-    paymentMethod: "Cash",
+    lineCount: 1,
+    totalAmount: 67,
+    paymentSummary: "Cash",
+    status: "Completed",
     cashier: "Arjun D.",
+    branch: "Indiranagar",
     transactionTimestamp: "2026-08-07T09:58:00",
-    ipAddress: "103.21.44.10",
   },
   {
     id: "RCPT-10229",
-    sku: "ELE-0512",
-    productName: "USB-C Cable 1m",
-    category: "Electronics",
-    price: 249,
-    taxRate: 18,
-    stockOnHand: 36,
-    discountApplied: 0,
-    paymentMethod: "Card",
+    lineCount: 3,
+    totalAmount: 940,
+    paymentSummary: "Cash + Card",
+    status: "Completed",
     cashier: "Meena R.",
+    branch: "Koramangala",
     transactionTimestamp: "2026-08-06T18:44:00",
-    ipAddress: "103.21.44.12",
   },
   {
     id: "RCPT-10228",
-    sku: "APP-0221",
-    productName: "Cotton T-Shirt M",
-    category: "Apparel",
-    price: 499,
-    taxRate: 12,
-    stockOnHand: 58,
-    discountApplied: 50,
-    paymentMethod: "Wallet",
+    lineCount: 1,
+    totalAmount: 499,
+    paymentSummary: "Wallet",
+    status: "Voided",
     cashier: "Ravi K.",
+    branch: "HSR Layout",
     transactionTimestamp: "2026-08-06T17:20:00",
-    ipAddress: "103.21.44.15",
   },
-];
-
-export const posFormFields: FormFieldDef[] = [
-  { key: "id", label: "Receipt Number", type: "text", required: true },
-  { key: "sku", label: "SKU", type: "text", required: true },
-  { key: "productName", label: "Product Name", type: "text", required: true },
-  { key: "category", label: "Category", type: "select", required: true, options: ["Groceries","Beverages","Electronics","Apparel","Household"] },
-  { key: "price", label: "Unit Price", type: "currency", required: true },
-  { key: "taxRate", label: "Tax Rate (%)", type: "number", required: false },
-  { key: "stockOnHand", label: "Stock on Hand", type: "number", required: false },
-  { key: "discountApplied", label: "Discount Applied", type: "currency", required: false },
-  { key: "paymentMethod", label: "Payment Method", type: "select", required: true, options: ["Cash","UPI","Card","Wallet"] },
-  { key: "cashier", label: "Cashier", type: "text", required: true },
-  { key: "transactionTimestamp", label: "Transaction Time", type: "date", required: true },
-  { key: "ipAddress", label: "IP Address (audit)", type: "text", required: false },
 ];
 
 export function getPosRecord(recordId: string): Row {
@@ -110,26 +170,21 @@ export function getPosDetailFields(record: Row): RecordField[] {
   const r = record;
   return [
     { label: "Receipt Number", value: r["id"], type: "text" },
-    { label: "SKU", value: r["sku"], type: "text" },
-    { label: "Product Name", value: r["productName"], type: "text" },
-    { label: "Category", value: r["category"], type: "select", chipVariant: STATUS_VARIANT[String(r["category"])] ?? "neutral" },
-    { label: "Unit Price", value: r["price"], type: "currency" },
-    { label: "Tax Rate (%)", value: r["taxRate"], type: "text" },
-    { label: "Stock on Hand", value: r["stockOnHand"], type: "text" },
-    { label: "Discount Applied", value: r["discountApplied"], type: "currency" },
-    { label: "Payment Method", value: r["paymentMethod"], type: "select", chipVariant: STATUS_VARIANT[String(r["paymentMethod"])] ?? "neutral" },
+    { label: "Items", value: r["lineCount"], type: "text" },
+    { label: "Total", value: r["totalAmount"], type: "currency" },
+    { label: "Payment", value: r["paymentSummary"], type: "text", chipVariant: TENDER_VARIANT[String(r["paymentSummary"])] ?? "neutral" },
+    { label: "Status", value: r["status"], type: "select", chipVariant: STATUS_VARIANT[String(r["status"])] ?? "neutral" },
     { label: "Cashier", value: r["cashier"], type: "text" },
+    { label: "Branch", value: r["branch"], type: "text" },
     { label: "Transaction Time", value: r["transactionTimestamp"], type: "date" },
-    { label: "IP Address (audit)", value: r["ipAddress"], type: "text" },
   ];
 }
 
 export function getPosTimeline(record: Row): TimelineEntry[] {
   return [
-    { id: "t1", label: "Sale rung up at register by Meena R. — IP 103.21.44.10", timestamp: "2026-08-07T10:12:00", actor: "Meena R." },
-    { id: "t2", label: "Discount applied by cashier — IP 103.21.44.10", timestamp: "2026-08-07T10:12:10", actor: "Meena R." },
-    { id: "t3", label: "Payment captured via UPI, receipt generated — IP 103.21.44.10", timestamp: "2026-08-07T10:12:30", actor: "Meena R." },
-    { id: "t4", label: "Stock on hand decremented for sold SKU", timestamp: "2026-08-07T10:12:35", actor: "System" },
+    { id: "t1", label: "Sale rung up at register by " + (record["cashier"] ?? "cashier"), timestamp: String(record["transactionTimestamp"] ?? ""), actor: String(record["cashier"] ?? "") },
+    { id: "t2", label: "Stock decremented for each line item", timestamp: String(record["transactionTimestamp"] ?? ""), actor: "System" },
+    { id: "t3", label: `Payment captured (${record["paymentSummary"] ?? "—"}), Billing invoice created`, timestamp: String(record["transactionTimestamp"] ?? ""), actor: "System" },
   ];
 }
 

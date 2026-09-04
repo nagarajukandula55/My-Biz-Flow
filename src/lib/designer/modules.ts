@@ -1,14 +1,14 @@
 /**
  * Canonical module registry — the single source of truth for every module
- * type in My Biz Flow. A Vendor's "type" is just the set of module slugs
- * enabled on their account; there is no separate vendor-type enum anywhere
+ * type in My Biz Flow. A Partner's "type" is just the set of module slugs
+ * enabled on their account; there is no separate partner-type enum anywhere
  * else in the codebase. Adding a module means adding one entry here first,
- * then scaffolding its folder under src/app/vendor/[vendorId]/<slug>/ —
+ * then scaffolding its folder under src/app/partner/[partnerId]/<slug>/ —
  * never the other way around.
  *
- * This file is imported by at least one Client Component (vendor
+ * This file is imported by at least one Client Component (partner
  * settings' module toggle grid), so it MUST stay free of any node:fs/
- * node:path dependency — getModule()/buildVendorNavGroups() with
+ * node:path dependency — getModule()/buildPartnerNavGroups() with
  * Super-Admin label/icon overrides applied live in moduleRegistry.ts
  * instead, which layers moduleAppearance.ts's fs-based store on top of
  * the pure data here. Same split pattern as renderTemplate.ts/
@@ -18,7 +18,7 @@
 export type ModuleTaxonomy = "vertical" | "cross-cutting" | "brand";
 
 export interface ModuleDefinition {
-  /** URL-safe slug — matches the folder name under src/app/vendor/[vendorId]/ */
+  /** URL-safe slug — matches the folder name under src/app/partner/[partnerId]/ */
   slug: string;
   /** Human-facing name */
   label: string;
@@ -53,6 +53,7 @@ export const MODULES: ModuleDefinition[] = [
   { slug: "logistics-fleet", label: "Logistics / Fleet", description: "Delivery tracking, vehicle and driver management.", taxonomy: "vertical" },
   { slug: "legal", label: "Legal / Case Management", description: "Client matters, billable hours, document tracking.", taxonomy: "vertical" },
   { slug: "event-booking", label: "Event / Venue Booking", description: "Event scheduling, banquet halls, catering.", taxonomy: "vertical" },
+  { slug: "salon-spa", label: "Salon & Spa", description: "Beauty/personal-care bookings — service menu, stylist assignment, appointment scheduling.", taxonomy: "vertical" },
 
   // --- Cross-cutting (plug into any vertical, not standalone verticals) ---
   { slug: "inventory", label: "Inventory / Warehouse", description: "Stock, purchase orders, suppliers — shared across POS/SC/Restaurant/etc.", taxonomy: "cross-cutting" },
@@ -61,7 +62,9 @@ export const MODULES: ModuleDefinition[] = [
   { slug: "hrms", label: "HRMS / Payroll", description: "Staff attendance, payroll — add-on to any module.", taxonomy: "cross-cutting" },
 
   // --- Special case ---
-  { slug: "marketplace", label: "Marketplace / Vendor Aggregator", description: "Multiple vendors under one umbrella — coordinates with central-api's own vendor concept, does not duplicate it.", taxonomy: "cross-cutting" },
+  { slug: "marketplace", label: "Marketplace / Partner Aggregator", description: "Multiple partners under one umbrella — coordinates with central-api's own vendor concept, does not duplicate it.", taxonomy: "cross-cutting" },
+
+  { slug: "field-force", label: "Field Force", description: "Recruit and onboard field engineers, match them to a partner's job requirement by service and serviceable pincode.", taxonomy: "cross-cutting" },
 ];
 
 /**
@@ -111,6 +114,17 @@ export function taxonomyToNavDot(taxonomy: ModuleTaxonomy): NavDot {
  * module slug; a module without an entry falls back to the generic trio.
  */
 export const MODULE_SUB_NAV: Record<string, { key: string; label: string; href: string }[]> = {
+  // Suggested Basic/Pro/Ultimate split for Super Admin to configure in
+  // PartnerType.planTierByPage (/admin/partner-types) — config-only
+  // guidance, same as every module; nothing here runtime-enforces it.
+  // Basic: checkout + receipt (a till that rings up sales). Pro: split
+  // tender, void sale, real stock deduction. Ultimate: real Billing
+  // invoice linkage — the full GST-compliant paper trail.
+  pos: [
+    { key: "pos.list", label: "Sales", href: "pos" },
+    { key: "pos.checkout", label: "+ New Sale", href: "pos/checkout" },
+    { key: "pos.admin", label: "Admin", href: "pos/admin" },
+  ],
   inventory: [
     { key: "inventory.bom", label: "Material Catalog (BOM)", href: "inventory/bom" },
     { key: "inventory.warehouses", label: "Warehouses", href: "inventory/warehouses" },
@@ -120,6 +134,13 @@ export const MODULE_SUB_NAV: Record<string, { key: string; label: string; href: 
     { key: "inventory.part-orders", label: "Part Orders", href: "inventory/part-orders" },
     { key: "inventory.admin", label: "Admin", href: "inventory/admin" },
   ],
+  // Suggested Basic/Pro/Ultimate split for Super Admin to configure in
+  // PartnerType.planTierByPage (/admin/partner-types) — config-only
+  // guidance, same as every module; nothing here runtime-enforces it.
+  // Basic: workorders list/create/detail — ring up a repair job and track
+  // its stage. Pro: brand/model/technician assignment, estimate approval,
+  // hold state — the accountability layer AN-CRM gates similarly behind
+  // its higher plans. Ultimate: real Billing invoice creation on close.
   "service-centre": [
     { key: "service-centre.list", label: "Workorders", href: "service-centre" },
     { key: "service-centre.new", label: "+ New Workorder", href: "service-centre/new" },
@@ -136,6 +157,12 @@ export const MODULE_SUB_NAV: Record<string, { key: string; label: string; href: 
     { key: "accounting-gst.itc", label: "ITC Register", href: "accounting-gst/itc" },
     { key: "accounting-gst.admin", label: "Admin", href: "accounting-gst/admin" },
   ],
+  "field-force": [
+    { key: "field-force.list", label: "Engineers", href: "field-force" },
+    { key: "field-force.onboard", label: "Onboard Engineer", href: "field-force/onboard" },
+    { key: "field-force.allocations", label: "Job Allocation", href: "field-force/allocations" },
+    { key: "field-force.admin", label: "Admin", href: "field-force/admin" },
+  ],
   billing: [
     { key: "billing.list", label: "Invoices", href: "billing" },
     { key: "billing.new", label: "+ New Invoice", href: "billing/new" },
@@ -149,39 +176,39 @@ export const MODULE_SUB_NAV: Record<string, { key: string; label: string; href: 
   ],
 };
 
-export interface VendorNavSubItem {
+export interface PartnerNavSubItem {
   key: string;
   label: string;
-  /** Path segment(s) relative to /vendor/[vendorId]/, e.g. "billing/new". */
+  /** Path segment(s) relative to /partner/[partnerId]/, e.g. "billing/new". */
   href: string;
 }
 
-export interface VendorNavGroup {
+export interface PartnerNavGroup {
   title: string;
   items: {
     key: string;
     label: string;
     dot: NavDot;
     icon?: string;
-    /** Path segment(s) relative to /vendor/[vendorId]/. Defaults to `key` when unset (true for module items, since a module's slug is its list-page route). */
+    /** Path segment(s) relative to /partner/[partnerId]/. Defaults to `key` when unset (true for module items, since a module's slug is its list-page route). */
     href?: string;
-    subItems?: VendorNavSubItem[];
+    subItems?: PartnerNavSubItem[];
   }[];
 }
 
 /**
- * Builds the vendor sidebar's nav groups from the canonical MODULES list —
+ * Builds the partner sidebar's nav groups from the canonical MODULES list —
  * every module page uses this instead of hand-writing its own nav array,
  * so the sidebar can never drift from the module registry above.
  *
  * Pure — no Super-Admin label/icon override applied (that needs fs, see
- * file header). Use buildVendorNavGroups() from moduleRegistry.ts in any
+ * file header). Use buildPartnerNavGroups() from moduleRegistry.ts in any
  * Server Component that should reflect overrides (which is effectively
  * everywhere it's currently called — moduleRegistry.ts's version has the
  * same name and signature, so updating an import path is the only change
  * needed).
  */
-export function buildVendorNavGroups(activeModuleSlug?: string): VendorNavGroup[] {
+export function buildPartnerNavGroups(activeModuleSlug?: string): PartnerNavGroup[] {
   const groups: Record<ModuleTaxonomy, ModuleDefinition[]> = {
     brand: [],
     vertical: [],
@@ -205,14 +232,14 @@ export function buildVendorNavGroups(activeModuleSlug?: string): VendorNavGroup[
 }
 
 /**
- * A Vendor's "type" is just its enabled modules (see DESIGN_SYSTEM.md §7).
- * There is no real per-vendor enabled-modules record yet — no database, no
+ * A Partner's "type" is just its enabled modules (see DESIGN_SYSTEM.md §7).
+ * There is no real per-partner enabled-modules record yet — no database, no
  * signup persistence — so this is a plausible DEMO set for the sample
- * vendor, standing in for what would otherwise be a real lookup once a
- * Vendor record exists. Everything downstream (the dynamic dashboard,
+ * partner, standing in for what would otherwise be a real lookup once a
+ * Partner record exists. Everything downstream (the dynamic dashboard,
  * analytics) is built to consume whatever this returns, so swapping this
  * for a real query later requires no changes to the consumers.
  */
-export function getDemoEnabledModules(_vendorId: string): string[] {
+export function getDemoEnabledModules(_partnerId: string): string[] {
   return ["pos", "service-centre", "billing", "inventory"];
 }

@@ -27,6 +27,7 @@ import { posColumns, posFormFields } from "@/lib/sample-data/pos";
 import { realEstateColumns, realEstateFormFields } from "@/lib/sample-data/real-estate";
 import { rentalsColumns, rentalsFormFields } from "@/lib/sample-data/rentals";
 import { restaurantPosColumns, restaurantPosFormFields } from "@/lib/sample-data/restaurant-pos";
+import { salonSpaColumns, salonSpaFormFields } from "@/lib/sample-data/salon-spa";
 import { serviceCentreColumns, serviceCentreFormFields } from "@/lib/sample-data/service-centre";
 import { subscriptionsColumns, subscriptionsFormFields } from "@/lib/sample-data/subscriptions";
 import { wholesaleB2bColumns, wholesaleB2bFormFields } from "@/lib/sample-data/wholesale-b2b";
@@ -50,6 +51,7 @@ const MODULE_SCHEMA: Record<string, { columns: Column[]; formFields: FormFieldDe
   "real-estate": { columns: realEstateColumns, formFields: realEstateFormFields },
   rentals: { columns: rentalsColumns, formFields: rentalsFormFields },
   "restaurant-pos": { columns: restaurantPosColumns, formFields: restaurantPosFormFields },
+  "salon-spa": { columns: salonSpaColumns, formFields: salonSpaFormFields },
   "service-centre": { columns: serviceCentreColumns, formFields: serviceCentreFormFields },
   subscriptions: { columns: subscriptionsColumns, formFields: subscriptionsFormFields },
   "wholesale-b2b": { columns: wholesaleB2bColumns, formFields: wholesaleB2bFormFields },

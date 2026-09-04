@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { LogoMark } from "@/components/LogoMark";
 import { registerPage } from "@/lib/designer/registry";
-import { listActiveVendorTypes } from "@/lib/designer/vendorTypesData";
+import { listActivePartnerTypes } from "@/lib/designer/partnerTypesData";
 import { PincodeLookupFields } from "./PincodeLookupFields";
 import { registerBusiness } from "./actions";
 
@@ -16,7 +16,7 @@ registerPage({
   superAdminOnly: false,
   customizableRegions: [],
   explanation:
-    "Public 'Register your business' flow, full-page layout (not a centered card). Vendor Type is the only thing the vendor picks/sees (modules, Roles, and plan tiers stay Super-Admin-configured, never shown here) — everything else is business details needed for invoicing plus a login contact number. No password field: one is generated and shown once on /signup/success (or held for approval on /signup/pending if the type requires it), forcing a change on first login.",
+    "Public 'Register your business' flow, full-page layout (not a centered card). Partner Type is the only thing the partner picks/sees (modules, Roles, and plan tiers stay Super-Admin-configured, never shown here) — everything else is business details needed for invoicing plus a login contact number. No password field: one is generated and shown once on /signup/success (or held for approval on /signup/pending if the type requires it), forcing a change on first login.",
   sourceFile: "src/app/signup/page.tsx",
 });
 
@@ -25,8 +25,8 @@ export default async function SignupPage({
 }: {
   searchParams: { type?: string; error?: string };
 }) {
-  const vendorTypes = await listActiveVendorTypes();
-  const selected = vendorTypes.find((t) => t.id === searchParams.type) ?? vendorTypes[0];
+  const partnerTypes = await listActivePartnerTypes();
+  const selected = partnerTypes.find((t) => t.id === searchParams.type) ?? partnerTypes[0];
 
   return (
     <div className="min-h-screen w-full bg-bg">
@@ -44,7 +44,7 @@ export default async function SignupPage({
         <div>
           <h1 className="font-display text-3xl font-bold text-text">Register your business</h1>
           <p className="mt-2 max-w-xl text-sm text-text-muted">
-            You&apos;ll be assigned a Vendor ID (e.g. VND0001) and a one-time password once you submit — no
+            You&apos;ll be assigned a Partner ID (e.g. VND0001) and a one-time password once you submit — no
             password to make up here.
           </p>
 
@@ -54,7 +54,7 @@ export default async function SignupPage({
             </p>
           )}
 
-          {vendorTypes.length === 0 ? (
+          {partnerTypes.length === 0 ? (
             <p className="mt-8 rounded-md border border-dashed border-border bg-bg-raised p-6 text-center text-sm text-text-muted">
               No business types are open for signup yet — check back soon.
             </p>
@@ -64,7 +64,7 @@ export default async function SignupPage({
                 <label className="text-xs font-semibold uppercase tracking-wide text-text-muted">
                   Business Type
                   <select
-                    name="vendorTypeId"
+                    name="partnerTypeId"
                     required
                     defaultValue={selected?.id ?? ""}
                     className="mt-1 w-full max-w-sm rounded-md border border-border bg-bg px-3 py-2 text-sm text-text outline-none focus:border-teal"
@@ -72,7 +72,7 @@ export default async function SignupPage({
                     <option value="" disabled>
                       Select your business type
                     </option>
-                    {vendorTypes.map((t) => (
+                    {partnerTypes.map((t) => (
                       <option key={t.id} value={t.id}>
                         {t.id}
                       </option>
@@ -142,7 +142,7 @@ export default async function SignupPage({
               <div>
                 <h2 className="font-display text-base font-bold text-text">Login</h2>
                 <p className="mt-1 text-xs text-text-muted">
-                  This number is what you&apos;ll sign in with, alongside your Vendor ID. OTP verification is
+                  This number is what you&apos;ll sign in with, alongside your Partner ID. OTP verification is
                   coming soon — for now, a generated password.
                 </p>
                 <div className="mt-4 max-w-sm">
@@ -172,13 +172,13 @@ export default async function SignupPage({
               <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-accent-soft text-xs font-bold text-accent">
                 1
               </span>
-              We assign your Vendor ID and a one-time password.
+              We assign your Partner ID and a one-time password.
             </li>
             <li className="flex gap-2.5">
               <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-accent-soft text-xs font-bold text-accent">
                 2
               </span>
-              Sign in with your Vendor ID (or contact number) and that password.
+              Sign in with your Partner ID (or contact number) and that password.
             </li>
             <li className="flex gap-2.5">
               <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-accent-soft text-xs font-bold text-accent">

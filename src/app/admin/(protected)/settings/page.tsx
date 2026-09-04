@@ -19,7 +19,7 @@ registerPage({
   superAdminOnly: true,
   customizableRegions: [],
   explanation:
-    "Platform-level settings, distinct from a Vendor's own /settings. Currently holds the 'make any page public' access toggle: real (enforced by src/middleware.ts via /api/page-access) for pages already gated by SuperAdminGate; shown-but-inert for ordinary vendor pages, which have no gate to begin with yet — see the 'not currently gated' label on those rows, and DESIGN_SYSTEM.md §9.",
+    "Platform-level settings, distinct from a Partner's own /settings. Currently holds the 'make any page public' access toggle: real (enforced by src/middleware.ts via /api/page-access) for pages already gated by SuperAdminGate; shown-but-inert for ordinary partner pages, which have no gate to begin with yet — see the 'not currently gated' label on those rows, and DESIGN_SYSTEM.md §9.",
   sourceFile: "src/app/admin/(protected)/settings/page.tsx",
 });
 
@@ -34,7 +34,7 @@ export default async function PlatformSettingsPage() {
           <p className="mt-1 max-w-[70ch] text-sm text-text-muted">
             Flip any registered page to public access. This is REAL enforcement for pages
             already gated by the Super Admin cookie (middleware checks this list on every
-            request) — it has no effect on ordinary vendor pages, which aren&apos;t gated at all
+            request) — it has no effect on ordinary partner pages, which aren&apos;t gated at all
             yet, and are labeled accordingly below rather than implying protection that doesn&apos;t
             exist.
           </p>
@@ -68,10 +68,10 @@ export default async function PlatformSettingsPage() {
           <div className="mt-8 rounded-lg border border-danger bg-danger-soft p-5">
             <h2 className="font-display text-base font-bold text-text">Danger Zone</h2>
             <p className="mt-1 max-w-[70ch] text-sm text-text-muted">
-              For the live demo: delete every vendor account and its business data (workorders, invoices,
+              For the live demo: delete every partner account and its business data (workorders, invoices,
               inventory, etc.) — never platform configuration. Designer customizations, document templates,
               numbering, and page-access stay exactly as configured, since that&apos;s the system being built
-              out for every real vendor going forward.
+              out for every real partner going forward.
             </p>
             <div className="mt-4">
               <ResetDemoDataButton />

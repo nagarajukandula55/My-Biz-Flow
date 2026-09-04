@@ -1,7 +1,7 @@
 /**
  * Access Groups — real Prisma-backed store (`AccessGroup` table). Platform
  * RBAC: a named bundle of per-page, per-action permissions, defined once
- * by Super Admin and reused across every vendor.
+ * by Super Admin and reused across every partner.
  *
  * Deliberately free of the Designer registry import (which pulls in
  * node:fs transitively) so this stays importable from anywhere that isn't

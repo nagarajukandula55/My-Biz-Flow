@@ -41,8 +41,18 @@ export const workorderLifecycle: Record<
   string,
   {
     stage: WorkorderStage;
+    brandId?: string;
     brandName?: string;
+    modelId?: string;
     modelName?: string;
+    technicianId?: string;
+    technicianName?: string;
+    assignedAt?: string;
+    onHold?: boolean;
+    holdReason?: string;
+    holdSince?: string;
+    estimateApproved?: boolean;
+    invoiceId?: string;
     appointmentRef?: string;
     partLines: PartLine[];
     serviceLines: ServiceLine[];
@@ -101,16 +111,36 @@ export function getWorkorderLifecycle(workorderId: string) {
  */
 export function extractLifecycleFromRecord(record: Row): {
   stage: WorkorderStage;
+  brandId?: string;
   brandName?: string;
+  modelId?: string;
   modelName?: string;
+  technicianId?: string;
+  technicianName?: string;
+  assignedAt?: string;
+  onHold?: boolean;
+  holdReason?: string;
+  holdSince?: string;
+  estimateApproved?: boolean;
+  invoiceId?: string;
   partLines: PartLine[];
   serviceLines: ServiceLine[];
   handoverNotes?: string;
 } {
   return {
     stage: (record["stage"] as WorkorderStage | undefined) ?? "Created",
+    brandId: record["brandId"] as string | undefined,
     brandName: record["brandName"] as string | undefined,
+    modelId: record["modelId"] as string | undefined,
     modelName: record["modelName"] as string | undefined,
+    technicianId: record["technicianId"] as string | undefined,
+    technicianName: record["technicianName"] as string | undefined,
+    assignedAt: record["assignedAt"] as string | undefined,
+    onHold: Boolean(record["onHold"]),
+    holdReason: record["holdReason"] as string | undefined,
+    holdSince: record["holdSince"] as string | undefined,
+    estimateApproved: Boolean(record["estimateApproved"]),
+    invoiceId: record["invoiceId"] as string | undefined,
     partLines: (record["partLines"] as PartLine[] | undefined) ?? [],
     serviceLines: (record["serviceLines"] as ServiceLine[] | undefined) ?? [],
     handoverNotes: record["handoverNotes"] as string | undefined,
@@ -122,7 +152,9 @@ export const serviceCentreColumns: Column[] = [
   { key: "id", label: "Job ID", type: "text" },
   { key: "customer", label: "Customer", type: "relation-link" },
   { key: "device", label: "Device / Vehicle", type: "text" },
-  { key: "technician", label: "Technician", type: "text" },
+  { key: "brandName", label: "Brand", type: "text" },
+  { key: "modelName", label: "Model", type: "text" },
+  { key: "technicianName", label: "Assigned Technician", type: "text" },
   { key: "priority", label: "Priority", type: "select-chip" },
   { key: "status", label: "Status", type: "select-chip", chipVariantMap: STATUS_VARIANT },
   { key: "receivedDate", label: "Received Date", type: "date" },
@@ -195,8 +227,7 @@ export const serviceCentreRows: Row[] = [
 export const serviceCentreFormFields: FormFieldDef[] = [
   { key: "id", label: "Job ID", type: "text", required: true },
   { key: "customer", label: "Customer", type: "relation", required: true },
-  { key: "device", label: "Device / Vehicle", type: "text", required: true },
-  { key: "technician", label: "Technician", type: "text", required: true },
+  { key: "device", label: "Device / Vehicle", type: "text", required: false, placeholder: "Free-text fallback — pick a real Brand/Model from the job's detail page once created" },
   { key: "priority", label: "Priority", type: "select", required: true, options: ["Low","Medium","High","Urgent"] },
   { key: "status", label: "Status", type: "select", required: true, options: ["Diagnosed","In repair","Ready","Delivered","On hold"] },
   { key: "receivedDate", label: "Received Date", type: "date", required: true },
@@ -217,7 +248,9 @@ export function getServiceCentreDetailFields(record: Row): RecordField[] {
     { label: "Job ID", value: r["id"], type: "text" },
     { label: "Customer", value: r["customer"], type: "relation" },
     { label: "Device / Vehicle", value: r["device"], type: "text" },
-    { label: "Technician", value: r["technician"], type: "text" },
+    { label: "Brand", value: r["brandName"], type: "text" },
+    { label: "Model", value: r["modelName"], type: "text" },
+    { label: "Assigned Technician", value: r["technicianName"], type: "text" },
     { label: "Priority", value: r["priority"], type: "select", chipVariant: STATUS_VARIANT[String(r["priority"])] ?? "neutral" },
     { label: "Status", value: r["status"], type: "select", chipVariant: STATUS_VARIANT[String(r["status"])] ?? "neutral" },
     { label: "Received Date", value: r["receivedDate"], type: "date" },

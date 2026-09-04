@@ -9,10 +9,10 @@
  * central-api, see CLAUDE.md) — a trial rolling past trialEndAt just
  * flips the derived status to "Trial Expired" for display; actually
  * collecting payment and moving PastDue -> Active is a manual Super
- * Admin action for now (see /admin/subscribers/[vendorId]/subscription).
+ * Admin action for now (see /admin/subscribers/[partnerId]/subscription).
  */
 import { prisma } from "@/lib/prisma";
-import type { VendorRecord } from "@/lib/vendorData";
+import type { PartnerRecord } from "@/lib/partnerData";
 import { getPlan } from "@/lib/plansData";
 
 export type BillingCycle = "Monthly" | "Quarterly" | "HalfYearly" | "Yearly";
@@ -131,14 +131,14 @@ export function applyOfferDiscount(cyclePrice: number, offer: OfferRecord | unde
   return Math.round(cyclePrice * (1 - offer.discountValue / 100));
 }
 
-/** The rupee amount due for a vendor's currently chosen plan+cycle+offer — used to create the Razorpay order. */
-export async function computeVendorDueAmount(vendor: VendorRecord): Promise<{ amount: number; planName: string } | undefined> {
-  if (!vendor.planId || !vendor.billingCycle) return undefined;
-  const plan = await getPlan(vendor.planId);
+/** The rupee amount due for a partner's currently chosen plan+cycle+offer — used to create the Razorpay order. */
+export async function computePartnerDueAmount(partner: PartnerRecord): Promise<{ amount: number; planName: string } | undefined> {
+  if (!partner.planId || !partner.billingCycle) return undefined;
+  const plan = await getPlan(partner.planId);
   if (!plan) return undefined;
-  const cycle = vendor.billingCycle as BillingCycle;
+  const cycle = partner.billingCycle as BillingCycle;
   const cyclePrice = computeCyclePrice(plan.price, cycle);
-  const offer = vendor.offerId ? await getOffer(vendor.offerId) : undefined;
+  const offer = partner.offerId ? await getOffer(partner.offerId) : undefined;
   const amount = applyOfferDiscount(cyclePrice, offer, plan.id, cycle);
   return { amount, planName: plan.name };
 }
@@ -149,12 +149,12 @@ export type SubscriptionState = {
   isTrialExpired: boolean;
 };
 
-/** Derives a display-friendly subscription state from a Vendor row — does not mutate anything. */
-export function getSubscriptionState(vendor: VendorRecord): SubscriptionState {
-  if (vendor.subscriptionStatus !== "Trial" || !vendor.trialEndAt) {
-    return { status: vendor.subscriptionStatus, daysLeftInTrial: null, isTrialExpired: false };
+/** Derives a display-friendly subscription state from a Partner row — does not mutate anything. */
+export function getSubscriptionState(partner: PartnerRecord): SubscriptionState {
+  if (partner.subscriptionStatus !== "Trial" || !partner.trialEndAt) {
+    return { status: partner.subscriptionStatus, daysLeftInTrial: null, isTrialExpired: false };
   }
-  const msLeft = vendor.trialEndAt.getTime() - Date.now();
+  const msLeft = partner.trialEndAt.getTime() - Date.now();
   const daysLeftInTrial = Math.max(0, Math.ceil(msLeft / (1000 * 60 * 60 * 24)));
   const isTrialExpired = msLeft <= 0;
   return { status: isTrialExpired ? "Trial Expired" : "Trial", daysLeftInTrial, isTrialExpired };

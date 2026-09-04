@@ -5,7 +5,7 @@ import { PlatformAdminSidebar } from "@/components/PlatformAdminSidebar";
  * Shared layout for every real Super Admin section (Designer, Numbering,
  * Settings, Error Log, Plans, Subscribers) — renders the sidebar ONCE so
  * it persists across navigations between them, same pattern as
- * src/app/vendor/[vendorId]/layout.tsx. Deliberately a route group
+ * src/app/partner/[partnerId]/layout.tsx. Deliberately a route group
  * "(protected)" rather than /admin/layout.tsx directly, so /admin/login
  * (not yet authenticated, shouldn't show the admin sidebar) stays outside
  * it — route groups don't affect the URL, so /admin/designer etc. are

@@ -1,5 +1,5 @@
 import { env } from "@/lib/env";
-import type { VendorRecord } from "@/lib/vendorData";
+import type { PartnerRecord } from "@/lib/partnerData";
 
 /**
  * GST rate applied to subscription revenue reported to AN-Accounting.
@@ -12,7 +12,7 @@ import type { VendorRecord } from "@/lib/vendorData";
 const SUBSCRIPTION_GST_RATE_PERCENT = 18;
 
 /**
- * Pushes a captured vendor subscription payment into AN-Accounting's sales
+ * Pushes a captured partner subscription payment into AN-Accounting's sales
  * ingestion API (see that app's src/app/api/external/sales/route.ts) so it
  * shows up as a real invoice + ledger entry there, without manual re-entry.
  *
@@ -26,7 +26,7 @@ const SUBSCRIPTION_GST_RATE_PERCENT = 18;
  * returns instead.
  */
 export async function notifyCentralApiSale(
-  vendor: VendorRecord,
+  partner: PartnerRecord,
   planName: string,
   payment: { razorpayPaymentId: string; amount: number; capturedAt: Date },
 ): Promise<void> {
@@ -51,11 +51,11 @@ export async function notifyCentralApiSale(
         externalOrderId: payment.razorpayPaymentId,
         externalSource: "my-biz-flow",
         customer: {
-          name: vendor.businessName,
-          email: vendor.businessEmail,
-          phone: vendor.businessContact,
-          gstin: vendor.gstin || null,
-          state: vendor.state,
+          name: partner.businessName,
+          email: partner.businessEmail,
+          phone: partner.businessContact,
+          gstin: partner.gstin || null,
+          state: partner.state,
         },
         lines: [
           {
@@ -63,7 +63,7 @@ export async function notifyCentralApiSale(
             // total, so `rate` here must be the pre-tax amount — back it
             // out from the gross amount actually collected, so the
             // invoice's grand total matches the real payment.
-            description: `Subscription — ${planName} (${vendor.billingCycle})`,
+            description: `Subscription — ${planName} (${partner.billingCycle})`,
             quantity: 1,
             rate: Number((payment.amount / (1 + SUBSCRIPTION_GST_RATE_PERCENT / 100)).toFixed(2)),
             gstRatePercent: SUBSCRIPTION_GST_RATE_PERCENT,
@@ -88,7 +88,7 @@ export async function notifyCentralApiSale(
 }
 
 /**
- * Pushes a vendor's own Billing invoice (a BusinessRecord in the "billing"
+ * Pushes a partner's own Billing invoice (a BusinessRecord in the "billing"
  * module — see src/components/BillingInvoiceForm.tsx) into AN-Accounting,
  * same endpoint/contract as notifyCentralApiSale above. Called right after
  * a billing record is created (src/lib/businessRecordActions.ts) and from
@@ -96,12 +96,12 @@ export async function notifyCentralApiSale(
  *
  * The Billing form only captures a free-text customer name + GSTIN, not a
  * state — AN-Accounting's GST split needs one, so this falls back to the
- * vendor's own state. That's a real limitation (not necessarily the
+ * partner's own state. That's a real limitation (not necessarily the
  * customer's actual state): fix by adding a state field to Billing
  * Contacts/the invoice form if intra- vs inter-state accuracy here matters.
  */
 export async function notifyCentralApiBillingInvoice(
-  vendor: VendorRecord,
+  partner: PartnerRecord,
   invoice: {
     externalOrderId: string;
     customer: string;
@@ -133,7 +133,7 @@ export async function notifyCentralApiBillingInvoice(
         customer: {
           name: invoice.customer,
           gstin: invoice.customerGstin || null,
-          state: vendor.state,
+          state: partner.state,
         },
         lines: invoice.items
           .filter((it) => it.description)

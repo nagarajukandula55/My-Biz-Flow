@@ -62,17 +62,17 @@ model NumberingMainScheme {
   @@map("numbering_main_schemes")
 }
 
-/// Mirrors data/numbering.json's `vendor` map — one row per (vendorId, documentType) override.
-model NumberingVendorScheme {
-  vendorId     String
+/// Mirrors data/numbering.json's `partner` map — one row per (partnerId, documentType) override.
+model NumberingPartnerScheme {
+  partnerId     String
   documentType String
   scheme       Json
 
-  @@id([vendorId, documentType])
-  @@map("numbering_vendor_schemes")
+  @@id([partnerId, documentType])
+  @@map("numbering_partner_schemes")
 }
 
-/// Mirrors data/numbering.json's `counters` map — one row per scopeKey ("main:<type>" or "vendor:<id>:<type>").
+/// Mirrors data/numbering.json's `counters` map — one row per scopeKey ("main:<type>" or "partner:<id>:<type>").
 model NumberingCounter {
   scopeKey String @id
   value    Int
@@ -104,7 +104,7 @@ model ErrorLogEntry {
 }
 
 /// Platform-level RBAC, defined once by Super Admin and reused across
-/// every vendor — see src/lib/designer/accessGroupsData.ts.
+/// every partner — see src/lib/designer/accessGroupsData.ts.
 /// pagePermissions: PagePermission[] JSON, {pageId, view, edit, delete, other}.
 model AccessGroup {
   id               String   @id
@@ -127,26 +127,26 @@ model Role {
   @@map("roles")
 }
 
-/// The top-level entity a vendor account is created against — see
-/// src/lib/designer/vendorTypesData.ts. defaultModules/assignableRoleIds
+/// The top-level entity a partner account is created against — see
+/// src/lib/designer/partnerTypesData.ts. defaultModules/assignableRoleIds
 /// are JSON string arrays (module slugs / Role ids). planTierByPage is a
 /// JSON map of pageId -> "basic" | "pro" | "ultimate", scoped to ONLY this
-/// type's own defaultModules pages — every Vendor Type defines its own
+/// type's own defaultModules pages — every Partner Type defines its own
 /// Basic/Pro/Ultimate PAGE breakdown independently (confirmed 2026-08-08:
 /// no type may just "include" one of a shared set of plans for page
 /// access). planIds (added 2026-08-08) is a separate concern: which of
 /// the 3 real Plan price points (src/lib/plansData.ts) this type bundles
 /// for actual billing — a type can offer Basic+Pro pricing while still
 /// defining its own Basic/Pro page split above.
-model VendorType {
+model PartnerType {
   id                 String   @id
   description        String?  @db.Text
   defaultModules     Json     @default("[]")
   assignableRoleIds  Json     @default("[]")
   planTierByPage     Json     @default("{}")
   planIds            Json     @default("[]")
-  /// When true, a signup against this type creates a VendorSignupRequest
-  /// instead of a Vendor directly — no VND#### id is assigned until Super
+  /// When true, a signup against this type creates a PartnerSignupRequest
+  /// instead of a Partner directly — no VND#### id is assigned until Super
   /// Admin approves it. Off by default (confirmed 2026-08-08: no approval
   /// required unless explicitly turned on per type).
   requiresApproval   Boolean  @default(false)
@@ -154,20 +154,20 @@ model VendorType {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
-  @@map("vendor_types")
+  @@map("partner_types")
 }
 
-/// A registered vendor account — see src/lib/vendorData.ts. `id` is the
+/// A registered partner account — see src/lib/partnerData.ts. `id` is the
 /// public VND#### id (used for login, invoices, support — everything the
-/// vendor themselves ever sees). `internalKey` (BIZ<business>-VND####) is
+/// partner themselves ever sees). `internalKey` (BIZ<business>-VND####) is
 /// for our own DB relations and the eventual central-api sync only, never
-/// shown to the vendor. businessId is fixed to "BIZ002" (this business's
+/// shown to the partner. businessId is fixed to "BIZ002" (this business's
 /// central-api id) until real cross-business support exists.
-model Vendor {
+model Partner {
   id                 String   @id
   internalKey        String   @unique
   businessId         String   @default("BIZ002")
-  vendorTypeId       String
+  partnerTypeId       String
   businessName       String
   addressLine        String?
   city               String
@@ -178,7 +178,7 @@ model Vendor {
   businessContact    String
   loginContact       String   @unique
   passwordHash       String
-  /// True until the vendor completes their first forced password change
+  /// True until the partner completes their first forced password change
   /// (signup never collects a password directly — one is generated and
   /// shown/emailed once).
   mustChangePassword Boolean  @default(true)
@@ -189,12 +189,12 @@ model Vendor {
   /// Super Admin can freely override status/dates/plan/cycle from
   /// /admin/subscribers. There is no payment gateway wired up yet (same
   /// documented gap as central-api) — moving PastDue -> Active once a
-  /// vendor actually pays is a manual Super Admin action for now.
+  /// partner actually pays is a manual Super Admin action for now.
   subscriptionStatus String    @default("Trial")
   trialStartAt       DateTime?
   trialEndAt         DateTime?
   /// "Monthly" | "Quarterly" | "HalfYearly" | "Yearly" — chosen when the
-  /// vendor converts off trial; null while still on trial.
+  /// partner converts off trial; null while still on trial.
   billingCycle       String?
   planId             String?
   offerId            String?
@@ -202,12 +202,12 @@ model Vendor {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
-  @@map("vendors")
+  @@map("partners")
 }
 
 /// A discount or bundle a Super Admin can apply at subscribe time — a
 /// straight percent/flat discount off a Plan's computed cycle price, or a
-/// combo bundling several Plans together. Applied via Vendor.offerId;
+/// combo bundling several Plans together. Applied via Partner.offerId;
 /// pricing math lives in src/lib/subscriptionData.ts.
 model Offer {
   id            String    @id @default(cuid())
@@ -245,10 +245,10 @@ model Plan {
   @@map("plans")
 }
 
-/// A signup submitted against a Vendor Type with requiresApproval=true —
-/// holds everything a Vendor row would, but no VND#### id is assigned
-/// until Super Admin approves it (see vendorSignupRequestsData.ts).
-/// Generic, vendor-scoped business record store — backs every module's
+/// A signup submitted against a Partner Type with requiresApproval=true —
+/// holds everything a Partner row would, but no VND#### id is assigned
+/// until Super Admin approves it (see partnerSignupRequestsData.ts).
+/// Generic, partner-scoped business record store — backs every module's
 /// actual data (POS sales, Service Centre workorders, Billing invoices,
 /// etc.) instead of a bespoke Prisma model per module. `data` mirrors the
 /// module's existing Column/FormFieldDef key vocabulary exactly (see
@@ -258,40 +258,40 @@ model Plan {
 /// `id` here exists only because Prisma needs a stable primary key.
 model BusinessRecord {
   id         String   @id @default(cuid())
-  vendorId   String
+  partnerId   String
   moduleSlug String
   recordKey  String
   data       Json
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  @@unique([vendorId, moduleSlug, recordKey])
-  @@index([vendorId, moduleSlug])
+  @@unique([partnerId, moduleSlug, recordKey])
+  @@index([partnerId, moduleSlug])
   @@map("business_records")
 }
 
-/// A captured Razorpay payment for a vendor's subscription. Previously
+/// A captured Razorpay payment for a partner's subscription. Previously
 /// nothing persisted this — the webhook/verify routes only flipped
-/// Vendor.subscriptionStatus and discarded the amount/payment id/date from
+/// Partner.subscriptionStatus and discarded the amount/payment id/date from
 /// the Razorpay payload. Recorded here now so there's an actual payment
 /// history, and so the central-api sync (see notifyCentralApi in
 /// src/lib/centralApi.ts) has a stable id to dedupe retries against.
 model SubscriptionPayment {
   id                String   @id @default(cuid())
-  vendorId          String
+  partnerId          String
   razorpayPaymentId String   @unique
   amount            Int
   currency          String   @default("INR")
   capturedAt        DateTime
   createdAt         DateTime @default(now())
 
-  @@index([vendorId])
+  @@index([partnerId])
   @@map("subscription_payments")
 }
 
-model VendorSignupRequest {
+model PartnerSignupRequest {
   id              String   @id @default(cuid())
-  vendorTypeId    String
+  partnerTypeId    String
   businessName    String
   addressLine     String?
   city            String
@@ -305,5 +305,115 @@ model VendorSignupRequest {
   status          String   @default("Pending")
   createdAt       DateTime @default(now())
 
-  @@map("vendor_signup_requests")
+  @@map("partner_signup_requests")
+}
+
+/// The per-module "main key" for a partner — a module being in
+/// PartnerType.defaultModules only controls whether it's toggled on for the
+/// plan; this is the actual per-partner secret/gate a module's data-access
+/// functions check before returning anything (see assertModuleAccess in
+/// src/lib/tenant.ts). Issued/revoked by Super Admin from /admin/access-keys.
+model ModuleAccessKey {
+  id         String    @id @default(cuid())
+  partnerId  String
+  moduleSlug String
+  key        String    @unique
+  status     String    @default("active") // active | revoked
+  issuedAt   DateTime  @default(now())
+  revokedAt  DateTime?
+  note       String?
+
+  @@unique([partnerId, moduleSlug])
+  @@map("module_access_keys")
+}
+
+// --- Field Force module: recruit/onboard individual field engineers, ---
+// --- match them to a partner's job requirement by service + pincode. ---
+
+/// The catalog of services an engineer can offer — ops-editable from
+/// field-force/admin (add/edit/deactivate), so new categories/services
+/// don't need a schema change.
+model Service {
+  id       String   @id @default(cuid())
+  name     String   @unique
+  category String
+  isActive Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  engineerServices EngineerService[]
+
+  @@map("services")
+}
+
+/// An individual engineer recruited from an outside source (not scoped to
+/// any one partner — the engineer pool is platform-wide; only
+/// JobAllocation below is partner-scoped, on the brand/job side).
+model Engineer {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String
+  email     String?
+  source    String?
+  status    String   @default("pending") // pending | active | suspended
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  services     EngineerService[]
+  serviceAreas EngineerServiceArea[]
+  allocations  JobAllocation[]
+
+  @@map("engineers")
+}
+
+/// One row per service an engineer has selected during onboarding —
+/// engineers can select as many as apply, no cap.
+model EngineerService {
+  id         String   @id @default(cuid())
+  engineerId String
+  serviceId  String
+  engineer   Engineer @relation(fields: [engineerId], references: [id])
+  service    Service  @relation(fields: [serviceId], references: [id])
+
+  @@unique([engineerId, serviceId])
+  @@map("engineer_services")
+}
+
+/// One row per serviceable area an engineer has added — an engineer can add
+/// as many rows as they like, and each row is independently EITHER a
+/// state/district/locality combination OR a single pincode (pincode set,
+/// district/locality left null), matching the onboarding form's
+/// "select either of them" per-row toggle.
+model EngineerServiceArea {
+  id         String   @id @default(cuid())
+  engineerId String
+  engineer   Engineer @relation(fields: [engineerId], references: [id])
+  state      String
+  district   String?
+  locality   String?
+  pincode    String?
+
+  @@index([engineerId])
+  @@map("engineer_service_areas")
+}
+
+/// An engineer allocated to a partner's (brand's) job requirement.
+model JobAllocation {
+  id         String   @id @default(cuid())
+  engineerId String
+  engineer   Engineer @relation(fields: [engineerId], references: [id])
+  partnerId  String
+  jobRef     String
+  status     String   @default("assigned") // assigned | in-progress | done | cancelled
+  assignedAt DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  /// Billing readiness for a future commission/fee model — not surfaced in
+  /// any UI yet (we charge nothing today); carried here so it doesn't need
+  /// a migration later.
+  feeAmount  Int?    // paise; null = not charged (today's default)
+  feeStatus  String? // pending | invoiced | paid — null today
+
+  @@index([partnerId])
+  @@index([engineerId])
+  @@map("job_allocations")
 }

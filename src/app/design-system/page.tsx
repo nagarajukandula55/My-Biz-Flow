@@ -186,11 +186,11 @@ export default function DesignSystemPage() {
       <Section title="Sidebar + AppShell">
         <div className="overflow-hidden rounded-lg border border-border" style={{ height: 420 }}>
           <div className="flex h-full w-full overflow-auto">
-            <Sidebar vendorId="demo" navGroups={sampleNavGroups} />
+            <Sidebar partnerId="demo" navGroups={sampleNavGroups} />
             <AppShell topbarTitle="Dashboard">
               <p className="mbf-prose text-sm text-text-muted">
                 Sidebar (dark sidebar-bg, grouped nav with teal / amber / neutral
-                module-taxonomy dots) lives in the vendor section's shared layout so it
+                module-taxonomy dots) lives in the partner section's shared layout so it
                 persists across navigations; AppShell is just the topbar + content area
                 around whatever's passed as children.
               </p>

@@ -38,7 +38,7 @@ export default async function OffersPage() {
         </div>
         <div className="p-6">
           <p className="text-sm text-text-muted">
-            Discounts or combo bundles applied on top of a Plan&apos;s computed billing-cycle price when a vendor
+            Discounts or combo bundles applied on top of a Plan&apos;s computed billing-cycle price when a partner
             converts off trial.
           </p>
           <div className="mt-6">

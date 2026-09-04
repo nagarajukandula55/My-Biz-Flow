@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { LogoMark } from "@/components/LogoMark";
 import { registerPage } from "@/lib/designer/registry";
-import { VENDOR_SESSION_COOKIE } from "@/lib/vendorSession";
+import { PARTNER_SESSION_COOKIE } from "@/lib/partnerSession";
 import { changePasswordAction } from "./actions";
 
 registerPage({
@@ -14,7 +14,7 @@ registerPage({
   superAdminOnly: false,
   customizableRegions: [],
   explanation:
-    "Forced first-login password change — every Vendor account is created with mustChangePassword=true (signup never collects a password directly, one is generated and shown once). Requires an active vendor session cookie; setVendorPassword() clears the flag.",
+    "Forced first-login password change — every Partner account is created with mustChangePassword=true (signup never collects a password directly, one is generated and shown once). Requires an active partner session cookie; setPartnerPassword() clears the flag.",
   sourceFile: "src/app/change-password/page.tsx",
 });
 
@@ -24,8 +24,8 @@ const ERROR_MESSAGE: Record<string, string> = {
 };
 
 export default function ChangePasswordPage({ searchParams }: { searchParams: { error?: string } }) {
-  const vendorId = cookies().get(VENDOR_SESSION_COOKIE)?.value;
-  if (!vendorId) redirect("/login");
+  const partnerId = cookies().get(PARTNER_SESSION_COOKIE)?.value;
+  if (!partnerId) redirect("/login");
 
   return (
     <div className="flex min-h-screen w-full items-center justify-center bg-bg px-6">

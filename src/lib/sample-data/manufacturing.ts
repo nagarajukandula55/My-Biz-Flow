@@ -114,3 +114,50 @@ export function getManufacturingTimeline(record: Row): TimelineEntry[] {
 }
 
 export const manufacturingRelated: RelatedRecord[] = [];
+
+/**
+ * Real production lifecycle — distinct from the free-text "status" field
+ * above (kept for back-compat with the original generic list/form), same
+ * split as service-centre's "stage" vs. "status"/"priority". Persisted
+ * directly on the work order's own BusinessRecord via
+ * patchBusinessRecordAction / completeProductionAction (see ./actions.ts).
+ */
+export type ProductionStage = "Planned" | "Raw Material Issued" | "In Production" | "QC" | "Completed";
+export const PRODUCTION_STAGES: ProductionStage[] = ["Planned", "Raw Material Issued", "In Production", "QC", "Completed"];
+
+/** One BOM line consumed against this work order — materialId/rate come from this partner's own live "inventory-bom" catalog. */
+export interface BomLine {
+  id: string;
+  materialId: string;
+  materialLabel: string;
+  qty: number;
+  rate: number;
+}
+
+export interface ProductionLifecycle {
+  stage: ProductionStage;
+  bomLines: BomLine[];
+  laborCost: number;
+  materialCost: number;
+  totalCost: number;
+  quantityProduced: number;
+  finishedGoodStockId?: string;
+  completedAt?: string;
+}
+
+/**
+ * Reads the real lifecycle fields off a work order's own BusinessRecord —
+ * mirrors extractLifecycleFromRecord in service-centre.ts.
+ */
+export function extractProductionFromRecord(record: Row): ProductionLifecycle {
+  return {
+    stage: (record["stage"] as ProductionStage | undefined) ?? "Planned",
+    bomLines: (record["bomLines"] as BomLine[] | undefined) ?? [],
+    laborCost: Number(record["laborCost"] ?? 0),
+    materialCost: Number(record["materialCost"] ?? 0),
+    totalCost: Number(record["totalCost"] ?? 0),
+    quantityProduced: Number(record["quantityProduced"] ?? 0),
+    finishedGoodStockId: record["finishedGoodStockId"] as string | undefined,
+    completedAt: record["completedAt"] as string | undefined,
+  };
+}

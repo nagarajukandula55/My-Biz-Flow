@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { LogoMark } from "@/components/LogoMark";
 import { registerPage } from "@/lib/designer/registry";
-import { listActiveVendorTypes } from "@/lib/designer/vendorTypesData";
+import { listActivePartnerTypes } from "@/lib/designer/partnerTypesData";
 
 export const dynamic = "force-dynamic";
 
@@ -14,18 +14,18 @@ registerPage({
   superAdminOnly: false,
   customizableRegions: [],
   explanation:
-    "Public marketing home page (no AppShell). Hero, a 'choose your business type' section pulling live Active Vendor Types from the VendorType Prisma table (each card links to /signup?type=<id>, so the home page can never drift from what Super Admin has actually configured), and a screenshots section referencing /screenshots/*.png files that don't exist yet (graceful bg-bg-sunken fallback boxes) — real screenshots to be added in a follow-up pass. CTAs to /signup and /pricing.",
+    "Public marketing home page (no AppShell). Hero, a 'choose your business type' section pulling live Active Partner Types from the PartnerType Prisma table (each card links to /signup?type=<id>, so the home page can never drift from what Super Admin has actually configured), and a screenshots section referencing /screenshots/*.png files that don't exist yet (graceful bg-bg-sunken fallback boxes) — real screenshots to be added in a follow-up pass. CTAs to /signup and /pricing.",
   sourceFile: "src/app/page.tsx",
 });
 
 const SCREENSHOTS: { name: string; alt: string }[] = [
-  { name: "dashboard", alt: "A vendor dashboard showing live stat tiles and recent activity" },
+  { name: "dashboard", alt: "A partner dashboard showing live stat tiles and recent activity" },
   { name: "pos-list", alt: "The POS module's list view showing recent sales in a data table" },
   { name: "designer", alt: "The Super Admin Designer listing every registered page in the product" },
 ];
 
 export default async function RootPage() {
-  const vendorTypes = await listActiveVendorTypes();
+  const partnerTypes = await listActivePartnerTypes();
 
   return (
     <div className="mbf-page min-h-screen w-full bg-bg">
@@ -77,13 +77,13 @@ export default async function RootPage() {
             Pick the type that matches how you run your business — everything else (modules, pricing tiers)
             is configured for you.
           </p>
-          {vendorTypes.length === 0 ? (
+          {partnerTypes.length === 0 ? (
             <p className="mx-auto mt-10 max-w-md rounded-lg border border-dashed border-border bg-bg-raised p-6 text-center text-sm text-text-muted">
               No business types are available for signup yet — check back soon.
             </p>
           ) : (
             <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-3">
-              {vendorTypes.map((t) => (
+              {partnerTypes.map((t) => (
                 <div key={t.id} className="flex flex-col rounded-lg border border-border bg-bg-raised p-5">
                   <h3 className="font-display text-base font-bold text-text">{t.id}</h3>
                   <p className="mt-1 flex-1 text-sm text-text-muted">{t.description || "—"}</p>

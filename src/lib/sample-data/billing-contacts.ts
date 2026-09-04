@@ -4,7 +4,7 @@ import type { StatusVariant } from "@/components/StatusChip";
 import type { FormFieldDef } from "@/components/RecordForm";
 
 /**
- * Contacts (Customers & Vendors) for the Billing module — invoices,
+ * Contacts (Customers & Partners) for the Billing module — invoices,
  * credit/debit notes and payments reference a Contact by id instead of a
  * free-text name. Real persistence: BusinessRecord moduleSlug
  * "billing-contacts" (see src/lib/businessRecords.ts).
@@ -12,11 +12,11 @@ import type { FormFieldDef } from "@/components/RecordForm";
 
 const CONTACT_TYPE_VARIANT: Record<string, StatusVariant> = {
   Customer: "teal",
-  Vendor: "amber",
+  Partner: "amber",
   Both: "success",
 };
 
-export const CONTACT_TYPES = ["Customer", "Vendor", "Both"] as const;
+export const CONTACT_TYPES = ["Customer", "Partner", "Both"] as const;
 
 export const billingContactColumns: Column[] = [
   { key: "id", label: "Contact ID", type: "text" },

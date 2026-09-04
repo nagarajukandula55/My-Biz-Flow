@@ -4,7 +4,7 @@ import type { FormFieldDef } from "@/components/RecordForm";
 
 // Device Brand catalog owned by the service-centre module (distinct from
 // the multi-location "Brand" module — this is "brand of the device being
-// serviced", e.g. Honda, Samsung). Vendor-owned data, not shared.
+// serviced", e.g. Honda, Samsung). Partner-owned data, not shared.
 
 export const scBrandColumns: Column[] = [
   { key: "id", label: "Brand Code", type: "text" },
@@ -42,7 +42,7 @@ export function getScBrandDetailFields(record: Row): RecordField[] {
 }
 
 export function getScBrandTimeline(record: Row): TimelineEntry[] {
-  return [{ id: "t1", label: `Brand "${record["name"]}" added`, timestamp: "2026-07-01T09:00:00", actor: "Vendor Admin" }];
+  return [{ id: "t1", label: `Brand "${record["name"]}" added`, timestamp: "2026-07-01T09:00:00", actor: "Partner Admin" }];
 }
 
 export const scBrandRelated: RelatedRecord[] = [];

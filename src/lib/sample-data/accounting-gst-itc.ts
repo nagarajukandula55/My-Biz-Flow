@@ -4,7 +4,7 @@ import type { StatusVariant } from "@/components/StatusChip";
 import type { FormFieldDef } from "@/components/RecordForm";
 
 /**
- * Input Tax Credit (ITC) register — purchase-side entries (vendor bills)
+ * Input Tax Credit (ITC) register — purchase-side entries (partner bills)
  * that feed GSTR-3B's "ITC Claimed" figure, tracked separately from
  * outward-supply (sales) records in accounting-gst.ts. Real persistence:
  * BusinessRecord moduleSlug "accounting-gst-itc".
@@ -56,7 +56,7 @@ export function getGstItcDetailFields(record: Row): RecordField[] {
 
 export function getGstItcTimeline(): TimelineEntry[] {
   return [
-    { id: "t1", label: "ITC entry recorded from vendor bill", timestamp: new Date().toISOString(), actor: "System" },
+    { id: "t1", label: "ITC entry recorded from partner bill", timestamp: new Date().toISOString(), actor: "System" },
   ];
 }
 

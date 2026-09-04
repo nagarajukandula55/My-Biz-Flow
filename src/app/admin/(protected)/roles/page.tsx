@@ -15,7 +15,7 @@ registerPage({
   superAdminOnly: true,
   customizableRegions: [{ key: "columns", label: "Table columns" }],
   explanation:
-    "Platform-level RBAC: a Role is a named bundle of Access Groups, created once here and reused across every vendor type. Real data — Prisma-backed (Role table).",
+    "Platform-level RBAC: a Role is a named bundle of Access Groups, created once here and reused across every partner type. Real data — Prisma-backed (Role table).",
   sourceFile: "src/app/admin/(protected)/roles/page.tsx",
 });
 
@@ -34,8 +34,8 @@ export default async function RolesPage() {
         </div>
         <div className="p-6">
           <p className="text-sm text-text-muted">
-            A named bundle of one or more Access Groups, defined once here and reused across every vendor.
-            Users are then assigned a Role at the vendor level.
+            A named bundle of one or more Access Groups, defined once here and reused across every partner.
+            Users are then assigned a Role at the partner level.
           </p>
           <div className="mt-6">
             {rows.length === 0 ? (

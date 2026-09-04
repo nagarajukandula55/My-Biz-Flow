@@ -11,17 +11,17 @@ declare global {
 }
 
 export function RazorpayCheckoutButton({
-  vendorId,
-  vendorName,
-  vendorEmail,
-  vendorContact,
+  partnerId,
+  partnerName,
+  partnerEmail,
+  partnerContact,
   amount,
   publicKeyId,
 }: {
-  vendorId: string;
-  vendorName: string;
-  vendorEmail: string;
-  vendorContact: string;
+  partnerId: string;
+  partnerName: string;
+  partnerEmail: string;
+  partnerContact: string;
   amount: number;
   publicKeyId?: string;
 }) {
@@ -45,7 +45,7 @@ export function RazorpayCheckoutButton({
       const orderRes = await fetch("/api/razorpay/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ vendorId }),
+        body: JSON.stringify({ partnerId }),
       });
       const order = await orderRes.json();
       if (!orderRes.ok) throw new Error(order.error ?? "Could not start payment");
@@ -57,12 +57,12 @@ export function RazorpayCheckoutButton({
         name: "My Biz Flow",
         description: `${order.planName} subscription`,
         order_id: order.orderId,
-        prefill: { name: vendorName, email: vendorEmail, contact: vendorContact },
+        prefill: { name: partnerName, email: partnerEmail, contact: partnerContact },
         handler: async (response: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => {
           const verifyRes = await fetch("/api/razorpay/verify", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ vendorId, ...response }),
+            body: JSON.stringify({ partnerId, ...response }),
           });
           if (verifyRes.ok) {
             router.refresh();

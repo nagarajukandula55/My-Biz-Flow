@@ -3,22 +3,22 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createBusinessRecord, updateBusinessRecord, deleteBusinessRecord, getBusinessRecord } from "@/lib/businessRecords";
-import { getVendor } from "@/lib/vendorData";
+import { getPartner } from "@/lib/partnerData";
 import { notifyCentralApiBillingInvoice } from "@/lib/centralApi";
 
-/** Bind with .bind(null, vendorId, moduleSlug) before passing as a RecordForm `action` prop. */
+/** Bind with .bind(null, partnerId, moduleSlug) before passing as a RecordForm `action` prop. */
 export async function createBusinessRecordAction(
-  vendorId: string,
+  partnerId: string,
   moduleSlug: string,
   values: Record<string, unknown>
 ) {
-  const record = await createBusinessRecord(vendorId, moduleSlug, values);
+  const record = await createBusinessRecord(partnerId, moduleSlug, values);
 
   if (moduleSlug === "billing") {
-    const vendor = await getVendor(vendorId);
-    if (vendor) {
+    const partner = await getPartner(partnerId);
+    if (partner) {
       const items = Array.isArray(record["items"]) ? (record["items"] as Record<string, unknown>[]) : [];
-      await notifyCentralApiBillingInvoice(vendor, {
+      await notifyCentralApiBillingInvoice(partner, {
         externalOrderId: String(record.id),
         customer: String(record["customer"] ?? ""),
         customerGstin: record["customerGstin"] ? String(record["customerGstin"]) : undefined,
@@ -33,28 +33,28 @@ export async function createBusinessRecordAction(
     }
   }
 
-  revalidatePath(`/vendor/${vendorId}/${moduleSlug}`);
-  redirect(`/vendor/${vendorId}/${moduleSlug}/${record.id}`);
+  revalidatePath(`/partner/${partnerId}/${moduleSlug}`);
+  redirect(`/partner/${partnerId}/${moduleSlug}/${record.id}`);
 }
 
-/** Bind with .bind(null, vendorId, moduleSlug, recordKey) before passing as a RecordForm `action` prop. */
+/** Bind with .bind(null, partnerId, moduleSlug, recordKey) before passing as a RecordForm `action` prop. */
 export async function updateBusinessRecordAction(
-  vendorId: string,
+  partnerId: string,
   moduleSlug: string,
   recordKey: string,
   values: Record<string, unknown>
 ) {
-  await updateBusinessRecord(vendorId, moduleSlug, recordKey, values);
-  revalidatePath(`/vendor/${vendorId}/${moduleSlug}`);
-  revalidatePath(`/vendor/${vendorId}/${moduleSlug}/${recordKey}`);
-  redirect(`/vendor/${vendorId}/${moduleSlug}/${recordKey}`);
+  await updateBusinessRecord(partnerId, moduleSlug, recordKey, values);
+  revalidatePath(`/partner/${partnerId}/${moduleSlug}`);
+  revalidatePath(`/partner/${partnerId}/${moduleSlug}/${recordKey}`);
+  redirect(`/partner/${partnerId}/${moduleSlug}/${recordKey}`);
 }
 
-/** Bind with .bind(null, vendorId, moduleSlug, recordKey) before calling from a delete confirm handler. */
-export async function deleteBusinessRecordAction(vendorId: string, moduleSlug: string, recordKey: string) {
-  await deleteBusinessRecord(vendorId, moduleSlug, recordKey);
-  revalidatePath(`/vendor/${vendorId}/${moduleSlug}`);
-  redirect(`/vendor/${vendorId}/${moduleSlug}`);
+/** Bind with .bind(null, partnerId, moduleSlug, recordKey) before calling from a delete confirm handler. */
+export async function deleteBusinessRecordAction(partnerId: string, moduleSlug: string, recordKey: string) {
+  await deleteBusinessRecord(partnerId, moduleSlug, recordKey);
+  revalidatePath(`/partner/${partnerId}/${moduleSlug}`);
+  redirect(`/partner/${partnerId}/${moduleSlug}`);
 }
 
 /**
@@ -63,16 +63,16 @@ export async function deleteBusinessRecordAction(vendorId: string, moduleSlug: s
  * repeatedly from an already-loaded page (the Service Centre workorder
  * lifecycle's stage/parts/service-line mutations) that manages its own
  * local state and just needs writes to survive a reload. Bind with
- * .bind(null, vendorId, moduleSlug, recordKey).
+ * .bind(null, partnerId, moduleSlug, recordKey).
  */
 export async function patchBusinessRecordAction(
-  vendorId: string,
+  partnerId: string,
   moduleSlug: string,
   recordKey: string,
   patch: Record<string, unknown>
 ): Promise<void> {
-  const existing = await getBusinessRecord(vendorId, moduleSlug, recordKey);
+  const existing = await getBusinessRecord(partnerId, moduleSlug, recordKey);
   if (!existing) return;
-  await updateBusinessRecord(vendorId, moduleSlug, recordKey, { ...existing, ...patch });
-  revalidatePath(`/vendor/${vendorId}/${moduleSlug}/${recordKey}`);
+  await updateBusinessRecord(partnerId, moduleSlug, recordKey, { ...existing, ...patch });
+  revalidatePath(`/partner/${partnerId}/${moduleSlug}/${recordKey}`);
 }

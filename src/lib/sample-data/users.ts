@@ -3,14 +3,14 @@ import type { RecordField, TimelineEntry, RelatedRecord } from "@/components/Rec
 import type { StatusVariant } from "@/components/StatusChip";
 import type { FormFieldDef } from "@/components/RecordForm";
 
-// Vendor team-member ("User") data — top tier of the three-level vendor
+// Partner team-member ("User") data — top tier of the three-level partner
 // RBAC model: User -> Role -> Access Group -> modules. Roles are real,
 // Prisma-backed data (see src/lib/designer/rolesData.ts) — but that store
 // isn't client-importable (pulls in Prisma), and this file is (see
 // UserClientTable), so ROLE_NAMES stays a static fallback list here.
 //
 // Persisted as a real BusinessRecord (moduleSlug "users") like every other
-// module — see src/lib/businessRecords.ts. This is a VENDOR's own team
+// module — see src/lib/businessRecords.ts. This is a PARTNER's own team
 // member (e.g. "Meena R., Cashier at this store"), completely distinct
 // from central-api's `PlatformUser` (the cross-tenant login identity for
 // the whole platform). No central-api integration or real per-user
@@ -53,7 +53,7 @@ export function getUserDetailFields(record: Row): RecordField[] {
 }
 
 export function getUserTimeline(record: Row): TimelineEntry[] {
-  return [{ id: "t1", label: `User "${record["id"]}" added to the vendor account`, timestamp: String(record["lastLogin"] ?? "") }];
+  return [{ id: "t1", label: `User "${record["id"]}" added to the partner account`, timestamp: String(record["lastLogin"] ?? "") }];
 }
 
 export const userRelated: RelatedRecord[] = [];

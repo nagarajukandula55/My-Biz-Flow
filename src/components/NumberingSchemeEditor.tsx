@@ -5,8 +5,8 @@ import type { NumberingScheme, Separator, FinancialYearFormat } from "@/lib/desi
 import { formatNumber } from "@/lib/designer/numberingFormat";
 import {
   saveMainSchemeAction,
-  saveVendorSchemeAction,
-  clearVendorSchemeAction,
+  savePartnerSchemeAction,
+  clearPartnerSchemeAction,
   fetchNextNumberAction,
 } from "@/app/admin/(protected)/numbering/actions";
 
@@ -28,16 +28,16 @@ export function NumberingSchemeEditor({
   documentType,
   documentTypeLabel,
   initialScheme,
-  vendorId,
-  isVendorOverride,
+  partnerId,
+  isPartnerOverride,
 }: {
   documentType: string;
   documentTypeLabel: string;
   initialScheme: NumberingScheme;
-  /** Present -> this editor is scoped to a Vendor; absent -> editing the Main (platform default) scheme. */
-  vendorId?: string;
-  /** Whether this Vendor currently has its own override saved (vs inheriting Main). */
-  isVendorOverride?: boolean;
+  /** Present -> this editor is scoped to a Partner; absent -> editing the Main (platform default) scheme. */
+  partnerId?: string;
+  /** Whether this Partner currently has its own override saved (vs inheriting Main). */
+  isPartnerOverride?: boolean;
 }) {
   const [scheme, setScheme] = useState(initialScheme);
   const [isPending, startTransition] = useTransition();
@@ -53,8 +53,8 @@ export function NumberingSchemeEditor({
 
   function handleSave() {
     startTransition(async () => {
-      if (vendorId) {
-        await saveVendorSchemeAction(vendorId, documentType, scheme);
+      if (partnerId) {
+        await savePartnerSchemeAction(partnerId, documentType, scheme);
       } else {
         await saveMainSchemeAction(documentType, scheme);
       }
@@ -63,13 +63,13 @@ export function NumberingSchemeEditor({
   }
 
   function handleClear() {
-    if (!vendorId) return;
-    startTransition(() => clearVendorSchemeAction(vendorId, documentType));
+    if (!partnerId) return;
+    startTransition(() => clearPartnerSchemeAction(partnerId, documentType));
   }
 
   function handleFetchNext() {
     startTransition(async () => {
-      const num = await fetchNextNumberAction(documentType, vendorId);
+      const num = await fetchNextNumberAction(documentType, partnerId);
       setLastFetched(num);
     });
   }
@@ -79,7 +79,7 @@ export function NumberingSchemeEditor({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <h3 className="text-sm font-semibold text-text">{documentTypeLabel}</h3>
-          {vendorId && !isVendorOverride && (
+          {partnerId && !isPartnerOverride && (
             <span className="rounded-full border border-border bg-bg px-2 py-0.5 text-[11px] font-medium text-text-muted">
               Inheriting Main
             </span>
@@ -87,7 +87,7 @@ export function NumberingSchemeEditor({
         </div>
         <div className="flex items-center gap-2">
           {saved && <span className="text-xs font-semibold text-success">Saved</span>}
-          {vendorId && isVendorOverride && (
+          {partnerId && isPartnerOverride && (
             <button type="button" onClick={handleClear} disabled={isPending} className="btn-outline px-3 py-1.5 text-xs">
               Use Main scheme
             </button>

@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 /**
  * Wraps every page under a module's admin/ subfolder. Per DESIGN_SYSTEM.md
- * §8, a module folder holds exactly two kinds of pages: normal (vendor-
+ * §8, a module folder holds exactly two kinds of pages: normal (partner-
  * facing) pages, and admin/ pages gated to Super Admin — nothing else.
  *
  * Route-level access IS now enforced — src/middleware.ts blocks any

@@ -7,8 +7,8 @@
  *
  * IMPORTANT SCOPE NOTE (see DESIGN_SYSTEM.md §9): this is only REAL
  * enforcement for pages currently gated by src/middleware.ts — /admin/*
- * and a module's admin/ subfolder. Ordinary vendor-facing pages
- * (list/create/edit/detail under /vendor/[vendorId]/<slug>/) have no
+ * and a module's admin/ subfolder. Ordinary partner-facing pages
+ * (list/create/edit/detail under /partner/[partnerId]/<slug>/) have no
  * access gate at all yet, so marking one "public" here has no
  * observable effect — there's nothing to lift. The Settings UI shows
  * the toggle for every page for completeness, but says so explicitly

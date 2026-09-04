@@ -14,7 +14,7 @@ export type NavDotVariant = "teal" | "amber" | "neutral";
 export type NavSubItem = {
   key: string;
   label: string;
-  /** Path segment(s) relative to /vendor/[vendorId]/, e.g. "billing/new". */
+  /** Path segment(s) relative to /partner/[partnerId]/, e.g. "billing/new". */
   href: string;
 };
 
@@ -24,7 +24,7 @@ export type NavItem = {
   dot: NavDotVariant;
   /** Super-Admin-set icon override (src/lib/designer/icons.ts key) — falls back to the dot when unset. */
   icon?: string;
-  /** Path segment(s) relative to /vendor/[vendorId]/. Defaults to `key`. */
+  /** Path segment(s) relative to /partner/[partnerId]/. Defaults to `key`. */
   href?: string;
   subItems?: NavSubItem[];
 };
@@ -47,20 +47,20 @@ const ICON_CLASS: Record<NavDotVariant, string> = {
 };
 
 /**
- * The vendor sidebar — lives in src/app/vendor/[vendorId]/layout.tsx (a
+ * The partner sidebar — lives in src/app/partner/[partnerId]/layout.tsx (a
  * shared layout), NOT inside AppShell/each page, so it persists across
  * client-side navigations instead of unmounting and remounting on every
  * click (which reset collapse state and caused a visible full-shell
  * flash — see AppShell.tsx's history). Active-state highlighting is
  * computed here from the current pathname rather than passed down as a
  * static server-computed flag, since one Sidebar instance now serves
- * every page in the vendor section.
+ * every page in the partner section.
  */
-export function Sidebar({ vendorId, navGroups }: { vendorId: string; navGroups: NavGroup[] }) {
+export function Sidebar({ partnerId, navGroups }: { partnerId: string; navGroups: NavGroup[] }) {
   const pathname = usePathname();
 
   function hrefFor(relative: string) {
-    return `/vendor/${vendorId}/${relative}`;
+    return `/partner/${partnerId}/${relative}`;
   }
 
   function isActive(relative: string) {

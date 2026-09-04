@@ -127,3 +127,38 @@ export function getRealEstateTimeline(record: Row): TimelineEntry[] {
 }
 
 export const realEstateRelated: RelatedRecord[] = [];
+
+/** Lead pipeline stages — see RealEstateLifecycle.tsx. */
+export type LeadStage = "New" | "Site Visit Scheduled" | "Negotiation" | "Agreement Signed" | "Closed/Lost";
+export const LEAD_STAGES: LeadStage[] = ["New", "Site Visit Scheduled", "Negotiation", "Agreement Signed", "Closed/Lost"];
+
+export interface RealEstateLifecycle {
+  stage: LeadStage;
+  agentId?: string;
+  agentName?: string;
+  siteVisitStart?: string;
+  siteVisitEnd?: string;
+  dealValue?: number;
+  commissionPct?: number;
+  commissionAmount?: number;
+  closedLostReason?: string;
+}
+
+/**
+ * Reads the lead-pipeline lifecycle fields directly off a real listing's
+ * own BusinessRecord data — mirrors extractLifecycleFromRecord in
+ * service-centre.ts.
+ */
+export function extractRealEstateLifecycle(record: Row): RealEstateLifecycle {
+  return {
+    stage: (record["stage"] as LeadStage | undefined) ?? "New",
+    agentId: record["agentId"] as string | undefined,
+    agentName: (record["agentName"] as string | undefined) ?? (record["agent"] as string | undefined),
+    siteVisitStart: record["siteVisitStart"] as string | undefined,
+    siteVisitEnd: record["siteVisitEnd"] as string | undefined,
+    dealValue: record["dealValue"] as number | undefined,
+    commissionPct: record["commissionPct"] as number | undefined,
+    commissionAmount: record["commissionAmount"] as number | undefined,
+    closedLostReason: record["closedLostReason"] as string | undefined,
+  };
+}

@@ -7,10 +7,10 @@ import "@/lib/designer/registerAll";
  * Real RBAC resolution logic (Role -> Access Groups -> pages -> module
  * slugs), fed by a DEMO role selection — there is no logged-in-user
  * session yet (see src/lib/adminAuth.ts for the one real-but-minimal auth
- * mechanism that exists, which only covers Super Admin, not vendor-level
+ * mechanism that exists, which only covers Super Admin, not partner-level
  * roles). The function below is correct and real, backed by the Prisma
  * Role/AccessGroup tables; only its INPUT (getDemoViewerRole) is a
- * stopgap. Once vendor-user sessions exist, swap that for a real session
+ * stopgap. Once partner-user sessions exist, swap that for a real session
  * lookup and everything downstream keeps working unchanged.
  */
 
@@ -32,7 +32,7 @@ export async function getAccessibleModuleSlugs(roleId: string): Promise<string[]
   return Array.from(slugs);
 }
 
-/** Demo stand-in for "the currently signed-in vendor user's role." */
+/** Demo stand-in for "the currently signed-in partner user's role." */
 export function getDemoViewerRole(): string {
   return "Owner / Admin";
 }

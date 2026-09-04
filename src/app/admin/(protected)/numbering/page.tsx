@@ -19,7 +19,7 @@ registerPage({
     label: `${d.label} numbering scheme`,
   })),
   explanation:
-    "Super Admin's own default numbering scheme per document type (prefix, separator including 'None', Indian financial-year token, zero-padded sequence). This is the MAIN/platform-wide default — any Vendor without its own override (set at /vendor/[vendorId]/settings/numbering) inherits this. 'Fetch next live number' is a real working counter (src/lib/designer/numbering.ts) — every click advances and persists the sequence, it does not just preview a static example.",
+    "Super Admin's own default numbering scheme per document type (prefix, separator including 'None', Indian financial-year token, zero-padded sequence). This is the MAIN/platform-wide default — any Partner without its own override (set at /partner/[partnerId]/settings/numbering) inherits this. 'Fetch next live number' is a real working counter (src/lib/designer/numbering.ts) — every click advances and persists the sequence, it does not just preview a static example.",
   sourceFile: "src/app/admin/(protected)/numbering/page.tsx",
 });
 
@@ -30,7 +30,7 @@ export default async function MainNumberingPage() {
       <div className="min-h-screen w-full bg-bg">
         <header className="border-b border-border bg-bg-raised px-6 py-4">
           <p className="mt-1 max-w-[65ch] text-sm text-text-muted">
-            Default numbering per document type, platform-wide. A Vendor can override any of
+            Default numbering per document type, platform-wide. A Partner can override any of
             these for itself at Settings → Numbering; anything they haven&apos;t overridden falls
             back to what&apos;s configured here.
           </p>

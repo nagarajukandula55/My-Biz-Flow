@@ -39,7 +39,7 @@ type RecordFormProps = {
   onSubmitDemo?: (values: Record<string, unknown>) => void;
   /**
    * Real persistence path — a server action (already bound with whatever
-   * scoping it needs, e.g. .bind(null, vendorId, moduleSlug)) that
+   * scoping it needs, e.g. .bind(null, partnerId, moduleSlug)) that
    * receives the form's values directly. When provided, this replaces
    * the demo-stub submit entirely; onSubmitDemo is ignored.
    */

@@ -37,7 +37,7 @@ export interface PageDefinition {
   moduleSlug: string;
   /** Human-facing title shown in the Designer list */
   title: string;
-  /** App Router path, with dynamic segments left literal, e.g. "/vendor/[vendorId]/pos" */
+  /** App Router path, with dynamic segments left literal, e.g. "/partner/[partnerId]/pos" */
   path: string;
   kind: PageKind;
   /** True if this page is gated to Super Admin only (lives in a module's admin/ subfolder) */
@@ -46,7 +46,7 @@ export interface PageDefinition {
   customizableRegions: CustomizableRegion[];
   /** Plain-language paragraph explaining what this page does and why it exists */
   explanation: string;
-  /** File path relative to repo root, e.g. "src/app/vendor/[vendorId]/pos/page.tsx" */
+  /** File path relative to repo root, e.g. "src/app/partner/[partnerId]/pos/page.tsx" */
   sourceFile: string;
 }
 

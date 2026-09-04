@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { LogoMark } from "@/components/LogoMark";
 import { registerPage } from "@/lib/designer/registry";
-import { signInAsVendor } from "./actions";
+import { signInAsPartner } from "./actions";
 
 registerPage({
   id: "platform.login",
@@ -12,7 +12,7 @@ registerPage({
   superAdminOnly: false,
   customizableRegions: [],
   explanation:
-    "Public, non-vendor-scoped login page (no AppShell/sidebar — lightweight public page shell). Real vendor lookup by Vendor ID (VND####) or registered contact number, real password verification against the Vendor table (see src/app/login/actions.ts) — route-level session enforcement on /vendor/[vendorId]/* pages doesn't exist yet.",
+    "Public, non-partner-scoped login page (no AppShell/sidebar — lightweight public page shell). Real partner lookup by Partner ID (VND####) or registered contact number, real password verification against the Partner table (see src/app/login/actions.ts) — route-level session enforcement on /partner/[partnerId]/* pages doesn't exist yet.",
   sourceFile: "src/app/login/page.tsx",
 });
 
@@ -32,15 +32,15 @@ export default function LoginPage({
 
         {searchParams.error === "invalid_credentials" && (
           <p className="mt-3 rounded-md border border-danger bg-danger-soft px-3 py-2 text-sm text-danger">
-            Vendor ID / contact number or password is incorrect.
+            Partner ID / contact number or password is incorrect.
           </p>
         )}
 
-        <p className="mt-2 text-sm text-text-muted">Sign in with your Vendor ID or registered contact number.</p>
+        <p className="mt-2 text-sm text-text-muted">Sign in with your Partner ID or registered contact number.</p>
 
-        <form action={signInAsVendor} className="mt-6 flex flex-col gap-3">
+        <form action={signInAsPartner} className="mt-6 flex flex-col gap-3">
           <label className="text-xs font-semibold uppercase tracking-wide text-text-muted">
-            Vendor ID or Contact Number
+            Partner ID or Contact Number
             <input
               type="text"
               name="identifier"

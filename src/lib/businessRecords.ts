@@ -1,5 +1,5 @@
 /**
- * Generic, vendor-scoped business record store — one Prisma table
+ * Generic, partner-scoped business record store — one Prisma table
  * (`BusinessRecord`) backs every module's actual data instead of a
  * bespoke model per module. A record's shape is whatever its module's
  * Column/FormFieldDef definitions say (see src/lib/sample-data/<slug>.ts)
@@ -13,28 +13,28 @@ function toRow(row: { recordKey: string; data: unknown }): Row {
   return { ...(row.data as Record<string, unknown>), id: row.recordKey };
 }
 
-export async function listBusinessRecords(vendorId: string, moduleSlug: string): Promise<Row[]> {
+export async function listBusinessRecords(partnerId: string, moduleSlug: string): Promise<Row[]> {
   const rows = await prisma.businessRecord.findMany({
-    where: { vendorId, moduleSlug },
+    where: { partnerId, moduleSlug },
     orderBy: { createdAt: "desc" },
   });
   return rows.map(toRow);
 }
 
 export async function getBusinessRecord(
-  vendorId: string,
+  partnerId: string,
   moduleSlug: string,
   recordKey: string
 ): Promise<Row | undefined> {
   const row = await prisma.businessRecord.findUnique({
-    where: { vendorId_moduleSlug_recordKey: { vendorId, moduleSlug, recordKey } },
+    where: { partnerId_moduleSlug_recordKey: { partnerId, moduleSlug, recordKey } },
   });
   return row ? toRow(row) : undefined;
 }
 
 /** Creates a record. If values.id is unset, generates one from the module slug + a short random suffix. */
 export async function createBusinessRecord(
-  vendorId: string,
+  partnerId: string,
   moduleSlug: string,
   values: Record<string, unknown>
 ): Promise<Row> {
@@ -43,32 +43,32 @@ export async function createBusinessRecord(
     `${moduleSlug.toUpperCase().slice(0, 3)}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
   const data = { ...values, id: recordKey };
   const row = await prisma.businessRecord.create({
-    data: { vendorId, moduleSlug, recordKey, data },
+    data: { partnerId, moduleSlug, recordKey, data },
   });
   return toRow(row);
 }
 
 export async function updateBusinessRecord(
-  vendorId: string,
+  partnerId: string,
   moduleSlug: string,
   recordKey: string,
   values: Record<string, unknown>
 ): Promise<void> {
   const data = { ...values, id: recordKey };
   await prisma.businessRecord.update({
-    where: { vendorId_moduleSlug_recordKey: { vendorId, moduleSlug, recordKey } },
+    where: { partnerId_moduleSlug_recordKey: { partnerId, moduleSlug, recordKey } },
     data: { data },
   });
 }
 
-/** 0-based position of a record among its vendor+module peers, oldest first — for document numbering sequence. */
+/** 0-based position of a record among its partner+module peers, oldest first — for document numbering sequence. */
 export async function getBusinessRecordSequenceIndex(
-  vendorId: string,
+  partnerId: string,
   moduleSlug: string,
   recordKey: string
 ): Promise<number> {
   const rows = await prisma.businessRecord.findMany({
-    where: { vendorId, moduleSlug },
+    where: { partnerId, moduleSlug },
     orderBy: { createdAt: "asc" },
     select: { recordKey: true },
   });
@@ -76,8 +76,8 @@ export async function getBusinessRecordSequenceIndex(
   return index >= 0 ? index : 0;
 }
 
-export async function deleteBusinessRecord(vendorId: string, moduleSlug: string, recordKey: string): Promise<void> {
+export async function deleteBusinessRecord(partnerId: string, moduleSlug: string, recordKey: string): Promise<void> {
   await prisma.businessRecord.delete({
-    where: { vendorId_moduleSlug_recordKey: { vendorId, moduleSlug, recordKey } },
+    where: { partnerId_moduleSlug_recordKey: { partnerId, moduleSlug, recordKey } },
   });
 }

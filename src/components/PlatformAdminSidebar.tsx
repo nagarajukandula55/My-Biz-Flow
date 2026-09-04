@@ -16,6 +16,8 @@ import {
   Building2,
   UserCheck,
   Percent,
+  Boxes,
+  Lock,
 } from "lucide-react";
 import { LogoMark } from "./LogoMark";
 import { signOutAdminAction } from "@/app/admin/login/actions";
@@ -29,6 +31,8 @@ type PlatformNavItem = {
 };
 
 const NAV_ITEMS: PlatformNavItem[] = [
+  { key: "modules", label: "Modules Overview", href: "/admin/modules", icon: Boxes },
+  { key: "access-keys", label: "Access Keys", href: "/admin/access-keys", icon: Lock },
   { key: "designer", label: "Designer", href: "/admin/designer", icon: LayoutGrid },
   { key: "numbering", label: "Numbering", href: "/admin/numbering", icon: Hash },
   { key: "settings", label: "Settings", href: "/admin/settings", icon: SettingsIcon },
@@ -36,15 +40,15 @@ const NAV_ITEMS: PlatformNavItem[] = [
   { key: "plans", label: "Plans", href: "/admin/plans", icon: CreditCard },
   { key: "offers", label: "Offers", href: "/admin/offers", icon: Percent },
   { key: "subscribers", label: "Subscribers", href: "/admin/subscribers", icon: Users },
-  { key: "vendor-types", label: "Vendor Types", href: "/admin/vendor-types", icon: Building2 },
-  { key: "vendor-signups", label: "Signup Requests", href: "/admin/vendor-signups", icon: UserCheck },
+  { key: "partner-types", label: "Partner Types", href: "/admin/partner-types", icon: Building2 },
+  { key: "partner-signups", label: "Signup Requests", href: "/admin/partner-signups", icon: UserCheck },
   { key: "access-groups", label: "Access Groups", href: "/admin/access-groups", icon: KeyRound },
   { key: "roles", label: "Roles", href: "/admin/roles", icon: ShieldCheck },
 ];
 
 /**
  * The Super Admin sidebar — same collapsible/persistent pattern as the
- * vendor Sidebar.tsx (see that file's header): rendered once from
+ * partner Sidebar.tsx (see that file's header): rendered once from
  * src/app/admin/(protected)/layout.tsx so it survives client-side
  * navigation between platform admin sections instead of remounting.
  */
@@ -99,13 +103,13 @@ export function PlatformAdminSidebar() {
 
         <div>
           <div className="px-1.5 pb-1.5 text-[11px] font-semibold uppercase tracking-wide text-sidebar-text-dim">
-            Vendor View
+            Partner View
           </div>
           <Link
-            href="/vendor/demo/dashboard"
+            href="/partner/demo/dashboard"
             className="block rounded-md px-2.5 py-1.5 text-[13px] font-medium text-sidebar-text-dim hover:bg-sidebar-active/60 hover:text-sidebar-text"
           >
-            ← Back to demo vendor
+            ← Back to demo partner
           </Link>
         </div>
       </nav>
