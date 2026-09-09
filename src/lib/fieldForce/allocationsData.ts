@@ -1,17 +1,21 @@
 /**
- * Job allocations — an engineer assigned to a partner's (brand's) job
- * requirement. Partner-scoped on the job side (assertPartnerScope applies
- * to partnerId here), even though Engineer itself is platform-wide.
+ * Job allocations — a Provider assigned to a Booking. Partner-scoped on the
+ * booking side (assertPartnerScope applies to partnerId here). This is the
+ * manual/fallback dispatch path — the automated path is
+ * matchingEngine.ts's JobOffer fan-out; both end up calling
+ * assignProviderToBooking() in bookingsData.ts.
  */
 import { prisma } from "@/lib/prisma";
 import { assertPartnerScope } from "@/lib/tenant";
+import { assignProviderToBooking, type BookingStatus } from "@/lib/fieldForce/bookingsData";
 
 export type JobAllocationRecord = {
   id: string;
-  engineerId: string;
-  engineerName: string;
+  providerId: string;
+  providerName: string;
   partnerId: string;
-  jobRef: string;
+  bookingId: string;
+  bookingNumber: string;
   status: string;
   assignedAt: Date;
   feeAmount: number | null;
@@ -21,15 +25,16 @@ export type JobAllocationRecord = {
 export async function listAllocationsForPartner(partnerId: string): Promise<JobAllocationRecord[]> {
   const rows = await prisma.jobAllocation.findMany({
     where: { partnerId },
-    include: { engineer: true },
+    include: { provider: true, booking: true },
     orderBy: { assignedAt: "desc" },
   });
   return rows.map((r) => ({
     id: r.id,
-    engineerId: r.engineerId,
-    engineerName: r.engineer.name,
+    providerId: r.providerId,
+    providerName: r.provider.name,
     partnerId: r.partnerId,
-    jobRef: r.jobRef,
+    bookingId: r.bookingId,
+    bookingNumber: r.booking.bookingNumber,
     status: r.status,
     assignedAt: r.assignedAt,
     feeAmount: r.feeAmount,
@@ -38,21 +43,27 @@ export async function listAllocationsForPartner(partnerId: string): Promise<JobA
 }
 
 /**
- * Creates the allocation. No fee/charge is set here — we charge partners
- * nothing today; feeAmount/feeStatus stay null until a future billing
- * pass turns that on (schema already carries the fields, see
- * prisma/schema.prisma's JobAllocation model).
+ * Assigns a Provider to a booking. No fee/charge is set here — the
+ * platform's commission is computed separately at payment time (see
+ * src/lib/fieldForce/commission.ts); feeAmount/feeStatus here stay a
+ * separate, still-unused billing stub (see prisma/schema.prisma's
+ * JobAllocation model).
  */
-export async function allocateEngineer(partnerId: string, jobRef: string, engineerId: string): Promise<void> {
-  await prisma.jobAllocation.create({ data: { partnerId, jobRef, engineerId } });
+export async function allocateProvider(partnerId: string, bookingId: string, providerId: string): Promise<void> {
+  await assignProviderToBooking(bookingId, partnerId, providerId);
 }
 
-export async function updateAllocationStatus(
-  allocationId: string,
-  partnerId: string,
-  status: "assigned" | "in-progress" | "done" | "cancelled"
-): Promise<void> {
+/**
+ * Updates status on both the allocation and its parent Booking together —
+ * the two are kept in lockstep on the shared BookingStatus vocabulary
+ * (requested/confirmed/assigned/en-route/in-progress/completed/cancelled)
+ * so the Allocations page and a Booking's own detail page never disagree.
+ */
+export async function updateAllocationStatus(allocationId: string, partnerId: string, status: BookingStatus): Promise<void> {
   const existing = await prisma.jobAllocation.findUniqueOrThrow({ where: { id: allocationId } });
   assertPartnerScope(partnerId, existing.partnerId);
-  await prisma.jobAllocation.update({ where: { id: allocationId }, data: { status } });
+  await prisma.$transaction([
+    prisma.jobAllocation.update({ where: { id: allocationId }, data: { status } }),
+    prisma.booking.update({ where: { id: existing.bookingId }, data: { status } }),
+  ]);
 }

@@ -17,6 +17,14 @@ export function RazorpayCheckoutButton({
   partnerContact,
   amount,
   publicKeyId,
+  /** Defaults to the subscription order/verify routes; pass to reuse this
+   *  same widget for a different payable (e.g. a Booking). */
+  createOrderUrl = "/api/razorpay/create-order",
+  verifyUrl = "/api/razorpay/verify",
+  /** Extra body fields sent to createOrderUrl/verifyUrl alongside partnerId
+   *  (e.g. { bookingId }). */
+  extraBody,
+  description = "subscription",
 }: {
   partnerId: string;
   partnerName: string;
@@ -24,6 +32,10 @@ export function RazorpayCheckoutButton({
   partnerContact: string;
   amount: number;
   publicKeyId?: string;
+  createOrderUrl?: string;
+  verifyUrl?: string;
+  extraBody?: Record<string, string>;
+  description?: string;
 }) {
   const router = useRouter();
   const [scriptReady, setScriptReady] = useState(false);
@@ -42,10 +54,10 @@ export function RazorpayCheckoutButton({
     setPending(true);
     setError("");
     try {
-      const orderRes = await fetch("/api/razorpay/create-order", {
+      const orderRes = await fetch(createOrderUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ partnerId }),
+        body: JSON.stringify({ partnerId, ...extraBody }),
       });
       const order = await orderRes.json();
       if (!orderRes.ok) throw new Error(order.error ?? "Could not start payment");
@@ -55,14 +67,14 @@ export function RazorpayCheckoutButton({
         amount: order.amount,
         currency: order.currency,
         name: "My Biz Flow",
-        description: `${order.planName} subscription`,
+        description: order.planName ? `${order.planName} subscription` : description,
         order_id: order.orderId,
         prefill: { name: partnerName, email: partnerEmail, contact: partnerContact },
         handler: async (response: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => {
-          const verifyRes = await fetch("/api/razorpay/verify", {
+          const verifyRes = await fetch(verifyUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ partnerId, ...response }),
+            body: JSON.stringify({ partnerId, ...extraBody, ...response }),
           });
           if (verifyRes.ok) {
             router.refresh();

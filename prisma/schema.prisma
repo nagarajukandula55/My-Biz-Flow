@@ -25,12 +25,12 @@ datasource db {
 
 /// Mirrors data/customizations.json — keyed by pageId (src/lib/designer/customizations.ts).
 model PageCustomization {
-  pageId            String   @id
-  fieldOverrides    Json     @default("{}")
-  addedFields       Json     @default("[]")
-  deletedFieldKeys  Json     @default("[]")
-  optionOverrides   Json     @default("{}")
-  updatedAt         DateTime @updatedAt
+  pageId           String   @id
+  fieldOverrides   Json     @default("{}")
+  addedFields      Json     @default("[]")
+  deletedFieldKeys Json     @default("[]")
+  optionOverrides  Json     @default("{}")
+  updatedAt        DateTime @updatedAt
 
   @@map("page_customizations")
 }
@@ -64,7 +64,7 @@ model NumberingMainScheme {
 
 /// Mirrors data/numbering.json's `partner` map — one row per (partnerId, documentType) override.
 model NumberingPartnerScheme {
-  partnerId     String
+  partnerId    String
   documentType String
   scheme       Json
 
@@ -107,11 +107,11 @@ model ErrorLogEntry {
 /// every partner — see src/lib/designer/accessGroupsData.ts.
 /// pagePermissions: PagePermission[] JSON, {pageId, view, edit, delete, other}.
 model AccessGroup {
-  id               String   @id
-  description      String?  @db.Text
-  pagePermissions  Json     @default("[]")
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id              String   @id
+  description     String?  @db.Text
+  pagePermissions Json     @default("[]")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   @@map("access_groups")
 }
@@ -139,20 +139,20 @@ model Role {
 /// for actual billing — a type can offer Basic+Pro pricing while still
 /// defining its own Basic/Pro page split above.
 model PartnerType {
-  id                 String   @id
-  description        String?  @db.Text
-  defaultModules     Json     @default("[]")
-  assignableRoleIds  Json     @default("[]")
-  planTierByPage     Json     @default("{}")
-  planIds            Json     @default("[]")
+  id                String   @id
+  description       String?  @db.Text
+  defaultModules    Json     @default("[]")
+  assignableRoleIds Json     @default("[]")
+  planTierByPage    Json     @default("{}")
+  planIds           Json     @default("[]")
   /// When true, a signup against this type creates a PartnerSignupRequest
   /// instead of a Partner directly — no VND#### id is assigned until Super
   /// Admin approves it. Off by default (confirmed 2026-08-08: no approval
   /// required unless explicitly turned on per type).
-  requiresApproval   Boolean  @default(false)
-  status             String   @default("Active")
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  requiresApproval  Boolean  @default(false)
+  status            String   @default("Active")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   @@map("partner_types")
 }
@@ -164,10 +164,10 @@ model PartnerType {
 /// shown to the partner. businessId is fixed to "BIZ002" (this business's
 /// central-api id) until real cross-business support exists.
 model Partner {
-  id                 String   @id
-  internalKey        String   @unique
-  businessId         String   @default("BIZ002")
-  partnerTypeId       String
+  id                 String  @id
+  internalKey        String  @unique
+  businessId         String  @default("BIZ002")
+  partnerTypeId      String
   businessName       String
   addressLine        String?
   city               String
@@ -176,13 +176,13 @@ model Partner {
   gstin              String?
   businessEmail      String
   businessContact    String
-  loginContact       String   @unique
+  loginContact       String  @unique
   passwordHash       String
   /// True until the partner completes their first forced password change
   /// (signup never collects a password directly — one is generated and
   /// shown/emailed once).
-  mustChangePassword Boolean  @default(true)
-  status             String   @default("Active")
+  mustChangePassword Boolean @default(true)
+  status             String  @default("Active")
 
   /// Subscription lifecycle: "Trial" | "Active" | "PastDue" | "Cancelled".
   /// Set to "Trial" automatically on signup with a 7-day trialEndAt; a
@@ -199,8 +199,8 @@ model Partner {
   planId             String?
   offerId            String?
 
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("partners")
 }
@@ -258,7 +258,7 @@ model Plan {
 /// `id` here exists only because Prisma needs a stable primary key.
 model BusinessRecord {
   id         String   @id @default(cuid())
-  partnerId   String
+  partnerId  String
   moduleSlug String
   recordKey  String
   data       Json
@@ -278,7 +278,7 @@ model BusinessRecord {
 /// src/lib/centralApi.ts) has a stable id to dedupe retries against.
 model SubscriptionPayment {
   id                String   @id @default(cuid())
-  partnerId          String
+  partnerId         String
   razorpayPaymentId String   @unique
   amount            Int
   currency          String   @default("INR")
@@ -291,7 +291,7 @@ model SubscriptionPayment {
 
 model PartnerSignupRequest {
   id              String   @id @default(cuid())
-  partnerTypeId    String
+  partnerTypeId   String
   businessName    String
   addressLine     String?
   city            String
@@ -327,82 +327,124 @@ model ModuleAccessKey {
   @@map("module_access_keys")
 }
 
-// --- Field Force module: recruit/onboard individual field engineers, ---
-// --- match them to a partner's job requirement by service + pincode. ---
+// --- Field Force module: a two-sided home-services marketplace. Customers ---
+// --- request bookings; Providers (skilled/unskilled workers, onboarded  ---
+// --- individually or as a team) get matched and dispatched by service + ---
+// --- pincode. Both sides can self-signup or be onboarded by ops.        ---
 
-/// The catalog of services an engineer can offer — ops-editable from
+/// The catalog of services a Provider can offer — ops-editable from
 /// field-force/admin (add/edit/deactivate), so new categories/services
-/// don't need a schema change.
+/// don't need a schema change. Also the customer-facing booking catalog:
+/// basePrice/durationMinutes/priceType drive what a Booking charges.
 model Service {
-  id       String   @id @default(cuid())
-  name     String   @unique
-  category String
-  isActive Boolean  @default(true)
-  createdAt DateTime @default(now())
+  id              String   @id @default(cuid())
+  name            String   @unique
+  category        String
+  description     String?  @db.Text
+  /// "fixed" | "hourly" — how basePrice is interpreted.
+  priceType       String   @default("fixed")
+  /// Paise. Fixed = flat job price; hourly = rate per hour (Booking still
+  /// stores a single computed priceAmount at booking time).
+  basePrice       Int      @default(0)
+  durationMinutes Int      @default(60)
+  /// "unskilled" | "skilled" — informational only (doesn't gate matching):
+  /// which class of worker this service is typically staffed by, shown in
+  /// the catalog and on a Booking so ops can plan pay rate/dispatch.
+  minSkillLevel   String   @default("skilled")
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
 
-  engineerServices EngineerService[]
+  providerServices ProviderService[]
+  bookings         Booking[]
 
   @@map("services")
 }
 
-/// An individual engineer recruited from an outside source (not scoped to
-/// any one partner — the engineer pool is platform-wide; only
-/// JobAllocation below is partner-scoped, on the brand/job side).
-model Engineer {
-  id        String   @id @default(cuid())
-  name      String
-  phone     String
-  email     String?
-  source    String?
-  status    String   @default("pending") // pending | active | suspended
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+/// A Provider — a worker (skilled or unskilled) who fulfills bookings.
+/// Partner-scoped (each partner runs their own Provider pool/storefront) —
+/// self-signup only makes sense against one partner's own brand, so this is
+/// no longer a platform-wide pool. A Provider can onboard their own team
+/// under them (teamLeadId self-relation); each team member has their own
+/// login and independently selects their own services/skill level.
+/// passwordHash is null until self-signup (or a later "set password" step)
+/// happens — ops can onboard a Provider with no login ability yet.
+model Provider {
+  id                String     @id @default(cuid())
+  partnerId         String
+  name              String
+  phone             String
+  email             String?
+  source            String?
+  /// Mandatory primary coverage pincode — every Provider must have one.
+  pincode           String
+  /// "unskilled" | "skilled" — set at onboarding, editable from admin. Both
+  /// classes of worker are onboarded and dispatched the same way; this is a
+  /// descriptive attribute (pay/training expectations), not a matching gate
+  /// — see src/lib/fieldForce/matching.ts.
+  skillLevel        String     @default("skilled")
+  status            String     @default("pending") // pending | active | suspended
+  passwordHash      String?
+  preferredLanguage String     @default("en")
+  teamLeadId        String?
+  teamLead          Provider?  @relation("ProviderTeam", fields: [teamLeadId], references: [id])
+  teamMembers       Provider[] @relation("ProviderTeam")
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
 
-  services     EngineerService[]
-  serviceAreas EngineerServiceArea[]
+  services     ProviderService[]
+  serviceAreas ProviderServiceArea[]
   allocations  JobAllocation[]
+  bookings     Booking[]
+  jobOffers    JobOffer[]
 
-  @@map("engineers")
+  @@unique([partnerId, phone])
+  @@index([partnerId])
+  @@index([pincode])
+  @@map("providers")
 }
 
-/// One row per service an engineer has selected during onboarding —
-/// engineers can select as many as apply, no cap.
-model EngineerService {
+/// One row per service a Provider has selected during onboarding —
+/// providers can select as many as apply, no cap.
+model ProviderService {
   id         String   @id @default(cuid())
-  engineerId String
+  providerId String
   serviceId  String
-  engineer   Engineer @relation(fields: [engineerId], references: [id])
+  provider   Provider @relation(fields: [providerId], references: [id])
   service    Service  @relation(fields: [serviceId], references: [id])
 
-  @@unique([engineerId, serviceId])
-  @@map("engineer_services")
+  @@unique([providerId, serviceId])
+  @@map("provider_services")
 }
 
-/// One row per serviceable area an engineer has added — an engineer can add
-/// as many rows as they like, and each row is independently EITHER a
+/// One row per serviceable area a Provider has added, beyond their
+/// mandatory primary pincode — each row is independently EITHER a
 /// state/district/locality combination OR a single pincode (pincode set,
 /// district/locality left null), matching the onboarding form's
 /// "select either of them" per-row toggle.
-model EngineerServiceArea {
+model ProviderServiceArea {
   id         String   @id @default(cuid())
-  engineerId String
-  engineer   Engineer @relation(fields: [engineerId], references: [id])
+  providerId String
+  provider   Provider @relation(fields: [providerId], references: [id])
   state      String
   district   String?
   locality   String?
   pincode    String?
 
-  @@index([engineerId])
-  @@map("engineer_service_areas")
+  @@index([providerId])
+  @@map("provider_service_areas")
 }
 
-/// An engineer allocated to a partner's (brand's) job requirement.
+/// A Provider allocated to a Booking. Kept as the assignment/audit record
+/// (a Provider can be reassigned; each row is one assignment), with status
+/// mirrored from Booking.status on every transition so this stays
+/// consistent with the booking's own lifecycle.
 model JobAllocation {
   id         String   @id @default(cuid())
-  engineerId String
-  engineer   Engineer @relation(fields: [engineerId], references: [id])
+  providerId String
+  provider   Provider @relation(fields: [providerId], references: [id])
   partnerId  String
-  jobRef     String
+  bookingId  String
+  booking    Booking  @relation(fields: [bookingId], references: [id])
   status     String   @default("assigned") // assigned | in-progress | done | cancelled
   assignedAt DateTime @default(now())
   updatedAt  DateTime @updatedAt
@@ -410,10 +452,195 @@ model JobAllocation {
   /// Billing readiness for a future commission/fee model — not surfaced in
   /// any UI yet (we charge nothing today); carried here so it doesn't need
   /// a migration later.
-  feeAmount  Int?    // paise; null = not charged (today's default)
-  feeStatus  String? // pending | invoiced | paid — null today
+  feeAmount Int? // paise; null = not charged (today's default)
+  feeStatus String? // pending | invoiced | paid — null today
 
   @@index([partnerId])
-  @@index([engineerId])
+  @@index([providerId])
+  @@index([bookingId])
   @@map("job_allocations")
+}
+
+/// One row per (Booking, candidate Provider) matched by pincode+service when
+/// a Customer requests a booking — the automated dispatch fan-out. Created
+/// by dispatchBookingRequest(), resolved by respondToOffer(): the first
+/// Provider to accept confirms the Booking and every sibling offer expires.
+model JobOffer {
+  id          String    @id @default(cuid())
+  bookingId   String
+  booking     Booking   @relation(fields: [bookingId], references: [id])
+  providerId  String
+  provider    Provider  @relation(fields: [providerId], references: [id])
+  partnerId   String
+  status      String    @default("pending") // pending | accepted | declined | expired
+  sentAt      DateTime  @default(now())
+  respondedAt DateTime?
+
+  @@index([bookingId])
+  @@index([providerId])
+  @@index([partnerId])
+  @@map("job_offers")
+}
+
+/// A simple in-app notification feed, polled on page load (no
+/// websockets/push yet — see field-force marketplace plan). audience "ops"
+/// with recipientId null means "any partner staff viewing Field Force";
+/// "customer"/"provider" always carry a recipientId.
+model Notification {
+  id               String   @id @default(cuid())
+  partnerId        String
+  audience         String // ops | customer | provider
+  recipientId      String?
+  type             String
+  title            String
+  body             String   @db.Text
+  relatedBookingId String?
+  isRead           Boolean  @default(false)
+  createdAt        DateTime @default(now())
+
+  @@index([partnerId, audience, recipientId])
+  @@map("field_force_notifications")
+}
+
+/// Per-partner toggles for the public Field Force signup pages — off by
+/// default; a Super Admin turns them on from field-force/admin once a
+/// partner is ready to run public signup.
+model FieldForceSettings {
+  partnerId             String  @id
+  customerSignupEnabled Boolean @default(false)
+  providerSignupEnabled Boolean @default(false)
+
+  @@map("field_force_settings")
+}
+
+/// The platform's own commission on a Booking — a single global row
+/// (Super-Admin-only, same "platform-level, not partner-scoped" posture as
+/// Plan/Offer), not yet automatically collected/paid out (see
+/// src/lib/fieldForce/commission.ts — computes a ledger number only).
+model PlatformFeeConfig {
+  id                   String   @id @default("default")
+  feeType              String   @default("percent") // percent | flat
+  feeValue             Int      @default(0) // percent: 0-100; flat: paise
+  chargeParty          String   @default("customer") // customer | provider | both
+  /// Only used when chargeParty = "both" — the Provider's share of the fee
+  /// (the rest comes from the Customer side).
+  providerSharePercent Int      @default(50)
+  isActive             Boolean  @default(false)
+  updatedAt            DateTime @updatedAt
+
+  @@map("platform_fee_config")
+}
+
+// --- Customer-facing booking layer: a partner's own customers/addresses, ---
+// --- and the priced Booking (job) that gets dispatched to a Provider,   ---
+// --- paid, and rated.                                                   ---
+
+/// A partner's own end customer. One row per unique (partnerId, phone).
+/// passwordHash is null until self-signup (or a later "set password" step).
+model Customer {
+  id                String   @id @default(cuid())
+  partnerId         String
+  name              String
+  phone             String
+  email             String?
+  passwordHash      String?
+  preferredLanguage String   @default("en")
+  createdAt         DateTime @default(now())
+
+  addresses Address[]
+  bookings  Booking[]
+
+  @@unique([partnerId, phone])
+  @@index([partnerId])
+  @@map("customers")
+}
+
+/// A saved address for a Customer — a booking always points at one of these.
+model Address {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+  label      String   @default("Home")
+  line1      String
+  line2      String?
+  landmark   String?
+  city       String
+  state      String
+  pincode    String
+  isDefault  Boolean  @default(false)
+
+  bookings Booking[]
+
+  @@index([customerId])
+  @@map("addresses")
+}
+
+/// The core job/order: a customer's request for one Service, scheduled,
+/// priced, dispatched to a Provider, paid, and rated — the Urban
+/// Company-style booking lifecycle this module runs on.
+model Booking {
+  id            String @id @default(cuid())
+  partnerId     String
+  bookingNumber String @unique
+
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+  addressId  String
+  address    Address  @relation(fields: [addressId], references: [id])
+  serviceId  String
+  service    Service  @relation(fields: [serviceId], references: [id])
+
+  providerId String?
+  provider   Provider? @relation(fields: [providerId], references: [id])
+
+  /// requested | confirmed | assigned | en-route | in-progress | completed | cancelled
+  status        String   @default("requested")
+  scheduledAt   DateTime
+  slotLabel     String
+  priceAmount   Int // paise, quoted standard rate from Service at booking time
+  /// The actually-agreed price once Customer/Provider finalize it by
+  /// conversation — falls back to priceAmount if never set.
+  finalPrice    Int?
+  /// unpaid | paid | refunded
+  paymentStatus String   @default("unpaid")
+  notes         String?  @db.Text
+
+  /// Computed from finalPrice/priceAmount + the active PlatformFeeConfig at
+  /// payment-collection time — see src/lib/fieldForce/commission.ts.
+  platformFeeAmount Int?
+  customerPayable   Int?
+  providerPayout    Int?
+
+  ratingValue   Int?
+  ratingComment String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  allocations JobAllocation[]
+  payments    BookingPayment[]
+  jobOffers   JobOffer[]
+
+  @@index([partnerId])
+  @@index([providerId])
+  @@index([status])
+  @@map("bookings")
+}
+
+/// A captured Razorpay payment for one Booking — mirrors SubscriptionPayment's
+/// shape/idempotency convention, kept separate since it settles a booking,
+/// not a partner subscription.
+model BookingPayment {
+  id                String   @id @default(cuid())
+  bookingId         String
+  booking           Booking  @relation(fields: [bookingId], references: [id])
+  razorpayOrderId   String
+  razorpayPaymentId String?  @unique
+  amount            Int
+  currency          String   @default("INR")
+  status            String   @default("created") // created | paid | failed
+  createdAt         DateTime @default(now())
+
+  @@index([bookingId])
+  @@map("booking_payments")
 }

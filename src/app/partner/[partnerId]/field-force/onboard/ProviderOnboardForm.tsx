@@ -15,7 +15,7 @@ type AreaRow = {
 
 const EMPTY_ROW: AreaRow = { mode: "region", state: INDIAN_STATES[0], district: "", locality: "", pincode: "" };
 
-export function EngineerOnboardForm({
+export function ProviderOnboardForm({
   services,
   action,
 }: {
@@ -23,7 +23,7 @@ export function EngineerOnboardForm({
   action: (formData: FormData) => void;
 }) {
   const [selectedServiceIds, setSelectedServiceIds] = useState<Set<string>>(new Set());
-  const [areas, setAreas] = useState<AreaRow[]>([{ ...EMPTY_ROW }]);
+  const [areas, setAreas] = useState<AreaRow[]>([]);
 
   const categories = Array.from(new Set(services.map((s) => s.category)));
 
@@ -84,9 +84,24 @@ export function EngineerOnboardForm({
         </div>
         <div>
           <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-text-muted">
+            Pincode * <span className="normal-case text-text-muted">(mandatory — your primary coverage area)</span>
+          </label>
+          <input name="pincode" required pattern="\d{6}" className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text" />
+        </div>
+        <div>
+          <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-text-muted">
             Recruited From (source)
           </label>
           <input name="source" placeholder="e.g. referral, job portal, walk-in" className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text" />
+        </div>
+        <div>
+          <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-text-muted">
+            Worker Type *
+          </label>
+          <select name="skillLevel" defaultValue="skilled" required className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text">
+            <option value="skilled">Skilled (trained/certified trade)</option>
+            <option value="unskilled">Unskilled (general help)</option>
+          </select>
         </div>
       </div>
 
@@ -120,10 +135,10 @@ export function EngineerOnboardForm({
       </div>
 
       <div>
-        <h2 className="font-display text-base font-bold text-text">Serviceable areas</h2>
+        <h2 className="font-display text-base font-bold text-text">Additional serviceable areas</h2>
         <p className="mt-1 text-sm text-text-muted">
-          Add as many rows as needed. Each row is either a state/district/locality combination, or a single
-          pincode — pick whichever fits.
+          Beyond your primary pincode above, add any extra areas you cover — each row is either a
+          state/district/locality combination, or a single pincode.
         </p>
         <div className="mt-3 space-y-3">
           {areas.map((area, i) => (
@@ -147,11 +162,9 @@ export function EngineerOnboardForm({
                   />
                   Individual Pincode
                 </label>
-                {areas.length > 1 && (
-                  <button type="button" onClick={() => removeArea(i)} className="ml-auto text-xs text-danger">
-                    Remove
-                  </button>
-                )}
+                <button type="button" onClick={() => removeArea(i)} className="ml-auto text-xs text-danger">
+                  Remove
+                </button>
               </div>
 
               {area.mode === "region" ? (
@@ -212,7 +225,7 @@ export function EngineerOnboardForm({
       </div>
 
       <button type="submit" className="btn-accent">
-        Onboard Engineer
+        Onboard Provider
       </button>
     </form>
   );

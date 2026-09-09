@@ -41,4 +41,9 @@ export const env = {
   /** Optional bearer secret Vercel Cron sends as `Authorization: Bearer <value>` (set alongside the
    * cron schedule in vercel.json). Unset means the route runs unauthenticated, e.g. in local dev. */
   cronSecret: () => process.env.CRON_SECRET,
+  /** SMS "ping" for Field Force job offers — optional, cost-free by default.
+   * Unset means src/lib/sms.ts no-ops (logs only) instead of throwing, same
+   * graceful-degradation posture as the Razorpay keys above. */
+  smsApiKey: () => process.env.SMS_API_KEY,
+  smsSenderId: () => process.env.SMS_SENDER_ID,
 };

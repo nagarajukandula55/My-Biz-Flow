@@ -34,6 +34,7 @@ export const NUMBERED_DOCUMENT_TYPES = [
   { id: "pos.document", label: "Receipt (POS)" },
   { id: "amc-field-service.document", label: "Service Report (AMC/Field Service)" },
   { id: "legal.document", label: "Engagement Letter (Legal)" },
+  { id: "field-force.booking", label: "Booking (Field Force)" },
 ] as const;
 
 /** India runs its financial year April 1 -> March 31. */

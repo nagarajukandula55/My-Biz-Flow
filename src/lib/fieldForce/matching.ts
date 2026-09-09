@@ -1,9 +1,10 @@
 /**
- * Pure matching logic — no charging, no side effects. Used by the
- * allocations page to narrow the engineer pool for one job down to
- * candidates who actually cover it.
+ * Pure matching logic — no charging, no side effects. Used by the automated
+ * dispatch engine (matchingEngine.ts) and the manual Allocations page to
+ * narrow the Provider pool for one job down to candidates who actually
+ * cover it.
  */
-import type { EngineerRecord } from "./engineersData";
+import type { ProviderRecord } from "./providersData";
 
 function areaCoversPincode(
   area: { state: string; district?: string; locality?: string; pincode?: string },
@@ -19,18 +20,17 @@ function areaCoversPincode(
   return true;
 }
 
-export function findEligibleEngineers(
-  engineers: EngineerRecord[],
+export function findEligibleProviders(
+  providers: ProviderRecord[],
   job: { pincode: string; state?: string; district?: string; requiredServiceIds: string[] }
-): EngineerRecord[] {
-  return engineers.filter((e) => {
-    if (e.status !== "active") return false;
+): ProviderRecord[] {
+  return providers.filter((p) => {
+    if (p.status !== "active") return false;
 
-    const hasAllServices = job.requiredServiceIds.every((id) => e.services.some((s) => s.id === id));
+    const hasAllServices = job.requiredServiceIds.every((id) => p.services.some((s) => s.id === id));
     if (!hasAllServices) return false;
 
-    return e.serviceAreas.some((area) =>
-      areaCoversPincode(area, job.pincode, job.state, job.district)
-    );
+    if (p.pincode === job.pincode) return true;
+    return p.serviceAreas.some((area) => areaCoversPincode(area, job.pincode, job.state, job.district));
   });
 }

@@ -1,110 +1,109 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { StatusChip } from "@/components/StatusChip";
-import type { EngineerRecord } from "@/lib/fieldForce/engineersData";
-import { findEligibleEngineers } from "@/lib/fieldForce/matching";
+import type { ProviderRecord } from "@/lib/fieldForce/providersData";
+import { findEligibleProviders } from "@/lib/fieldForce/matching";
 
-type ServiceOption = { id: string; name: string; category: string };
+type BookingOption = {
+  id: string;
+  bookingNumber: string;
+  customerName: string;
+  serviceId: string;
+  serviceName: string;
+  pincode: string;
+  state: string;
+};
 type AllocationRow = {
   id: string;
-  engineerName: string;
-  jobRef: string;
+  providerName: string;
+  bookingId: string;
+  bookingNumber: string;
   status: string;
   assignedAt: string;
 };
 
+const STATUS_OPTIONS = ["requested", "confirmed", "assigned", "en-route", "in-progress", "completed", "cancelled"] as const;
+
 export function AllocationsClient({
-  engineers,
-  services,
+  providers,
+  unassignedBookings,
   allocations,
+  partnerId,
   allocateAction,
   updateStatusAction,
 }: {
-  engineers: EngineerRecord[];
-  services: ServiceOption[];
+  providers: ProviderRecord[];
+  unassignedBookings: BookingOption[];
   allocations: AllocationRow[];
+  partnerId: string;
   allocateAction: (formData: FormData) => void;
   updateStatusAction: (formData: FormData) => void;
 }) {
-  const [jobRef, setJobRef] = useState("");
-  const [pincode, setPincode] = useState("");
-  const [selectedServiceIds, setSelectedServiceIds] = useState<Set<string>>(new Set());
+  const [bookingId, setBookingId] = useState("");
+
+  const selectedBooking = unassignedBookings.find((b) => b.id === bookingId);
 
   const candidates = useMemo(() => {
-    if (!pincode || selectedServiceIds.size === 0) return [];
-    return findEligibleEngineers(engineers, {
-      pincode,
-      requiredServiceIds: Array.from(selectedServiceIds),
+    if (!selectedBooking) return [];
+    return findEligibleProviders(providers, {
+      pincode: selectedBooking.pincode,
+      state: selectedBooking.state,
+      requiredServiceIds: [selectedBooking.serviceId],
     });
-  }, [engineers, pincode, selectedServiceIds]);
-
-  function toggleService(id: string) {
-    setSelectedServiceIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
+  }, [providers, selectedBooking]);
 
   return (
     <div>
       <div className="rounded-md border border-border bg-bg-raised p-4">
-        <h2 className="font-display text-base font-bold text-text">Find engineers for a job</h2>
-        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div>
-            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-text-muted">
-              Job Reference
-            </label>
-            <input
-              value={jobRef}
-              onChange={(e) => setJobRef(e.target.value)}
-              placeholder="e.g. workorder id"
-              className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text"
-            />
-          </div>
-          <div>
-            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-text-muted">
-              Job Pincode
-            </label>
-            <input
-              value={pincode}
-              onChange={(e) => setPincode(e.target.value)}
-              className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text"
-            />
-          </div>
-        </div>
+        <h2 className="font-display text-base font-bold text-text">Find providers for a booking</h2>
+        <p className="mt-1 text-sm text-text-muted">
+          Pick an unassigned booking — its service and address pincode narrow the provider pool automatically.
+          This is the manual fallback path; most bookings get dispatched automatically once a Customer requests
+          them (see the Bookings/Notifications feed).
+        </p>
         <div className="mt-3">
-          <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-text-muted">
-            Required Services
-          </div>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {services.map((s) => (
-              <label key={s.id} className="flex items-center gap-2 rounded-md border border-border bg-bg px-3 py-2 text-sm text-text">
-                <input type="checkbox" checked={selectedServiceIds.has(s.id)} onChange={() => toggleService(s.id)} />
-                {s.name}
-              </label>
+          <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-text-muted">
+            Unassigned Booking
+          </label>
+          <select
+            value={bookingId}
+            onChange={(e) => setBookingId(e.target.value)}
+            className="w-full max-w-lg rounded-md border border-border bg-bg px-3 py-2 text-sm text-text"
+          >
+            <option value="">Select a booking…</option>
+            {unassignedBookings.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.bookingNumber} — {b.customerName} — {b.serviceName} ({b.pincode})
+              </option>
             ))}
-          </div>
+          </select>
+          {unassignedBookings.length === 0 && (
+            <p className="mt-2 text-sm text-text-muted">
+              No unassigned bookings right now. <Link href={`/partner/${partnerId}/field-force/bookings/new`} className="text-teal hover:underline">Create one</Link>.
+            </p>
+          )}
         </div>
 
         <div className="mt-4">
           <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-text-muted">
-            Matching engineers ({candidates.length})
+            Matching providers ({candidates.length})
           </div>
-          {candidates.length === 0 ? (
-            <p className="text-sm text-text-muted">Enter a pincode and select at least one service to see matches.</p>
+          {!selectedBooking ? (
+            <p className="text-sm text-text-muted">Select a booking above to see matches.</p>
+          ) : candidates.length === 0 ? (
+            <p className="text-sm text-text-muted">No eligible providers cover this service/pincode yet.</p>
           ) : (
             <div className="space-y-2">
               {candidates.map((c) => (
                 <form key={c.id} action={allocateAction} className="flex items-center justify-between rounded-md border border-border bg-bg px-3 py-2">
-                  <input type="hidden" name="jobRef" value={jobRef} />
-                  <input type="hidden" name="engineerId" value={c.id} />
+                  <input type="hidden" name="bookingId" value={bookingId} />
+                  <input type="hidden" name="providerId" value={c.id} />
                   <div className="text-sm text-text">
-                    {c.name} <span className="text-text-muted">({c.phone})</span>
+                    {c.name} <span className="text-text-muted">({c.phone} · {c.skillLevel})</span>
                   </div>
-                  <button type="submit" disabled={!jobRef} className="btn-accent text-xs disabled:opacity-50">
+                  <button type="submit" className="btn-accent text-xs">
                     Assign
                   </button>
                 </form>
@@ -123,23 +122,26 @@ export function AllocationsClient({
         ) : (
           <div className="mt-3 space-y-2">
             {allocations.map((a) => (
-              <div key={a.id} className="flex items-center justify-between rounded-md border border-border bg-bg-raised px-3 py-2.5">
+              <div key={a.id} className="flex flex-col gap-2 rounded-md border border-border bg-bg-raised px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <div className="text-sm font-semibold text-text">{a.jobRef}</div>
-                  <div className="text-xs text-text-muted">{a.engineerName}</div>
+                  <Link href={`/partner/${partnerId}/field-force/bookings/${a.bookingId}`} className="text-sm font-semibold text-teal hover:underline">
+                    {a.bookingNumber}
+                  </Link>
+                  <div className="text-xs text-text-muted">{a.providerName}</div>
                 </div>
                 <div className="flex items-center gap-3">
                   <StatusChip
                     label={a.status}
-                    variant={a.status === "done" ? "success" : a.status === "cancelled" ? "danger" : "teal"}
+                    variant={a.status === "completed" ? "success" : a.status === "cancelled" ? "danger" : "teal"}
                   />
                   <form action={updateStatusAction} className="flex items-center gap-1">
                     <input type="hidden" name="allocationId" value={a.id} />
                     <select name="status" defaultValue={a.status} className="rounded-md border border-border bg-bg px-2 py-1 text-xs text-text">
-                      <option value="assigned">Assigned</option>
-                      <option value="in-progress">In Progress</option>
-                      <option value="done">Done</option>
-                      <option value="cancelled">Cancelled</option>
+                      {STATUS_OPTIONS.map((s) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      ))}
                     </select>
                     <button type="submit" className="btn-ghost text-xs">
                       Update
