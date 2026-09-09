@@ -56,6 +56,13 @@ export const ml: Partial<Record<keyof typeof en, string>> = {
   acceptOffer: "സ്വീകരിക്കുക",
   declineOffer: "നിരസിക്കുക",
   standardRate: "സ്റ്റാൻഡേർഡ് നിരക്ക്",
+  myJobsTitle: "എന്റെ ജോലികൾ",
+  noActiveJobs: "ഇപ്പോൾ സജീവമായ ജോലികൾ ഇല്ല.",
+  updateStatus: "സ്ഥിതി അപ്ഡേറ്റ് ചെയ്യുക",
+  payNow: "ഇപ്പോൾ അടയ്ക്കുക",
+  paid: "അടച്ചു",
+  rateThisJob: "ഈ ജോലി റേറ്റ് ചെയ്യുക",
+  submitRating: "റേറ്റിംഗ് സമർപ്പിക്കുക",
 
   onboardTeamTitle: "ടീം അംഗത്തെ ചേർക്കുക",
   addTeamMember: "ടീം അംഗത്തെ ചേർക്കുക",

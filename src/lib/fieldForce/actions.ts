@@ -11,9 +11,11 @@ import {
   createBooking,
   updateBookingDetails,
   updateBookingStatus,
+  updateBookingStatusAsProvider,
   rateBooking,
   setFinalPrice,
   assignProviderToBooking,
+  getBooking,
   type BookingStatus,
 } from "@/lib/fieldForce/bookingsData";
 import { dispatchBookingRequest, respondToOffer } from "@/lib/fieldForce/matchingEngine";
@@ -21,7 +23,7 @@ import { setFieldForceSettings } from "@/lib/fieldForce/settingsData";
 import { setPlatformFeeConfig } from "@/lib/fieldForce/platformFeeData";
 import { createCustomerAccount, verifyCustomerLogin, CUSTOMER_SESSION_COOKIE } from "@/lib/fieldForce/customerAuth";
 import { verifyProviderLogin, PROVIDER_SESSION_COOKIE } from "@/lib/fieldForce/providerAuth";
-import { markRead } from "@/lib/fieldForce/notifications";
+import { markRead, notify } from "@/lib/fieldForce/notifications";
 
 export async function onboardProviderAction(partnerId: string, formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
@@ -289,6 +291,41 @@ export async function loginProviderAction(partnerId: string, formData: FormData)
 export async function logoutProviderAction(partnerId: string) {
   cookies().delete(PROVIDER_SESSION_COOKIE);
   redirect(`/partner/${partnerId}/field-force/provider/login`);
+}
+
+/** The Provider's own status-advance control (en-route/in-progress/completed/cancelled) —
+ * verifies the booking is actually assigned to this provider. No ops involvement required. */
+export async function updateBookingStatusAsProviderAction(partnerId: string, providerId: string, formData: FormData) {
+  const bookingId = String(formData.get("bookingId") ?? "");
+  const status = String(formData.get("status") ?? "") as BookingStatus;
+  await updateBookingStatusAsProvider(bookingId, providerId, partnerId, status);
+
+  if (status === "completed") {
+    const booking = await getBooking(bookingId, partnerId);
+    if (booking) {
+      await notify({
+        partnerId,
+        audience: "customer",
+        recipientId: booking.customerId,
+        type: "booking-completed",
+        title: `Booking ${booking.bookingNumber} completed`,
+        body: "Your provider marked this job as completed. You can rate it from your booking page.",
+        relatedBookingId: bookingId,
+      });
+    }
+  }
+
+  revalidatePath(`/partner/${partnerId}/field-force/provider/dashboard`);
+  revalidatePath(`/partner/${partnerId}/field-force/customer/bookings/${bookingId}`);
+}
+
+/** The Customer's own rating submission — verifies the booking belongs to this customer. */
+export async function rateCustomerBookingAction(partnerId: string, customerId: string, formData: FormData) {
+  const bookingId = String(formData.get("bookingId") ?? "");
+  const ratingValue = Number(formData.get("ratingValue") ?? 0);
+  const ratingComment = String(formData.get("ratingComment") ?? "").trim();
+  await rateBooking(bookingId, partnerId, ratingValue, ratingComment, customerId);
+  revalidatePath(`/partner/${partnerId}/field-force/customer/bookings/${bookingId}`);
 }
 
 /** A logged-in Provider onboards a team member under them — no password required at creation time. */

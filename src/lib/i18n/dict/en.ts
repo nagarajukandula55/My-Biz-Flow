@@ -54,6 +54,13 @@ export const en = {
   acceptOffer: "Accept",
   declineOffer: "Decline",
   standardRate: "Standard rate",
+  myJobsTitle: "My Jobs",
+  noActiveJobs: "No active jobs right now.",
+  updateStatus: "Update Status",
+  payNow: "Pay Now",
+  paid: "Paid",
+  rateThisJob: "Rate this job",
+  submitRating: "Submit Rating",
 
   onboardTeamTitle: "Onboard a Team Member",
   addTeamMember: "Add Team Member",

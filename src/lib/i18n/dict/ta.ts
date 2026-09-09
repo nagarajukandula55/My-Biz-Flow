@@ -56,6 +56,13 @@ export const ta: Partial<Record<keyof typeof en, string>> = {
   acceptOffer: "ஏற்கவும்",
   declineOffer: "நிராகரிக்கவும்",
   standardRate: "நிலையான விலை",
+  myJobsTitle: "எனது வேலைகள்",
+  noActiveJobs: "தற்போது செயலில் உள்ள வேலைகள் இல்லை.",
+  updateStatus: "நிலையைப் புதுப்பிக்கவும்",
+  payNow: "இப்போது செலுத்தவும்",
+  paid: "செலுத்தப்பட்டது",
+  rateThisJob: "இந்த வேலையை மதிப்பிடவும்",
+  submitRating: "மதிப்பீட்டைச் சமர்ப்பிக்கவும்",
 
   onboardTeamTitle: "குழு உறுப்பினரைச் சேர்க்கவும்",
   addTeamMember: "குழு உறுப்பினரைச் சேர்க்கவும்",

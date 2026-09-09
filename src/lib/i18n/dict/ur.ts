@@ -56,6 +56,13 @@ export const ur: Partial<Record<keyof typeof en, string>> = {
   acceptOffer: "قبول کریں",
   declineOffer: "مسترد کریں",
   standardRate: "معیاری قیمت",
+  myJobsTitle: "میرے کام",
+  noActiveJobs: "فی الحال کوئی فعال کام نہیں ہے۔",
+  updateStatus: "حیثیت اپ ڈیٹ کریں",
+  payNow: "ابھی ادائیگی کریں",
+  paid: "ادا شدہ",
+  rateThisJob: "اس کام کی درجہ بندی کریں",
+  submitRating: "درجہ بندی جمع کروائیں",
 
   onboardTeamTitle: "ٹیم ممبر شامل کریں",
   addTeamMember: "ٹیم ممبر شامل کریں",

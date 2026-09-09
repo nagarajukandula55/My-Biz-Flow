@@ -8,14 +8,26 @@
  * the platform's own commission split — see commission.ts), not the raw
  * quoted price.
  */
+import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { assertPartnerScope } from "@/lib/tenant";
 import { createOrder, verifyPaymentSignature } from "@/lib/razorpay";
 import { settleBooking } from "@/lib/fieldForce/commission";
+import { CUSTOMER_SESSION_COOKIE } from "@/lib/fieldForce/customerAuth";
+
+/** If the caller is a logged-in Customer, the session must belong to this booking's own customer —
+ * called from both API routes below, since a Customer can now trigger these directly (not just ops). */
+function assertCallerOwnsBooking(booking: { customerId: string }): void {
+  const customerSessionId = cookies().get(CUSTOMER_SESSION_COOKIE)?.value;
+  if (customerSessionId && customerSessionId !== booking.customerId) {
+    throw new Error("This booking does not belong to you.");
+  }
+}
 
 export async function createBookingPaymentOrder(bookingId: string, partnerId: string) {
   const booking = await prisma.booking.findUniqueOrThrow({ where: { id: bookingId } });
   assertPartnerScope(partnerId, booking.partnerId);
+  assertCallerOwnsBooking(booking);
 
   const settlement = await settleBooking(bookingId);
 
@@ -38,6 +50,7 @@ export async function verifyBookingPayment(
 ): Promise<void> {
   const booking = await prisma.booking.findUniqueOrThrow({ where: { id: bookingId } });
   assertPartnerScope(partnerId, booking.partnerId);
+  assertCallerOwnsBooking(booking);
 
   const valid = verifyPaymentSignature(razorpayOrderId, razorpayPaymentId, razorpaySignature);
   if (!valid) throw new Error("Invalid payment signature");

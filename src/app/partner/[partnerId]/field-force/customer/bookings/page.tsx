@@ -3,6 +3,7 @@ import Link from "next/link";
 import { registerPage } from "@/lib/designer/registry";
 import { getCurrentCustomer } from "@/lib/fieldForce/customerAuth";
 import { listBookingsForCustomer } from "@/lib/fieldForce/bookingsData";
+import { listNotifications } from "@/lib/fieldForce/notifications";
 import { getLocaleFromCookie } from "@/lib/i18n/cookie";
 import { t, isRtl } from "@/lib/i18n/locales";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
@@ -26,7 +27,10 @@ export default async function CustomerBookingsPage({ params }: { params: { partn
   const customer = await getCurrentCustomer(params.partnerId);
   if (!customer) redirect(`/partner/${params.partnerId}/field-force/customer/login`);
 
-  const bookings = await listBookingsForCustomer(customer.id, params.partnerId);
+  const [bookings, notifications] = await Promise.all([
+    listBookingsForCustomer(customer.id, params.partnerId),
+    listNotifications(params.partnerId, "customer", customer.id),
+  ]);
   const locale = getLocaleFromCookie();
 
   return (
@@ -43,6 +47,20 @@ export default async function CustomerBookingsPage({ params }: { params: { partn
           </a>
         </div>
       </div>
+
+      {notifications.some((n) => !n.isRead) && (
+        <div className="mb-4 space-y-1.5">
+          {notifications
+            .filter((n) => !n.isRead)
+            .slice(0, 3)
+            .map((n) => (
+              <div key={n.id} className="rounded-md border border-border bg-bg-raised px-3 py-2 text-sm">
+                <span className="font-semibold text-text">{n.title}</span>{" "}
+                <span className="text-text-muted">— {n.body}</span>
+              </div>
+            ))}
+        </div>
+      )}
 
       {bookings.length === 0 ? (
         <p className="rounded-md border border-dashed border-border bg-bg-raised p-6 text-center text-sm text-text-muted">

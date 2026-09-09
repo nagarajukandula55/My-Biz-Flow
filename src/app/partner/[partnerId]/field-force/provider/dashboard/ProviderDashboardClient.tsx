@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { StatusChip } from "@/components/StatusChip";
 import { t, type Locale } from "@/lib/i18n/locales";
 
 type OfferRow = {
@@ -14,25 +15,41 @@ type OfferRow = {
   priceAmount: number;
 };
 
+type ActiveJobRow = {
+  id: string;
+  bookingNumber: string;
+  serviceName: string;
+  customerName: string;
+  addressLine: string;
+  status: string;
+  slotLabel: string;
+};
+
 type TeamMemberRow = { id: string; name: string; phone: string; skillLevel: string; status: string };
 type ServiceOption = { id: string; name: string; category: string };
 type NotificationRow = { id: string; title: string; body: string; createdAt: string; isRead: boolean };
 
+const STATUS_OPTIONS = ["en-route", "in-progress", "completed", "cancelled"] as const;
+
 export function ProviderDashboardClient({
   offers,
+  activeJobs,
   teamMembers,
   services,
   notifications,
   locale,
   respondAction,
+  advanceStatusAction,
   addTeamMemberAction,
 }: {
   offers: OfferRow[];
+  activeJobs: ActiveJobRow[];
   teamMembers: TeamMemberRow[];
   services: ServiceOption[];
   notifications: NotificationRow[];
   locale: Locale;
   respondAction: (formData: FormData) => void;
+  advanceStatusAction: (formData: FormData) => void;
   addTeamMemberAction: (formData: FormData) => void;
 }) {
   const [showAddMember, setShowAddMember] = useState(false);
@@ -92,6 +109,47 @@ export function ProviderDashboardClient({
                     </form>
                   </div>
                 </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section>
+        <h2 className="font-display text-base font-bold text-text">{t(locale, "myJobsTitle")}</h2>
+        {activeJobs.length === 0 ? (
+          <p className="mt-2 text-sm text-text-muted">{t(locale, "noActiveJobs")}</p>
+        ) : (
+          <div className="mt-3 space-y-2">
+            {activeJobs.map((j) => (
+              <div key={j.id} className="rounded-md border border-border bg-bg-raised p-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-sm font-semibold text-text">{j.serviceName}</div>
+                    <div className="text-xs text-text-muted">
+                      {j.customerName} · {j.addressLine} · {j.slotLabel}
+                    </div>
+                  </div>
+                  <StatusChip
+                    label={j.status}
+                    variant={j.status === "completed" ? "success" : j.status === "cancelled" ? "danger" : "teal"}
+                  />
+                </div>
+                {j.status !== "completed" && j.status !== "cancelled" && (
+                  <form action={advanceStatusAction} className="mt-2 flex items-center gap-2">
+                    <input type="hidden" name="bookingId" value={j.id} />
+                    <select name="status" defaultValue={j.status === "assigned" ? "en-route" : j.status} className="rounded-md border border-border bg-bg px-2 py-1.5 text-xs text-text">
+                      {STATUS_OPTIONS.map((s) => (
+                        <option key={s} value={s}>
+                          {t(locale, s === "en-route" ? "statusEnRoute" : s === "in-progress" ? "statusInProgress" : s === "completed" ? "statusCompleted" : "statusCancelled")}
+                        </option>
+                      ))}
+                    </select>
+                    <button type="submit" className="btn-accent text-xs">
+                      {t(locale, "updateStatus")}
+                    </button>
+                  </form>
+                )}
               </div>
             ))}
           </div>

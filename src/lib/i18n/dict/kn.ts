@@ -56,6 +56,13 @@ export const kn: Partial<Record<keyof typeof en, string>> = {
   acceptOffer: "ಸ್ವೀಕರಿಸಿ",
   declineOffer: "ತಿರಸ್ಕರಿಸಿ",
   standardRate: "ಪ್ರಮಾಣಿತ ದರ",
+  myJobsTitle: "ನನ್ನ ಕೆಲಸಗಳು",
+  noActiveJobs: "ಪ್ರಸ್ತುತ ಸಕ್ರಿಯ ಕೆಲಸಗಳಿಲ್ಲ.",
+  updateStatus: "ಸ್ಥಿತಿ ನವೀಕರಿಸಿ",
+  payNow: "ಈಗ ಪಾವತಿಸಿ",
+  paid: "ಪಾವತಿಸಲಾಗಿದೆ",
+  rateThisJob: "ಈ ಕೆಲಸವನ್ನು ರೇಟ್ ಮಾಡಿ",
+  submitRating: "ರೇಟಿಂಗ್ ಸಲ್ಲಿಸಿ",
 
   onboardTeamTitle: "ತಂಡದ ಸದಸ್ಯರನ್ನು ಸೇರಿಸಿ",
   addTeamMember: "ತಂಡದ ಸದಸ್ಯರನ್ನು ಸೇರಿಸಿ",

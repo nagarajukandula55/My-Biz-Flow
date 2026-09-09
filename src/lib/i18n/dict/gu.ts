@@ -56,6 +56,13 @@ export const gu: Partial<Record<keyof typeof en, string>> = {
   acceptOffer: "સ્વીકારો",
   declineOffer: "નકારો",
   standardRate: "પ્રમાણભૂત દર",
+  myJobsTitle: "મારા કામ",
+  noActiveJobs: "હાલમાં કોઈ સક્રિય કામ નથી.",
+  updateStatus: "સ્થિતિ અપડેટ કરો",
+  payNow: "હમણાં ચૂકવો",
+  paid: "ચૂકવેલ",
+  rateThisJob: "આ કામને રેટ કરો",
+  submitRating: "રેટિંગ સબમિટ કરો",
 
   onboardTeamTitle: "ટીમ સભ્ય ઉમેરો",
   addTeamMember: "ટીમ સભ્ય ઉમેરો",

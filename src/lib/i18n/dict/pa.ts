@@ -56,6 +56,13 @@ export const pa: Partial<Record<keyof typeof en, string>> = {
   acceptOffer: "ਸਵੀਕਾਰ ਕਰੋ",
   declineOffer: "ਅਸਵੀਕਾਰ ਕਰੋ",
   standardRate: "ਮਿਆਰੀ ਦਰ",
+  myJobsTitle: "ਮੇਰੇ ਕੰਮ",
+  noActiveJobs: "ਇਸ ਵੇਲੇ ਕੋਈ ਸਰਗਰਮ ਕੰਮ ਨਹੀਂ ਹੈ।",
+  updateStatus: "ਸਥਿਤੀ ਅੱਪਡੇਟ ਕਰੋ",
+  payNow: "ਹੁਣੇ ਭੁਗਤਾਨ ਕਰੋ",
+  paid: "ਭੁਗਤਾਨ ਹੋ ਗਿਆ",
+  rateThisJob: "ਇਸ ਕੰਮ ਨੂੰ ਰੇਟ ਕਰੋ",
+  submitRating: "ਰੇਟਿੰਗ ਜਮ੍ਹਾਂ ਕਰੋ",
 
   onboardTeamTitle: "ਟੀਮ ਮੈਂਬਰ ਸ਼ਾਮਲ ਕਰੋ",
   addTeamMember: "ਟੀਮ ਮੈਂਬਰ ਸ਼ਾਮਲ ਕਰੋ",

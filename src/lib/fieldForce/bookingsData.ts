@@ -139,6 +139,16 @@ export async function listBookingsForCustomer(customerId: string, partnerId: str
   return rows.map(toRecord);
 }
 
+/** A Provider's own active jobs (accepted onward) — for their dashboard's status controls. */
+export async function listActiveBookingsForProvider(providerId: string, partnerId: string): Promise<BookingRecord[]> {
+  const rows = await prisma.booking.findMany({
+    where: { providerId, partnerId, status: { notIn: ["requested", "cancelled"] } },
+    include: INCLUDE,
+    orderBy: { scheduledAt: "asc" },
+  });
+  return rows.map(toRecord);
+}
+
 export async function getBooking(id: string, partnerId: string): Promise<BookingRecord | null> {
   const row = await prisma.booking.findUnique({ where: { id }, include: INCLUDE });
   if (!row) return null;
@@ -196,6 +206,18 @@ export async function updateBookingStatus(id: string, partnerId: string, status:
   ]);
 }
 
+/** Same as updateBookingStatus, but also verifies the calling Provider actually owns this booking — the
+ * standalone Provider dashboard's own status-advance control (en-route/in-progress/completed/cancelled). */
+export async function updateBookingStatusAsProvider(id: string, providerId: string, partnerId: string, status: BookingStatus): Promise<void> {
+  const existing = await prisma.booking.findUniqueOrThrow({ where: { id } });
+  assertPartnerScope(partnerId, existing.partnerId);
+  if (existing.providerId !== providerId) throw new Error("This booking is not assigned to you.");
+  await prisma.$transaction([
+    prisma.booking.update({ where: { id }, data: { status } }),
+    prisma.jobAllocation.updateMany({ where: { bookingId: id }, data: { status } }),
+  ]);
+}
+
 /** Directly assigns a Provider (manual ops dispatch) — creates the JobAllocation audit row and advances status. */
 export async function assignProviderToBooking(bookingId: string, partnerId: string, providerId: string): Promise<void> {
   const existing = await prisma.booking.findUniqueOrThrow({ where: { id: bookingId } });
@@ -213,9 +235,10 @@ export async function setFinalPrice(bookingId: string, partnerId: string, amount
   await prisma.booking.update({ where: { id: bookingId }, data: { finalPrice: amount } });
 }
 
-export async function rateBooking(id: string, partnerId: string, ratingValue: number, ratingComment?: string): Promise<void> {
+export async function rateBooking(id: string, partnerId: string, ratingValue: number, ratingComment?: string, customerId?: string): Promise<void> {
   const existing = await prisma.booking.findUniqueOrThrow({ where: { id } });
   assertPartnerScope(partnerId, existing.partnerId);
+  if (customerId && existing.customerId !== customerId) throw new Error("This booking does not belong to you.");
   const clamped = Math.min(5, Math.max(1, Math.round(ratingValue)));
   await prisma.booking.update({ where: { id }, data: { ratingValue: clamped, ratingComment: ratingComment || null } });
 }

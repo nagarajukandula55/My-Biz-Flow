@@ -3,9 +3,10 @@ import { registerPage } from "@/lib/designer/registry";
 import { getCurrentProvider } from "@/lib/fieldForce/providerAuth";
 import { listPendingOffersForProvider } from "@/lib/fieldForce/matchingEngine";
 import { listTeamMembers } from "@/lib/fieldForce/providersData";
+import { listActiveBookingsForProvider } from "@/lib/fieldForce/bookingsData";
 import { listServices } from "@/lib/fieldForce/servicesData";
 import { listNotifications } from "@/lib/fieldForce/notifications";
-import { respondToOfferAction, addTeamMemberAction } from "@/lib/fieldForce/actions";
+import { respondToOfferAction, addTeamMemberAction, updateBookingStatusAsProviderAction } from "@/lib/fieldForce/actions";
 import { getLocaleFromCookie } from "@/lib/i18n/cookie";
 import { t, isRtl } from "@/lib/i18n/locales";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
@@ -30,8 +31,9 @@ export default async function ProviderDashboardPage({ params }: { params: { part
   const provider = await getCurrentProvider(params.partnerId);
   if (!provider) redirect(`/partner/${params.partnerId}/field-force/provider/login`);
 
-  const [offers, teamMembers, services, notifications] = await Promise.all([
+  const [offers, activeJobs, teamMembers, services, notifications] = await Promise.all([
     listPendingOffersForProvider(provider.id, params.partnerId),
+    listActiveBookingsForProvider(provider.id, params.partnerId),
     listTeamMembers(provider.id),
     listServices(),
     listNotifications(params.partnerId, "provider", provider.id),
@@ -62,11 +64,21 @@ export default async function ProviderDashboardPage({ params }: { params: { part
           slotLabel: o.slotLabel,
           priceAmount: o.priceAmount,
         }))}
+        activeJobs={activeJobs.map((j) => ({
+          id: j.id,
+          bookingNumber: j.bookingNumber,
+          serviceName: j.serviceName,
+          customerName: j.customerName,
+          addressLine: j.addressLine,
+          status: j.status,
+          slotLabel: j.slotLabel,
+        }))}
         teamMembers={teamMembers.map((m) => ({ id: m.id, name: m.name, phone: m.phone, skillLevel: m.skillLevel, status: m.status }))}
         services={services}
         notifications={notifications.map((n) => ({ id: n.id, title: n.title, body: n.body, createdAt: n.createdAt.toString(), isRead: n.isRead }))}
         locale={locale}
         respondAction={respondToOfferAction.bind(null, params.partnerId, provider.id)}
+        advanceStatusAction={updateBookingStatusAsProviderAction.bind(null, params.partnerId, provider.id)}
         addTeamMemberAction={addTeamMemberAction.bind(null, params.partnerId, provider.id)}
       />
     </div>

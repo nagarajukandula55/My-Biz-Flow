@@ -56,6 +56,13 @@ export const te: Partial<Record<keyof typeof en, string>> = {
   acceptOffer: "అంగీకరించండి",
   declineOffer: "తిరస్కరించండి",
   standardRate: "ప్రామాణిక రేటు",
+  myJobsTitle: "నా ఉద్యోగాలు",
+  noActiveJobs: "ప్రస్తుతం యాక్టివ్ ఉద్యోగాలు లేవు.",
+  updateStatus: "స్థితిని నవీకరించండి",
+  payNow: "ఇప్పుడే చెల్లించండి",
+  paid: "చెల్లించబడింది",
+  rateThisJob: "ఈ పనిని రేట్ చేయండి",
+  submitRating: "రేటింగ్ సమర్పించండి",
 
   onboardTeamTitle: "టీమ్ సభ్యుడిని చేర్చండి",
   addTeamMember: "టీమ్ సభ్యుడిని జోడించండి",
