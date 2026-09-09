@@ -46,4 +46,11 @@ export const env = {
    * graceful-degradation posture as the Razorpay keys above. */
   smsApiKey: () => process.env.SMS_API_KEY,
   smsSenderId: () => process.env.SMS_SENDER_ID,
+  /** Set on a SEPARATE deployment (its own Vercel project/domain, same repo
+   * + DB) that should expose ONLY the Field Force Customer/Provider
+   * self-serve app — nothing else in My Biz Flow. See src/middleware.ts. */
+  fieldForceStandalone: () => process.env.FIELD_FORCE_STANDALONE === "true",
+  /** Which partner's Field Force storefront this standalone deployment is
+   * for — a dedicated app deployment serves exactly one partner's brand. */
+  fieldForcePartnerId: () => process.env.FIELD_FORCE_PARTNER_ID,
 };

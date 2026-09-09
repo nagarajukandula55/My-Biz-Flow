@@ -1,17 +1,43 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { ADMIN_COOKIE_NAME, isValidAdminCookie } from "@/lib/adminAuth";
+import { env } from "@/lib/env";
 
 /**
- * Enforces the Super Admin gate at the routing layer — see
- * src/lib/adminAuth.ts for what this does and does not guarantee (shared
- * secret, not real per-user auth). Matches:
- *   - anything under /admin (the platform Designer, etc.)
- *   - any module's admin/ subfolder: /partner/[partnerId]/<slug>/admin...
- * The login page itself (/admin/login) must stay reachable without the
- * cookie, or nobody could ever get in.
+ * Two independent gates, checked in order:
+ *
+ * 1. Standalone Field Force lock-down (FIELD_FORCE_STANDALONE=true) — for a
+ *    SEPARATE deployment (its own Vercel project/domain, same repo+DB) that
+ *    should expose ONLY one partner's Field Force Customer/Provider
+ *    self-serve app, nothing else in My Biz Flow (no marketing pages, no
+ *    partner-staff console, no Super Admin). Everything outside the allowed
+ *    prefixes redirects to /field-force-app. The normal (non-standalone)
+ *    deployment never hits this — env.fieldForceStandalone() is false by
+ *    default, so this whole block is a no-op there.
+ *
+ * 2. The Super Admin gate — see src/lib/adminAuth.ts for what this does and
+ *    does not guarantee (shared secret, not real per-user auth). Matches:
+ *      - anything under /admin (the platform Designer, etc.)
+ *      - any module's admin/ subfolder: /partner/[partnerId]/<slug>/admin...
+ *    The login page itself (/admin/login) must stay reachable without the
+ *    cookie, or nobody could ever get in.
  */
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  if (env.fieldForceStandalone()) {
+    const partnerId = env.fieldForcePartnerId();
+    const allowed =
+      pathname === "/field-force-app" ||
+      pathname.startsWith("/api/field-force/") ||
+      (partnerId &&
+        (pathname.startsWith(`/partner/${partnerId}/field-force/customer`) ||
+          pathname.startsWith(`/partner/${partnerId}/field-force/provider`)));
+
+    if (!allowed) {
+      return NextResponse.redirect(new URL("/field-force-app", request.url));
+    }
+    return NextResponse.next();
+  }
 
   const isAdminLogin = pathname === "/admin/login";
   const isAdminRoute = pathname.startsWith("/admin");
@@ -49,5 +75,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/partner/:path*"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|field-force-manifest.json|field-force-icon.svg).*)"],
 };

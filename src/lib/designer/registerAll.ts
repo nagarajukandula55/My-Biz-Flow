@@ -267,3 +267,4 @@ import "@/app/partner/[partnerId]/field-force/provider/signup/page";
 import "@/app/partner/[partnerId]/field-force/provider/login/page";
 import "@/app/partner/[partnerId]/field-force/provider/dashboard/page";
 import "@/app/admin/(protected)/field-force-fee/page";
+import "@/app/field-force-app/page";

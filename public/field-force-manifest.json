@@ -1,0 +1,14 @@
+{
+  "name": "Field Force",
+  "short_name": "Field Force",
+  "description": "Book home services, or accept and manage jobs as a provider.",
+  "start_url": "/field-force-app",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0B0F19",
+  "theme_color": "#0B0F19",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "/field-force-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
