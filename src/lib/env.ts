@@ -53,4 +53,15 @@ export const env = {
   /** Which partner's Field Force storefront this standalone deployment is
    * for — a dedicated app deployment serves exactly one partner's brand. */
   fieldForcePartnerId: () => process.env.FIELD_FORCE_PARTNER_ID,
+  /** Legal entity behind the "My Biz Flow" brand — used ONLY on the platform's
+   * own subscription billing documents (the invoices/receipts/checkout screens
+   * My Biz Flow issues to partners for their platform subscription charges).
+   * Every OTHER invoice in this app (Service Centre, Billing module, etc.) is
+   * issued by the partner to their own customer and must NOT show this name —
+   * see AGENTS.md / the Service Centre & Billing scope notes.
+   * Defaults to "AN Group" per CLAUDE.md's references to the parent company —
+   * TODO(owner): confirm/replace with the exact registered legal name
+   * (e.g. "AN Group Pvt Ltd" / GSTIN-holding entity) before this is relied on
+   * for statutory documents. */
+  platformLegalEntityName: () => process.env.PLATFORM_LEGAL_ENTITY_NAME || "AN Group",
 };

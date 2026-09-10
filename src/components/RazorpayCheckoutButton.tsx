@@ -25,6 +25,12 @@ export function RazorpayCheckoutButton({
    *  (e.g. { bookingId }). */
   extraBody,
   description = "subscription",
+  /** Header shown at the top of the Razorpay checkout widget. Defaults to
+   *  plain "My Biz Flow" for payables where My Biz Flow is not the seller
+   *  (e.g. a Field Force Booking, paid to the partner). The subscription
+   *  flow below overrides this to also surface the legal entity, since
+   *  that's the one payable where My Biz Flow itself is the seller. */
+  billedByName = "My Biz Flow",
 }: {
   partnerId: string;
   partnerName: string;
@@ -36,6 +42,7 @@ export function RazorpayCheckoutButton({
   verifyUrl?: string;
   extraBody?: Record<string, string>;
   description?: string;
+  billedByName?: string;
 }) {
   const router = useRouter();
   const [scriptReady, setScriptReady] = useState(false);
@@ -66,7 +73,7 @@ export function RazorpayCheckoutButton({
         key: publicKeyId,
         amount: order.amount,
         currency: order.currency,
-        name: "My Biz Flow",
+        name: billedByName,
         description: order.planName ? `${order.planName} subscription` : description,
         order_id: order.orderId,
         prefill: { name: partnerName, email: partnerEmail, contact: partnerContact },
