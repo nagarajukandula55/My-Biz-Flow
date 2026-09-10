@@ -26,6 +26,7 @@ export async function GET(request: Request) {
   const today = new Date().toISOString().slice(0, 10);
   const partners = await listPartners();
   let createdCount = 0;
+  const centralApiSyncFailures: { partnerId: string; invoiceId: string }[] = [];
 
   for (const partner of partners) {
     const templates = await listBusinessRecords(partner.id, "billing-recurring");
@@ -51,7 +52,7 @@ export async function GET(request: Request) {
       createdCount += 1;
 
       const items = Array.isArray(record["items"]) ? (record["items"] as Record<string, unknown>[]) : [];
-      await notifyCentralApiBillingInvoice(partner, {
+      const syncedToCentralApi = await notifyCentralApiBillingInvoice(partner, {
         externalOrderId: String(record.id),
         customer: String(record["customer"] ?? ""),
         items: items.map((it) => ({
@@ -62,6 +63,9 @@ export async function GET(request: Request) {
         })),
         totalAmount: Number(record["totalAmount"] ?? 0),
       });
+      if (!syncedToCentralApi) {
+        centralApiSyncFailures.push({ partnerId: partner.id, invoiceId: String(record.id) });
+      }
 
       await updateBusinessRecord(partner.id, "billing-recurring", String(template["id"]), {
         ...template,
@@ -70,5 +74,17 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.json({ ok: true, invoicesCreated: createdCount });
+  if (centralApiSyncFailures.length > 0) {
+    console.error(
+      `[cron/billing-recurring-invoices] ${centralApiSyncFailures.length} of ${createdCount} invoice(s) ` +
+        `failed to sync to AN-Accounting after retries — timestamp=${new Date().toISOString()} ` +
+        `failures=${JSON.stringify(centralApiSyncFailures)}. Re-push these manually once resolved.`,
+    );
+  }
+
+  return NextResponse.json({
+    ok: true,
+    invoicesCreated: createdCount,
+    centralApiSyncFailures: centralApiSyncFailures.length,
+  });
 }
