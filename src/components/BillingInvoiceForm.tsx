@@ -10,6 +10,8 @@ export type InvoiceType = "GST" | "Non-GST";
 
 export type BillingInvoiceValues = {
   customer: string;
+  /** Id of the Billing Contact this customer name was picked from, if any — see the Customer field below. Lets centralApi.ts look up the contact's actual state instead of guessing. */
+  customerContactId?: string | null;
   invoiceType: InvoiceType;
   customerGstin: string;
   issueDate: string;
@@ -44,6 +46,9 @@ export function BillingInvoiceForm({
   itemOptions?: ItemOption[];
 }) {
   const [customer, setCustomer] = useState(initialValues?.customer ?? "");
+  const [customerContactId, setCustomerContactId] = useState<string | null>(
+    initialValues?.customerContactId ?? null
+  );
   const [invoiceType, setInvoiceType] = useState<InvoiceType>(initialValues?.invoiceType ?? "GST");
   const [customerGstin, setCustomerGstin] = useState(initialValues?.customerGstin ?? "");
   const [issueDate, setIssueDate] = useState(initialValues?.issueDate ?? "");
@@ -71,6 +76,7 @@ export function BillingInvoiceForm({
     e.preventDefault();
     const values: BillingInvoiceValues = {
       customer,
+      customerContactId,
       invoiceType,
       customerGstin,
       issueDate,
@@ -119,7 +125,13 @@ export function BillingInvoiceForm({
             value={customer}
             onChange={(e) => {
               setCustomer(e.target.value);
+              // The field stays free-text (see the contactOptions doc below), so a
+              // linked contact only exists when the typed value exactly matches a
+              // suggestion's label. Any further edit — including picking a
+              // different suggestion — re-evaluates this and drops the link if it
+              // no longer matches, so a free-typed name never carries a stale id.
               const match = contactOptions?.find((c) => c.label === e.target.value);
+              setCustomerContactId(match?.id ?? null);
               if (match?.gstin) setCustomerGstin(match.gstin);
             }}
             placeholder="Customer or partner name"

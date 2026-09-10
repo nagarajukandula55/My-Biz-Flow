@@ -188,11 +188,15 @@ export async function notifyCentralApiSale(
  * a billing record is created (src/lib/businessRecordActions.ts) and from
  * the recurring-invoice cron (src/app/api/cron/billing-recurring-invoices).
  *
- * The Billing form only captures a free-text customer name + GSTIN, not a
- * state — AN-Accounting's GST split needs one, so this falls back to the
- * partner's own state. That's a real limitation (not necessarily the
- * customer's actual state): fix by adding a state field to Billing
- * Contacts/the invoice form if intra- vs inter-state accuracy here matters.
+ * The Billing form's customer field is free-text with Billing Contacts as
+ * suggestions; when the typed name matches a contact, the caller
+ * (businessRecordActions.ts) resolves that contact's `state` (captured at
+ * contact-creation time — see src/lib/sample-data/billing-contacts.ts) and
+ * passes it as `customerState` below, which is used for the CGST+SGST vs
+ * IGST split. Invoices with no linked contact (free-typed name, no match)
+ * have no `customerState`, so this falls back to the partner's own state —
+ * a known limitation for those invoices (not necessarily the customer's
+ * actual state), kept only as a non-blocking fallback.
  *
  * Deliberately never throws. Retries transient failures with backoff and
  * logs clearly (with the invoice id) on final failure so it can be
@@ -205,6 +209,8 @@ export async function notifyCentralApiBillingInvoice(
     externalOrderId: string;
     customer: string;
     customerGstin?: string;
+    /** The linked Billing Contact's state, if one is linked (see doc above). Falls back to partner.state when absent. */
+    customerState?: string | null;
     items: { description: string; quantity: number; unitPrice: number; taxRate: number }[];
     totalAmount: number;
     issueDate?: string;
@@ -247,7 +253,7 @@ export async function notifyCentralApiBillingInvoice(
       customer: {
         name: customerName,
         gstin: sanitizeGstin(invoice.customerGstin, `billing invoice externalOrderId=${invoice.externalOrderId}`),
-        state: partner.state,
+        state: invoice.customerState || partner.state,
       },
       lines,
     },
