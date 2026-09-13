@@ -241,6 +241,46 @@ export default async function PricingPage({
         })}
       </div>
       )}
+
+      {selectedType && PLANS.length > 0 && (
+        <div className="mx-auto max-w-3xl px-6 pb-20">
+          <h2 className="font-display text-2xl font-bold text-text">Pricing FAQ</h2>
+          <dl className="mt-6 space-y-6">
+            {PRICING_FAQ.map((item) => (
+              <div key={item.q}>
+                <dt className="text-sm font-semibold text-text">{item.q}</dt>
+                <dd className="mt-1 text-sm text-text-muted">{item.a}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      )}
     </div>
   );
 }
+
+/**
+ * Kept modest and specific to what this app actually does — no invented
+ * free-trial, refund, or promo-code claims (My Biz Flow has no trial or
+ * refund-policy page and no referral system yet, unlike AN-CRM's own
+ * pricing FAQ which references its 15-day trial and Cancellation Policy;
+ * see this task's report for what was deliberately left out and why).
+ */
+const PRICING_FAQ: { q: string; a: string }[] = [
+  {
+    q: "What changes between tiers?",
+    a: "The builder itself never changes — every tier is the same no-code platform. What changes is which modules are bundled (a higher tier adds inventory, billing documents, and full accounting/GST tooling on top of the base workflow) and how many users and locations you get.",
+  },
+  {
+    q: "Is GST included in the price shown?",
+    a: "Prices shown are the plan's base subscription rate. Once you're signed up, GST and non-GST invoicing is available from the Starter tier up — check your plan's included modules above for what's bundled.",
+  },
+  {
+    q: "Can I change plans later?",
+    a: "Yes — an admin can move a business to a different plan from Plan & Billing inside the partner portal at any time; the modules and seat limits update to match the new plan.",
+  },
+  {
+    q: "Are there per-user charges on top of the plan price?",
+    a: "No — each plan already includes a maximum user and location count shown on its card. There's no separate per-seat add-on.",
+  },
+];

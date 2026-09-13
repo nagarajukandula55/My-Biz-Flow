@@ -28,10 +28,16 @@ export const MODULE_TIER_FEATURES: Record<string, ModuleTierFeatures> = {
     pro: ["Split-tender payments across two methods", "Real-time stock deduction from Inventory", "Void sale with automatic stock restore"],
     ultimate: ["Real GST Billing invoice on every sale", "Multi-branch sales reporting", "Loyalty & Rewards points on checkout"],
   },
+  // Real per-tier gating adapted from AN-CRM's live Service Centre plans
+  // (src/core/pricing/plans.ts) — its actual production feature ladder for
+  // this vertical (Starter/Pro/Ultimate), not invented copy. Starter is
+  // deliberately workorder + invoicing only, no catalog/inventory of its
+  // own; Pro adds the full catalog, inventory and document set; Ultimate
+  // adds multi-center hierarchy and financial reporting.
   "service-centre": {
-    basic: ["Workorder creation and 4-stage lifecycle", "Solutions/parts line items", "Printable service order"],
-    pro: ["Brand/Model/Technician assignment from live catalogs", "Estimate approval gate before repair starts", "Hold (parts pending) state"],
-    ultimate: ["Warranty-aware non-chargeable jobs", "Real GST Billing invoice on close", "Multi-location workorder routing"],
+    basic: ["Single-login workorder flow: job card, device & fault intake to close", "GST & non-GST invoicing (no inventory or catalog storage)", "Customer-facing repair status tracking page"],
+    pro: ["Customer database, fault/symptom/solution library, technician assignment", "Quotations, Credit/Debit Notes, Delivery Challans, UPI payment QR", "Inventory, Brands/Models, Custom Report Builder & Analytics"],
+    ultimate: ["Ledger Book, Profit & Loss reports and expense tracking", "Unlimited multi-center hierarchy under one login, centralized reporting", "Automated business reports (daily/weekly/monthly) and priority support"],
   },
   billing: {
     basic: ["GST invoice creation", "Customers, Items, Payments", "Credit/Debit notes"],
