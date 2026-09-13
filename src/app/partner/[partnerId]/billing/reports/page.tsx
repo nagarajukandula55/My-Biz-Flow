@@ -19,6 +19,7 @@ const REPORTS = [
   { href: "sales", title: "Sales Register", description: "Every invoice with subtotal, tax and total, and a running sum." },
   { href: "tax-summary", title: "Tax Summary", description: "Taxable value and tax collected, grouped by GST rate." },
   { href: "contact-statement", title: "Contact Statement", description: "Per-contact ledger of invoices, notes and payments." },
+  { href: "profit-loss", title: "Profit & Loss", description: "Cash-basis revenue less expenses for a date range, with expenses by category." },
 ];
 
 export default function BillingReportsPage({ params }: { params: { partnerId: string } }) {

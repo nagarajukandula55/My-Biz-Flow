@@ -146,8 +146,9 @@ export const MODULE_SUB_NAV: Record<string, PartnerNavSubItem[]> = {
   // nav (Workorders / Masters / Reports / Account) instead of stacking
   // every page at one level. Only pages that actually exist in this
   // module are listed — AN-CRM's vendor-accounting entries (Financial
-  // Statement, Ledger Book, Profit & Loss, Expenses) belong to MBF's
-  // separate `billing` module, which is gated by its own
+  // Statement / Ledger Book => billing/reports/contact-statement, Profit
+  // & Loss => billing/reports/profit-loss, Expenses => billing/expenses)
+  // live in MBF's separate `billing` module, which is gated by its own
   // PartnerType.defaultModules entry and carries its own sidebar group,
   // so they are deliberately NOT duplicated here.
   "service-centre": [
@@ -163,6 +164,7 @@ export const MODULE_SUB_NAV: Record<string, PartnerNavSubItem[]> = {
     // Reports section inside the same sidebar the workorders live in.
     { key: "service-centre.analytics", label: "Analytics", href: "analytics", section: "Reports" },
     { key: "service-centre.sc-profile", label: "SC Profiles", href: "service-centre/sc-profile", section: "Account" },
+    { key: "service-centre.sub-scs", label: "Sub-Centres", href: "service-centre/sub-scs", section: "Account" },
     { key: "service-centre.technicians", label: "Technicians", href: "service-centre/technicians", section: "Account" },
     { key: "service-centre.admin", label: "Admin", href: "service-centre/admin", section: "Account" },
   ],
@@ -189,6 +191,15 @@ export const MODULE_SUB_NAV: Record<string, PartnerNavSubItem[]> = {
     { key: "billing.items", label: "Items", href: "billing/items" },
     { key: "billing.payments", label: "Payments", href: "billing/payments" },
     { key: "billing.credit-notes", label: "Credit/Debit Notes", href: "billing/credit-notes" },
+    // The other three party-facing sales documents AN-CRM's shared
+    // SalesDocument model covers (Quotation / Delivery Challan / Proforma
+    // Invoice) — same contact + line-items + totals shape as an invoice,
+    // so they live in Billing next to Credit/Debit Notes rather than
+    // forking a second document tree inside Service Centre.
+    { key: "billing.quotations", label: "Quotations", href: "billing/quotations" },
+    { key: "billing.delivery-challans", label: "Delivery Challans", href: "billing/delivery-challans" },
+    { key: "billing.proforma-invoices", label: "Proforma Invoices", href: "billing/proforma-invoices" },
+    { key: "billing.expenses", label: "Expenses", href: "billing/expenses" },
     { key: "billing.reports", label: "Reports", href: "billing/reports" },
     { key: "billing.recurring", label: "Recurring Invoices", href: "billing/recurring" },
     { key: "billing.admin", label: "Admin", href: "billing/admin" },
