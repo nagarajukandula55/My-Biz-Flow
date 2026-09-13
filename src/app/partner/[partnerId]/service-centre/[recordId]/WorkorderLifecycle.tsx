@@ -12,7 +12,7 @@ import {
   type ServiceLine,
 } from "@/lib/sample-data/service-centre";
 import { patchBusinessRecordAction } from "@/lib/businessRecordActions";
-import { setWorkorderHoldAction, createInvoiceFromWorkorderAction } from "./actions";
+import { setWorkorderHoldAction, createInvoiceFromWorkorderAction, deductInventoryForWorkorderAction } from "./actions";
 
 const STAGE_VARIANT: Record<WorkorderStage, "neutral" | "warning" | "teal" | "success"> = {
   Created: "neutral",
@@ -211,6 +211,12 @@ export function WorkorderLifecycle({
     }
     setStage(next);
     persist({ stage: next });
+    if (next === "Completed") {
+      // Side effect, mirrors POS checkout: deduct consumed parts from live Inventory stock once the repair is done.
+      startPersist(async () => {
+        await deductInventoryForWorkorderAction(partnerId, workorderId);
+      });
+    }
   }
 
   function confirmClose() {

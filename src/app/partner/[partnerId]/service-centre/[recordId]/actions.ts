@@ -1,8 +1,47 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createBusinessRecord, updateBusinessRecord, getBusinessRecord } from "@/lib/businessRecords";
+import { createBusinessRecord, updateBusinessRecord, getBusinessRecord, listBusinessRecords } from "@/lib/businessRecords";
 import { extractLifecycleFromRecord, type ServiceLine } from "@/lib/sample-data/service-centre";
+
+/**
+ * Deducts consumed part-line quantities from live Inventory stock
+ * ("inventory-stock" module, keyed by BOM material id — same module/keying
+ * completeSaleAction in pos/checkout/actions.ts already deducts against),
+ * fired once per workorder as a side effect of the Completed stage
+ * transition (mirrors how POS checkout deducts at sale completion). Read-
+ * modify-write against BusinessRecord's JSON blob — same documented
+ * limitation as completeSaleAction, not a DB-level atomic decrement.
+ * Guarded by `inventoryDeducted` on the workorder record so re-entering
+ * Completed (e.g. after a later edit) never double-deducts.
+ */
+export async function deductInventoryForWorkorderAction(partnerId: string, workorderId: string): Promise<void> {
+  const record = await getBusinessRecord(partnerId, "service-centre", workorderId);
+  if (!record) return;
+  const lifecycle = extractLifecycleFromRecord(record);
+  if (lifecycle.inventoryDeducted) return; // already deducted — don't double-count
+  if (lifecycle.partLines.length === 0) {
+    await updateBusinessRecord(partnerId, "service-centre", workorderId, { ...record, inventoryDeducted: true });
+    return;
+  }
+
+  const stockRecords = await listBusinessRecords(partnerId, "inventory-stock");
+  const stockById = new Map(stockRecords.map((r) => [String(r["id"]), r]));
+
+  for (const line of lifecycle.partLines) {
+    if (line.pending) continue; // never fulfilled — nothing to deduct
+    const stock = stockById.get(line.materialId);
+    if (!stock) continue; // no matching stock record — best-effort, doesn't block the job
+    const currentQty = Number(stock["quantityOnHand"] ?? 0);
+    const newQty = Math.max(0, currentQty - (line.qty || 1));
+    await updateBusinessRecord(partnerId, "inventory-stock", line.materialId, { ...stock, quantityOnHand: newQty });
+    stockById.set(line.materialId, { ...stock, quantityOnHand: newQty });
+  }
+
+  await updateBusinessRecord(partnerId, "service-centre", workorderId, { ...record, inventoryDeducted: true });
+  revalidatePath(`/partner/${partnerId}/inventory/stock`);
+  revalidatePath(`/partner/${partnerId}/service-centre/${workorderId}`);
+}
 
 /**
  * Persists a real Billing invoice from a Closed workorder's lines —

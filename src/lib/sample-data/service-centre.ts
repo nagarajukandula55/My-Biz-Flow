@@ -3,8 +3,25 @@ import type { RecordField, TimelineEntry, RelatedRecord } from "@/components/Rec
 import type { StatusVariant } from "@/components/StatusChip";
 import type { FormFieldDef } from "@/components/RecordForm";
 
-// Workorder sample data for the service-centre module — realistic field modeling,
-// no backend wired up in this pass (see CLAUDE.md).
+// Workorder (JobSheet) sample data for the service-centre module — realistic
+// field modeling, no backend wired up in this pass beyond the BusinessRecord
+// store (see CLAUDE.md).
+//
+// JobSheet <-> lineitem <-> invoice <-> payment chain: kept BusinessRecord-
+// backed (this module, plus the existing "billing" module for the invoice
+// itself) rather than promoted to real Prisma tables. Unlike Booking/
+// JobAllocation (which became real tables because a booking is genuinely
+// relational across Service/Provider/Customer with concurrent-slot
+// constraints that need DB-level guarantees), a workorder's line items are
+// an owned, append-mostly sub-list that only ever renders inside its own
+// parent record — nothing else joins against an individual line, and the
+// existing Billing invoice creation (createInvoiceFromWorkorderAction) and
+// POS checkout (completeSaleAction) already establish this same read-modify-
+// write-JSON pattern for cross-module linkage (workorder -> billing invoice,
+// sale -> billing invoice) and for inventory deduction (against the
+// "inventory-stock" module). Adding parallel Prisma tables here would fork
+// that established pattern for no relational benefit. Revisit only if line
+// items need to be queried/reported on independently of their parent job.
 
 const STATUS_VARIANT: Record<string, StatusVariant> = {
   "Diagnosed": "warning",
@@ -14,9 +31,51 @@ const STATUS_VARIANT: Record<string, StatusVariant> = {
   "On hold": "danger"
 };
 
-/** Single-page workorder lifecycle stages — see WorkorderLifecycle.tsx. */
+/** Single-page workorder lifecycle stages — see WorkorderLifecycle.tsx. Kept as-is for backward compat with existing records/UI. */
 export type WorkorderStage = "Created" | "In Progress" | "Completed" | "Closed";
 export const WORKORDER_STAGES: WorkorderStage[] = ["Created", "In Progress", "Completed", "Closed"];
+
+/**
+ * Richer milestone lifecycle ported from the AN-CRM reference app
+ * (CrmJobSheet) — recorded alongside the simpler WorkorderStage above
+ * rather than replacing it, so existing records/UI keep working unmodified.
+ * PART_PENDING corresponds to the existing onHold side-state rather than a
+ * distinct WorkorderStage value; see mapStageToMilestone().
+ */
+export type MilestoneStatus =
+  | "CREATED"
+  | "REPAIR_STARTED"
+  | "REPAIR_IN_PROGRESS"
+  | "PART_PENDING"
+  | "REPAIR_COMPLETED"
+  | "CLOSED"
+  | "CANCELLED";
+
+export const MILESTONE_STATUSES: MilestoneStatus[] = [
+  "CREATED",
+  "REPAIR_STARTED",
+  "REPAIR_IN_PROGRESS",
+  "PART_PENDING",
+  "REPAIR_COMPLETED",
+  "CLOSED",
+  "CANCELLED",
+];
+
+export function mapStageToMilestone(stage: WorkorderStage, onHold?: boolean): MilestoneStatus {
+  if (stage === "In Progress" && onHold) return "PART_PENDING";
+  switch (stage) {
+    case "Created": return "CREATED";
+    case "In Progress": return "REPAIR_IN_PROGRESS";
+    case "Completed": return "REPAIR_COMPLETED";
+    case "Closed": return "CLOSED";
+    default: return "CREATED";
+  }
+}
+
+export const WARRANTY_STATUSES = ["IW", "OOW", "90_DAYS"] as const;
+export const APPOINTMENT_TYPES = ["Walk-in", "Onsite", "Phone", "Online", "Referral"] as const;
+export const DEVICE_APPEARANCE_OPTIONS = ["Good", "Used", "Dents", "Broken"] as const;
+export const PAYMENT_MODES = ["Cash", "UPI", "Card", "Bank Transfer", "Credit", "Other"] as const;
 
 export interface PartLine {
   id: string;
@@ -27,6 +86,21 @@ export interface PartLine {
   serial?: string;
   pending?: boolean;
   pendingReason?: string;
+  /** Per-line refs to the fault/symptom/solution catalogs — a job can have several parts, each addressing a different fault. */
+  faultCodeId?: string;
+  faultCodeLabel?: string;
+  symptomCodeId?: string;
+  symptomCodeLabel?: string;
+  solutionId?: string;
+  solutionLabel?: string;
+  unit?: string;
+  unitPrice?: number;
+  taxRate?: number;
+  hsnCode?: string;
+  materialCode?: string;
+  cost?: number;
+  /** Batch/lot number of the specific stock consumed for this line — future-proofing beyond AN-CRM's BOM shape. */
+  batchNumber?: string;
 }
 
 export interface ServiceLine {
@@ -34,6 +108,13 @@ export interface ServiceLine {
   solutionId: string;
   solutionLabel: string;
   laborCharge: number;
+  /** Per-line refs, same rationale as PartLine — a service line's fault/symptom needn't match another line's. */
+  faultCodeId?: string;
+  faultCodeLabel?: string;
+  symptomCodeId?: string;
+  symptomCodeLabel?: string;
+  taxRate?: number;
+  hsnCode?: string;
 }
 
 /** Per-workorder lifecycle state, keyed by workorder id. Demo in-memory store — resets on reload, no backend yet. */
@@ -126,6 +207,7 @@ export function extractLifecycleFromRecord(record: Row): {
   partLines: PartLine[];
   serviceLines: ServiceLine[];
   handoverNotes?: string;
+  inventoryDeducted?: boolean;
 } {
   return {
     stage: (record["stage"] as WorkorderStage | undefined) ?? "Created",
@@ -144,6 +226,7 @@ export function extractLifecycleFromRecord(record: Row): {
     partLines: (record["partLines"] as PartLine[] | undefined) ?? [],
     serviceLines: (record["serviceLines"] as ServiceLine[] | undefined) ?? [],
     handoverNotes: record["handoverNotes"] as string | undefined,
+    inventoryDeducted: Boolean(record["inventoryDeducted"]),
   };
 }
 
@@ -163,6 +246,14 @@ export const serviceCentreColumns: Column[] = [
   { key: "branch", label: "Branch / Location", type: "text" },
   { key: "latitude", label: "Pickup Latitude", type: "text" },
   { key: "longitude", label: "Pickup Longitude", type: "text" },
+  // --- Future-proofing fields (beyond AN-CRM's current CrmJobSheet shape) ---
+  { key: "imeiOrSerialNumber", label: "IMEI / Serial Number", type: "text" },
+  { key: "odometerReading", label: "Odometer Reading", type: "text" },
+  { key: "appointmentType", label: "Source Channel", type: "select-chip" },
+  { key: "warrantyExpiryDate", label: "Warranty Expiry Date", type: "date" },
+  { key: "slaDate", label: "Promised Delivery (SLA)", type: "date" },
+  { key: "estimatedCost", label: "Estimated Cost", type: "currency" },
+  { key: "actualCost", label: "Actual Cost", type: "currency" },
 ];
 
 export const serviceCentreRows: Row[] = [
@@ -236,6 +327,24 @@ export const serviceCentreFormFields: FormFieldDef[] = [
   { key: "branch", label: "Branch / Location", type: "text", required: false },
   { key: "latitude", label: "Pickup Latitude", type: "number", required: false },
   { key: "longitude", label: "Pickup Longitude", type: "number", required: false },
+  // --- Future-proofing fields — all optional, defaulted so existing sample rows keep working unmodified ---
+  { key: "imeiOrSerialNumber", label: "IMEI / Serial Number", type: "text", required: false, placeholder: "Device IMEI, serial number, or odometer-tracked vehicle VIN" },
+  { key: "odometerReading", label: "Odometer Reading", type: "text", required: false, placeholder: "For vehicle service — e.g. 18420 km" },
+  { key: "appointmentType", label: "Source Channel", type: "select", required: false, options: [...APPOINTMENT_TYPES] },
+  { key: "deviceAppearance", label: "Intake Condition", type: "select", required: false, options: [...DEVICE_APPEARANCE_OPTIONS] },
+  { key: "warrantyStatus", label: "Warranty Status", type: "select", required: false, options: [...WARRANTY_STATUSES] },
+  { key: "warrantyExpiryDate", label: "Warranty Expiry Date", type: "date", required: false },
+  { key: "slaDate", label: "Promised Delivery (SLA)", type: "date", required: false },
+  { key: "estimatedCost", label: "Estimated Cost", type: "currency", required: false },
+  { key: "actualCost", label: "Actual Cost", type: "currency", required: false },
+  { key: "customerApprovalAt", label: "Customer Approval Timestamp", type: "text", required: false, placeholder: "Set automatically when the estimate is approved" },
+  { key: "beforePhotos", label: "Before Photos (URLs, comma-separated)", type: "textarea", required: false },
+  { key: "afterPhotos", label: "After Photos (URLs, comma-separated)", type: "textarea", required: false },
+  { key: "internalNotes", label: "Internal Notes (staff-only)", type: "textarea", required: false },
+  { key: "customerNotes", label: "Customer-visible Notes", type: "textarea", required: false },
+  { key: "standardAccessories", label: "Standard Accessories Received", type: "textarea", required: false },
+  { key: "fileBackupDescription", label: "File Backup Notes", type: "textarea", required: false },
+  { key: "issueDescription", label: "Issue Description (customer's own words)", type: "textarea", required: false },
 ];
 
 export function getServiceCentreRecord(recordId: string): Row {
@@ -259,6 +368,18 @@ export function getServiceCentreDetailFields(record: Row): RecordField[] {
     { label: "Branch / Location", value: r["branch"], type: "text" },
     { label: "Pickup Latitude", value: r["latitude"], type: "text" },
     { label: "Pickup Longitude", value: r["longitude"], type: "text" },
+    { label: "IMEI / Serial Number", value: r["imeiOrSerialNumber"], type: "text" },
+    { label: "Odometer Reading", value: r["odometerReading"], type: "text" },
+    { label: "Source Channel", value: r["appointmentType"], type: "text" },
+    { label: "Intake Condition", value: r["deviceAppearance"], type: "text" },
+    { label: "Warranty Status", value: r["warrantyStatus"], type: "text" },
+    { label: "Warranty Expiry Date", value: r["warrantyExpiryDate"], type: "date" },
+    { label: "Promised Delivery (SLA)", value: r["slaDate"], type: "date" },
+    { label: "Estimated Cost", value: r["estimatedCost"], type: "currency" },
+    { label: "Actual Cost", value: r["actualCost"], type: "currency" },
+    { label: "Issue Description", value: r["issueDescription"], type: "text" },
+    { label: "Internal Notes", value: r["internalNotes"], type: "text" },
+    { label: "Customer-visible Notes", value: r["customerNotes"], type: "text" },
   ];
 }
 

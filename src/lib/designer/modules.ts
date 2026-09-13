@@ -145,6 +145,8 @@ export const MODULE_SUB_NAV: Record<string, { key: string; label: string; href: 
     { key: "service-centre.list", label: "Workorders", href: "service-centre" },
     { key: "service-centre.new", label: "+ New Workorder", href: "service-centre/new" },
     { key: "service-centre.solutions", label: "Solutions", href: "service-centre/solutions" },
+    { key: "service-centre.fault-codes", label: "Fault Codes", href: "service-centre/fault-codes" },
+    { key: "service-centre.symptom-codes", label: "Symptom Codes", href: "service-centre/symptom-codes" },
     { key: "service-centre.brands", label: "Brands", href: "service-centre/brands" },
     { key: "service-centre.models", label: "Models", href: "service-centre/models" },
     { key: "service-centre.admin", label: "Admin", href: "service-centre/admin" },
