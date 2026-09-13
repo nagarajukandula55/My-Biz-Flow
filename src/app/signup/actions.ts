@@ -1,11 +1,17 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createPartner } from "@/lib/partnerData";
 import { createSignupRequest } from "@/lib/partnerSignupRequestsData";
 import { getPartnerType } from "@/lib/designer/partnerTypesData";
 import { sendPartnerWelcomeEmail } from "@/lib/email";
 import { sendPartnerApplicationReceivedEmail } from "@/lib/email/partnerEmails";
+import {
+  ONE_TIME_CREDENTIAL_COOKIE,
+  ONE_TIME_CREDENTIAL_MAX_AGE_SECONDS,
+  createOneTimeCredentialToken,
+} from "@/lib/partnerSession";
 
 /**
  * Real "register your business" action. No password is collected here —
@@ -63,5 +69,18 @@ export async function registerBusiness(formData: FormData) {
   // dangling background promise completes.
   await sendPartnerWelcomeEmail({ to: businessEmail, businessName, partnerId, password });
 
-  redirect(`/signup/success?partnerId=${encodeURIComponent(partnerId)}&password=${encodeURIComponent(password)}`);
+  // Hand the one-time password to the success page via a short-lived,
+  // httpOnly, single-purpose cookie instead of a URL query string — a
+  // query string ends up in browser history and the referrer header of
+  // any outbound link on that page. See partnerSession.ts's doc comment.
+  const credentialToken = await createOneTimeCredentialToken({ partnerId, password });
+  cookies().set(ONE_TIME_CREDENTIAL_COOKIE, credentialToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/signup/success",
+    maxAge: ONE_TIME_CREDENTIAL_MAX_AGE_SECONDS,
+  });
+
+  redirect("/signup/success");
 }

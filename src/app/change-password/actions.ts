@@ -3,7 +3,8 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { PARTNER_SESSION_COOKIE, verifyPartnerSessionToken } from "@/lib/partnerSession";
-import { setPartnerPassword } from "@/lib/partnerData";
+import { getPartner, setPartnerPassword } from "@/lib/partnerData";
+import { getPartnerHomePath } from "@/lib/partnerHome";
 
 export async function changePasswordAction(formData: FormData) {
   const partnerId = await verifyPartnerSessionToken(cookies().get(PARTNER_SESSION_COOKIE)?.value);
@@ -20,5 +21,7 @@ export async function changePasswordAction(formData: FormData) {
   }
 
   await setPartnerPassword(partnerId, newPassword);
-  redirect(`/partner/${partnerId}/dashboard`);
+
+  const partner = await getPartner(partnerId);
+  redirect(partner ? await getPartnerHomePath(partner) : `/partner/${partnerId}/dashboard`);
 }
