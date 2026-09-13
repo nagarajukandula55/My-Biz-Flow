@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { LogoMark } from "@/components/LogoMark";
+import { BrandLogo } from "@/components/BrandLogo";
 import { StatusChip } from "@/components/StatusChip";
 import { registerPage } from "@/lib/designer/registry";
 import { getModule, MODULES } from "@/lib/designer/modules";
@@ -40,8 +40,7 @@ export default function ModuleGuideDetailPage({ params }: { params: { slug: stri
     <div className="mbf-page min-h-screen bg-bg-sunken">
       <div className="mx-auto max-w-3xl px-6 py-10">
         <div className="flex items-center gap-2.5">
-          <LogoMark size={28} />
-          <span className="font-display text-lg font-extrabold text-text">My Biz Flow</span>
+          <BrandLogo height={34} />
         </div>
         <Link href="/help/modules" className="mt-6 inline-block text-sm text-accent hover:underline">
           &larr; Back to Module Guide

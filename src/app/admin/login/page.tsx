@@ -1,4 +1,4 @@
-import { LogoMark } from "@/components/LogoMark";
+import { BrandLogo } from "@/components/BrandLogo";
 import { signInAsAdmin } from "./actions";
 
 export default function AdminLoginPage({
@@ -13,8 +13,7 @@ export default function AdminLoginPage({
     <div className="flex min-h-screen w-full items-center justify-center bg-bg px-6">
       <div className="w-full max-w-sm rounded-lg border border-border bg-bg-raised p-8">
         <div className="mb-6 flex items-center gap-2">
-          <LogoMark size={24} />
-          <span className="font-display text-lg font-extrabold text-text">My Biz Flow</span>
+          <BrandLogo height={32} />
         </div>
         <h1 className="font-display text-xl font-bold text-text">Super Admin sign-in</h1>
         <p className="mt-1 text-sm text-text-muted">

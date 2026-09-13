@@ -1,11 +1,15 @@
 import { buildPartnerNavGroups } from "./moduleRegistry";
+import { getVisibleModuleSlugs } from "./entitlements";
 import type { PartnerNavGroup } from "./modules";
 
 /**
  * The full partner sidebar's nav groups: Common (Dashboard/Analytics) +
- * Partner Admin (Settings/Numbering/Subscription/Users) + every module
- * group from buildPartnerNavGroups(). Roles and Access Groups moved to
- * the Super Admin panel (src/app/admin/(protected)/roles,
+ * Partner Admin (Settings/Numbering/Subscription/Users) + only the module
+ * groups this partner is actually entitled to (see
+ * src/lib/designer/entitlements.ts's getVisibleModuleSlugs — their
+ * PartnerType.defaultModules intersected with their active
+ * ModuleAccessKeys), NOT every module on the platform. Roles and Access
+ * Groups moved to the Super Admin panel (src/app/admin/(protected)/roles,
  * .../access-groups) — defined once there, reused across every partner.
  * Called ONCE from
  * src/app/partner/[partnerId]/layout.tsx (a shared layout, so this doesn't
@@ -13,7 +17,7 @@ import type { PartnerNavGroup } from "./modules";
  * computed client-side in Sidebar.tsx from the current pathname, not
  * baked in here, since one set of nav groups now serves every page.
  */
-export async function buildPartnerAdminNavGroups(): Promise<PartnerNavGroup[]> {
+export async function buildPartnerAdminNavGroups(partnerId: string): Promise<PartnerNavGroup[]> {
   const commonGroup: PartnerNavGroup = {
     title: "Common",
     items: [
@@ -30,5 +34,6 @@ export async function buildPartnerAdminNavGroups(): Promise<PartnerNavGroup[]> {
       { key: "users", label: "Users", dot: "amber", href: "admin/users" },
     ],
   };
-  return [commonGroup, partnerAdminGroup, ...(await buildPartnerNavGroups())];
+  const visibleSlugs = await getVisibleModuleSlugs(partnerId);
+  return [commonGroup, partnerAdminGroup, ...(await buildPartnerNavGroups(visibleSlugs))];
 }

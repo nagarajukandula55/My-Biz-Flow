@@ -14,6 +14,7 @@ import type { Prisma } from "@prisma/client";
 import { hashPassword, verifyPassword, generatePassword } from "@/lib/passwords";
 import { createBusinessRecord } from "@/lib/businessRecords";
 import { getPartnerType } from "@/lib/designer/partnerTypesData";
+import { issueAccessKey } from "@/lib/designer/accessKeys";
 
 const BUSINESS_ID = "BIZ002";
 
@@ -87,6 +88,21 @@ async function assignOwnerRole(partner: PartnerRecord): Promise<void> {
     status: "Active",
     lastLogin: "",
   });
+}
+
+/**
+ * Issues an active ModuleAccessKey for every module in the partner's
+ * PartnerType.defaultModules, so a self-signed-up partner can actually use
+ * what they signed up for immediately — without this, getVisibleModules()
+ * (src/lib/designer/entitlements.ts, what the sidebar/dashboard/analytics
+ * all render against) requires BOTH "nominally enabled" AND an active key,
+ * and nothing issues a key at signup time otherwise (the access-key system
+ * was built for a Super-Admin-assisted onboarding flow, not self-signup).
+ */
+async function issueDefaultModuleAccessKeys(partner: PartnerRecord): Promise<void> {
+  const partnerType = await getPartnerType(partner.partnerTypeId);
+  const modules = partnerType?.defaultModules ?? [];
+  await Promise.all(modules.map((slug) => issueAccessKey(partner.id, slug, "Auto-issued at signup")));
 }
 
 /**
@@ -165,6 +181,7 @@ export async function createPartner(input: PartnerSignupInput): Promise<{ partne
   });
 
   await assignOwnerRole(partner);
+  await issueDefaultModuleAccessKeys(partner);
   return { partner, password };
 }
 
@@ -208,6 +225,7 @@ export async function createPartnerFromRequest(request: {
   });
 
   await assignOwnerRole(partner);
+  await issueDefaultModuleAccessKeys(partner);
   return partner;
 }
 

@@ -1,4 +1,3 @@
-import { LogoMark } from "@/components/LogoMark";
 import { PrintButton } from "@/components/PrintButton";
 import { PrintFrame } from "@/components/PrintFrame";
 import { formatCurrencyINR, formatDate } from "@/lib/format";

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { LogoMark } from "@/components/LogoMark";
+import { BrandLogo } from "@/components/BrandLogo";
 import { registerPage } from "@/lib/designer/registry";
 import { verifyPasswordResetToken } from "@/lib/partnerSession";
 import { resetPasswordAction } from "./actions";
@@ -36,8 +36,7 @@ export default async function ResetPasswordPage({
     <div className="flex min-h-screen w-full items-center justify-center bg-bg px-6">
       <div className="w-full max-w-sm rounded-lg border border-border bg-bg-raised p-8">
         <Link href="/" className="mb-6 flex items-center gap-2">
-          <LogoMark size={24} />
-          <span className="font-display text-lg font-extrabold text-text">My Biz Flow</span>
+          <BrandLogo height={32} />
         </Link>
         <h1 className="font-display text-xl font-bold text-text">Set a new password</h1>
 

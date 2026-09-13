@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { LogoMark } from "@/components/LogoMark";
+import { BrandLogo } from "@/components/BrandLogo";
 import { reportClientError } from "@/app/admin/(protected)/errors/actions";
 
 /**
@@ -31,7 +31,7 @@ export default function GlobalError({
 
   return (
     <div className="flex min-h-screen w-full flex-col items-center justify-center gap-4 bg-bg px-6 text-center">
-      <LogoMark size={32} />
+      <BrandLogo height={40} />
       <h1 className="font-display text-2xl font-bold text-text">Something went wrong</h1>
       <p className="max-w-md text-sm text-text-muted">
         An unexpected error occurred. This has been logged; try again, and if

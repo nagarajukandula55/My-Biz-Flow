@@ -28,7 +28,7 @@ export default async function PartnerLayout({
   params: { partnerId: string };
 }) {
   await requirePartnerSessionForPage(params.partnerId);
-  const navGroups = await buildPartnerAdminNavGroups();
+  const navGroups = await buildPartnerAdminNavGroups(params.partnerId);
   return (
     <div className="flex min-h-screen w-full">
       <Sidebar partnerId={params.partnerId} navGroups={navGroups} />

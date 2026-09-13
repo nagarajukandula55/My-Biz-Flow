@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronDown, LogOut } from "lucide-react";
-import { LogoMark } from "./LogoMark";
+import { BrandLogo } from "./BrandLogo";
 import { getIconComponent } from "@/lib/designer/icons";
 import { signOutAction } from "@/app/login/actions";
 import { ThemeToggle } from "./ThemeToggle";
@@ -85,8 +85,7 @@ export function Sidebar({ partnerId, navGroups }: { partnerId: string; navGroups
   return (
     <aside className="sticky top-0 flex h-screen w-64 flex-shrink-0 flex-col bg-sidebar-bg print:hidden">
       <div className="flex items-center gap-2 px-4 py-4">
-        <LogoMark size={18} />
-        <span className="font-display text-sm font-extrabold text-sidebar-text">My Biz Flow</span>
+        <BrandLogo height={24} />
       </div>
 
       <nav className="flex-1 space-y-4 overflow-y-auto px-2.5 pb-4">
