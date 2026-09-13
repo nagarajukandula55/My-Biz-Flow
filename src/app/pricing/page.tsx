@@ -1,13 +1,22 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { LogoMark } from "@/components/LogoMark";
 import { StatusChip } from "@/components/StatusChip";
 import { registerPage } from "@/lib/designer/registry";
 import { listPublicPlans } from "@/lib/plansData";
 import { getModule } from "@/lib/designer/moduleRegistry";
+import { SITE_URL, SITE_NAME } from "@/lib/seo";
 
 // Reads live DB-backed module label overrides — must not be baked into a
 // static build.
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Pricing",
+  description:
+    "My Biz Flow plans for every stage — no-code stays no-code at every tier. What changes as you grow is how many modules, users, and locations you get.",
+  alternates: { canonical: "/pricing" },
+};
 
 registerPage({
   id: "platform.pricing",
@@ -28,8 +37,32 @@ export default async function PricingPage() {
   const moduleLabels = new Map(
     await Promise.all(allSlugs.map(async (slug) => [slug, (await getModule(slug))?.label ?? slug] as const))
   );
+  // Product/Offer structured data straight from the same live Plan rows the
+  // page renders below -- prices, billing cycle, and plan names here can
+  // never drift out of sync with what's shown, so this stays accurate as an
+  // AI-answer-engine (GEO) source for "what does My Biz Flow cost."
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: `${SITE_NAME} plans`,
+    brand: { "@type": "Brand", name: SITE_NAME },
+    offers: PLANS.map((plan) => ({
+      "@type": "Offer",
+      name: plan.name,
+      url: `${SITE_URL}/pricing`,
+      price: plan.price,
+      priceCurrency: "INR",
+      description: `Up to ${plan.maxUsers} users, ${plan.maxLocations} location${plan.maxLocations === 1 ? "" : "s"}, billed ${plan.billingCycle}.`,
+    })),
+  };
+
   return (
     <div className="mbf-page min-h-screen w-full bg-bg">
+      {/* eslint-disable-next-line react/no-danger */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <header className="flex items-center justify-between border-b border-border px-6 py-5">
         <Link href="/" className="flex items-center gap-2">
           <LogoMark size={22} />

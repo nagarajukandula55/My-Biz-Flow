@@ -1,9 +1,46 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { LogoMark } from "@/components/LogoMark";
 import { registerPage } from "@/lib/designer/registry";
 import { listActivePartnerTypes } from "@/lib/designer/partnerTypesData";
+import { SITE_URL, SITE_NAME } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "No-Code Business Management Platform for Service Businesses",
+  description:
+    "My Biz Flow is a modular, no-code business/CRM platform: mix and match POS, Service Centre workorders, Billing, GST-compliant invoicing, Inventory, HRMS, Clinic, and more on one account — no custom development required.",
+  alternates: { canonical: "/" },
+};
+
+const FAQS = [
+  {
+    question: "What is My Biz Flow?",
+    answer:
+      "My Biz Flow is a modular, no-code, multi-vertical business/CRM platform. Instead of a separate product per industry, every business runs on one shared metadata engine — modules, fields, pipelines, and dashboards are all config-driven, so the same platform can run a service centre, a POS-driven retail store, a clinic, or an HR operation.",
+  },
+  {
+    question: "Which kinds of businesses can use it?",
+    answer:
+      "Any business that fits one or more of the platform's modules — Point of Sale, Service Centre (repair/workorder shops), Billing, Clinic, HRMS, Inventory/Warehouse, and other verticals such as real estate, education, and manufacturing. A business picks a business type at signup, which bundles a starting set of modules; modules can be mixed and matched afterward.",
+  },
+  {
+    question: "Is it really no-code?",
+    answer:
+      "Yes — modules, fields, pipelines, and dashboards are config-driven rather than requiring custom development per business. A Super Admin/Designer layer lets page fields, labels, and module appearance be customized without writing code.",
+  },
+  {
+    question: "Does My Biz Flow support GST billing?",
+    answer:
+      "Yes. The Billing module handles invoicing, and the Accounting/GST Compliance module covers India-specific tax and e-invoicing needs for businesses that require it.",
+  },
+  {
+    question: "How does pricing work?",
+    answer:
+      "Plans are tiered by how many users, locations, and modules are included, with pricing shown on the pricing page. All tiers use the same no-code platform — higher tiers unlock more modules and seats, not a different product.",
+  },
+];
 
 registerPage({
   id: "platform.home",
@@ -27,8 +64,57 @@ const SCREENSHOTS: { name: string; alt: string }[] = [
 export default async function RootPage() {
   const partnerTypes = await listActivePartnerTypes();
 
+  // Structured data for both classic search rich results and AI answer
+  // engines (GEO) -- SoftwareApplication describes what the product is and
+  // links to real pricing, Organization anchors the brand identity, and
+  // FAQPage exposes the same Q&A pairs rendered below in a form these
+  // engines can extract directly. Every claim here matches copy elsewhere
+  // on the page -- no invented stats, ratings, or user counts.
+  const jsonLd = [
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      name: SITE_NAME,
+      applicationCategory: "BusinessApplication",
+      operatingSystem: "Web",
+      url: SITE_URL,
+      description:
+        "Modular, no-code, multi-vertical business/CRM platform. Mix and match POS, Service Centre, Billing, Clinic, HRMS, Inventory, and more modules on one account.",
+      offers: {
+        "@type": "Offer",
+        url: `${SITE_URL}/pricing`,
+        priceCurrency: "INR",
+        category: "SaaS subscription",
+      },
+      areaServed: {
+        "@type": "Country",
+        name: "India",
+      },
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      name: SITE_NAME,
+      url: SITE_URL,
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: FAQS.map((f) => ({
+        "@type": "Question",
+        name: f.question,
+        acceptedAnswer: { "@type": "Answer", text: f.answer },
+      })),
+    },
+  ];
+
   return (
     <div className="mbf-page min-h-screen w-full bg-bg">
+      {/* eslint-disable-next-line react/no-danger */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <header className="flex items-center justify-between border-b border-border px-6 py-5">
         <div className="flex items-center gap-2">
           <LogoMark size={22} />
@@ -115,6 +201,20 @@ export default async function RootPage() {
                   className="h-auto w-full bg-bg-sunken object-cover"
                   loading="lazy"
                 />
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="border-t border-border px-6 py-16">
+        <div className="mx-auto max-w-3xl">
+          <h2 className="text-center font-display text-2xl font-bold text-text">Frequently asked questions</h2>
+          <div className="mt-10 space-y-8">
+            {FAQS.map((faq) => (
+              <div key={faq.question}>
+                <h3 className="font-display text-base font-bold text-text">{faq.question}</h3>
+                <p className="mbf-prose mt-1.5 text-sm leading-relaxed text-text-muted">{faq.answer}</p>
               </div>
             ))}
           </div>

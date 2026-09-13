@@ -1,7 +1,15 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { LogoMark } from "@/components/LogoMark";
 import { registerPage } from "@/lib/designer/registry";
 import "@/lib/designer/registerAll";
+
+export const metadata: Metadata = {
+  title: "Help & Documentation",
+  description:
+    "How My Biz Flow's Partner/module concept works, sidebar navigation, and answers to common questions about the platform.",
+  alternates: { canonical: "/help" },
+};
 
 registerPage({
   id: "platform.help",
@@ -52,8 +60,23 @@ const FAQS: { q: string; a: string }[] = [
 ];
 
 export default function HelpPage() {
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: FAQS.map((item) => ({
+      "@type": "Question",
+      name: item.q,
+      acceptedAnswer: { "@type": "Answer", text: item.a },
+    })),
+  };
+
   return (
     <div className="mbf-page min-h-screen w-full bg-bg">
+      {/* eslint-disable-next-line react/no-danger */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <header className="mb-6 flex items-center justify-between border-b border-border pb-4">
         <Link href="/" className="flex items-center gap-2">
           <LogoMark size={22} />

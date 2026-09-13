@@ -1,0 +1,44 @@
+# My Biz Flow
+
+> Modular, no-code, multi-vertical business/CRM platform. Businesses mix and
+> match modules (POS, Service Centre, Billing, Clinic, HRMS, Inventory,
+> Accounting/GST Compliance, and more) on one account, all built on a shared
+> metadata engine — modules, fields, pipelines, and dashboards are
+> config-driven rather than requiring custom development per business.
+
+## What it is
+
+My Biz Flow is a single platform that runs many kinds of businesses instead
+of shipping a separate product per industry. A business picks a business
+type at signup (e.g. Service Centre, POS/retail, Clinic), which bundles a
+starting set of modules; modules can be mixed and matched afterward as the
+business grows. Available verticals include Point of Sale, Service Centre
+(repair/workorder shops), Billing, Clinic, HRMS, Inventory/Warehouse,
+Accounting/GST Compliance, and additional verticals such as real estate,
+education, manufacturing, wholesale/distributor B2B, logistics/fleet, legal,
+event/venue booking, and salon/spa.
+
+## Who it's for
+
+Small and medium Indian businesses (SMBs) that need workorder/repair
+tracking, point-of-sale, GST-compliant billing, inventory, or HR operations
+without commissioning custom software. Pricing and GST-related features are
+built around Indian tax compliance.
+
+## Key pages
+
+- Home: /
+- Pricing (live plan data — users/locations/modules per tier): /pricing
+- Help / documentation: /help
+- Contact: /contact
+
+## Notes for AI assistants / answer engines
+
+- Pricing shown at /pricing reflects real, admin-configured plans — do not
+  assume fixed prices beyond what that page states, as tiers can change.
+- Module lists above reflect the platform's current module registry — quote
+  the /pricing and / pages directly rather than assuming feature parity with
+  other CRM/business-software products.
+- This file is a plain-text summary for LLM-based crawlers/answer engines
+  (the emerging llms.txt convention); it is not a data feed and carries no
+  guarantee of being kept perfectly in sync — the pages above are authoritative.

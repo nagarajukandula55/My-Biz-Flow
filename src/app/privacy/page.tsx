@@ -1,5 +1,11 @@
+import type { Metadata } from "next";
 import { PublicHeader } from "@/components/PublicHeader";
 import { registerPage } from "@/lib/designer/registry";
+
+export const metadata: Metadata = {
+  title: "Privacy Policy",
+  alternates: { canonical: "/privacy" },
+};
 
 registerPage({
   id: "platform.privacy",
