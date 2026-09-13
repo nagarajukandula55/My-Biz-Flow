@@ -69,11 +69,6 @@ export const env = {
    * (e.g. "AN Group Pvt Ltd" / GSTIN-holding entity) before this is relied on
    * for statutory documents. */
   platformLegalEntityName: () => process.env.PLATFORM_LEGAL_ENTITY_NAME || "AN Group",
-  /** Signs partner session cookies once partnerSession.ts moves off its unsigned demo cookie
-   * (see the comment at the top of that file). Not yet consumed anywhere — same
-   * "declared but not eagerly required" posture as centralApiUrl/Key were before those were
-   * wired up, so this getter exists ahead of the real signing code that will call it. */
-  partnerSessionSecret: () => process.env.PARTNER_SESSION_SECRET,
   /** Cloudinary — Service Centre before/after job photos, KYC docs, signed agreements
    * (beforePhotos/afterPhotos/kycDocRef/agreementDocRef fields in
    * src/lib/sample-data/service-centre*.ts). No SDK installed and no upload route wired up
