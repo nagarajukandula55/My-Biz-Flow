@@ -220,6 +220,25 @@ export async function findPartnerByLoginIdentifier(identifier: string): Promise<
   return row ? toRecord(row) : undefined;
 }
 
+/**
+ * Looks a partner up for a password-reset request: by their public
+ * <prefix>#### id, their registered login contact number, OR their
+ * registered business email — whichever one the person typed into
+ * "forgot password". Deliberately broader than findPartnerByLoginIdentifier
+ * (which only checks id/loginContact, since that's all the login form
+ * asks for) because the forgot-password form asks for "the email on your
+ * account", and businessEmail is where the reset link itself gets sent
+ * regardless of which field matched.
+ */
+export async function findPartnerForPasswordReset(identifier: string): Promise<PartnerRecord | undefined> {
+  const trimmed = identifier.trim();
+  if (!trimmed) return undefined;
+  const row = await prisma.partner.findFirst({
+    where: { OR: [{ id: trimmed }, { loginContact: trimmed }, { businessEmail: trimmed }] },
+  });
+  return row ? toRecord(row) : undefined;
+}
+
 export async function verifyPartnerPassword(partnerId: string, password: string): Promise<boolean> {
   const row = await prisma.partner.findUnique({ where: { id: partnerId } });
   if (!row) return false;

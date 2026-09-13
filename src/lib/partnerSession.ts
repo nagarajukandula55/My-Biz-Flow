@@ -50,3 +50,45 @@ export async function verifyPartnerSessionToken(token: string | undefined): Prom
 
 /** How long the session cookie itself should live (Set-Cookie maxAge) — kept in sync with the JWT's own expiry. */
 export const PARTNER_SESSION_MAX_AGE_SECONDS = SESSION_TTL_SECONDS;
+
+/**
+ * Password-reset link token. Signed with the SAME secret as the session
+ * cookie above (one signing mechanism for the whole app, per
+ * PARTNER_SESSION_SECRET's doc comment in env.ts), but carries a distinct
+ * `purpose: "password-reset"` claim precisely so a leaked/forwarded reset
+ * link can never be replayed as a login session token (and vice versa) —
+ * verifyPartnerSessionToken above never checks `purpose`, so a session
+ * token would otherwise "verify" fine if someone tried it here, and a
+ * reset token would otherwise "verify" fine as a session cookie. The
+ * purpose check below is what actually prevents that cross-use.
+ */
+const RESET_TOKEN_PURPOSE = "password-reset";
+const RESET_TOKEN_TTL_SECONDS = 30 * 60; // 30 minutes
+
+/** Signs a short-lived, single-purpose password-reset token for the given partner id. */
+export async function createPasswordResetToken(partnerId: string): Promise<string> {
+  return new SignJWT({ partnerId, purpose: RESET_TOKEN_PURPOSE })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime(`${RESET_TOKEN_TTL_SECONDS}s`)
+    .sign(secretKey());
+}
+
+/**
+ * Verifies a password-reset token and returns the partner id it was issued
+ * for, or `undefined` if it's missing, malformed, expired, signed with a
+ * different secret, or — critically — not actually a reset token (e.g. a
+ * session cookie value handed to this function by mistake or by an
+ * attacker) since it lacks `purpose: "password-reset"`.
+ */
+export async function verifyPasswordResetToken(token: string | undefined | null): Promise<string | undefined> {
+  if (!token) return undefined;
+  try {
+    const { payload } = await jwtVerify(token, secretKey());
+    if (payload.purpose !== RESET_TOKEN_PURPOSE) return undefined;
+    const partnerId = payload.partnerId;
+    return typeof partnerId === "string" ? partnerId : undefined;
+  } catch {
+    return undefined;
+  }
+}

@@ -12,7 +12,7 @@ registerPage({
   superAdminOnly: false,
   customizableRegions: [],
   explanation:
-    "Public password-reset request page. Demo Server Action (src/app/forgot-password/actions.ts) — logs the request server-side, no email service wired up yet, same honest-demo pattern as login/signup.",
+    "Public password-reset request page. Server Action (src/app/forgot-password/actions.ts) looks up the Partner, issues a short-lived signed reset token, and emails a /reset-password link via Resend (src/lib/email.ts). Always returns the same generic response so account existence is never leaked.",
   sourceFile: "src/app/forgot-password/page.tsx",
 });
 

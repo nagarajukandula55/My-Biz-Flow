@@ -19,7 +19,7 @@ registerPage({
 export default function LoginPage({
   searchParams,
 }: {
-  searchParams: { error?: string };
+  searchParams: { error?: string; reset?: string };
 }) {
   return (
     <div className="flex min-h-screen w-full items-center justify-center bg-bg px-6">
@@ -33,6 +33,12 @@ export default function LoginPage({
         {searchParams.error === "invalid_credentials" && (
           <p className="mt-3 rounded-md border border-danger bg-danger-soft px-3 py-2 text-sm text-danger">
             Partner ID / contact number or password is incorrect.
+          </p>
+        )}
+
+        {searchParams.reset === "success" && (
+          <p className="mt-3 rounded-md border border-success-soft bg-success-soft px-3 py-2 text-sm font-semibold text-success">
+            Your password has been reset. Sign in with your new password.
           </p>
         )}
 

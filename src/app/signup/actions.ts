@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createPartner } from "@/lib/partnerData";
 import { createSignupRequest } from "@/lib/partnerSignupRequestsData";
 import { getPartnerType } from "@/lib/designer/partnerTypesData";
+import { sendPartnerWelcomeEmail } from "@/lib/email";
 
 /**
  * Real "register your business" action. No password is collected here —
@@ -50,6 +51,12 @@ export async function registerBusiness(formData: FormData) {
   } catch {
     redirect(`/signup?type=${encodeURIComponent(partnerTypeId)}&error=contact_taken`);
   }
+
+  // Best-effort — sendPartnerWelcomeEmail never throws — but awaited
+  // (rather than fire-and-forget) since redirect() below throws to
+  // navigate, and a serverless function invocation can end before a
+  // dangling background promise completes.
+  await sendPartnerWelcomeEmail({ to: businessEmail, businessName, partnerId, password });
 
   redirect(`/signup/success?partnerId=${encodeURIComponent(partnerId)}&password=${encodeURIComponent(password)}`);
 }
