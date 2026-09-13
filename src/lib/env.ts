@@ -85,4 +85,14 @@ export const env = {
   vapidPublicKey: () => process.env.VAPID_PUBLIC_KEY,
   vapidPrivateKey: () => process.env.VAPID_PRIVATE_KEY,
   vapidSubject: () => process.env.VAPID_SUBJECT,
+  /** WhatsApp Business/Cloud API — NOT IMPLEMENTED YET, placeholder ahead of a future
+   * integration (customer-facing workorder/invoice alerts pushed over WhatsApp, per
+   * explicit direction "later we will integrate whatsapp messages push"). No WhatsApp SDK
+   * installed and no sending code exists; src/lib/telegramTemplates.ts-style message
+   * copy would pair with these once that follow-up happens. phoneNumberId/accessToken are
+   * from the Meta developer dashboard (WhatsApp > API Setup); verifyToken is an
+   * arbitrary secret you choose and register with Meta for webhook verification. */
+  whatsappBusinessPhoneNumberId: () => process.env.WHATSAPP_BUSINESS_PHONE_NUMBER_ID,
+  whatsappAccessToken: () => process.env.WHATSAPP_ACCESS_TOKEN,
+  whatsappVerifyToken: () => process.env.WHATSAPP_VERIFY_TOKEN,
 };

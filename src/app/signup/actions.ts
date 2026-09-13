@@ -5,6 +5,7 @@ import { createPartner } from "@/lib/partnerData";
 import { createSignupRequest } from "@/lib/partnerSignupRequestsData";
 import { getPartnerType } from "@/lib/designer/partnerTypesData";
 import { sendPartnerWelcomeEmail } from "@/lib/email";
+import { sendPartnerApplicationReceivedEmail } from "@/lib/email/partnerEmails";
 
 /**
  * Real "register your business" action. No password is collected here —
@@ -39,6 +40,10 @@ export async function registerBusiness(formData: FormData) {
     } catch {
       redirect(`/signup?type=${encodeURIComponent(partnerTypeId)}&error=contact_taken`);
     }
+    // Best-effort, awaited for the same reason as sendPartnerWelcomeEmail
+    // below — redirect() throws to navigate, so a fire-and-forget promise
+    // could be dropped before it resolves.
+    await sendPartnerApplicationReceivedEmail({ to: businessEmail, businessName });
     redirect(`/signup/pending?businessName=${encodeURIComponent(businessName)}`);
   }
 

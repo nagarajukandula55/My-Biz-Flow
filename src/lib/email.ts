@@ -13,12 +13,21 @@
  * "one small module per concern" convention (src/lib/sms.ts) rather than
  * AN-CRM's heavier admin-editable EmailTemplate/occasions system, which
  * has no equivalent here yet.
+ *
+ * This file holds the two original senders (password reset, partner
+ * welcome) plus the shared low-level helpers (sendEmail/emailShell/
+ * emailButton/emailInfoBox/SUPPORT_EMAIL). Every other occasion — workorder
+ * lifecycle, invoice, partner-application, admin temp password, payment
+ * confirmation — lives in src/lib/email/*.ts, split out once this file
+ * would otherwise have grown past a screenful of unrelated templates
+ * (matching how src/lib/fieldForce/ splits by concern once one file gets
+ * large), importing these same shared helpers rather than duplicating them.
  */
 import { Resend } from "resend";
 import { env } from "@/lib/env";
 import { SITE_NAME, SITE_URL } from "@/lib/seo";
 
-const SUPPORT_EMAIL = "support@mybizflow.in";
+export const SUPPORT_EMAIL = "support@mybizflow.in";
 
 type SendEmailInput = {
   to: string;
@@ -34,7 +43,7 @@ type SendEmailInput = {
  * know whether delivery actually happened can check the returned `sent`
  * flag, but none of the flows here treat `sent: false` as a hard failure.
  */
-async function sendEmail({ to, subject, html, text }: SendEmailInput): Promise<{ sent: boolean }> {
+export async function sendEmail({ to, subject, html, text }: SendEmailInput): Promise<{ sent: boolean }> {
   const apiKey = env.resendApiKey();
   const from = env.resendFrom();
 
@@ -58,7 +67,7 @@ async function sendEmail({ to, subject, html, text }: SendEmailInput): Promise<{
   }
 }
 
-function emailShell(bodyHtml: string): string {
+export function emailShell(bodyHtml: string): string {
   return `<!doctype html>
 <html>
   <body style="margin:0;padding:0;background-color:#f4f5f7;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
@@ -89,8 +98,23 @@ function emailShell(bodyHtml: string): string {
 </html>`;
 }
 
-function emailButton(label: string, url: string): string {
+export function emailButton(label: string, url: string): string {
   return `<a href="${url}" style="display:inline-block;background:#0f766e;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;padding:12px 24px;border-radius:8px;">${label}</a>`;
+}
+
+/** Small key/value info box — matches AN-CRM's emailInfoBox() shape
+ * (services/email/resend.service.ts), used by the workorder/invoice/
+ * partner-application templates in src/lib/email/* for a compact detail
+ * block (order/invoice numbers, temp passwords, amounts, etc.). */
+export function emailInfoBox(rows: { label: string; value: string }[]): string {
+  return `<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;background:#f9fafb;border-radius:8px;margin:0 0 20px;">
+    ${rows
+      .map(
+        (r, i) =>
+          `<tr><td style="padding:${i === 0 ? "14px" : "0"} 16px ${i === rows.length - 1 ? "14px" : "8px"};font-size:13px;color:#374151;"><strong>${r.label}:</strong> ${r.value}</td></tr>`
+      )
+      .join("")}
+  </table>`;
 }
 
 /**
