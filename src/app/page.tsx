@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { LogoMark } from "@/components/LogoMark";
+import { BrandLogo } from "@/components/BrandLogo";
 import { registerPage } from "@/lib/designer/registry";
 import { listActivePartnerTypes } from "@/lib/designer/partnerTypesData";
 import { SITE_URL, SITE_NAME } from "@/lib/seo";
@@ -162,8 +162,7 @@ export default async function RootPage({
       />
       <header className="flex items-center justify-between border-b border-border px-6 py-5">
         <div className="flex items-center gap-2">
-          <LogoMark size={22} />
-          <span className="font-display text-base font-extrabold text-text">My Biz Flow</span>
+          <BrandLogo height={36} />
         </div>
         <nav className="flex items-center gap-4 text-sm font-semibold">
           <Link href="/pricing" className="text-text-muted hover:text-text">
