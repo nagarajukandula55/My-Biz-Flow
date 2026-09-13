@@ -216,7 +216,6 @@ import "@/app/page";
 import "@/app/login/page";
 import "@/app/forgot-password/page";
 import "@/app/signup/page";
-import "@/app/signup/success/page";
 import "@/app/signup/pending/page";
 import "@/app/change-password/page";
 import "@/app/pricing/page";

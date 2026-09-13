@@ -141,19 +141,21 @@ export async function sendPasswordResetEmail({ to, resetUrl }: { to: string; res
  * Partner welcome / signup-confirmation email — the equivalent of
  * AN-CRM's WELCOME_REGISTRATION occasion, adapted for My Biz Flow. Sent
  * once, right after a Partner account is created (see /signup's
- * createPartner() call), carrying the partner's public login id and the
- * one-time generated password so they can sign in without a support call.
+ * createPartner() call). Carries the partner's public login id (their
+ * Login ID for any future sign-in on another device) but, matching
+ * AN-CRM's own WELCOME_REGISTRATION occasion, never the password itself —
+ * the visitor is auto-signed-in straight into a forced "set your
+ * password" screen right after registering (see signup/actions.ts), so
+ * there's no temporary password to relay by email at all.
  */
 export async function sendPartnerWelcomeEmail({
   to,
   businessName,
   partnerId,
-  password,
 }: {
   to: string;
   businessName: string;
   partnerId: string;
-  password: string;
 }): Promise<{ sent: boolean }> {
   const loginUrl = `${SITE_URL}/login`;
   const subject = `Welcome to ${SITE_NAME} — your account is ready`;
@@ -162,12 +164,11 @@ export async function sendPartnerWelcomeEmail({
     <p style="margin:0 0 16px;">Your ${SITE_NAME} partner account has been created and is ready to use.</p>
     <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;background:#f9fafb;border-radius:8px;margin:0 0 20px;">
       <tr><td style="padding:14px 16px;font-size:13px;color:#374151;"><strong>Partner ID:</strong> ${partnerId}</td></tr>
-      <tr><td style="padding:0 16px 14px;font-size:13px;color:#374151;"><strong>Temporary password:</strong> ${password}</td></tr>
     </table>
+    <p style="margin:0 0 16px;">You're already signed in on this device and were taken straight to set your own password. Use your Partner ID above to sign in from any other device.</p>
     <div style="text-align:center;margin:0 0 20px;">${emailButton("Sign in", loginUrl)}</div>
-    <p style="margin:0;font-size:13px;color:#6b7280;">You'll be asked to set your own password the first time you sign in.</p>
   `);
-  const text = `Welcome to ${SITE_NAME}, ${businessName}!\n\nYour partner account is ready.\n\nPartner ID: ${partnerId}\nTemporary password: ${password}\n\nSign in: ${loginUrl}\n\nYou'll be asked to set your own password the first time you sign in.\n\nNeed help? Contact ${SUPPORT_EMAIL}.`;
+  const text = `Welcome to ${SITE_NAME}, ${businessName}!\n\nYour partner account is ready.\n\nPartner ID: ${partnerId}\n\nYou're already signed in on this device and were taken straight to set your own password. Use your Partner ID above to sign in from any other device: ${loginUrl}\n\nNeed help? Contact ${SUPPORT_EMAIL}.`;
 
   return sendEmail({ to, subject, html, text });
 }

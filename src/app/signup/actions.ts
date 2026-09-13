@@ -8,17 +8,18 @@ import { getPartnerType } from "@/lib/designer/partnerTypesData";
 import { sendPartnerWelcomeEmail } from "@/lib/email";
 import { sendPartnerApplicationReceivedEmail } from "@/lib/email/partnerEmails";
 import {
-  ONE_TIME_CREDENTIAL_COOKIE,
-  ONE_TIME_CREDENTIAL_MAX_AGE_SECONDS,
-  createOneTimeCredentialToken,
+  PARTNER_SESSION_COOKIE,
+  PARTNER_SESSION_MAX_AGE_SECONDS,
+  createPartnerSessionToken,
 } from "@/lib/partnerSession";
 
 /**
- * Real "register your business" action. No password is collected here —
- * one is generated and shown once on the success page (see /signup/success
- * and /signup/pending), matching the forced-change-on-first-login flow.
- * If the chosen Partner Type has requiresApproval on, this creates a
- * PartnerSignupRequest (no VND#### id yet) instead of a Partner directly.
+ * Real "register your business" action. No password is collected here — one
+ * is generated internally and never shown; the new partner is signed
+ * straight into a real session and redirected to /change-password to set
+ * their own, so there's no generated password to copy/type anywhere. If the
+ * chosen Partner Type has requiresApproval on, this creates a
+ * PartnerSignupRequest (no partner id yet, held for admin approval) instead.
  */
 export async function registerBusiness(formData: FormData) {
   const partnerTypeId = String(formData.get("partnerTypeId") ?? "").trim();
@@ -54,11 +55,13 @@ export async function registerBusiness(formData: FormData) {
   }
 
   let partnerId: string;
-  let password: string;
   try {
     const result = await createPartner(input);
     partnerId = result.partner.id;
-    password = result.password;
+    // result.password is a real password (hashed and stored, needed so
+    // this account works with /login on another device), but it's
+    // intentionally never shown or emailed — the visitor is auto-signed-in
+    // below straight into setting their own password.
   } catch {
     redirect(`/signup?type=${encodeURIComponent(partnerTypeId)}&error=contact_taken`);
   }
@@ -67,20 +70,22 @@ export async function registerBusiness(formData: FormData) {
   // (rather than fire-and-forget) since redirect() below throws to
   // navigate, and a serverless function invocation can end before a
   // dangling background promise completes.
-  await sendPartnerWelcomeEmail({ to: businessEmail, businessName, partnerId, password });
+  await sendPartnerWelcomeEmail({ to: businessEmail, businessName, partnerId });
 
-  // Hand the one-time password to the success page via a short-lived,
-  // httpOnly, single-purpose cookie instead of a URL query string — a
-  // query string ends up in browser history and the referrer header of
-  // any outbound link on that page. See partnerSession.ts's doc comment.
-  const credentialToken = await createOneTimeCredentialToken({ partnerId, password });
-  cookies().set(ONE_TIME_CREDENTIAL_COOKIE, credentialToken, {
+  // No password field at signup, so there's nothing for the visitor to
+  // type in to "log in" right after registering — sign them straight into
+  // a real session (same token issuance as a normal login) and land them
+  // on the forced first-time password screen directly, instead of
+  // surfacing the generated password on-screen for them to copy and then
+  // separately visit /login with it.
+  const token = await createPartnerSessionToken(partnerId);
+  cookies().set(PARTNER_SESSION_COOKIE, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
-    path: "/signup/success",
-    maxAge: ONE_TIME_CREDENTIAL_MAX_AGE_SECONDS,
+    path: "/",
+    maxAge: PARTNER_SESSION_MAX_AGE_SECONDS,
   });
 
-  redirect("/signup/success");
+  redirect("/change-password?welcome=1");
 }

@@ -16,7 +16,7 @@ registerPage({
   superAdminOnly: false,
   customizableRegions: [],
   explanation:
-    "Public 'Register your business' flow, full-page layout (not a centered card). Partner Type is the only thing the partner picks/sees (modules, Roles, and plan tiers stay Super-Admin-configured, never shown here) — everything else is business details needed for invoicing plus a login contact number. No password field: one is generated and shown once on /signup/success (or held for approval on /signup/pending if the type requires it), forcing a change on first login.",
+    "Public 'Register your business' flow, full-page layout (not a centered card). Partner Type is the only thing the partner picks/sees (modules, Roles, and plan tiers stay Super-Admin-configured, never shown here) — everything else is business details needed for invoicing plus a login contact number. No password field: one is generated internally (never shown), and the new partner is signed straight into a real session and redirected to /change-password?welcome=1 to set their own (or held for approval on /signup/pending if the type requires it).",
   sourceFile: "src/app/signup/page.tsx",
 });
 
