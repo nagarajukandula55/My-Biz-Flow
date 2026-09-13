@@ -14,6 +14,7 @@ import {
 } from "@/lib/sample-data/service-centre";
 import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
 import { getBusinessRecord, listBusinessRecords } from "@/lib/businessRecords";
+import { listActivePartnerStaff } from "@/lib/partnerStaff";
 import { WorkorderLifecycle } from "./WorkorderLifecycle";
 
 registerPage({
@@ -69,10 +70,15 @@ export default async function ServiceCentreDetailPage({
     .filter((r) => r["status"] === "Active")
     .map((r) => ({ value: String(r["id"]), label: `${r["name"] ?? r["id"]} (${r["brandName"] ?? "—"})` }));
 
-  const userRecords = await listBusinessRecords(params.partnerId, "users");
-  const technicianOptions = userRecords
-    .filter((r) => r["status"] === "Active")
-    .map((r) => ({ value: String(r["id"]), label: String(r["id"]) }));
+  // Sourced from real PartnerStaff accounts (technicians/managers can be
+  // assigned) instead of the label-only "users" BusinessRecord sample data
+  // — see src/lib/sample-data/users.ts's header comment. "users" is still
+  // used elsewhere unchanged (e.g. other modules' team-member display) —
+  // only Service Centre's technician assignment has been switched over.
+  const staffRecords = await listActivePartnerStaff(params.partnerId);
+  const technicianOptions = staffRecords
+    .filter((s) => s.role === "Technician" || s.role === "Manager" || s.role === "Owner")
+    .map((s) => ({ value: s.id, label: `${s.name} (${s.role})` }));
 
   return (
     <AppShell topbarTitle={mod?.label ?? "Service Centre"}>

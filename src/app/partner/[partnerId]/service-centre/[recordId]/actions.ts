@@ -3,6 +3,45 @@
 import { revalidatePath } from "next/cache";
 import { createBusinessRecord, updateBusinessRecord, getBusinessRecord, listBusinessRecords } from "@/lib/businessRecords";
 import { extractLifecycleFromRecord, type ServiceLine } from "@/lib/sample-data/service-centre";
+import { requireServiceCentreStaff } from "@/lib/staffAuth";
+
+/**
+ * First-cut Service Centre authorization gate: every mutating action below
+ * calls this first. A signed-in PartnerStaff session must belong to THIS
+ * exact partnerId (requireServiceCentreStaff throws if it's scoped to a
+ * different partner — the real cross-tenant risk). No staff session at all
+ * is allowed through unchanged, since these mutations are also reachable
+ * from the Partner owner's own session (which has no PartnerStaff row) and
+ * locking that out would break the existing owner workflow. This does NOT
+ * distinguish which staff role may perform which specific action (assign
+ * vs. start vs. complete vs. cancel) — every Active staff member of the
+ * partner can perform every action here. A full per-action permission
+ * matrix (AN-CRM's Role/Permission/RolePermission) is a documented
+ * fast-follow, not built in this pass.
+ */
+async function assertStaffCanActOnServiceCentre(partnerId: string): Promise<void> {
+  await requireServiceCentreStaff(partnerId);
+}
+
+/**
+ * Service-Centre-specific replacement for the generic patchBusinessRecordAction
+ * — same merge-and-persist behavior, but gated by assertStaffCanActOnServiceCentre
+ * first. Used by WorkorderLifecycle for every lifecycle patch (stage
+ * transitions, brand/model/technician assignment, parts/service lines,
+ * handover notes) instead of calling the generic action directly, so those
+ * mutations are covered by the partner-membership check above.
+ */
+export async function patchServiceCentreWorkorderAction(
+  partnerId: string,
+  workorderId: string,
+  patch: Record<string, unknown>
+): Promise<void> {
+  await assertStaffCanActOnServiceCentre(partnerId);
+  const existing = await getBusinessRecord(partnerId, "service-centre", workorderId);
+  if (!existing) return;
+  await updateBusinessRecord(partnerId, "service-centre", workorderId, { ...existing, ...patch });
+  revalidatePath(`/partner/${partnerId}/service-centre/${workorderId}`);
+}
 
 /**
  * Deducts consumed part-line quantities from live Inventory stock
@@ -16,6 +55,7 @@ import { extractLifecycleFromRecord, type ServiceLine } from "@/lib/sample-data/
  * Completed (e.g. after a later edit) never double-deducts.
  */
 export async function deductInventoryForWorkorderAction(partnerId: string, workorderId: string): Promise<void> {
+  await assertStaffCanActOnServiceCentre(partnerId);
   const record = await getBusinessRecord(partnerId, "service-centre", workorderId);
   if (!record) return;
   const lifecycle = extractLifecycleFromRecord(record);
@@ -56,6 +96,7 @@ export async function deductInventoryForWorkorderAction(partnerId: string, worko
  * client button.
  */
 export async function createInvoiceFromWorkorderAction(partnerId: string, workorderId: string): Promise<void> {
+  await assertStaffCanActOnServiceCentre(partnerId);
   const record = await getBusinessRecord(partnerId, "service-centre", workorderId);
   if (!record) return;
   const lifecycle = extractLifecycleFromRecord(record);
@@ -107,6 +148,7 @@ export async function setWorkorderHoldAction(
   hold: boolean,
   reason?: string
 ): Promise<void> {
+  await assertStaffCanActOnServiceCentre(partnerId);
   const record = await getBusinessRecord(partnerId, "service-centre", workorderId);
   if (!record) return;
   await updateBusinessRecord(partnerId, "service-centre", workorderId, {

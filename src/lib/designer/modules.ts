@@ -150,6 +150,7 @@ export const MODULE_SUB_NAV: Record<string, { key: string; label: string; href: 
     { key: "service-centre.sc-profile", label: "SC Profiles", href: "service-centre/sc-profile" },
     { key: "service-centre.brands", label: "Brands", href: "service-centre/brands" },
     { key: "service-centre.models", label: "Models", href: "service-centre/models" },
+    { key: "service-centre.staff", label: "Staff", href: "service-centre/staff" },
     { key: "service-centre.admin", label: "Admin", href: "service-centre/admin" },
   ],
   "accounting-gst": [

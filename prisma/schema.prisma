@@ -334,6 +334,42 @@ model ModuleAccessKey {
   @@map("module_access_keys")
 }
 
+/// A staff account belonging to exactly one Partner — gives a Service
+/// Centre business owner a way to onboard a technician/front-desk/manager
+/// with their own login instead of everyone sharing the single Partner
+/// account. Deliberately a real Prisma model (not a BusinessRecord) for the
+/// same reason Field Force's Provider is: this needs real credential
+/// storage and a unique-login constraint, not a JSON blob. Scope is
+/// intentionally simple for this first pass — `role` is a plain string, not
+/// AN-CRM's full custom-role/permission-matrix system (Role/Permission/
+/// RolePermission) — see the authorization note on requireServiceCentreStaff
+/// in src/lib/staffAuth.ts. partnerId is a loose, string-only reference (no
+/// @relation) — same convention Partner's own scoped models (BusinessRecord,
+/// ModuleAccessKey, etc.) already use, not a hard FK.
+model PartnerStaff {
+  id        String @id @default(cuid())
+  partnerId String
+
+  name         String
+  email        String
+  phone        String?
+  passwordHash String
+  /// "Owner" | "Manager" | "Technician" | "FrontDesk" — a plain string, not
+  /// an AN-CRM-style per-action permission matrix (documented fast-follow).
+  role   String @default("Technician")
+  status String @default("Active") // Active | Suspended
+  /// True until the staff member completes their first forced password
+  /// change — same convention as Partner.mustChangePassword; set when the
+  /// Partner owner creates the account with a generated password.
+  mustChangePassword Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@unique([partnerId, email])
+  @@index([partnerId])
+  @@map("partner_staff")
+}
+
 // --- Field Force module: a two-sided home-services marketplace. Customers ---
 // --- request bookings; Providers (skilled/unskilled workers, onboarded  ---
 // --- individually or as a team) get matched and dispatched by service + ---

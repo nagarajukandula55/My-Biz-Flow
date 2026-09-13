@@ -14,8 +14,12 @@ import {
   type PartLine,
   type ServiceLine,
 } from "@/lib/sample-data/service-centre";
-import { patchBusinessRecordAction } from "@/lib/businessRecordActions";
-import { setWorkorderHoldAction, createInvoiceFromWorkorderAction, deductInventoryForWorkorderAction } from "./actions";
+import {
+  setWorkorderHoldAction,
+  createInvoiceFromWorkorderAction,
+  deductInventoryForWorkorderAction,
+  patchServiceCentreWorkorderAction,
+} from "./actions";
 
 const STAGE_VARIANT: Record<WorkorderStage, "neutral" | "warning" | "teal" | "success"> = {
   Created: "neutral",
@@ -122,7 +126,7 @@ export function WorkorderLifecycle({
 
   function persist(patch: Record<string, unknown>) {
     startPersist(async () => {
-      await patchBusinessRecordAction(partnerId, "service-centre", workorderId, patch);
+      await patchServiceCentreWorkorderAction(partnerId, workorderId, patch);
     });
   }
 
