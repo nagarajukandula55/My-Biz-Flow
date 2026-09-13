@@ -27,6 +27,11 @@ function requireEnv(name: string): string {
 
 export const env = {
   superAdminSecret: () => requireEnv("SUPER_ADMIN_SECRET"),
+  /** Signing secret for the partner session JWT (src/lib/partnerSession.ts).
+   * Required — there is no insecure fallback. Without this set, every
+   * partner login/session-check throws rather than silently issuing an
+   * unsigned or default-keyed cookie. */
+  partnerSessionSecret: () => requireEnv("PARTNER_SESSION_SECRET"),
   databaseUrl: () => requireEnv("DATABASE_URL"),
   centralApiUrl: () => requireEnv("CENTRAL_API_URL"),
   centralApiKey: () => requireEnv("CENTRAL_API_KEY"),
@@ -53,4 +58,41 @@ export const env = {
   /** Which partner's Field Force storefront this standalone deployment is
    * for — a dedicated app deployment serves exactly one partner's brand. */
   fieldForcePartnerId: () => process.env.FIELD_FORCE_PARTNER_ID,
+  /** Legal entity behind the "My Biz Flow" brand — used ONLY on the platform's
+   * own subscription billing documents (the invoices/receipts/checkout screens
+   * My Biz Flow issues to partners for their platform subscription charges).
+   * Every OTHER invoice in this app (Service Centre, Billing module, etc.) is
+   * issued by the partner to their own customer and must NOT show this name —
+   * see AGENTS.md / the Service Centre & Billing scope notes.
+   * Defaults to "AN Group" per CLAUDE.md's references to the parent company —
+   * TODO(owner): confirm/replace with the exact registered legal name
+   * (e.g. "AN Group Pvt Ltd" / GSTIN-holding entity) before this is relied on
+   * for statutory documents. */
+  platformLegalEntityName: () => process.env.PLATFORM_LEGAL_ENTITY_NAME || "AN Group",
+  /** Cloudinary — Service Centre before/after job photos, KYC docs, signed agreements
+   * (beforePhotos/afterPhotos/kycDocRef/agreementDocRef fields in
+   * src/lib/sample-data/service-centre*.ts). No SDK installed and no upload route wired up
+   * yet; these getters are placeholders ahead of that follow-up work, ported from AN-CRM. */
+  cloudinaryCloudName: () => process.env.CLOUDINARY_CLOUD_NAME,
+  cloudinaryApiKey: () => process.env.CLOUDINARY_API_KEY,
+  cloudinaryApiSecret: () => process.env.CLOUDINARY_API_SECRET,
+  /** Resend — transactional email (partner welcome emails, password resets), ported from
+   * AN-CRM. No mailer module exists in this app yet; placeholder ahead of that follow-up. */
+  resendApiKey: () => process.env.RESEND_API_KEY,
+  resendFrom: () => process.env.RESEND_FROM,
+  /** Web push (VAPID) — job/workorder notifications, ported from AN-CRM. No web-push SDK
+   * installed yet; placeholder ahead of that follow-up. */
+  vapidPublicKey: () => process.env.VAPID_PUBLIC_KEY,
+  vapidPrivateKey: () => process.env.VAPID_PRIVATE_KEY,
+  vapidSubject: () => process.env.VAPID_SUBJECT,
+  /** WhatsApp Business/Cloud API — NOT IMPLEMENTED YET, placeholder ahead of a future
+   * integration (customer-facing workorder/invoice alerts pushed over WhatsApp, per
+   * explicit direction "later we will integrate whatsapp messages push"). No WhatsApp SDK
+   * installed and no sending code exists; src/lib/telegramTemplates.ts-style message
+   * copy would pair with these once that follow-up happens. phoneNumberId/accessToken are
+   * from the Meta developer dashboard (WhatsApp > API Setup); verifyToken is an
+   * arbitrary secret you choose and register with Meta for webhook verification. */
+  whatsappBusinessPhoneNumberId: () => process.env.WHATSAPP_BUSINESS_PHONE_NUMBER_ID,
+  whatsappAccessToken: () => process.env.WHATSAPP_ACCESS_TOKEN,
+  whatsappVerifyToken: () => process.env.WHATSAPP_VERIFY_TOKEN,
 };

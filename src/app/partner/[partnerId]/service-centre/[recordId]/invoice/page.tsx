@@ -5,7 +5,7 @@ import { registerPage } from "@/lib/designer/registry";
 import { notFound } from "next/navigation";
 import { getDocumentTemplate } from "@/lib/designer/documentTemplates";
 import { getPartner } from "@/lib/partnerData";
-import { getBusinessRecord, getBusinessRecordSequenceIndex } from "@/lib/businessRecords";
+import { getBusinessRecord, getBusinessRecordSequenceIndex, getBusinessRecordsByKeys } from "@/lib/businessRecords";
 import { ServiceCentreInvoiceDocument, type InvoiceLine } from "./ServiceCentreInvoiceDocument";
 
 registerPage({
@@ -64,8 +64,16 @@ async function buildInvoiceLines(partnerId: string, record: Awaited<ReturnType<t
   for (const line of lifecycle.serviceLines) {
     items.push({ description: line.solutionLabel, hsn: "9987", quantity: 1, rate: underWarranty ? 0 : line.laborCharge, gstRate: 18 });
   }
+
+  // Batch-fetch every referenced BOM material in one query instead of one
+  // getBusinessRecord() round-trip per part line.
+  const materialsById = await getBusinessRecordsByKeys(
+    partnerId,
+    "inventory-bom",
+    lifecycle.partLines.map((line) => line.materialId)
+  );
   for (const line of lifecycle.partLines) {
-    const material = await getBusinessRecord(partnerId, "inventory-bom", line.materialId);
+    const material = materialsById.get(line.materialId);
     items.push({
       description: line.materialLabel,
       hsn: String(material?.["hsnCode"] ?? ""),

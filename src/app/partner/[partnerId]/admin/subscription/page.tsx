@@ -18,6 +18,9 @@ import { chooseSubscriptionAction } from "./actions";
 import { RazorpayCheckoutButton } from "@/components/RazorpayCheckoutButton";
 import { env } from "@/lib/env";
 
+/** My Biz Flow is the seller on this one document — see src/lib/env.ts. */
+const PLATFORM_BILLING_HEADER = `My Biz Flow — a unit of ${env.platformLegalEntityName()}`;
+
 registerPage({
   id: "subscription.partner-view",
   moduleSlug: "platform",
@@ -104,6 +107,7 @@ export default async function PartnerSubscriptionPage({ params }: { params: { pa
 
         {partner.subscriptionStatus === "PastDue" && (
           <div className="mt-6 rounded-lg border border-danger/40 bg-danger/5 p-5">
+            <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">{PLATFORM_BILLING_HEADER}</p>
             <h2 className="font-display text-base font-bold text-text">Payment pending</h2>
             <p className="mt-2 text-sm text-text-muted">
               You&apos;ve chosen {allPlans.find((p) => p.id === partner.planId)?.name ?? partner.planId} (
@@ -119,6 +123,7 @@ export default async function PartnerSubscriptionPage({ params }: { params: { pa
                   partnerContact={partner.businessContact}
                   amount={due.amount}
                   publicKeyId={env.razorpayPublicKeyId()}
+                  billedByName={PLATFORM_BILLING_HEADER}
                 />
               ) : (
                 <p className="text-xs text-text-muted">Could not compute an amount due — contact us to complete payment.</p>

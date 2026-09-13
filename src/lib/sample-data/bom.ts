@@ -72,6 +72,11 @@ export const bomColumns: Column[] = [
   { key: "serialized", label: "Serialized", type: "boolean" },
   { key: "category", label: "Category", type: "text" },
   { key: "status", label: "Status", type: "select-chip", chipVariantMap: STATUS_VARIANT },
+  // --- Optional fields, ported from AN-CRM's BOM shape (non-breaking) ---
+  { key: "reorderLevel", label: "Reorder Level", type: "text" },
+  { key: "supplierRef", label: "Supplier / Vendor Ref", type: "text" },
+  { key: "batchNumber", label: "Batch / Lot Number", type: "text" },
+  { key: "warrantyPeriodDays", label: "Warranty Period (days)", type: "text" },
 ];
 
 export const bomRows: Row[] = [
@@ -196,6 +201,11 @@ export const bomFormFields: FormFieldDef[] = [
   { key: "serialized", label: "Serialized (Serial / IMEI tracked)", type: "boolean", required: false },
   { key: "category", label: "Category", type: "text", required: false },
   { key: "status", label: "Status", type: "select", required: true, options: ["Active", "Inactive"] },
+  // --- Optional fields, ported from AN-CRM's BOM shape (non-breaking) ---
+  { key: "reorderLevel", label: "Reorder Level", type: "number", required: false, placeholder: "Stock qty below which a reorder is due" },
+  { key: "supplierRef", label: "Supplier / Vendor Ref", type: "text", required: false, placeholder: "Vendor Profile id or supplier name" },
+  { key: "batchNumber", label: "Batch / Lot Number", type: "text", required: false },
+  { key: "warrantyPeriodDays", label: "Warranty Period (days)", type: "number", required: false },
 ];
 
 export function getBomRecord(recordId: string): Row {
@@ -218,6 +228,10 @@ export function getBomDetailFields(record: Row): RecordField[] {
     { label: "Serialized", value: r["serialized"], type: "boolean" },
     { label: "Category", value: r["category"], type: "text" },
     { label: "Status", value: r["status"], type: "select", chipVariant: STATUS_VARIANT[String(r["status"])] ?? "neutral" },
+    { label: "Reorder Level", value: r["reorderLevel"], type: "text" },
+    { label: "Supplier / Vendor Ref", value: r["supplierRef"], type: "text" },
+    { label: "Batch / Lot Number", value: r["batchNumber"], type: "text" },
+    { label: "Warranty Period (days)", value: r["warrantyPeriodDays"], type: "text" },
   ];
 }
 

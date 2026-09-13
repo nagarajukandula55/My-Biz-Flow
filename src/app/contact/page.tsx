@@ -1,6 +1,13 @@
+import type { Metadata } from "next";
 import { PublicHeader } from "@/components/PublicHeader";
 import { ContactForm } from "./ContactForm";
 import { registerPage } from "@/lib/designer/registry";
+
+export const metadata: Metadata = {
+  title: "Contact",
+  description: "Questions about a My Biz Flow plan, a module, or anything else — send a message and we'll get back to you.",
+  alternates: { canonical: "/contact" },
+};
 
 registerPage({
   id: "platform.contact",

@@ -18,10 +18,15 @@ export async function createBusinessRecordAction(
     const partner = await getPartner(partnerId);
     if (partner) {
       const items = Array.isArray(record["items"]) ? (record["items"] as Record<string, unknown>[]) : [];
+      const customerContactId = record["customerContactId"] ? String(record["customerContactId"]) : undefined;
+      const customerContact = customerContactId
+        ? await getBusinessRecord(partnerId, "billing-contacts", customerContactId)
+        : undefined;
       await notifyCentralApiBillingInvoice(partner, {
         externalOrderId: String(record.id),
         customer: String(record["customer"] ?? ""),
         customerGstin: record["customerGstin"] ? String(record["customerGstin"]) : undefined,
+        customerState: customerContact?.["state"] ? String(customerContact["state"]) : undefined,
         items: items.map((it) => ({
           description: String(it["description"] ?? ""),
           quantity: Number(it["quantity"] ?? 0),

@@ -21,7 +21,9 @@ export type PartnerTypeRecord = {
   planTierByPage: Record<string, PlanTier>;
   /** Which of the 3 real Plan ids (Basic/Pro/Ultimate pricing) this type bundles/offers at signup. */
   planIds: string[];
-  /** When true, signups against this type go to a review queue instead of getting a VND#### id immediately. */
+  /** Prefix used for this type's Partner.id values (e.g. "VND" -> VND0001, "SC" -> SC0001). Each distinct prefix gets its own independent sequence — see src/lib/partnerData.ts. Defaults to "VND". */
+  idPrefix: string;
+  /** When true, signups against this type go to a review queue instead of getting an id immediately. */
   requiresApproval: boolean;
   status: string;
 };
@@ -33,6 +35,7 @@ function toRecord(row: {
   assignableRoleIds: unknown;
   planTierByPage: unknown;
   planIds: unknown;
+  idPrefix: string;
   requiresApproval: boolean;
   status: string;
 }): PartnerTypeRecord {
@@ -43,6 +46,7 @@ function toRecord(row: {
     assignableRoleIds: (row.assignableRoleIds as string[] | null) ?? [],
     planTierByPage: (row.planTierByPage as Record<string, PlanTier> | null) ?? {},
     planIds: (row.planIds as string[] | null) ?? [],
+    idPrefix: row.idPrefix || "VND",
     requiresApproval: row.requiresApproval,
     status: row.status,
   };
@@ -69,6 +73,7 @@ export type PartnerTypeInput = {
   assignableRoleIds: string[];
   planTierByPage: Record<string, PlanTier>;
   planIds: string[];
+  idPrefix?: string;
   requiresApproval: boolean;
   status: string;
 };

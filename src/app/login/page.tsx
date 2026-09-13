@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { LogoMark } from "@/components/LogoMark";
+import { BrandLogo } from "@/components/BrandLogo";
 import { registerPage } from "@/lib/designer/registry";
 import { signInAsPartner } from "./actions";
 
@@ -19,20 +19,25 @@ registerPage({
 export default function LoginPage({
   searchParams,
 }: {
-  searchParams: { error?: string };
+  searchParams: { error?: string; reset?: string };
 }) {
   return (
     <div className="flex min-h-screen w-full items-center justify-center bg-bg px-6">
       <div className="w-full max-w-sm rounded-lg border border-border bg-bg-raised p-8">
         <Link href="/" className="mb-6 flex items-center gap-2">
-          <LogoMark size={24} />
-          <span className="font-display text-lg font-extrabold text-text">My Biz Flow</span>
+          <BrandLogo height={32} />
         </Link>
         <h1 className="font-display text-xl font-bold text-text">Sign in</h1>
 
         {searchParams.error === "invalid_credentials" && (
           <p className="mt-3 rounded-md border border-danger bg-danger-soft px-3 py-2 text-sm text-danger">
             Partner ID / contact number or password is incorrect.
+          </p>
+        )}
+
+        {searchParams.reset === "success" && (
+          <p className="mt-3 rounded-md border border-success-soft bg-success-soft px-3 py-2 text-sm font-semibold text-success">
+            Your password has been reset. Sign in with your new password.
           </p>
         )}
 

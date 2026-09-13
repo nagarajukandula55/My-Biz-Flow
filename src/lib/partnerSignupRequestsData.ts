@@ -108,6 +108,9 @@ export async function approveSignupRequest(requestId: string): Promise<PartnerRe
   return partner;
 }
 
-export async function rejectSignupRequest(requestId: string): Promise<void> {
-  await prisma.partnerSignupRequest.update({ where: { id: requestId }, data: { status: "Rejected" } });
+/** Rejects a request and returns its record — the caller uses businessEmail/
+ * businessName to send sendPartnerRejectedEmail (src/lib/email/partnerEmails.ts). */
+export async function rejectSignupRequest(requestId: string): Promise<SignupRequestRecord> {
+  const row = await prisma.partnerSignupRequest.update({ where: { id: requestId }, data: { status: "Rejected" } });
+  return toRecord(row);
 }

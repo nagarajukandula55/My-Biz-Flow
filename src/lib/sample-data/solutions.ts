@@ -1,17 +1,27 @@
 import type { Column, Row } from "@/components/DataTable";
 import type { RecordField, TimelineEntry, RelatedRecord } from "@/components/RecordDetail";
 import type { FormFieldDef } from "@/components/RecordForm";
+import { DEVICE_CATEGORY_OPTIONS } from "./service-centre-fault-codes";
 
 // Solutions catalog for the service-centre module — partner-owned data (not
 // shared across partners like BOM). Selected on a Workorder's Parts &
 // Service Lines when logging what was done to resolve a job. Every row
 // belongs exclusively to the service-centre module, hence `moduleSlug`.
+//
+// Future-proofing beyond AN-CRM's Solution model: estimatedRepairMinutes and
+// standardLaborCost (both optional) let a solution seed a job's SLA/estimate
+// automatically instead of being typed in fresh each time, and
+// deviceCategoryScope lets the catalog be filtered by relevant device
+// categories the same way Fault/Symptom codes are.
 
 export const solutionsColumns: Column[] = [
   { key: "id", label: "Solution Code", type: "text" },
   { key: "title", label: "Solution", type: "text" },
   { key: "category", label: "Category", type: "select-chip" },
   { key: "defaultLaborCharge", label: "Default Labor Charge", type: "currency" },
+  { key: "estimatedRepairMinutes", label: "Est. Repair Time (min)", type: "text" },
+  { key: "standardLaborCost", label: "Standard Labor Cost", type: "currency" },
+  { key: "deviceCategoryScope", label: "Applicable Device Categories", type: "multi-chip" },
   { key: "notes", label: "Notes", type: "text" },
   { key: "status", label: "Status", type: "select-chip" },
 ];
@@ -69,6 +79,9 @@ export const solutionsFormFields: FormFieldDef[] = [
   { key: "title", label: "Solution", type: "text", required: true },
   { key: "category", label: "Category", type: "select", required: true, options: ["Hardware", "Software", "Maintenance", "Other"] },
   { key: "defaultLaborCharge", label: "Default Labor Charge", type: "currency", required: false },
+  { key: "estimatedRepairMinutes", label: "Est. Repair Time (minutes)", type: "number", required: false },
+  { key: "standardLaborCost", label: "Standard Labor Cost", type: "currency", required: false },
+  { key: "deviceCategoryScope", label: "Applicable Device Categories", type: "multi-select", required: false, options: DEVICE_CATEGORY_OPTIONS },
   { key: "notes", label: "Notes", type: "textarea", required: false },
   { key: "status", label: "Status", type: "select", required: true, options: ["Active", "Inactive"] },
 ];
@@ -83,6 +96,9 @@ export function getSolutionDetailFields(record: Row): RecordField[] {
     { label: "Solution", value: record["title"], type: "text" },
     { label: "Category", value: record["category"], type: "select" },
     { label: "Default Labor Charge", value: record["defaultLaborCharge"], type: "currency" },
+    { label: "Est. Repair Time (minutes)", value: record["estimatedRepairMinutes"], type: "text" },
+    { label: "Standard Labor Cost", value: record["standardLaborCost"], type: "currency" },
+    { label: "Applicable Device Categories", value: record["deviceCategoryScope"], type: "text" },
     { label: "Notes", value: record["notes"], type: "text" },
     { label: "Status", value: record["status"], type: "select" },
   ];

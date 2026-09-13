@@ -17,8 +17,8 @@ export function ForgotPasswordForm() {
   if (sent) {
     return (
       <div className="rounded-md border border-success-soft bg-success-soft p-3 text-sm font-semibold text-success">
-        If that email has an account, a reset link has been sent (demo — no email service wired
-        up yet; logged server-side only).
+        If that email has an account, a reset link has been sent. Check your inbox — the link
+        expires in 30 minutes.
       </div>
     );
   }

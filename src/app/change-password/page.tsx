@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { LogoMark } from "@/components/LogoMark";
 import { registerPage } from "@/lib/designer/registry";
-import { PARTNER_SESSION_COOKIE } from "@/lib/partnerSession";
+import { PARTNER_SESSION_COOKIE, verifyPartnerSessionToken } from "@/lib/partnerSession";
 import { changePasswordAction } from "./actions";
 
 registerPage({
@@ -23,8 +23,8 @@ const ERROR_MESSAGE: Record<string, string> = {
   mismatch: "Passwords don't match.",
 };
 
-export default function ChangePasswordPage({ searchParams }: { searchParams: { error?: string } }) {
-  const partnerId = cookies().get(PARTNER_SESSION_COOKIE)?.value;
+export default async function ChangePasswordPage({ searchParams }: { searchParams: { error?: string } }) {
+  const partnerId = await verifyPartnerSessionToken(cookies().get(PARTNER_SESSION_COOKIE)?.value);
   if (!partnerId) redirect("/login");
 
   return (
