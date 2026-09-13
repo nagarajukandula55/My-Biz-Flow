@@ -2,11 +2,19 @@ import { NextResponse } from "next/server";
 import { getPartner } from "@/lib/partnerData";
 import { computePartnerDueAmount } from "@/lib/subscriptionData";
 import { createOrder } from "@/lib/razorpay";
+import { getSessionPartnerId } from "@/lib/requirePartnerSession";
 
-/** Creates a Razorpay Order for the calling partner's currently chosen plan+cycle+offer. */
-export async function POST(request: Request) {
-  const { partnerId } = await request.json();
-  if (!partnerId) return NextResponse.json({ error: "partnerId is required" }, { status: 400 });
+/**
+ * Creates a Razorpay Order for the calling partner's currently chosen
+ * plan+cycle+offer. partnerId comes from the signed-in session cookie, not
+ * the request body — previously any caller could pass an arbitrary
+ * partnerId here and probe another partner's due amount/plan (the payment
+ * itself was still safe since verify/ separately checks the Razorpay
+ * signature, but this endpoint alone leaked billing info cross-tenant).
+ */
+export async function POST() {
+  const partnerId = await getSessionPartnerId();
+  if (!partnerId) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
 
   const partner = await getPartner(partnerId);
   if (!partner) return NextResponse.json({ error: "Partner not found" }, { status: 404 });

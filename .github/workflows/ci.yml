@@ -9,6 +9,25 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # `npm run build` runs `prisma migrate deploy` before `next build` (see
+    # package.json), which needs a real, reachable Postgres to apply
+    # migrations against — not just a DATABASE_URL-shaped string. Without
+    # this service, migrate deploy fails trying to connect to
+    # localhost:5432 with nothing listening there.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
 
@@ -27,9 +46,14 @@ jobs:
         env:
           # Dummy values so the build doesn't fail on missing env vars for
           # features that read them lazily (see src/lib/env.ts) — CI only
-          # needs the build to succeed, not to talk to a real database or
-          # central-api.
+          # needs the build to succeed, not to talk to a real central-api.
+          # DATABASE_URL/DATABASE_URL_UNPOOLED point at the postgres
+          # service above (schema.prisma requires both — see its directUrl
+          # doc comment), and prisma migrate deploy actually applies every
+          # migration against it as part of the build.
           SUPER_ADMIN_SECRET: ci-placeholder-secret
+          PARTNER_SESSION_SECRET: ci-placeholder-partner-session-secret-value
           DATABASE_URL: postgres://ci:ci@localhost:5432/ci
+          DATABASE_URL_UNPOOLED: postgres://ci:ci@localhost:5432/ci
           CENTRAL_API_URL: https://example.invalid
           CENTRAL_API_KEY: ci-placeholder-key
