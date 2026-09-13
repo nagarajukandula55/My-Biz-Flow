@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
@@ -5,7 +6,7 @@ import { ServiceCentreClientTable } from "./ServiceCentreClientTable";
 import { ServiceCentreNewButton } from "./ServiceCentreNewButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { serviceCentreColumns } from "@/lib/sample-data/service-centre";
-import { listBusinessRecords } from "@/lib/businessRecords";
+import { listBusinessRecords, listBusinessRecordsPaginated } from "@/lib/businessRecords";
 
 registerPage({
   id: "service-centre.list",
@@ -26,40 +27,64 @@ registerPage({
 export const dynamic = "force-dynamic";
 
 /**
- * Server-side filtering read from URL searchParams — a plain GET form, no
- * client JS required, matching this app's "server components read data
- * directly at render time" convention. Extends (rather than replaces) the
- * plain list view for status/priority/brand/model/technician/date-range/
- * customer-device search.
+ * Server-side filtering + pagination read from URL searchParams — a plain
+ * GET form, no client JS required, matching this app's "server components
+ * read data directly at render time" convention. Filters/search/date-range
+ * are applied to the same paginated query (listBusinessRecordsPaginated),
+ * so pagination operates on the filtered result set, not the full table.
+ * Filter option lists (status/priority/brand/model/technician) are drawn
+ * from the full unfiltered set so dropdowns don't shrink as filters narrow
+ * the visible rows.
  */
+type SearchParams = {
+  page?: string;
+  status?: string;
+  priority?: string;
+  brandName?: string;
+  modelName?: string;
+  technicianName?: string;
+  from?: string;
+  to?: string;
+  q?: string;
+};
+
+const SEARCH_FIELDS = ["id", "customer", "device"];
+
+function buildQueryString(params: SearchParams, overrides: Record<string, string | undefined>) {
+  const merged: Record<string, string | undefined> = { ...params, ...overrides };
+  const usp = new URLSearchParams();
+  for (const [key, value] of Object.entries(merged)) {
+    if (value) usp.set(key, value);
+  }
+  const qs = usp.toString();
+  return qs ? `?${qs}` : "";
+}
+
 export default async function ServiceCentrePage({
   params,
   searchParams,
 }: {
   params: { partnerId: string };
-  searchParams: { [key: string]: string | undefined };
+  searchParams: SearchParams;
 }) {
   const mod = await getModule("service-centre");
   const columns = await applyCustomizations("service-centre.list", serviceCentreColumns);
-  const allRows = await listBusinessRecords(params.partnerId, "service-centre");
 
   const { status, priority, brandName, modelName, technicianName, from, to, q } = searchParams;
 
-  const rows = allRows.filter((r) => {
-    if (status && String(r["status"] ?? "") !== status) return false;
-    if (priority && String(r["priority"] ?? "") !== priority) return false;
-    if (brandName && String(r["brandName"] ?? "") !== brandName) return false;
-    if (modelName && String(r["modelName"] ?? "") !== modelName) return false;
-    if (technicianName && String(r["technicianName"] ?? "") !== technicianName) return false;
-    if (from && String(r["receivedDate"] ?? "") < from) return false;
-    if (to && String(r["receivedDate"] ?? "") > to) return false;
-    if (q) {
-      const needle = q.toLowerCase();
-      const haystack = `${r["customer"] ?? ""} ${r["device"] ?? ""} ${r["id"] ?? ""}`.toLowerCase();
-      if (!haystack.includes(needle)) return false;
-    }
-    return true;
-  });
+  const page = Math.max(1, Number(searchParams.page) || 1);
+  const [{ rows, total, totalPages, pageSize }, allRows] = await Promise.all([
+    listBusinessRecordsPaginated(params.partnerId, "service-centre", {
+      page,
+      filters: { status, priority, brandName, modelName, technicianName },
+      dateRange: { field: "receivedDate", from, to },
+      search: q ? { query: q, fields: SEARCH_FIELDS } : undefined,
+    }),
+    listBusinessRecords(params.partnerId, "service-centre"),
+  ]);
+
+  const rangeStart = total === 0 ? 0 : (page - 1) * pageSize + 1;
+  const rangeEnd = Math.min(total, page * pageSize);
 
   const distinct = (key: string) => Array.from(new Set(allRows.map((r) => String(r[key] ?? "")).filter(Boolean)));
   const statusOptions = distinct("status");
@@ -67,6 +92,8 @@ export default async function ServiceCentrePage({
   const brandOptions = distinct("brandName");
   const modelOptions = distinct("modelName");
   const technicianOptions = distinct("technicianName");
+
+  const hasActiveFilters = Boolean(q || status || priority || brandName || modelName || technicianName || from || to);
 
   return (
     <AppShell
@@ -103,11 +130,44 @@ export default async function ServiceCentrePage({
             <input type="date" name="to" defaultValue={to ?? ""} className="rounded-md border border-border bg-bg px-3 py-1.5 text-sm text-text" />
           </div>
           <button type="submit" className="btn-accent">Apply</button>
-          <a href={`/partner/${params.partnerId}/service-centre`} className="btn-outline">Clear</a>
+          {hasActiveFilters && (
+            <a href={`/partner/${params.partnerId}/service-centre`} className="btn-outline">Clear</a>
+          )}
         </form>
 
         <div className="mt-6">
           <ServiceCentreClientTable partnerId={params.partnerId} columns={columns} rows={rows} />
+        </div>
+
+        <div className="mt-4 flex items-center justify-between text-sm text-text-muted">
+          <span>
+            {total === 0
+              ? "No workorders match these filters."
+              : `Showing ${rangeStart}–${rangeEnd} of ${total}`}
+          </span>
+          <div className="flex items-center gap-2">
+            <Link
+              href={buildQueryString(searchParams, { page: String(Math.max(1, page - 1)) })}
+              aria-disabled={page <= 1}
+              className={`rounded-md border border-border px-3 py-1.5 ${
+                page <= 1 ? "pointer-events-none opacity-40" : "hover:bg-bg-sunken"
+              }`}
+            >
+              Previous
+            </Link>
+            <span>
+              Page {page} of {totalPages}
+            </span>
+            <Link
+              href={buildQueryString(searchParams, { page: String(Math.min(totalPages, page + 1)) })}
+              aria-disabled={page >= totalPages}
+              className={`rounded-md border border-border px-3 py-1.5 ${
+                page >= totalPages ? "pointer-events-none opacity-40" : "hover:bg-bg-sunken"
+              }`}
+            >
+              Next
+            </Link>
+          </div>
         </div>
       </div>
     </AppShell>
@@ -127,4 +187,3 @@ function FilterSelect({ label, name, value, options }: { label: string; name: st
     </div>
   );
 }
-

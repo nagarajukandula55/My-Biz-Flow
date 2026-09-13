@@ -2,11 +2,11 @@
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { PARTNER_SESSION_COOKIE } from "@/lib/partnerSession";
+import { PARTNER_SESSION_COOKIE, verifyPartnerSessionToken } from "@/lib/partnerSession";
 import { setPartnerPassword } from "@/lib/partnerData";
 
 export async function changePasswordAction(formData: FormData) {
-  const partnerId = cookies().get(PARTNER_SESSION_COOKIE)?.value;
+  const partnerId = await verifyPartnerSessionToken(cookies().get(PARTNER_SESSION_COOKIE)?.value);
   if (!partnerId) redirect("/login");
 
   const newPassword = String(formData.get("newPassword") ?? "");

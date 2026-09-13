@@ -27,6 +27,11 @@ function requireEnv(name: string): string {
 
 export const env = {
   superAdminSecret: () => requireEnv("SUPER_ADMIN_SECRET"),
+  /** Signing secret for the partner session JWT (src/lib/partnerSession.ts).
+   * Required — there is no insecure fallback. Without this set, every
+   * partner login/session-check throws rather than silently issuing an
+   * unsigned or default-keyed cookie. */
+  partnerSessionSecret: () => requireEnv("PARTNER_SESSION_SECRET"),
   databaseUrl: () => requireEnv("DATABASE_URL"),
   centralApiUrl: () => requireEnv("CENTRAL_API_URL"),
   centralApiKey: () => requireEnv("CENTRAL_API_KEY"),

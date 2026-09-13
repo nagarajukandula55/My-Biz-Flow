@@ -2,7 +2,11 @@
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { PARTNER_SESSION_COOKIE } from "@/lib/partnerSession";
+import {
+  PARTNER_SESSION_COOKIE,
+  PARTNER_SESSION_MAX_AGE_SECONDS,
+  createPartnerSessionToken,
+} from "@/lib/partnerSession";
 import { findPartnerByLoginIdentifier, verifyPartnerPassword } from "@/lib/partnerData";
 
 /**
@@ -26,12 +30,13 @@ export async function signInAsPartner(formData: FormData) {
     redirect("/login?error=invalid_credentials");
   }
 
-  cookies().set(PARTNER_SESSION_COOKIE, partner.id, {
+  const token = await createPartnerSessionToken(partner.id);
+  cookies().set(PARTNER_SESSION_COOKIE, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
-    maxAge: 60 * 60 * 8,
+    maxAge: PARTNER_SESSION_MAX_AGE_SECONDS,
   });
 
   if (partner.mustChangePassword) {
