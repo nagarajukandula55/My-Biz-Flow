@@ -43,11 +43,18 @@
  *     kind above) -> BusinessRecord rows under "service-centre-sc-profile"
  *     (see src/lib/sample-data/service-centre-sc-profile.ts and its
  *     code comment on why this is NOT folded into Partner).
+ *   - AN-CRM `SalesInvoice` -> BusinessRecord rows under "billing", and its
+ *     `Payment` documents -> BusinessRecord rows under "billing-payments"
+ *     (one invoice can have many payments — see
+ *     src/lib/sample-data/billing-payments.ts's getInvoiceBalance(), which
+ *     computes an invoice's paid/balance from its linked payments instead
+ *     of a single stored field, so partial-payment history is preserved).
  *
  * This script deliberately does NOT touch AN-CRM's broader SaaS layer
  * (referrals, promo codes, Telegram, plan pricing) — out of scope, see the
- * task brief. It also does not migrate Invoice/SalesInvoice/Payment/
- * Agreement in this pass; only counts them (search "TODO(next-pass)").
+ * task brief. `Invoice` (the older model, superseded by SalesInvoice) and
+ * `Agreement` (explicitly excluded from this app's scope) are counted only,
+ * never migrated.
  */
 
 import mongoose from "mongoose";
@@ -299,7 +306,7 @@ async function main() {
           status: vp.status === "Inactive" ? "Inactive" : "Active",
         };
 
-        if (APPLY) {
+  if (APPLY) {
           const existing = await prisma.businessRecord.findUnique({
             where: { partnerId_moduleSlug_recordKey: { partnerId, moduleSlug: "service-centre-sc-profile", recordKey } },
           });
@@ -314,19 +321,122 @@ async function main() {
           counts["service-centre-sc-profile"].created += 1;
         }
       }
+
+      // 5) SalesInvoice -> "billing" BusinessRecords ---------------------------
+      // The data-model question flagged in an earlier pass (how AN-CRM's
+      // separate Invoice/SalesInvoice/Payment documents collapse into this
+      // app's billing shape without losing partial-payment history) is now
+      // resolved: src/lib/sample-data/billing-payments.ts made Payments their
+      // own BusinessRecord module ("billing-payments") linked by invoiceId,
+      // with the invoice's paid/balance computed from linked payments
+      // (getInvoiceBalance()) rather than stored as a single field. So a
+      // SalesInvoice with N Payments maps to 1 "billing" record + N
+      // "billing-payments" records, matching AN-CRM's real shape exactly —
+      // no data loss, no schema change needed.
+      const salesInvoices = await SalesInvoiceModel.find({ businessId: biz._id }).lean();
+      const invoiceIdAllocator = makeIdAllocator("INV-", 4000);
+      for (const inv of salesInvoices) invoiceIdAllocator.resolve(String(inv._id));
+      for (const inv of salesInvoices) {
+        bumpSeen(counts, "billing (SalesInvoice)");
+        const recordKey = String(inv._id);
+        const invoiceId = invoiceIdAllocator.resolve(recordKey);
+        const items = Array.isArray(inv.items) ? inv.items : [];
+        const lineItemsSummary = items
+          .map((it: any) => `${it.description ?? ""} — ${it.quantity ?? 1} ${it.unit ?? "unit"}`)
+          .join("; ");
+        const statusMap: Record<string, string> = {
+          DRAFT: "Draft",
+          SENT: "Sent",
+          PAID: "Paid",
+          OVERDUE: "Overdue",
+          PARTIAL: "Partially Paid",
+          CANCELLED: "Draft",
+          FAILED: "Overdue",
+        };
+        const data = {
+          id: invoiceId,
+          customer: String(inv.customer?.name ?? inv.customer?.company ?? ""),
+          issueDate: inv.issueDate ?? inv.createdAt ?? new Date().toISOString(),
+          dueDate: inv.dueDate ?? undefined,
+          lineItemsSummary,
+          subtotal: Number(inv.subtotal ?? 0),
+          taxAmount: Number(inv.taxTotal ?? 0),
+          discountAmount: Number(inv.discountAmount ?? 0),
+          roundOff: 0,
+          totalAmount: Number(inv.grandTotal ?? 0),
+          amountPaid: Number(inv.paidAmount ?? 0),
+          amountDue: Number(inv.grandTotal ?? 0) - Number(inv.paidAmount ?? 0),
+          paymentStatus: statusMap[String(inv.status ?? "SENT")] ?? "Sent",
+          paymentMode: inv.paymentMethod ?? undefined,
+        };
+
+        if (APPLY) {
+          const existing = await prisma.businessRecord.findUnique({
+            where: { partnerId_moduleSlug_recordKey: { partnerId, moduleSlug: "billing", recordKey } },
+          });
+          await prisma.businessRecord.upsert({
+            where: { partnerId_moduleSlug_recordKey: { partnerId, moduleSlug: "billing", recordKey } },
+            create: { partnerId, moduleSlug: "billing", recordKey, data },
+            update: { data },
+          });
+          if (existing) counts["billing (SalesInvoice)"].updated += 1;
+          else counts["billing (SalesInvoice)"].created += 1;
+        } else {
+          counts["billing (SalesInvoice)"].created += 1;
+        }
+
+        // 6) This invoice's Payments -> "billing-payments" BusinessRecords ---
+        // AN-CRM's Payment model keys on invoiceId as a free-text field (not
+        // always the Mongo _id — see Payment.ts), so match defensively on
+        // both the raw invoiceId string and this invoice's own _id/number.
+        const payments = await PaymentModel.find({
+          $or: [
+            { invoiceId: recordKey },
+            { invoiceId: String(inv.invoiceNumber ?? "") },
+          ],
+        }).lean();
+        const paymentIdAllocator = makeIdAllocator(`PMT-${invoiceId}-`, 1);
+        for (const pay of payments) {
+          bumpSeen(counts, "billing-payments (Payment)");
+          const payRecordKey = String(pay._id);
+          const payData = {
+            id: paymentIdAllocator.resolve(payRecordKey),
+            invoiceId,
+            contact: data.customer,
+            amount: Number(pay.amount ?? 0),
+            mode: pay.method ?? "Bank Transfer",
+            date: pay.paidAt ?? pay.createdAt ?? new Date().toISOString(),
+            reference: pay.utr ?? pay.gatewayPaymentId ?? undefined,
+          };
+
+          if (APPLY) {
+            const existingPay = await prisma.businessRecord.findUnique({
+              where: { partnerId_moduleSlug_recordKey: { partnerId, moduleSlug: "billing-payments", recordKey: payRecordKey } },
+            });
+            await prisma.businessRecord.upsert({
+              where: { partnerId_moduleSlug_recordKey: { partnerId, moduleSlug: "billing-payments", recordKey: payRecordKey } },
+              create: { partnerId, moduleSlug: "billing-payments", recordKey: payRecordKey, data: payData },
+              update: { data: payData },
+            });
+            if (existingPay) counts["billing-payments (Payment)"].updated += 1;
+            else counts["billing-payments (Payment)"].created += 1;
+          } else {
+            counts["billing-payments (Payment)"].created += 1;
+          }
+        }
+      }
     }
 
-    // TODO(next-pass): Invoice/SalesInvoice/Payment/Agreement migration into
-    // the "billing" module — counted only, so the report below reflects true
-    // remaining scope. Field-mapping needs a decision on how AN-CRM's
-    // separate Invoice/SalesInvoice/Payment documents collapse into this
-    // app's single billing BusinessRecord shape (see billing.ts) without
-    // losing partial-payment history (multiple Payments per Invoice).
+    // Invoice.ts is AN-CRM's older ecommerce/order invoice model, superseded
+    // by SalesInvoice (see SalesInvoice.ts's own top comment: "FAILED/PARTIAL
+    // added when Invoice.ts... was merged into this one") — any business
+    // still on it has already been folded into SalesInvoice going forward,
+    // so it's counted only, not migrated separately, to avoid duplicate
+    // invoice records. Agreement stays excluded per explicit scope (assigned
+    // to a different module later) — counted only, never migrated.
     for (const [label, m] of [
-      ["Invoice (not migrated — counted only)", InvoiceModel],
-      ["SalesInvoice (not migrated — counted only)", SalesInvoiceModel],
-      ["Payment (not migrated — counted only)", PaymentModel],
-      ["Agreement (not migrated — counted only)", AgreementModel],
+      ["Invoice (legacy, superseded by SalesInvoice — counted only)", InvoiceModel],
+      ["Agreement (explicitly excluded — counted only)", AgreementModel],
     ] as const) {
       const n = await m.countDocuments({});
       counts[label] = { seen: n, created: 0, updated: 0, skipped: n };
