@@ -89,6 +89,90 @@ export async function getWorkorderStatusBreakdown(partnerId: string): Promise<Pi
   return Array.from(counts.entries()).map(([name, value]) => ({ name, value }));
 }
 
+/**
+ * Service Centre period/volume + revenue-this-month stats for the partner
+ * Dashboard — mirrors the reference vendor portal's "CRM Overview" (period
+ * cards + open/closed counts + technician workload), computed from this
+ * app's own BusinessRecord store (service-centre.stage/technicianName,
+ * billing.totalAmount), not ported/fabricated. Only called when
+ * "service-centre" is one of the partner's visible modules (see
+ * dashboard/page.tsx).
+ */
+export interface ServiceCentreOverview {
+  workordersToday: number;
+  workordersThisWeek: number;
+  workordersThisMonth: number;
+  workordersThisYear: number;
+  openWorkorders: number;
+  closedThisMonth: number;
+  revenueThisMonth: number;
+  technicianWorkload: { technician: string; open: number }[];
+}
+
+export async function getServiceCentreOverview(partnerId: string): Promise<ServiceCentreOverview> {
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfWeek = new Date(startOfToday);
+  startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const startOfYear = new Date(now.getFullYear(), 0, 1);
+
+  const [workorders, billingRowsThisMonth] = await Promise.all([
+    prisma.businessRecord.findMany({
+      where: { partnerId, moduleSlug: "service-centre" },
+      select: { data: true, createdAt: true },
+    }),
+    prisma.businessRecord.findMany({
+      where: { partnerId, moduleSlug: "billing", createdAt: { gte: startOfMonth } },
+      select: { data: true },
+    }),
+  ]);
+
+  let workordersToday = 0;
+  let workordersThisWeek = 0;
+  let workordersThisMonth = 0;
+  let workordersThisYear = 0;
+  let openWorkorders = 0;
+  let closedThisMonth = 0;
+  const workloadByTechnician = new Map<string, number>();
+
+  for (const r of workorders) {
+    const data = r.data as Record<string, unknown>;
+    const stage = WORKORDER_STAGES.includes(data.stage as WorkorderStage) ? (data.stage as WorkorderStage) : "Created";
+    if (r.createdAt >= startOfToday) workordersToday++;
+    if (r.createdAt >= startOfWeek) workordersThisWeek++;
+    if (r.createdAt >= startOfMonth) workordersThisMonth++;
+    if (r.createdAt >= startOfYear) workordersThisYear++;
+    if (stage !== "Closed") {
+      openWorkorders++;
+      const tech = typeof data.technicianName === "string" && data.technicianName.trim() ? data.technicianName.trim() : "Unassigned";
+      workloadByTechnician.set(tech, (workloadByTechnician.get(tech) ?? 0) + 1);
+    }
+    if (stage === "Closed" && r.createdAt >= startOfMonth) closedThisMonth++;
+  }
+
+  const revenueThisMonth = billingRowsThisMonth.reduce((total, r) => {
+    const data = r.data as Record<string, unknown>;
+    return total + (typeof data.totalAmount === "number" ? data.totalAmount : 0);
+  }, 0);
+
+  const technicianWorkload = Array.from(workloadByTechnician.entries())
+    .map(([technician, open]) => ({ technician, open }))
+    .sort((a, b) => b.open - a.open)
+    .slice(0, 6);
+
+  return {
+    workordersToday,
+    workordersThisWeek,
+    workordersThisMonth,
+    workordersThisYear,
+    openWorkorders,
+    closedThisMonth,
+    revenueThisMonth,
+    technicianWorkload,
+  };
+}
+
 export const recentActivityColumns = [
   { key: "module", label: "Module", type: "text" as const },
   { key: "event", label: "Event", type: "text" as const },
