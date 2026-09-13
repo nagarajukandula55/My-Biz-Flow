@@ -2,7 +2,7 @@ export type StatusVariant = "teal" | "amber" | "success" | "warning" | "danger" 
 
 const VARIANT_STYLES: Record<StatusVariant, { bg: string; dot: string; text: string }> = {
   teal: { bg: "bg-teal-soft", dot: "bg-teal", text: "text-teal" },
-  amber: { bg: "bg-accent-soft", dot: "bg-accent", text: "text-accent-contrast" },
+  amber: { bg: "bg-accent-soft", dot: "bg-accent", text: "text-accent" },
   success: { bg: "bg-success-soft", dot: "bg-success", text: "text-success" },
   warning: { bg: "bg-warning-soft", dot: "bg-warning", text: "text-warning" },
   danger: { bg: "bg-danger-soft", dot: "bg-danger", text: "text-danger" },

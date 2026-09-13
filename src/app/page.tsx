@@ -11,6 +11,9 @@ export const metadata: Metadata = {
   title: "No-Code Business Management Platform for Service Businesses",
   description:
     "My Biz Flow is a modular, no-code business/CRM platform: mix and match POS, Service Centre workorders, Billing, GST-compliant invoicing, Inventory, HRMS, Clinic, and more on one account — no custom development required.",
+  // Canonical stays the base "/" regardless of ?type= -- the Service Centre
+  // variant is a content branch of the same page/URL, not a distinct page,
+  // so a separate canonical would just create duplicate-content confusion.
   alternates: { canonical: "/" },
 };
 
@@ -42,6 +45,33 @@ const FAQS = [
   },
 ];
 
+// Service Centre (repair/workorder shop) specific FAQ content, folded into
+// the same FAQPage JSON-LD as FAQS when the Service Centre variant renders,
+// per the Service Centre module's real, verified capabilities (see
+// src/lib/sample-data/service-centre.ts and src/app/service-centre-track):
+// a Created -> In Progress -> Completed -> Closed workorder lifecycle,
+// fault/symptom/solution catalogs, inventory-linked stock deduction on
+// repair, GST invoicing generated from a closed workorder, and a public
+// no-login tracking page. Deliberately no e-signature/agreements or
+// multi-staff-login claims -- those aren't built.
+const SERVICE_CENTRE_FAQS = [
+  {
+    question: "What does the Service Centre module actually track?",
+    answer:
+      "Every workorder from intake to close: fault/symptom/solution details from a live catalog, brand/model and technician assignment, a Created → In Progress → Completed → Closed lifecycle, and the parts and labour line items tied to it.",
+  },
+  {
+    question: "Can customers check on their repair without logging in?",
+    answer:
+      "Yes — each workorder gets a public tracking link (no account needed) that shows its current stage, so a customer can check repair status without calling in.",
+  },
+  {
+    question: "Does closing a workorder handle billing and stock automatically?",
+    answer:
+      "Closing a workorder can generate a GST-compliant invoice directly from its parts and labour line items, and parts used are deducted from Inventory automatically — so billing and stock stay in sync with what was actually repaired.",
+  },
+];
+
 registerPage({
   id: "platform.home",
   moduleSlug: "platform",
@@ -61,15 +91,29 @@ const SCREENSHOTS: { name: string; alt: string }[] = [
   { name: "designer", alt: "The Super Admin Designer listing every registered page in the product" },
 ];
 
-export default async function RootPage() {
+export default async function RootPage({
+  searchParams,
+}: {
+  searchParams: { type?: string };
+}) {
   const partnerTypes = await listActivePartnerTypes();
+  // Service Centre variant triggers on an explicit ?type=service-centre
+  // (e.g. arriving from the pricing/signup business-type chooser), or when
+  // Service Centre is the only active business type configured at all --
+  // in which case the generic multi-vertical pitch would be misleading.
+  const isServiceCentre =
+    searchParams.type === "service-centre" ||
+    (partnerTypes.length === 1 && partnerTypes[0].id === "service-centre");
+  const faqs = isServiceCentre ? [...FAQS, ...SERVICE_CENTRE_FAQS] : FAQS;
 
   // Structured data for both classic search rich results and AI answer
   // engines (GEO) -- SoftwareApplication describes what the product is and
   // links to real pricing, Organization anchors the brand identity, and
   // FAQPage exposes the same Q&A pairs rendered below in a form these
   // engines can extract directly. Every claim here matches copy elsewhere
-  // on the page -- no invented stats, ratings, or user counts.
+  // on the page -- no invented stats, ratings, or user counts. Kept in
+  // sync with whichever variant (generic vs Service Centre) is actually
+  // rendered below.
   const jsonLd = [
     {
       "@context": "https://schema.org",
@@ -78,11 +122,12 @@ export default async function RootPage() {
       applicationCategory: "BusinessApplication",
       operatingSystem: "Web",
       url: SITE_URL,
-      description:
-        "Modular, no-code, multi-vertical business/CRM platform. Mix and match POS, Service Centre, Billing, Clinic, HRMS, Inventory, and more modules on one account.",
+      description: isServiceCentre
+        ? "No-code Service Centre / repair-shop platform: workorder lifecycle tracking, fault/symptom/solution catalogs, inventory-linked GST billing, and public no-login repair tracking, on the same modular My Biz Flow platform."
+        : "Modular, no-code, multi-vertical business/CRM platform. Mix and match POS, Service Centre, Billing, Clinic, HRMS, Inventory, and more modules on one account.",
       offers: {
         "@type": "Offer",
-        url: `${SITE_URL}/pricing`,
+        url: `${SITE_URL}/pricing${isServiceCentre ? "?type=service-centre" : ""}`,
         priceCurrency: "INR",
         category: "SaaS subscription",
       },
@@ -100,7 +145,7 @@ export default async function RootPage() {
     {
       "@context": "https://schema.org",
       "@type": "FAQPage",
-      mainEntity: FAQS.map((f) => ({
+      mainEntity: faqs.map((f) => ({
         "@type": "Question",
         name: f.question,
         acceptedAnswer: { "@type": "Answer", text: f.answer },
@@ -137,24 +182,82 @@ export default async function RootPage() {
       </header>
 
       <section className="px-6 py-20 text-center">
-        <h1 className="mx-auto max-w-3xl font-display text-4xl font-extrabold text-text sm:text-5xl">
-          One platform. Every business you run.
-        </h1>
-        <p className="mbf-prose mx-auto mt-5 text-lg leading-relaxed text-text-muted">
-          My Biz Flow is a modular, no-code, multi-vertical business/CRM platform. Instead of shipping a separate
-          product per industry, every business runs on one shared metadata engine — modules, fields, pipelines, and
-          dashboards are all config-driven. Mix and match POS, Service Centre, Billing, Clinic, HRMS, and more on a
-          single account.
-        </p>
+        {isServiceCentre ? (
+          <>
+            <h1 className="mx-auto max-w-3xl font-display text-4xl font-extrabold text-text sm:text-5xl">
+              Run your service centre from one screen.
+            </h1>
+            <p className="mbf-prose mx-auto mt-5 text-lg leading-relaxed text-text-muted">
+              My Biz Flow's Service Centre module takes a repair from intake to invoice without switching tools —
+              log the fault, assign a technician, move the workorder through its lifecycle, and bill it out with
+              GST-compliant invoicing that deducts the parts used straight from Inventory.
+            </p>
+          </>
+        ) : (
+          <>
+            <h1 className="mx-auto max-w-3xl font-display text-4xl font-extrabold text-text sm:text-5xl">
+              One platform. Every business you run.
+            </h1>
+            <p className="mbf-prose mx-auto mt-5 text-lg leading-relaxed text-text-muted">
+              My Biz Flow is a modular, no-code, multi-vertical business/CRM platform. Instead of shipping a separate
+              product per industry, every business runs on one shared metadata engine — modules, fields, pipelines,
+              and dashboards are all config-driven. Mix and match POS, Service Centre, Billing, Clinic, HRMS, and
+              more on a single account.
+            </p>
+          </>
+        )}
         <div className="mt-8 flex items-center justify-center gap-4">
-          <Link href="/signup" className="btn-accent">
+          <Link href={isServiceCentre ? "/signup?type=service-centre" : "/signup"} className="btn-accent">
             Register your business
           </Link>
-          <Link href="/pricing" className="btn-outline">
+          <Link href={isServiceCentre ? "/pricing?type=service-centre" : "/pricing"} className="btn-outline">
             See pricing
           </Link>
         </div>
       </section>
+
+      {isServiceCentre && (
+        <section className="border-t border-border px-6 py-16">
+          <div className="mx-auto max-w-5xl">
+            <h2 className="text-center font-display text-2xl font-bold text-text">
+              Built around the real repair workflow
+            </h2>
+            <p className="mbf-prose mx-auto mt-2 text-center text-base text-text-muted">
+              Not a generic ticketing tool bent into shape — these are the actual capabilities of the Service Centre
+              module.
+            </p>
+            <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              {[
+                {
+                  title: "Full workorder lifecycle",
+                  description:
+                    "Created → In Progress → Completed → Closed, with fault/symptom/solution details, brand/model and technician assignment on every job.",
+                },
+                {
+                  title: "Public repair tracking",
+                  description:
+                    "Every workorder gets a shareable tracking link — customers check status without an account or a phone call.",
+                },
+                {
+                  title: "Inventory-linked billing",
+                  description:
+                    "Close a workorder and it can generate a GST-compliant invoice from the parts and labour used, deducting stock from Inventory automatically.",
+                },
+                {
+                  title: "No-code, same as every module",
+                  description:
+                    "Fields, statuses, and catalogs are config-driven — a Super Admin can tailor Service Centre without custom development.",
+                },
+              ].map((f) => (
+                <div key={f.title} className="rounded-lg border border-border bg-bg-raised p-5">
+                  <h3 className="font-display text-base font-bold text-text">{f.title}</h3>
+                  <p className="mt-1.5 text-sm leading-relaxed text-text-muted">{f.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       <section className="border-t border-border px-6 py-16">
         <div className="mx-auto max-w-5xl">
@@ -211,7 +314,7 @@ export default async function RootPage() {
         <div className="mx-auto max-w-3xl">
           <h2 className="text-center font-display text-2xl font-bold text-text">Frequently asked questions</h2>
           <div className="mt-10 space-y-8">
-            {FAQS.map((faq) => (
+            {faqs.map((faq) => (
               <div key={faq.question}>
                 <h3 className="font-display text-base font-bold text-text">{faq.question}</h3>
                 <p className="mbf-prose mt-1.5 text-sm leading-relaxed text-text-muted">{faq.answer}</p>

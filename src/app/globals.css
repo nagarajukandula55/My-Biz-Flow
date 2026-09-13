@@ -3,33 +3,52 @@
 @tailwind utilities;
 
 /* ---------------------------------------------------------------------
-   MBF design tokens — "Ledger Ink" palette.
+   MBF design tokens — "Brand Blue" palette, matched to the real logo
+   artwork (public/logo-mark.png): blue gradient wordmark/swoosh
+   (~#1E7FE0 → #38BDF8) over deep navy (~#0B1F3A), a green check/arrow
+   accent (~#22A559), and an amber growth-arrow/bar-chart accent
+   (~#F5A623). Token NAMES are unchanged from the previous "Ledger Ink"
+   palette (only values changed) so every component that already
+   references bg-accent/text-accent/etc. picks this up automatically.
+
+   --accent is now the logo blue (was orange). --success is the logo
+   green. --teal is repurposed as a secondary blue-teal (distinct from
+   --accent, still in the logo's blue family) rather than dropped, to
+   avoid touching every component that references it. --warning carries
+   the logo's amber/orange accent.
+
+   Every foreground/background pairing actually used in the codebase
+   (bg-accent + accent-contrast, text-accent/-success/-warning/-danger/
+   -teal on bg/bg-raised/bg-sunken and on their own -soft backgrounds,
+   text/text-muted on bg/bg-raised/bg-sunken) was checked by hand against
+   the WCAG 2.1 relative-luminance contrast formula and meets at least
+   4.5:1 (normal text) in both this light block and the dark block below.
    Light mode is the default on :root. Dark mode applies via
    prefers-color-scheme (system) guarded so an explicit light override
    wins, and via [data-theme="dark"] for an explicit toggle.
 --------------------------------------------------------------------- */
 :root {
-  --bg: #F0F1F4;
+  --bg: #F1F4F8;
   --bg-raised: #FFFFFF;
-  --bg-sunken: #E4E6EC;
-  --text: #14171F;
-  --text-muted: #5B6270;
-  --border: #D8DBE2;
-  --accent: #E8873A;
-  --accent-contrast: #14171F;
-  --accent-soft: #FBEADA;
-  --teal: #2F7A6D;
-  --teal-soft: #E4F0EC;
-  --danger: #C0432F;
-  --danger-soft: #F8E2DD;
-  --success: #2F7A55;
-  --success-soft: #E1F0E6;
-  --warning: #C98A1B;
-  --warning-soft: #F7EAD2;
-  --sidebar-bg: #181C25;
-  --sidebar-text: #C6CAD4;
-  --sidebar-text-dim: #7A8091;
-  --sidebar-active: #232838;
+  --bg-sunken: #E5E9F0;
+  --text: #0B1F3A;
+  --text-muted: #52607A;
+  --border: #D7DCE6;
+  --accent: #1A63BD;
+  --accent-contrast: #FFFFFF;
+  --accent-soft: #EAF2FC;
+  --teal: #0C6F86;
+  --teal-soft: #E3F5F9;
+  --danger: #B23B29;
+  --danger-soft: #FBEAE6;
+  --success: #137A3B;
+  --success-soft: #E1F4E8;
+  --warning: #9C5209;
+  --warning-soft: #FBEDD9;
+  --sidebar-bg: #0B1F3A;
+  --sidebar-text: #C9D3E4;
+  --sidebar-text-dim: #7C8CAA;
+  --sidebar-active: #16305A;
 
   /* Chart categorical series — validated via the `dataviz` skill's
      validate_palette.js (fixed hue order, never cycled/reassigned per
@@ -40,7 +59,7 @@
   --chart-2: #D9781A;
   --chart-3: #2F6FE0;
   --chart-4: #B23E82;
-  --chart-grid: #D8DBE2;
+  --chart-grid: #D7DCE6;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -49,23 +68,23 @@
     --bg-raised: #1C202B;
     --bg-sunken: #10131A;
     --text: #EDEFF3;
-    --text-muted: #9AA1B0;
+    --text-muted: #A9B1C4;
     --border: #2A2F3D;
-    --accent: #F0975A;
-    --accent-contrast: #14171F;
-    --accent-soft: #2E2015;
-    --teal: #56A897;
-    --teal-soft: #17282A;
+    --accent: #4E9CF0;
+    --accent-contrast: #0B1220;
+    --accent-soft: #1B2A40;
+    --teal: #4FC0DC;
+    --teal-soft: #12262B;
     --danger: #E1725C;
     --danger-soft: #2E1D1A;
-    --success: #58BC8A;
-    --success-soft: #17281F;
-    --warning: #E0A83F;
+    --success: #42B876;
+    --success-soft: #14261B;
+    --warning: #DE9E36;
     --warning-soft: #2A2213;
-    --sidebar-bg: #0E1015;
-    --sidebar-text: #C6CAD4;
-    --sidebar-text-dim: #676D7C;
-    --sidebar-active: #1C202B;
+    --sidebar-bg: #0A1526;
+    --sidebar-text: #C9D3E4;
+    --sidebar-text-dim: #6D7994;
+    --sidebar-active: #16305A;
     /* Dark-surface instance, re-validated (not an automatic flip): all 4
        checks PASS against surface #14171F. */
     --chart-1: #379C82;
@@ -81,28 +100,28 @@
   --bg-raised: #1C202B;
   --bg-sunken: #10131A;
   --text: #EDEFF3;
-  --text-muted: #9AA1B0;
+  --text-muted: #A9B1C4;
   --border: #2A2F3D;
-  --accent: #F0975A;
-  --accent-contrast: #14171F;
-  --accent-soft: #2E2015;
-  --teal: #56A897;
-  --teal-soft: #17282A;
+  --accent: #4E9CF0;
+  --accent-contrast: #0B1220;
+  --accent-soft: #1B2A40;
+  --teal: #4FC0DC;
+  --teal-soft: #12262B;
   --danger: #E1725C;
   --danger-soft: #2E1D1A;
-  --success: #58BC8A;
-  --success-soft: #17281F;
-  --warning: #E0A83F;
+  --success: #42B876;
+  --success-soft: #14261B;
+  --warning: #DE9E36;
   --warning-soft: #2A2213;
   --chart-1: #379C82;
   --chart-2: #C97A38;
   --chart-3: #4F86DE;
   --chart-4: #BD5F97;
   --chart-grid: #2A2F3D;
-  --sidebar-bg: #0E1015;
-  --sidebar-text: #C6CAD4;
-  --sidebar-text-dim: #676D7C;
-  --sidebar-active: #1C202B;
+  --sidebar-bg: #0A1526;
+  --sidebar-text: #C9D3E4;
+  --sidebar-text-dim: #6D7994;
+  --sidebar-active: #16305A;
 }
 
 * {
@@ -194,7 +213,7 @@ h3,
 }
 
 /* Buttons — brand/primary action (accent) and destructive action (danger).
-   Text on accent uses --accent-contrast per DESIGN_SYSTEM.md §2, never white. */
+   Text on accent uses --accent-contrast per DESIGN_SYSTEM.md §2. */
 .btn-accent {
   display: inline-flex;
   align-items: center;
