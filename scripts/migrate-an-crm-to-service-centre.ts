@@ -39,9 +39,9 @@
  *     under "service-centre-fault-codes" / "service-centre-symptom-codes" /
  *     "service-centre-solutions" / "inventory-bom" respectively, field keys
  *     matched to each module's own sample-data file.
- *   - AN-CRM `VendorProfile` (the sub-vendor kind, not the tenant-Business
- *     kind above) -> BusinessRecord rows under "service-centre-vendor-profile"
- *     (see src/lib/sample-data/service-centre-vendor-profile.ts and its
+ *   - AN-CRM `VendorProfile` (the sub-SC kind, not the tenant-Business
+ *     kind above) -> BusinessRecord rows under "service-centre-sc-profile"
+ *     (see src/lib/sample-data/service-centre-sc-profile.ts and its
  *     code comment on why this is NOT folded into Partner).
  *
  * This script deliberately does NOT touch AN-CRM's broader SaaS layer
@@ -93,7 +93,7 @@ function toInternalKey(businessId: string): string {
   return `BIZ002-ANCRM-${businessId}`;
 }
 
-/** Generates a short VND#### style id the first time a given Mongo _id is seen in THIS run, and remembers it for cross-references within the same run (per the task brief — no separate mapping table). */
+/** Generates a short prefixed-id the first time a given Mongo _id is seen in THIS run, and remembers it for cross-references within the same run (per the task brief — no separate mapping table). */
 function makeIdAllocator(prefix: string, startAt = 1) {
   const map = new Map<string, string>();
   let counter = startAt;
@@ -109,7 +109,11 @@ function makeIdAllocator(prefix: string, startAt = 1) {
   };
 }
 
-const partnerIdAllocator = makeIdAllocator("VND", 9000); // high range to avoid colliding with real partner ids in a real run
+// Migrated Businesses become Partner rows of partnerTypeId "service-centre",
+// whose idPrefix is now "SC" (see PartnerType.idPrefix / src/lib/partnerData.ts) —
+// so this migration-only allocator mirrors that prefix. High range (9000+) to
+// avoid colliding with real SC#### ids assigned by the live signup path.
+const partnerIdAllocator = makeIdAllocator("SC", 9000);
 
 type Counts = Record<string, { seen: number; created: number; updated: number; skipped: number }>;
 
@@ -263,20 +267,25 @@ async function main() {
         warrantyPeriodDays: doc.warrantyPeriodDays ?? undefined,
       }));
 
-      // 4) Sub-vendor VendorProfiles (parentVendorId points at another
+      // 4) Sub-SC VendorProfiles (parentVendorId points at another
       //    VendorProfile _within this business_, per AN-CRM's model) ------
+      // These become "SC-####" ids inside the BusinessRecord `id` field —
+      // deliberately using a dash ("SC-") to keep this id space visually and
+      // programmatically distinct from Partner.id's own "SC####" (no-dash)
+      // counter above: a sub-SC BusinessRecord is never a tenant Partner, and
+      // the two counters must never be confused or merged.
       const vendorProfiles = await VendorProfileModel.find({ businessId: biz._id }).lean();
-      const vendorIdAllocator = makeIdAllocator("SVP", 1);
-      // Pre-resolve every id first so parentVendorId cross-references always resolve within this run.
-      for (const vp of vendorProfiles) vendorIdAllocator.resolve(String(vp._id));
+      const scProfileIdAllocator = makeIdAllocator("SC-", 1);
+      // Pre-resolve every id first so parentScId cross-references always resolve within this run.
+      for (const vp of vendorProfiles) scProfileIdAllocator.resolve(String(vp._id));
       for (const vp of vendorProfiles) {
-        bumpSeen(counts, "service-centre-vendor-profile");
+        bumpSeen(counts, "service-centre-sc-profile");
         const recordKey = String(vp._id);
         const data = {
-          id: vendorIdAllocator.resolve(recordKey),
+          id: scProfileIdAllocator.resolve(recordKey),
           businessName: String(vp.businessName ?? vp.name ?? ""),
           onboardingStatus: vp.onboardingStatus ?? "APPLIED",
-          parentVendorId: vp.parentVendorId ? vendorIdAllocator.resolve(String(vp.parentVendorId)) : "",
+          parentScId: vp.parentVendorId ? scProfileIdAllocator.resolve(String(vp.parentVendorId)) : "",
           gstin: vp.gstin ?? undefined,
           pan: vp.pan ?? undefined,
           bankAccountName: vp.bankAccountName ?? undefined,
@@ -292,17 +301,17 @@ async function main() {
 
         if (APPLY) {
           const existing = await prisma.businessRecord.findUnique({
-            where: { partnerId_moduleSlug_recordKey: { partnerId, moduleSlug: "service-centre-vendor-profile", recordKey } },
+            where: { partnerId_moduleSlug_recordKey: { partnerId, moduleSlug: "service-centre-sc-profile", recordKey } },
           });
           await prisma.businessRecord.upsert({
-            where: { partnerId_moduleSlug_recordKey: { partnerId, moduleSlug: "service-centre-vendor-profile", recordKey } },
-            create: { partnerId, moduleSlug: "service-centre-vendor-profile", recordKey, data },
+            where: { partnerId_moduleSlug_recordKey: { partnerId, moduleSlug: "service-centre-sc-profile", recordKey } },
+            create: { partnerId, moduleSlug: "service-centre-sc-profile", recordKey, data },
             update: { data },
           });
-          if (existing) counts["service-centre-vendor-profile"].updated += 1;
-          else counts["service-centre-vendor-profile"].created += 1;
+          if (existing) counts["service-centre-sc-profile"].updated += 1;
+          else counts["service-centre-sc-profile"].created += 1;
         } else {
-          counts["service-centre-vendor-profile"].created += 1;
+          counts["service-centre-sc-profile"].created += 1;
         }
       }
     }

@@ -145,8 +145,15 @@ model PartnerType {
   assignableRoleIds Json     @default("[]")
   planTierByPage    Json     @default("{}")
   planIds           Json     @default("[]")
+  /// Prefix used when generating this PartnerType's Partner.id values (e.g.
+  /// "VND" -> VND0001, VND0002, ...; "SC" -> SC0001, SC0002, ...). Each
+  /// distinct prefix gets its own independent sequence, counted only over
+  /// existing partners sharing that same prefix (see src/lib/partnerData.ts).
+  /// Defaults to "VND" so every PartnerType created before this column
+  /// existed keeps behaving exactly as before.
+  idPrefix          String   @default("VND")
   /// When true, a signup against this type creates a PartnerSignupRequest
-  /// instead of a Partner directly — no VND#### id is assigned until Super
+  /// instead of a Partner directly — no id is assigned until Super
   /// Admin approves it. Off by default (confirmed 2026-08-08: no approval
   /// required unless explicitly turned on per type).
   requiresApproval  Boolean  @default(false)

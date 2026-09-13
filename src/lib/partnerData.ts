@@ -1,11 +1,16 @@
 /**
  * Real Partner accounts — Prisma-backed (`Partner` table). Public id is
- * "VND####" (login id, shown on invoices, all partner-facing surfaces).
- * internalKey ("BIZ002-VND####") is for our own DB relations and the
- * eventual central-api sync only — never shown to the partner. businessId
- * fixed to "BIZ002" until real cross-business support exists.
+ * "<prefix>####" (login id, shown on invoices, all partner-facing surfaces),
+ * where <prefix> comes from the Partner's own PartnerType.idPrefix (defaults
+ * to "VND" for every type that doesn't set one; the Service Centre type
+ * uses "SC"). Each distinct prefix has its own independent sequence — see
+ * nextPartnerId() below. internalKey ("BIZ002-<id>") is for our own DB
+ * relations and the eventual central-api sync only — never shown to the
+ * partner. businessId fixed to "BIZ002" until real cross-business support
+ * exists.
  */
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 import { hashPassword, verifyPassword, generatePassword } from "@/lib/passwords";
 import { createBusinessRecord } from "@/lib/businessRecords";
 import { getPartnerType } from "@/lib/designer/partnerTypesData";
@@ -84,6 +89,22 @@ async function assignOwnerRole(partner: PartnerRecord): Promise<void> {
   });
 }
 
+/**
+ * Computes the next sequential "<prefix>####" Partner id for the given
+ * partnerTypeId, inside the same transaction as the Partner insert (so two
+ * concurrent signups against the same or different prefixes never race).
+ * Each prefix (from PartnerType.idPrefix, default "VND") gets its own
+ * independent sequence — counted only over existing partners whose id
+ * already starts with that same prefix, so e.g. VND and SC sequences never
+ * share or skip numbers because of each other.
+ */
+async function nextPartnerId(tx: Prisma.TransactionClient, partnerTypeId: string): Promise<string> {
+  const partnerType = await tx.partnerType.findUnique({ where: { id: partnerTypeId } });
+  const prefix = partnerType?.idPrefix || "VND";
+  const count = await tx.partner.count({ where: { id: { startsWith: prefix } } });
+  return `${prefix}${String(count + 1).padStart(4, "0")}`;
+}
+
 const TRIAL_DAYS = 7;
 
 function trialDates(): { trialStartAt: Date; trialEndAt: Date } {
@@ -107,7 +128,7 @@ export type PartnerSignupInput = {
 };
 
 /**
- * Creates a Partner with the next sequential VND#### id (inside a
+ * Creates a Partner with the next sequential <prefix>#### id (inside a
  * transaction to avoid two signups racing to the same number) and a
  * freshly generated password — signup never collects a password
  * directly, see /signup. Returns the plaintext password ONCE, for the
@@ -119,8 +140,7 @@ export async function createPartner(input: PartnerSignupInput): Promise<{ partne
   const passwordHash = hashPassword(password);
 
   const partner = await prisma.$transaction(async (tx) => {
-    const count = await tx.partner.count();
-    const id = `VND${String(count + 1).padStart(4, "0")}`;
+    const id = await nextPartnerId(tx, input.partnerTypeId);
     const internalKey = `${BUSINESS_ID}-${id}`;
     const row = await tx.partner.create({
       data: {
@@ -163,8 +183,7 @@ export async function createPartnerFromRequest(request: {
   passwordHash: string;
 }): Promise<PartnerRecord> {
   const partner = await prisma.$transaction(async (tx) => {
-    const count = await tx.partner.count();
-    const id = `VND${String(count + 1).padStart(4, "0")}`;
+    const id = await nextPartnerId(tx, request.partnerTypeId);
     const internalKey = `${BUSINESS_ID}-${id}`;
     const row = await tx.partner.create({
       data: {
@@ -192,7 +211,7 @@ export async function createPartnerFromRequest(request: {
   return partner;
 }
 
-/** Looks a partner up by their public VND#### id OR their registered login contact number — never the internal key. */
+/** Looks a partner up by their public <prefix>#### id OR their registered login contact number — never the internal key. */
 export async function findPartnerByLoginIdentifier(identifier: string): Promise<PartnerRecord | undefined> {
   const trimmed = identifier.trim();
   const row = await prisma.partner.findFirst({
