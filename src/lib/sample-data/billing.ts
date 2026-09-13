@@ -52,10 +52,17 @@ export const billingColumns: Column[] = [
   { key: "lineItemsSummary", label: "Line Items", type: "text" },
   { key: "subtotal", label: "Subtotal", type: "currency" },
   { key: "taxAmount", label: "Tax Amount", type: "currency" },
+  { key: "discountAmount", label: "Discount", type: "currency" },
+  { key: "roundOff", label: "Round Off", type: "currency" },
   { key: "totalAmount", label: "Total Amount", type: "currency" },
+  { key: "amountPaid", label: "Amount Paid", type: "currency" },
+  { key: "amountDue", label: "Amount Due", type: "currency" },
   { key: "paymentStatus", label: "Payment Status", type: "select-chip", chipVariantMap: STATUS_VARIANT },
   { key: "paymentMode", label: "Payment Mode", type: "select-chip" },
 ];
+
+/** Payment modes accepted for a Service Centre / Billing invoice payment. */
+export const PAYMENT_MODE_OPTIONS = ["Cash", "UPI", "Card", "Bank Transfer", "Cheque", "Credit"] as const;
 
 export const billingRows: Row[] = [
   {
@@ -67,6 +74,10 @@ export const billingRows: Row[] = [
     subtotal: 48000,
     taxAmount: 8640,
     totalAmount: 56640,
+    discountAmount: 0,
+    roundOff: 0,
+    amountPaid: 0,
+    amountDue: 56640,
     paymentStatus: "Sent",
     paymentMode: "Bank Transfer",
   },
@@ -103,6 +114,10 @@ export const billingRows: Row[] = [
     subtotal: 9000,
     taxAmount: 1620,
     totalAmount: 10620,
+    discountAmount: 200,
+    roundOff: 0,
+    amountPaid: 5000,
+    amountDue: 5420,
     paymentStatus: "Partially Paid",
     paymentMode: "Cash",
   },
@@ -116,9 +131,13 @@ export const billingFormFields: FormFieldDef[] = [
   { key: "lineItemsSummary", label: "Line Items", type: "textarea", required: false },
   { key: "subtotal", label: "Subtotal", type: "currency", required: false },
   { key: "taxAmount", label: "Tax Amount", type: "currency", required: false },
+  { key: "discountAmount", label: "Discount", type: "currency", required: false },
+  { key: "roundOff", label: "Round Off", type: "number", required: false, placeholder: "e.g. -0.40 or 0.60" },
   { key: "totalAmount", label: "Total Amount", type: "currency", required: true },
+  { key: "amountPaid", label: "Amount Paid", type: "currency", required: false },
+  { key: "amountDue", label: "Amount Due", type: "currency", required: false, placeholder: "Auto = Total − Amount Paid; kept editable for manual adjustments" },
   { key: "paymentStatus", label: "Payment Status", type: "select", required: true, options: ["Draft","Sent","Paid","Overdue","Partially Paid"] },
-  { key: "paymentMode", label: "Payment Mode", type: "select", required: false, options: ["Bank Transfer","UPI","Cheque","Cash"] },
+  { key: "paymentMode", label: "Payment Mode", type: "select", required: false, options: [...PAYMENT_MODE_OPTIONS] },
 ];
 
 export function getBillingRecord(recordId: string): Row {
@@ -135,7 +154,11 @@ export function getBillingDetailFields(record: Row): RecordField[] {
     { label: "Line Items", value: r["lineItemsSummary"], type: "text" },
     { label: "Subtotal", value: r["subtotal"], type: "currency" },
     { label: "Tax Amount", value: r["taxAmount"], type: "currency" },
+    { label: "Discount", value: r["discountAmount"], type: "currency" },
+    { label: "Round Off", value: r["roundOff"], type: "currency" },
     { label: "Total Amount", value: r["totalAmount"], type: "currency" },
+    { label: "Amount Paid", value: r["amountPaid"], type: "currency" },
+    { label: "Amount Due", value: r["amountDue"], type: "currency" },
     { label: "Payment Status", value: r["paymentStatus"], type: "select", chipVariant: STATUS_VARIANT[String(r["paymentStatus"])] ?? "neutral" },
     { label: "Payment Mode", value: r["paymentMode"], type: "select", chipVariant: STATUS_VARIANT[String(r["paymentMode"])] ?? "neutral" },
   ];

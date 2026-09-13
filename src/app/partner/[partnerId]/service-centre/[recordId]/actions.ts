@@ -73,6 +73,7 @@ export async function createInvoiceFromWorkorderAction(partnerId: string, workor
     ? `Warranty repair — no charge (${lifecycle.serviceLines.length} service line(s))`
     : lifecycle.serviceLines.map((l: ServiceLine) => `${l.solutionLabel} (₹${l.laborCharge})`).join(", ");
 
+  const amountPaid = underWarranty ? totalAmount : 0;
   const invoice = await createBusinessRecord(partnerId, "billing", {
     customer: record["customer"] ?? "",
     issueDate: new Date().toISOString().slice(0, 10),
@@ -80,7 +81,11 @@ export async function createInvoiceFromWorkorderAction(partnerId: string, workor
     lineItemsSummary: lineSummary || "No chargeable lines",
     subtotal,
     taxAmount,
+    discountAmount: 0,
+    roundOff: 0,
     totalAmount,
+    amountPaid,
+    amountDue: totalAmount - amountPaid,
     paymentStatus: underWarranty ? "Paid" : "Draft",
     paymentMode: undefined,
     sourceWorkorderId: workorderId,

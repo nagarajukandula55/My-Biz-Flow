@@ -7,7 +7,10 @@ import { Modal } from "@/components/Modal";
 import { SearchSelectModal, type SearchSelectOption } from "@/components/SearchSelectModal";
 import {
   WORKORDER_STAGES,
+  MILESTONE_STATUSES,
+  mapStageToMilestone,
   type WorkorderStage,
+  type MilestoneStatus,
   type PartLine,
   type ServiceLine,
 } from "@/lib/sample-data/service-centre";
@@ -20,6 +23,30 @@ const STAGE_VARIANT: Record<WorkorderStage, "neutral" | "warning" | "teal" | "su
   Completed: "teal",
   Closed: "success",
 };
+
+/** Visual variant per milestone — CANCELLED excluded from the linear stepper (shown as a separate badge when it applies). */
+const MILESTONE_VARIANT: Record<MilestoneStatus, "neutral" | "warning" | "teal" | "success" | "danger"> = {
+  CREATED: "neutral",
+  REPAIR_STARTED: "neutral",
+  REPAIR_IN_PROGRESS: "warning",
+  PART_PENDING: "danger",
+  REPAIR_COMPLETED: "teal",
+  CLOSED: "success",
+  CANCELLED: "danger",
+};
+
+const MILESTONE_LABEL: Record<MilestoneStatus, string> = {
+  CREATED: "Created",
+  REPAIR_STARTED: "Repair Started",
+  REPAIR_IN_PROGRESS: "Repair In Progress",
+  PART_PENDING: "Part Pending",
+  REPAIR_COMPLETED: "Repair Completed",
+  CLOSED: "Closed",
+  CANCELLED: "Cancelled",
+};
+
+/** Linear stepper order — CANCELLED is a terminal side-branch, not shown inline. */
+const MILESTONE_STEPPER: MilestoneStatus[] = MILESTONE_STATUSES.filter((m) => m !== "CANCELLED");
 
 export function WorkorderLifecycle({
   partnerId,
@@ -231,15 +258,23 @@ export function WorkorderLifecycle({
 
   return (
     <div>
-      {/* Stage stepper */}
-      <div className="flex flex-wrap items-center gap-2">
-        {WORKORDER_STAGES.map((s, i) => (
-          <div key={s} className="flex items-center gap-2">
-            <StatusChip label={s} variant={s === stage ? STAGE_VARIANT[s] : "neutral"} />
-            {i < WORKORDER_STAGES.length - 1 && <span className="text-text-muted">&rarr;</span>}
+      {/* Milestone stepper — 7-stage MilestoneStatus (mirrors AN-CRM's CrmJobSheet lifecycle),
+          derived from the underlying 4-stage WorkorderStage + onHold via mapStageToMilestone()
+          so existing records/persistence keep working unmodified (see service-centre.ts). */}
+      {(() => {
+        const currentMilestone = mapStageToMilestone(stage, hold);
+        const currentIdx = MILESTONE_STEPPER.indexOf(currentMilestone);
+        return (
+          <div className="flex flex-wrap items-center gap-2">
+            {MILESTONE_STEPPER.map((m, i) => (
+              <div key={m} className="flex items-center gap-2">
+                <StatusChip label={MILESTONE_LABEL[m]} variant={i <= currentIdx ? MILESTONE_VARIANT[m] : "neutral"} />
+                {i < MILESTONE_STEPPER.length - 1 && <span className="text-text-muted">&rarr;</span>}
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        );
+      })()}
 
       <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-text-muted">
         {underWarranty && <StatusChip label="Under Warranty — non-chargeable" variant="teal" />}
