@@ -103,19 +103,25 @@ export async function getRecentActivity(partnerId: string, moduleSlugs: string[]
     orderBy: { createdAt: "desc" },
     take: limit,
   });
-  return Promise.all(
-    rows.map(async (r) => {
-      const mod = await getModule(r.moduleSlug);
-      const columns = MODULE_DATA[r.moduleSlug]?.columns ?? [];
-      const currencyColumn = columns.find((c) => c.type === "currency");
-      const data = r.data as Record<string, unknown>;
-      const amount = currencyColumn && typeof data[currencyColumn.key] === "number" ? (data[currencyColumn.key] as number) : 0;
-      return {
-        module: mod?.label ?? r.moduleSlug,
-        event: `${r.recordKey} created`,
-        amount,
-        timestamp: r.createdAt.toISOString().slice(0, 10),
-      };
-    })
+
+  // Look up each distinct module once (not once per row) — getModule() is
+  // itself now cached (see moduleAppearance.ts), but there's no reason to
+  // re-resolve the same handful of modules `limit` times over.
+  const uniqueSlugs = Array.from(new Set(rows.map((r) => r.moduleSlug)));
+  const moduleLabelBySlug = new Map(
+    await Promise.all(uniqueSlugs.map(async (slug) => [slug, (await getModule(slug))?.label ?? slug] as const))
   );
+
+  return rows.map((r) => {
+    const columns = MODULE_DATA[r.moduleSlug]?.columns ?? [];
+    const currencyColumn = columns.find((c) => c.type === "currency");
+    const data = r.data as Record<string, unknown>;
+    const amount = currencyColumn && typeof data[currencyColumn.key] === "number" ? (data[currencyColumn.key] as number) : 0;
+    return {
+      module: moduleLabelBySlug.get(r.moduleSlug) ?? r.moduleSlug,
+      event: `${r.recordKey} created`,
+      amount,
+      timestamp: r.createdAt.toISOString().slice(0, 10),
+    };
+  });
 }

@@ -32,6 +32,25 @@ export async function getBusinessRecord(
   return row ? toRow(row) : undefined;
 }
 
+/**
+ * Batched lookup for the common "I have a list of record keys and need
+ * each one's row" shape (e.g. invoice lines pointing at BOM materials) —
+ * a single `findMany` + Map instead of one `getBusinessRecord` per item in
+ * a loop. Missing keys are simply absent from the returned Map.
+ */
+export async function getBusinessRecordsByKeys(
+  partnerId: string,
+  moduleSlug: string,
+  recordKeys: string[]
+): Promise<Map<string, Row>> {
+  const uniqueKeys = Array.from(new Set(recordKeys));
+  if (uniqueKeys.length === 0) return new Map();
+  const rows = await prisma.businessRecord.findMany({
+    where: { partnerId, moduleSlug, recordKey: { in: uniqueKeys } },
+  });
+  return new Map(rows.map((row) => [row.recordKey, toRow(row)]));
+}
+
 /** Creates a record. If values.id is unset, generates one from the module slug + a short random suffix. */
 export async function createBusinessRecord(
   partnerId: string,

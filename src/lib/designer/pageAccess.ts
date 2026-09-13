@@ -17,9 +17,31 @@
 
 import { prisma } from "@/lib/prisma";
 
+/**
+ * isPagePublic() is called from /api/page-access, which src/middleware.ts
+ * fetches on EVERY request to an /admin or module-admin route (Edge
+ * middleware can't read Prisma directly, so it round-trips to this Node
+ * route instead). Without caching, that's a DB query on essentially every
+ * gated admin page load system-wide. The public-page set only changes when
+ * a Super Admin flips the toggle in /admin/settings, so it's cached whole
+ * for a short TTL and invalidated immediately on write.
+ */
+const PUBLIC_PAGES_TTL_MS = 10_000;
+let publicPagesCache: { ids: Set<string>; expiresAt: number } | null = null;
+
+async function loadPublicPageIds(): Promise<Set<string>> {
+  const now = Date.now();
+  if (publicPagesCache && publicPagesCache.expiresAt > now) return publicPagesCache.ids;
+
+  const rows = await prisma.pageAccess.findMany({ where: { isPublic: true }, select: { pageId: true } });
+  const ids = new Set(rows.map((r) => r.pageId));
+  publicPagesCache = { ids, expiresAt: now + PUBLIC_PAGES_TTL_MS };
+  return ids;
+}
+
 export async function isPagePublic(pageId: string): Promise<boolean> {
-  const row = await prisma.pageAccess.findUnique({ where: { pageId } });
-  return row?.isPublic === true;
+  const ids = await loadPublicPageIds();
+  return ids.has(pageId);
 }
 
 export async function setPagePublic(pageId: string, isPublic: boolean): Promise<void> {
@@ -34,9 +56,9 @@ export async function setPagePublic(pageId: string, isPublic: boolean): Promise<
       // Already absent — deleting a non-existent row is a no-op, not an error.
     });
   }
+  publicPagesCache = null;
 }
 
 export async function getAllPublicPageIds(): Promise<Set<string>> {
-  const rows = await prisma.pageAccess.findMany({ where: { isPublic: true }, select: { pageId: true } });
-  return new Set(rows.map((r) => r.pageId));
+  return loadPublicPageIds();
 }

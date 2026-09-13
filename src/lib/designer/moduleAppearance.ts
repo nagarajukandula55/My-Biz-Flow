@@ -17,19 +17,40 @@ export type ModuleAppearance = {
   icon?: string; // key into src/lib/designer/icons.ts's ICONS map
 };
 
+/**
+ * getModule() (moduleRegistry.ts) calls getModuleAppearance(slug) once per
+ * module it resolves, and it's resolved constantly — every page header,
+ * every nav item, per-row in analytics' recent-activity list, etc. That
+ * used to mean one `findMany`-sized table getting hit with a separate
+ * `findUnique` for every single call, all across the app, on nearly every
+ * request (a classic N+1 spread across many call sites rather than one
+ * loop). This table changes only when a Super Admin edits a module's
+ * label/icon in the Designer, so it's cached whole (it's tiny — one row
+ * per module) for a short TTL and invalidated immediately on write.
+ */
+const APPEARANCE_CACHE_TTL_MS = 10_000;
+let appearanceCache: { data: Record<string, ModuleAppearance>; expiresAt: number } | null = null;
+
+async function loadAppearances(): Promise<Record<string, ModuleAppearance>> {
+  const now = Date.now();
+  if (appearanceCache && appearanceCache.expiresAt > now) return appearanceCache.data;
+
+  const rows = await prisma.moduleAppearance.findMany();
+  const data: Record<string, ModuleAppearance> = {};
+  for (const row of rows) {
+    data[row.slug] = { label: row.label ?? undefined, icon: row.icon ?? undefined };
+  }
+  appearanceCache = { data, expiresAt: now + APPEARANCE_CACHE_TTL_MS };
+  return data;
+}
+
 export async function getModuleAppearance(slug: string): Promise<ModuleAppearance> {
-  const row = await prisma.moduleAppearance.findUnique({ where: { slug } });
-  if (!row) return {};
-  return { label: row.label ?? undefined, icon: row.icon ?? undefined };
+  const all = await loadAppearances();
+  return all[slug] ?? {};
 }
 
 export async function getAllModuleAppearances(): Promise<Record<string, ModuleAppearance>> {
-  const rows = await prisma.moduleAppearance.findMany();
-  const out: Record<string, ModuleAppearance> = {};
-  for (const row of rows) {
-    out[row.slug] = { label: row.label ?? undefined, icon: row.icon ?? undefined };
-  }
-  return out;
+  return loadAppearances();
 }
 
 export async function setModuleAppearance(slug: string, appearance: ModuleAppearance): Promise<void> {
@@ -38,4 +59,5 @@ export async function setModuleAppearance(slug: string, appearance: ModuleAppear
     create: { slug, label: appearance.label, icon: appearance.icon },
     update: { label: appearance.label, icon: appearance.icon },
   });
+  appearanceCache = null;
 }
