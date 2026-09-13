@@ -38,10 +38,20 @@ export default async function ServiceCentreInvoicePage({
   return (
     <ServiceCentreInvoiceDocument
       partnerName={partner?.businessName ?? "Your Business"}
+      partnerGstin={partner?.gstin ?? ""}
+      partnerPhone={partner?.businessContact ?? ""}
       invoiceNumber={invoiceNumber}
       invoiceDate={String(record["receivedDate"] ?? new Date().toISOString())}
       customerName={String(record["customer"] ?? "Walk-in Customer")}
-      customerCity={String(record["branch"] ?? "")}
+      customerPhone={String(record["customerPhone"] ?? "")}
+      customerCompany={String(record["customerCompany"] ?? "")}
+      customerGstin={String(record["customerGstin"] ?? "")}
+      customerAddress={String(record["customerAddress"] ?? "")}
+      // Falls back to the workorder's branch for jobs created before the
+      // intake form collected a real customer city.
+      customerCity={String(record["customerCity"] ?? record["branch"] ?? "")}
+      customerState={String(record["customerState"] ?? "")}
+      customerPincode={String(record["customerPincode"] ?? "")}
       lines={lines}
       customTemplate={customTemplate}
     />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, type FormEvent } from "react";
+import { useRef, useState, useTransition, type FormEvent } from "react";
 
 export type FormFieldType =
   | "text"
@@ -44,6 +44,19 @@ type RecordFormProps = {
    * the demo-stub submit entirely; onSubmitDemo is ignored.
    */
   action?: (values: Record<string, unknown>) => Promise<void>;
+  /**
+   * Optional prefill-on-type hook: whenever the field named by `watchKey`
+   * changes, `run` (a bound Server Action) is called with its value and
+   * any non-empty fields it returns are merged into the form — used by
+   * Service Centre intake to prefill a returning customer from their
+   * phone number. Fields the user has already typed into are never
+   * overwritten. Same client/server split as the signup flow's
+   * PincodeLookupFields; no client-side data fetching beyond this.
+   */
+  lookup?: {
+    watchKey: string;
+    run: (value: string) => Promise<(Record<string, unknown> & { source?: string }) | null>;
+  };
 };
 
 /**
@@ -55,7 +68,7 @@ type RecordFormProps = {
  * submission falls back to the original client-side demo stub (logs the
  * values, shows "Saved (demo)") for anything not yet migrated.
  */
-export function RecordForm({ fields, initialValues, submitLabel, onSubmitDemo, action }: RecordFormProps) {
+export function RecordForm({ fields, initialValues, submitLabel, onSubmitDemo, action, lookup }: RecordFormProps) {
   const [values, setValues] = useState<Record<string, unknown>>(() => {
     const base: Record<string, unknown> = {};
     for (const f of fields) {
@@ -68,9 +81,43 @@ export function RecordForm({ fields, initialValues, submitLabel, onSubmitDemo, a
   const [saved, setSaved] = useState(false);
   const [pending, startTransition] = useTransition();
 
+  const [lookupHint, setLookupHint] = useState<string | null>(null);
+  // Guards against re-running the same lookup on every keystroke that
+  // leaves the watched value unchanged (e.g. formatting characters).
+  const lastLookedUp = useRef<string | null>(null);
+
   function setValue(key: string, value: unknown) {
     setValues((prev) => ({ ...prev, [key]: value }));
     setSaved(false);
+    if (lookup && key === lookup.watchKey) runLookup(String(value ?? ""));
+  }
+
+  function runLookup(raw: string) {
+    if (!lookup) return;
+    if (raw === lastLookedUp.current) return;
+    lastLookedUp.current = raw;
+    setLookupHint(null);
+    void lookup
+      .run(raw)
+      .then((match) => {
+        if (!match || lastLookedUp.current !== raw) return;
+        const { source, ...prefill } = match;
+        setValues((prev) => {
+          const next = { ...prev };
+          for (const [k, v] of Object.entries(prefill)) {
+            // Never clobber what the user already typed, and never write
+            // an empty value over a filled one.
+            if (v === undefined || v === null || v === "") continue;
+            if (next[k] !== undefined && next[k] !== "") continue;
+            next[k] = v;
+          }
+          return next;
+        });
+        setLookupHint(source ? `Existing customer found (${source}) — details prefilled.` : "Existing record found — details prefilled.");
+      })
+      .catch(() => {
+        // Best-effort: a failed lookup must never block manual entry.
+      });
   }
 
   function handleSubmit(e: FormEvent) {
@@ -103,6 +150,9 @@ export function RecordForm({ fields, initialValues, submitLabel, onSubmitDemo, a
               {field.required && <span className="ml-1 text-danger">*</span>}
             </label>
             {renderInput(field, values[field.key], setValue)}
+            {lookupHint && lookup?.watchKey === field.key && (
+              <p className="mt-1 text-[11px] font-normal normal-case text-teal">{lookupHint}</p>
+            )}
           </div>
         ))}
       </div>

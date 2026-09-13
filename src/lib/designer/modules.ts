@@ -113,7 +113,7 @@ export function taxonomyToNavDot(taxonomy: ModuleTaxonomy): NavDot {
  * one record list) lists its actual sub-pages here instead. Keyed by
  * module slug; a module without an entry falls back to the generic trio.
  */
-export const MODULE_SUB_NAV: Record<string, { key: string; label: string; href: string }[]> = {
+export const MODULE_SUB_NAV: Record<string, PartnerNavSubItem[]> = {
   // Suggested Basic/Pro/Ultimate split for Super Admin to configure in
   // PartnerType.planTierByPage (/admin/partner-types) — config-only
   // guidance, same as every module; nothing here runtime-enforces it.
@@ -141,17 +141,30 @@ export const MODULE_SUB_NAV: Record<string, { key: string; label: string; href: 
   // its stage. Pro: brand/model/technician assignment, estimate approval,
   // hold state — the accountability layer AN-CRM gates similarly behind
   // its higher plans. Ultimate: real Billing invoice creation on close.
+  // Sectioned (see PartnerNavSubItem.section) rather than one flat list,
+  // mirroring how the AN-CRM reference app groups its own service-centre
+  // nav (Workorders / Masters / Reports / Account) instead of stacking
+  // every page at one level. Only pages that actually exist in this
+  // module are listed — AN-CRM's vendor-accounting entries (Financial
+  // Statement, Ledger Book, Profit & Loss, Expenses) belong to MBF's
+  // separate `billing` module, which is gated by its own
+  // PartnerType.defaultModules entry and carries its own sidebar group,
+  // so they are deliberately NOT duplicated here.
   "service-centre": [
-    { key: "service-centre.list", label: "Workorders", href: "service-centre" },
-    { key: "service-centre.new", label: "+ New Workorder", href: "service-centre/new" },
-    { key: "service-centre.solutions", label: "Solutions", href: "service-centre/solutions" },
-    { key: "service-centre.fault-codes", label: "Fault Codes", href: "service-centre/fault-codes" },
-    { key: "service-centre.symptom-codes", label: "Symptom Codes", href: "service-centre/symptom-codes" },
-    { key: "service-centre.sc-profile", label: "SC Profiles", href: "service-centre/sc-profile" },
-    { key: "service-centre.brands", label: "Brands", href: "service-centre/brands" },
-    { key: "service-centre.models", label: "Models", href: "service-centre/models" },
-    { key: "service-centre.technicians", label: "Technicians", href: "service-centre/technicians" },
-    { key: "service-centre.admin", label: "Admin", href: "service-centre/admin" },
+    { key: "service-centre.list", label: "Workorders", href: "service-centre", section: "Workorders" },
+    { key: "service-centre.new", label: "+ New Workorder", href: "service-centre/new", section: "Workorders" },
+    { key: "service-centre.brands", label: "Brands", href: "service-centre/brands", section: "Masters" },
+    { key: "service-centre.models", label: "Models", href: "service-centre/models", section: "Masters" },
+    { key: "service-centre.solutions", label: "Solutions", href: "service-centre/solutions", section: "Masters" },
+    { key: "service-centre.fault-codes", label: "Fault Codes", href: "service-centre/fault-codes", section: "Masters" },
+    { key: "service-centre.symptom-codes", label: "Symptom Codes", href: "service-centre/symptom-codes", section: "Masters" },
+    // Analytics is a partner-wide page (also linked from the Common
+    // group) — surfaced inside the module too, the way AN-CRM keeps a
+    // Reports section inside the same sidebar the workorders live in.
+    { key: "service-centre.analytics", label: "Analytics", href: "analytics", section: "Reports" },
+    { key: "service-centre.sc-profile", label: "SC Profiles", href: "service-centre/sc-profile", section: "Account" },
+    { key: "service-centre.technicians", label: "Technicians", href: "service-centre/technicians", section: "Account" },
+    { key: "service-centre.admin", label: "Admin", href: "service-centre/admin", section: "Account" },
   ],
   "accounting-gst": [
     { key: "accounting-gst.dashboard", label: "Dashboard", href: "accounting-gst/dashboard" },
@@ -187,6 +200,14 @@ export interface PartnerNavSubItem {
   label: string;
   /** Path segment(s) relative to /partner/[partnerId]/, e.g. "billing/new". */
   href: string;
+  /**
+   * Optional heading this sub-item sits under inside the module's expanded
+   * sub-list (Sidebar.tsx renders one small caps label per run of
+   * consecutive sub-items sharing a section). Purely presentational —
+   * a module whose sub-items carry no section renders as a flat list,
+   * exactly as before.
+   */
+  section?: string;
 }
 
 export interface PartnerNavGroup {

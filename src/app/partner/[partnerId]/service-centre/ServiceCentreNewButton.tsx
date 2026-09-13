@@ -3,6 +3,7 @@
 import { RecordFormModal, useRecordFormModal } from "@/components/RecordFormModal";
 import { serviceCentreFormFields } from "@/lib/sample-data/service-centre";
 import { createBusinessRecordAction } from "@/lib/businessRecordActions";
+import { lookupServiceCentreCustomerAction } from "@/lib/serviceCentreCustomerLookup";
 
 /** Create-as-modal for service-centre (see src/components/RecordFormModal.tsx). Real persistence — BusinessRecord table. */
 export function ServiceCentreNewButton({ partnerId }: { partnerId: string }) {
@@ -19,6 +20,10 @@ export function ServiceCentreNewButton({ partnerId }: { partnerId: string }) {
         fields={serviceCentreFormFields}
         submitLabel="Create Workorder"
         action={createBusinessRecordAction.bind(null, partnerId, "service-centre")}
+        lookup={{
+          watchKey: "customerPhone",
+          run: lookupServiceCentreCustomerAction.bind(null, partnerId),
+        }}
       />
     </>
   );

@@ -240,6 +240,15 @@ export async function createInvoiceFromWorkorderAction(
 
   const invoice = await createBusinessRecord(partnerId, "billing", {
     customer: record["customer"] ?? "",
+    // Carried over from the workorder's intake block so the Billing
+    // invoice knows who it's billed to (and whether it's B2B) instead of
+    // holding a bare customer name — see serviceCentreFormFields.
+    customerPhone: record["customerPhone"] ?? "",
+    customerGstin: record["customerGstin"] ?? "",
+    customerAddress: record["customerAddress"] ?? "",
+    customerCity: record["customerCity"] ?? "",
+    customerState: record["customerState"] ?? "",
+    customerPincode: record["customerPincode"] ?? "",
     issueDate,
     dueDate: issueDate,
     lineItemsSummary: lineSummary || "No chargeable lines",

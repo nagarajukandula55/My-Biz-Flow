@@ -5,6 +5,7 @@ import { RecordForm } from "@/components/RecordForm";
 import { serviceCentreFormFields } from "@/lib/sample-data/service-centre";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { createBusinessRecordAction } from "@/lib/businessRecordActions";
+import { lookupServiceCentreCustomerAction } from "@/lib/serviceCentreCustomerLookup";
 
 registerPage({
   id: "service-centre.create",
@@ -18,7 +19,7 @@ registerPage({
     { key: "validation-rules", label: "Validation rules" },
     { key: "default-values", label: "Default values" },
   ],
-  explanation: "A config-driven creation form for a new workorder in the service-centre module, built from the module's real field set via the shared RecordForm component. Real persistence (BusinessRecord, Prisma-backed) — Brand/Model/Technician are assigned afterward from the workorder's detail page (WorkorderLifecycle), not at intake, since a device isn't always in the catalog yet.",
+  explanation: "A config-driven creation form for a new workorder in the service-centre module, built from the module's real field set via the shared RecordForm component. Collects the full customer intake block (phone, email, company, GSTIN, address/city/state/pincode and the 'Logged by' intake staff name) so the printed invoice can render a real Bill To and a correct B2B/B2C document type. Typing a phone number prefills a returning customer from the Billing module's Contacts, falling back to their most recent past workorder (see serviceCentreCustomerLookup.ts). Real persistence (BusinessRecord, Prisma-backed) — Brand/Model/Technician are assigned afterward from the workorder's detail page (WorkorderLifecycle), not at intake, since a device isn't always in the catalog yet.",
   sourceFile: "src/app/partner/[partnerId]/service-centre/new/page.tsx",
 });
 
@@ -36,6 +37,10 @@ export default async function NewServiceCentrePage({ params }: { params: { partn
             fields={fields}
             submitLabel="Create Workorder"
             action={createBusinessRecordAction.bind(null, params.partnerId, "service-centre")}
+            lookup={{
+              watchKey: "customerPhone",
+              run: lookupServiceCentreCustomerAction.bind(null, params.partnerId),
+            }}
           />
         </div>
       </div>

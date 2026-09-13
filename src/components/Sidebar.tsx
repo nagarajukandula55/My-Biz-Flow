@@ -16,6 +16,8 @@ export type NavSubItem = {
   label: string;
   /** Path segment(s) relative to /partner/[partnerId]/, e.g. "billing/new". */
   href: string;
+  /** Optional heading rendered above the first sub-item of each run sharing it. */
+  section?: string;
 };
 
 export type NavItem = {
@@ -150,11 +152,25 @@ export function Sidebar({ partnerId, navGroups }: { partnerId: string; navGroups
                         </div>
                         {hasSubItems && isExpanded && (
                           <ul className="ml-4 mt-0.5 space-y-0.5 border-l border-sidebar-active/60 pl-3">
-                            {item.subItems!.map((sub) => {
+                            {item.subItems!.map((sub, subIndex) => {
                               const subHref = hrefFor(sub.href);
                               const active2 = isActive(sub.href);
+                              // One heading per RUN of consecutive sub-items
+                              // sharing a section — modules whose sub-items
+                              // carry no section render exactly as before.
+                              const prevSection = item.subItems![subIndex - 1]?.section;
+                              const showSection = !!sub.section && sub.section !== prevSection;
                               return (
                                 <li key={sub.key}>
+                                  {showSection && (
+                                    <p
+                                      className={`px-2 pb-0.5 text-[10px] font-semibold uppercase tracking-wide text-sidebar-text-dim ${
+                                        subIndex === 0 ? "" : "pt-2"
+                                      }`}
+                                    >
+                                      {sub.section}
+                                    </p>
+                                  )}
                                   <Link
                                     href={subHref}
                                     className={`block rounded-md px-2 py-1 text-[12px] font-medium ${

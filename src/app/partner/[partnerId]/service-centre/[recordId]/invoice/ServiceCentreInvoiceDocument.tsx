@@ -21,22 +21,36 @@ export type InvoiceLine = {
  */
 export function ServiceCentreInvoiceDocument({
   partnerName,
+  partnerGstin,
+  partnerPhone,
   invoiceNumber,
   invoiceDate,
   customerName,
   customerPhone,
+  customerCompany,
+  customerGstin,
+  customerAddress,
   customerCity,
   customerState,
+  customerPincode,
   lines,
   customTemplate,
 }: {
   partnerName: string;
+  /** The issuing partner's own GSTIN/contact — blank renders as an em dash, never a fabricated number. */
+  partnerGstin?: string;
+  partnerPhone?: string;
   invoiceNumber: string;
   invoiceDate: string;
   customerName: string;
   customerPhone?: string;
+  customerCompany?: string;
+  /** Present => the job was billed to a GST-registered party, i.e. B2B. */
+  customerGstin?: string;
+  customerAddress?: string;
   customerCity?: string;
   customerState?: string;
+  customerPincode?: string;
   lines: InvoiceLine[];
   /** Super-Admin-designed override from the Designer (src/lib/designer/documentTemplates.ts) — same
    * {{placeholder}} mechanism as every other document page; when set, replaces the default layout below. */
@@ -50,6 +64,9 @@ export function ServiceCentreInvoiceDocument({
   const taxableTotal = rows.reduce((s, r) => s + r.taxable, 0);
   const gstTotal = rows.reduce((s, r) => s + r.gstAmount, 0);
   const grandTotal = taxableTotal + gstTotal;
+  // A GST-registered recipient makes this a B2B document — previously
+  // hardcoded "B2C" because no GSTIN was ever collected at intake.
+  const documentType = customerGstin?.trim() ? "B2B" : "B2C";
 
   if (customTemplate) {
     const html = renderTemplate(customTemplate, {
@@ -57,8 +74,13 @@ export function ServiceCentreInvoiceDocument({
       invoiceDate,
       customerName,
       customerPhone: customerPhone ?? "",
+      customerCompany: customerCompany ?? "",
+      customerGstin: customerGstin ?? "",
+      customerAddress: customerAddress ?? "",
       customerCity: customerCity ?? "",
       customerState: customerState ?? "",
+      customerPincode: customerPincode ?? "",
+      documentType,
       taxableTotal,
       taxAmount: gstTotal,
       totalAmount: grandTotal,
@@ -94,8 +116,8 @@ export function ServiceCentreInvoiceDocument({
             <div className="mt-6 flex items-start justify-between gap-6">
               <div className="rounded-md bg-bg-sunken px-4 py-3">
                 <div className="font-display text-base font-bold text-text">{partnerName}</div>
-                <div className="mt-1 text-xs text-text-muted">GSTIN: —</div>
-                <div className="text-xs text-text-muted">Phone: —</div>
+                <div className="mt-1 text-xs text-text-muted">GSTIN: {partnerGstin || "—"}</div>
+                <div className="text-xs text-text-muted">Phone: {partnerPhone || "—"}</div>
               </div>
               <div className="rounded-md border border-border px-4 py-3 text-right text-xs text-text-muted">
                 <div>
@@ -105,7 +127,7 @@ export function ServiceCentreInvoiceDocument({
                   Invoice Date: <span className="font-semibold text-text">{formatDate(invoiceDate)}</span>
                 </div>
                 <div>
-                  Document Type: <span className="font-semibold text-text">B2C</span>
+                  Document Type: <span className="font-semibold text-text">{documentType}</span>
                 </div>
               </div>
             </div>
@@ -114,13 +136,17 @@ export function ServiceCentreInvoiceDocument({
               <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">Bill To</div>
               <div className="mt-1.5 text-sm text-text">
                 <div className="font-semibold">{customerName}</div>
-                {customerPhone && <div className="text-text-muted">{customerPhone}</div>}
-                {(customerCity || customerState) && (
+                {customerCompany && <div className="text-text-muted">{customerCompany}</div>}
+                {customerAddress && <div className="whitespace-pre-line text-text-muted">{customerAddress}</div>}
+                {(customerCity || customerState || customerPincode) && (
                   <div className="text-text-muted">
-                    {customerCity}
-                    {customerCity && customerState ? ", " : ""}
-                    {customerState}
+                    {[customerCity, customerState].filter(Boolean).join(", ")}
+                    {customerPincode ? ` — ${customerPincode}` : ""}
                   </div>
+                )}
+                {customerPhone && <div className="text-text-muted">{customerPhone}</div>}
+                {customerGstin && (
+                  <div className="font-mono text-text-muted">GSTIN: {customerGstin}</div>
                 )}
               </div>
             </div>

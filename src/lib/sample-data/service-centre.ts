@@ -268,6 +268,15 @@ export function extractLifecycleFromRecord(record: Row): {
 export const serviceCentreColumns: Column[] = [
   { key: "id", label: "Job ID", type: "text" },
   { key: "customer", label: "Customer", type: "relation-link" },
+  { key: "customerPhone", label: "Customer Phone", type: "phone" },
+  { key: "customerEmail", label: "Customer Email", type: "text" },
+  { key: "customerCompany", label: "Company", type: "text" },
+  { key: "customerGstin", label: "Customer GSTIN", type: "text" },
+  { key: "customerAddress", label: "Address", type: "text" },
+  { key: "customerCity", label: "City", type: "text" },
+  { key: "customerState", label: "State", type: "text" },
+  { key: "customerPincode", label: "Pincode", type: "text" },
+  { key: "loggedBy", label: "Logged By", type: "text" },
   { key: "device", label: "Device / Vehicle", type: "text" },
   { key: "brandName", label: "Brand", type: "text" },
   { key: "modelName", label: "Model", type: "text" },
@@ -351,7 +360,26 @@ export const serviceCentreRows: Row[] = [
 
 export const serviceCentreFormFields: FormFieldDef[] = [
   { key: "id", label: "Job ID", type: "text", required: true },
-  { key: "customer", label: "Customer", type: "relation", required: true },
+  { key: "customer", label: "Customer Name", type: "relation", required: true },
+  // --- Customer intake block ---
+  // Phone is first-class (and drives the returning-customer lookup on the
+  // create page — see ServiceCentreCustomerLookup). The address block
+  // mirrors AN-CRM's own jobsheet intake, where address/city/state/pincode
+  // are server-side required because the printed invoice and any B2B
+  // GST document are unusable without them.
+  { key: "customerPhone", label: "Customer Phone", type: "phone", required: true, placeholder: "Type to prefill a returning customer" },
+  { key: "customerEmail", label: "Customer Email", type: "email", required: false },
+  { key: "customerCompany", label: "Company (B2B customer)", type: "text", required: false },
+  { key: "customerGstin", label: "Customer GSTIN", type: "text", required: false, placeholder: "22AAAAA0000A1Z5 — leave blank for a B2C job" },
+  { key: "customerAddress", label: "Address", type: "textarea", required: true },
+  { key: "customerCity", label: "City", type: "text", required: true },
+  { key: "customerState", label: "State", type: "text", required: true },
+  { key: "customerPincode", label: "Pincode", type: "text", required: true },
+  // Free text, not a picker: the technician roster (PartnerStaff) is the
+  // roster of people who REPAIR, while this records the front-desk person
+  // who took the job in — often not on that roster at all. AN-CRM makes
+  // the same call for its equivalent `ccoName` field.
+  { key: "loggedBy", label: "Logged By (intake staff)", type: "text", required: true, placeholder: "Name of the person taking the job in" },
   { key: "device", label: "Device / Vehicle", type: "text", required: false, placeholder: "Free-text fallback — pick a real Brand/Model from the job's detail page once created" },
   { key: "priority", label: "Priority", type: "select", required: true, options: ["Low","Medium","High","Urgent"] },
   { key: "status", label: "Status", type: "select", required: true, options: ["Diagnosed","In repair","Ready","Delivered","On hold"] },
@@ -390,6 +418,15 @@ export function getServiceCentreDetailFields(record: Row): RecordField[] {
   return [
     { label: "Job ID", value: r["id"], type: "text" },
     { label: "Customer", value: r["customer"], type: "relation" },
+    { label: "Customer Phone", value: r["customerPhone"], type: "phone" },
+    { label: "Customer Email", value: r["customerEmail"], type: "text" },
+    { label: "Company", value: r["customerCompany"], type: "text" },
+    { label: "Customer GSTIN", value: r["customerGstin"], type: "text" },
+    { label: "Address", value: r["customerAddress"], type: "text" },
+    { label: "City", value: r["customerCity"], type: "text" },
+    { label: "State", value: r["customerState"], type: "text" },
+    { label: "Pincode", value: r["customerPincode"], type: "text" },
+    { label: "Logged By", value: r["loggedBy"], type: "text" },
     { label: "Device / Vehicle", value: r["device"], type: "text" },
     { label: "Brand", value: r["brandName"], type: "text" },
     { label: "Model", value: r["modelName"], type: "text" },
