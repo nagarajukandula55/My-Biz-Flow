@@ -8,6 +8,7 @@ import { SearchSelectModal, type SearchSelectOption } from "@/components/SearchS
 import {
   WORKORDER_STAGES,
   MILESTONE_STATUSES,
+  PAYMENT_MODES,
   mapStageToMilestone,
   type WorkorderStage,
   type MilestoneStatus,
@@ -17,6 +18,7 @@ import {
 import {
   setWorkorderHoldAction,
   createInvoiceFromWorkorderAction,
+  cancelWorkorderAction,
   deductInventoryForWorkorderAction,
   patchServiceCentreWorkorderAction,
 } from "./actions";
@@ -70,11 +72,14 @@ export function WorkorderLifecycle({
   estimateApproved,
   underWarranty,
   invoiceId,
+  cancelledAt,
+  cancelReason,
   bomMaterials,
   solutionOptions,
   brandOptions,
   modelOptions,
   technicianOptions,
+  solutionLaborCharges,
 }: {
   partnerId: string;
   workorderId: string;
@@ -93,10 +98,20 @@ export function WorkorderLifecycle({
   estimateApproved?: boolean;
   underWarranty: boolean;
   invoiceId?: string;
-  /** This partner's own live BOM materials (Inventory > Material Catalog) — not the global sample catalog. */
-  bomMaterials: { id: string; label: string; serialized: boolean }[];
-  /** This partner's own live Solutions catalog. */
+  /** Set once the job has been cancelled (terminal — see cancelWorkorderAction). */
+  cancelledAt?: string;
+  cancelReason?: string;
+  /**
+   * This partner's own live BOM materials (Inventory > Material Catalog) —
+   * not the global sample catalog. `rate`/`taxPercent` are the material's
+   * real catalog price, stamped onto a part line at add time so the
+   * persisted Billing invoice and the printed invoice document agree.
+   */
+  bomMaterials: { id: string; label: string; serialized: boolean; rate?: number; taxPercent?: number }[];
+  /** This partner's own live Solutions catalog. `defaultLaborCharge` pre-fills a new service line's charge. */
   solutionOptions: SearchSelectOption[];
+  /** Default labor charge per solution id, from the partner's Solutions catalog. */
+  solutionLaborCharges: Record<string, number>;
   /** This partner's own live Device Brands catalog. */
   brandOptions: SearchSelectOption[];
   /** This partner's own live Device Models catalog — labeled with brand for clarity since it isn't pre-filtered by the currently selected brand (that selection can change client-side after this prop was computed). */
@@ -122,23 +137,51 @@ export function WorkorderLifecycle({
   const [hold, setHold] = useState(Boolean(onHold));
   const [approved, setApproved] = useState(Boolean(estimateApproved) || underWarranty);
   const [invoice, setInvoice] = useState(invoiceId);
+  const [cancelled, setCancelled] = useState(Boolean(cancelledAt));
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [cancelReasonDraft, setCancelReasonDraft] = useState("");
+  const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
+  const [paymentCollected, setPaymentCollected] = useState(false);
+  const [paymentMode, setPaymentMode] = useState<string>(PAYMENT_MODES[0]);
+  const [paymentAmount, setPaymentAmount] = useState<string>("");
+  const [actionError, setActionError] = useState<string | null>(null);
   const [, startPersist] = useTransition();
 
-  function persist(patch: Record<string, unknown>) {
+  /**
+   * Every mutation goes through here so a Server Action rejection (an
+   * illegal stage transition, a missing record, an empty cancel reason)
+   * surfaces in the UI rather than vanishing into an unhandled transition.
+   */
+  function run(fn: () => Promise<void>, onSuccess?: () => void) {
+    setActionError(null);
     startPersist(async () => {
-      await patchServiceCentreWorkorderAction(partnerId, workorderId, patch);
+      try {
+        await fn();
+        onSuccess?.();
+      } catch (error) {
+        setActionError(error instanceof Error ? error.message : "Something went wrong. Please try again.");
+      }
     });
   }
 
-  const bomOptions: SearchSelectOption[] = bomMaterials.map((m) => ({ value: m.id, label: m.label }));
-  const estimateTotal = serviceLines.reduce((sum, l) => sum + (l.laborCharge || 0), 0);
+  function persist(patch: Record<string, unknown>) {
+    run(() => patchServiceCentreWorkorderAction(partnerId, workorderId, patch));
+  }
 
-  const editable = stage === "In Progress" && !hold;
+  const bomOptions: SearchSelectOption[] = bomMaterials.map((m) => ({ value: m.id, label: m.label }));
+  // Estimate covers labor AND parts — parts were previously excluded, so
+  // the figure the customer approved never mentioned the biggest cost.
+  const laborTotal = serviceLines.reduce((sum, l) => sum + (l.laborCharge || 0), 0);
+  const partsTotal = partLines.reduce((sum, p) => (p.pending ? sum : sum + (p.unitPrice || 0) * (p.qty || 1)), 0);
+  const estimateTotal = laborTotal + partsTotal;
+
+  const editable = stage === "In Progress" && !hold && !cancelled;
+  const terminal = cancelled || stage === "Closed";
   const unresolvedSerials = partLines.filter((p) => p.serialized && !p.serial && !p.pending);
 
   function addPart(option: SearchSelectOption) {
     const material = bomMaterials.find((m) => m.id === option.value);
-    const next = [
+    const next: PartLine[] = [
       ...partLines,
       {
         id: `PL-${Date.now()}`,
@@ -146,6 +189,10 @@ export function WorkorderLifecycle({
         materialLabel: option.label,
         qty: 1,
         serialized: Boolean(material?.serialized),
+        // Stamped from the partner's own BOM catalog so the quantity the
+        // operator sets below actually prices the line.
+        unitPrice: material?.rate,
+        taxRate: material?.taxPercent,
       },
     ];
     setPartLines(next);
@@ -153,14 +200,42 @@ export function WorkorderLifecycle({
     persist({ partLines: next });
   }
 
+  /** Editable per-line quantity — was previously hardcoded to 1 with no input at all. */
+  function setPartQty(lineId: string, rawQty: string) {
+    const qty = Math.max(1, Math.floor(Number(rawQty) || 1));
+    setPartLines((prev) => prev.map((p) => (p.id === lineId ? { ...p, qty } : p)));
+  }
+
+  function persistPartQty() {
+    persist({ partLines });
+  }
+
   function addSolution(option: SearchSelectOption) {
-    const next = [
+    // Pre-fill from the solution's own defaultLaborCharge (Solutions
+    // catalog) — it was defined there all along but never read, so every
+    // service line was added at ₹0 and silently under-billed the job.
+    const next: ServiceLine[] = [
       ...serviceLines,
-      { id: `SL-${Date.now()}`, solutionId: option.value, solutionLabel: option.label, laborCharge: 0 },
+      {
+        id: `SL-${Date.now()}`,
+        solutionId: option.value,
+        solutionLabel: option.label,
+        laborCharge: solutionLaborCharges[option.value] ?? 0,
+      },
     ];
     setServiceLines(next);
     setSolutionPickerOpen(false);
     persist({ serviceLines: next });
+  }
+
+  /** The pre-filled default is a starting point, not a lock — it stays editable. */
+  function setLaborCharge(lineId: string, rawCharge: string) {
+    const laborCharge = Math.max(0, Number(rawCharge) || 0);
+    setServiceLines((prev) => prev.map((l) => (l.id === lineId ? { ...l, laborCharge } : l)));
+  }
+
+  function persistLaborCharge() {
+    persist({ serviceLines });
   }
 
   function markPending(lineId: string) {
@@ -202,16 +277,39 @@ export function WorkorderLifecycle({
   function toggleHold() {
     const next = !hold;
     setHold(next);
-    startPersist(async () => {
-      await setWorkorderHoldAction(partnerId, workorderId, next);
-    });
+    run(() => setWorkorderHoldAction(partnerId, workorderId, next));
   }
 
   function createInvoice() {
-    startPersist(async () => {
-      await createInvoiceFromWorkorderAction(partnerId, workorderId);
-      setInvoice("pending"); // optimistic; page revalidation will fill in the real id on next load
-    });
+    const amount = paymentAmount.trim() === "" ? undefined : Math.max(0, Number(paymentAmount) || 0);
+    run(
+      () =>
+        createInvoiceFromWorkorderAction(partnerId, workorderId, {
+          collected: paymentCollected,
+          mode: paymentCollected ? paymentMode : undefined,
+          amount: paymentCollected ? amount : undefined,
+        }),
+      () => {
+        setInvoiceModalOpen(false);
+        setInvoice("pending"); // optimistic; page revalidation fills in the real id on next load
+      }
+    );
+  }
+
+  function confirmCancel() {
+    const reason = cancelReasonDraft.trim();
+    if (!reason) {
+      setActionError("A cancellation reason is required.");
+      return;
+    }
+    run(
+      () => cancelWorkorderAction(partnerId, workorderId, reason),
+      () => {
+        setCancelled(true);
+        setHold(false);
+        setCancelModalOpen(false);
+      }
+    );
   }
 
   function approveEstimate() {
@@ -265,8 +363,13 @@ export function WorkorderLifecycle({
       {/* Milestone stepper — 7-stage MilestoneStatus (mirrors AN-CRM's CrmJobSheet lifecycle),
           derived from the underlying 4-stage WorkorderStage + onHold via mapStageToMilestone()
           so existing records/persistence keep working unmodified (see service-centre.ts). */}
+      {cancelled && (
+        <div className="mb-3">
+          <StatusChip label={`Cancelled${cancelReason ? ` — ${cancelReason}` : ""}`} variant="danger" />
+        </div>
+      )}
       {(() => {
-        const currentMilestone = mapStageToMilestone(stage, hold);
+        const currentMilestone = mapStageToMilestone(stage, hold, cancelled);
         const currentIdx = MILESTONE_STEPPER.indexOf(currentMilestone);
         return (
           <div className="flex flex-wrap items-center gap-2">
@@ -314,19 +417,19 @@ export function WorkorderLifecycle({
         </button>
       </div>
 
-      {closeBlockedMessage && (
+      {(closeBlockedMessage || actionError) && (
         <div className="mt-4 rounded-md border border-danger bg-danger-soft px-3 py-2 text-sm text-danger">
-          {closeBlockedMessage}
+          {closeBlockedMessage ?? actionError}
         </div>
       )}
 
       {/* Estimate approval — gates entry into In Progress unless under warranty */}
-      {stage === "Created" && !underWarranty && (
+      {stage === "Created" && !underWarranty && !cancelled && (
         <div className="mt-4 rounded-md border border-border bg-bg-raised p-4">
           <h2 className="font-display text-base font-bold text-text">Estimate</h2>
           <p className="mt-1 text-sm text-text-muted">
-            Current estimate: <span className="font-semibold text-text">₹{estimateTotal}</span> (labor only,
-            from service lines added below — parts priced separately in Inventory).
+            Current estimate: <span className="font-semibold text-text">₹{estimateTotal}</span> — ₹{laborTotal} labor
+            across {serviceLines.length} service line(s) plus ₹{partsTotal} in parts, priced from the Material Catalog.
           </p>
           {approved ? (
             <StatusChip label="Approved by customer" variant="success" className="mt-2" />
@@ -339,7 +442,7 @@ export function WorkorderLifecycle({
       )}
 
       {/* Hold (Parts Pending) — a side-state, not a stage; pauses editing without cancelling the job */}
-      {stage === "In Progress" && (
+      {stage === "In Progress" && !cancelled && (
         <div className="mt-4">
           <button type="button" className="btn-outline text-xs" onClick={toggleHold}>
             {hold ? "Resume from Hold" : "Put On Hold (awaiting parts)"}
@@ -368,22 +471,51 @@ export function WorkorderLifecycle({
         ) : (
           <div className="mt-3 space-y-2">
             {serviceLines.map((line) => (
-              <div key={line.id} className="flex items-center justify-between rounded-md border border-border bg-bg px-3 py-2 text-sm">
+              <div key={line.id} className="flex items-center justify-between gap-3 rounded-md border border-border bg-bg px-3 py-2 text-sm">
                 <div>
                   <span className="font-semibold text-text">{line.solutionLabel}</span>
                   <span className="ml-2 text-xs text-text-muted">Solution</span>
                 </div>
-                <span className="tabular-nums text-text-muted">₹{line.laborCharge}</span>
+                <label className="flex shrink-0 items-center gap-1.5 text-xs text-text-muted">
+                  <span>Labor ₹</span>
+                  <input
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={line.laborCharge}
+                    disabled={!editable}
+                    onChange={(e) => setLaborCharge(line.id, e.target.value)}
+                    onBlur={persistLaborCharge}
+                    className="w-24 rounded-md border border-border bg-bg-raised px-2 py-1 text-right text-sm tabular-nums text-text disabled:opacity-60"
+                  />
+                </label>
               </div>
             ))}
             {partLines.map((line) => (
               <div key={line.id} className="rounded-md border border-border bg-bg px-3 py-2 text-sm">
                 <div className="flex items-center justify-between">
-                  <div>
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="font-semibold text-text">{line.materialLabel}</span>
-                    <span className="ml-2 text-xs text-text-muted">Qty {line.qty}</span>
-                    {line.serialized && <StatusChip label="Serialized" variant="amber" className="ml-2" />}
-                    {line.pending && <StatusChip label="Pending" variant="warning" className="ml-2" />}
+                    <label className="flex items-center gap-1.5 text-xs text-text-muted">
+                      <span>Qty</span>
+                      <input
+                        type="number"
+                        min={1}
+                        step={1}
+                        value={line.qty}
+                        disabled={!editable || line.pending}
+                        onChange={(e) => setPartQty(line.id, e.target.value)}
+                        onBlur={persistPartQty}
+                        className="w-16 rounded-md border border-border bg-bg-raised px-2 py-1 text-right text-sm tabular-nums text-text disabled:opacity-60"
+                      />
+                    </label>
+                    {typeof line.unitPrice === "number" && (
+                      <span className="text-xs tabular-nums text-text-muted">
+                        @ ₹{line.unitPrice} = ₹{line.unitPrice * (line.qty || 1)}
+                      </span>
+                    )}
+                    {line.serialized && <StatusChip label="Serialized" variant="amber" />}
+                    {line.pending && <StatusChip label="Pending" variant="warning" />}
                   </div>
                   {editable && !line.pending && (
                     <button type="button" className="text-xs text-danger hover:underline" onClick={() => setPendingLineId(line.id)}>
@@ -411,7 +543,7 @@ export function WorkorderLifecycle({
       </div>
 
       {/* Handover & Close, only surfaces after Completed */}
-      {stage === "Completed" && (
+      {stage === "Completed" && !cancelled && (
         <div className="mt-6 rounded-md border border-border bg-bg-raised p-4">
           <h2 className="font-display text-base font-bold text-text">Handover & Close</h2>
           <textarea
@@ -426,8 +558,8 @@ export function WorkorderLifecycle({
       )}
 
       {/* Stage actions */}
-      <div className="mt-6 flex items-center gap-3">
-        {stage !== "Closed" && (
+      <div className="mt-6 flex flex-wrap items-center gap-3">
+        {!terminal && (
           <button
             type="button"
             className="btn-accent disabled:opacity-50"
@@ -442,8 +574,38 @@ export function WorkorderLifecycle({
         <Link href={`/partner/${partnerId}/service-centre/${workorderId}/document`} className="btn-outline">
           View Service Order
         </Link>
-        {stage === "Closed" && !invoice && (
-          <button type="button" className="btn-outline" onClick={createInvoice}>
+        {/* Cancel is available from any non-terminal stage — a job can be
+            abandoned before, during, or after repair, but never once it's
+            already Closed or Cancelled. */}
+        {!terminal && (
+          <button
+            type="button"
+            className="btn-outline text-danger"
+            onClick={() => {
+              setCancelReasonDraft("");
+              setActionError(null);
+              setCancelModalOpen(true);
+            }}
+          >
+            Cancel Workorder
+          </button>
+        )}
+        {stage === "Closed" && !cancelled && !invoice && (
+          <button
+            type="button"
+            className="btn-outline"
+            onClick={() => {
+              setPaymentCollected(!underWarranty);
+              setPaymentAmount("");
+              setActionError(null);
+              if (underWarranty) {
+                // Nothing to collect on a warranty job — skip the payment prompt.
+                createInvoice();
+              } else {
+                setInvoiceModalOpen(true);
+              }
+            }}
+          >
             Create Invoice{underWarranty ? " (Warranty — ₹0)" : ""}
           </button>
         )}
@@ -529,6 +691,103 @@ export function WorkorderLifecycle({
         <p className="text-sm text-text-muted">
           All serialized parts are accounted for. Close this workorder and hand it over to the customer?
         </p>
+      </Modal>
+      {/* Cancellation — same Modal + confirm pattern as Mark Part Pending /
+          Close Workorder above, with a mandatory reason. */}
+      <Modal
+        open={cancelModalOpen}
+        onClose={() => setCancelModalOpen(false)}
+        title="Cancel Workorder"
+        size="sm"
+        footer={
+          <>
+            <button type="button" className="btn-outline" onClick={() => setCancelModalOpen(false)}>
+              Keep Workorder
+            </button>
+            <button
+              type="button"
+              className="btn-accent disabled:opacity-50"
+              onClick={confirmCancel}
+              disabled={!cancelReasonDraft.trim()}
+            >
+              Cancel Workorder
+            </button>
+          </>
+        }
+      >
+        <p className="text-sm text-text-muted">
+          This is permanent — a cancelled workorder can&apos;t be reopened or advanced. A reason is required.
+        </p>
+        <textarea
+          value={cancelReasonDraft}
+          onChange={(e) => setCancelReasonDraft(e.target.value)}
+          placeholder="Why is this workorder being cancelled?"
+          rows={3}
+          className="mt-3 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text"
+        />
+      </Modal>
+      {/* Payment capture at handover — previously the invoice was always
+          left in Draft with no amount or mode ever recorded. */}
+      <Modal
+        open={invoiceModalOpen}
+        onClose={() => setInvoiceModalOpen(false)}
+        title="Create Invoice"
+        size="sm"
+        footer={
+          <>
+            <button type="button" className="btn-outline" onClick={() => setInvoiceModalOpen(false)}>
+              Cancel
+            </button>
+            <button type="button" className="btn-accent" onClick={createInvoice}>
+              Create Invoice
+            </button>
+          </>
+        }
+      >
+        <p className="text-sm text-text-muted">
+          Chargeable lines total <span className="font-semibold text-text">₹{estimateTotal}</span> before GST. Record
+          the payment now if the customer settled at handover — this marks the invoice Paid and files a matching
+          entry under Billing &gt; Payments.
+        </p>
+        <label className="mt-3 flex items-center gap-2 text-sm text-text">
+          <input
+            type="checkbox"
+            checked={paymentCollected}
+            onChange={(e) => setPaymentCollected(e.target.checked)}
+            className="h-4 w-4 rounded border-border"
+          />
+          Payment collected at handover
+        </label>
+        {paymentCollected && (
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <label className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+              Payment Mode
+              <select
+                value={paymentMode}
+                onChange={(e) => setPaymentMode(e.target.value)}
+                className="mt-1 w-full rounded-md border border-border bg-bg px-2 py-1.5 text-sm font-normal normal-case tracking-normal text-text"
+              >
+                {PAYMENT_MODES.map((mode) => (
+                  <option key={mode} value={mode}>
+                    {mode}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+              Amount Collected (₹)
+              <input
+                type="number"
+                min={0}
+                step={1}
+                value={paymentAmount}
+                onChange={(e) => setPaymentAmount(e.target.value)}
+                placeholder="Full invoice total"
+                className="mt-1 w-full rounded-md border border-border bg-bg px-2 py-1.5 text-sm font-normal normal-case tracking-normal tabular-nums text-text"
+              />
+            </label>
+          </div>
+        )}
       </Modal>
     </div>
   );

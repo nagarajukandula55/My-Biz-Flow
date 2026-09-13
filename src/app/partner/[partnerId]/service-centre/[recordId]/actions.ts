@@ -2,8 +2,41 @@
 
 import { revalidatePath } from "next/cache";
 import { createBusinessRecord, updateBusinessRecord, getBusinessRecord, listBusinessRecords } from "@/lib/businessRecords";
-import { extractLifecycleFromRecord, WORKORDER_STAGES, type ServiceLine, type WorkorderStage } from "@/lib/sample-data/service-centre";
+import {
+  extractLifecycleFromRecord,
+  WORKORDER_STAGES,
+  type ServiceLine,
+  type StageHistoryEntry,
+  type WorkorderStage,
+} from "@/lib/sample-data/service-centre";
 import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
+
+/**
+ * Shared lookup for every action below. Previously each action did
+ * `if (!existing) return;` — a silent no-op, so a lifecycle button whose id
+ * didn't resolve to a real record simply did nothing with no feedback at
+ * all. Throwing surfaces the problem immediately (Next renders the Server
+ * Action error) instead of leaving a dead button.
+ */
+async function requireWorkorder(partnerId: string, workorderId: string): Promise<Record<string, unknown>> {
+  const existing = await getBusinessRecord(partnerId, "service-centre", workorderId);
+  if (!existing) {
+    throw new Error(`Workorder "${workorderId}" not found — it may have been moved or deleted.`);
+  }
+  return existing;
+}
+
+/**
+ * Appends a real stage transition to the record's `stageHistory`. This is
+ * the only place transitions are logged, and it's what the activity
+ * timeline renders from (getServiceCentreTimeline) — no actor/IP is stored
+ * because the module has one login for the whole business, not per-user
+ * accounts, so there is no real identity to attribute.
+ */
+function appendStageHistory(existing: Record<string, unknown>, stage: string): StageHistoryEntry[] {
+  const history = (existing["stageHistory"] as StageHistoryEntry[] | undefined) ?? [];
+  return [...history, { at: new Date().toISOString(), stage }];
+}
 
 /**
  * Tenant-isolation gate: every mutating action below calls this first.
@@ -35,6 +68,14 @@ function assertLegalStageTransition(
 ): void {
   const currentStage = (existing["stage"] as WorkorderStage | undefined) ?? "Created";
   if (nextStage === currentStage) return; // no-op patch (e.g. re-saving other fields alongside the current stage)
+
+  // Cancelled is a terminal side-branch, not a point on the linear stage
+  // sequence — a job can be abandoned from Created / In Progress /
+  // Completed alike, so it's exempt from the "next stage only" rule below.
+  // It is still terminal: nothing moves out of Cancelled (or Closed).
+  if (existing["cancelledAt"]) {
+    throw new Error("This workorder has been cancelled — its stage can no longer be changed.");
+  }
 
   const currentIdx = WORKORDER_STAGES.indexOf(currentStage);
   const nextIdx = WORKORDER_STAGES.indexOf(nextStage);
@@ -76,12 +117,21 @@ export async function patchServiceCentreWorkorderAction(
   patch: Record<string, unknown>
 ): Promise<void> {
   await assertCanActOnServiceCentre(partnerId);
-  const existing = await getBusinessRecord(partnerId, "service-centre", workorderId);
-  if (!existing) return;
+  const existing = await requireWorkorder(partnerId, workorderId);
+  const extra: Record<string, unknown> = {};
   if (typeof patch["stage"] === "string") {
-    assertLegalStageTransition(existing, patch["stage"] as WorkorderStage);
+    const nextStage = patch["stage"] as WorkorderStage;
+    assertLegalStageTransition(existing, nextStage);
+    if (nextStage !== existing["stage"]) {
+      // Log the real transition so the activity timeline has something
+      // true to render instead of fabricating a history.
+      extra["stageHistory"] = appendStageHistory(existing, nextStage);
+    }
   }
-  await updateBusinessRecord(partnerId, "service-centre", workorderId, { ...existing, ...patch });
+  if (patch["estimateApproved"] === true && !existing["estimateApproved"]) {
+    extra["customerApprovalAt"] = new Date().toISOString();
+  }
+  await updateBusinessRecord(partnerId, "service-centre", workorderId, { ...existing, ...patch, ...extra });
   revalidatePath(`/partner/${partnerId}/service-centre/${workorderId}`);
 }
 
@@ -98,8 +148,7 @@ export async function patchServiceCentreWorkorderAction(
  */
 export async function deductInventoryForWorkorderAction(partnerId: string, workorderId: string): Promise<void> {
   await assertCanActOnServiceCentre(partnerId);
-  const record = await getBusinessRecord(partnerId, "service-centre", workorderId);
-  if (!record) return;
+  const record = await requireWorkorder(partnerId, workorderId);
   const lifecycle = extractLifecycleFromRecord(record);
   if (lifecycle.inventoryDeducted) return; // already deducted — don't double-count
   if (lifecycle.partLines.length === 0) {
@@ -137,10 +186,21 @@ export async function deductInventoryForWorkorderAction(partnerId: string, worko
  * Bind with .bind(null, partnerId, workorderId) before calling from a
  * client button.
  */
-export async function createInvoiceFromWorkorderAction(partnerId: string, workorderId: string): Promise<void> {
+export async function createInvoiceFromWorkorderAction(
+  partnerId: string,
+  workorderId: string,
+  /**
+   * Payment captured at handover. Previously a non-warranty job's invoice
+   * was always left at paymentStatus "Draft" with no amount or mode ever
+   * recorded, so collecting the money was an untracked manual follow-up and
+   * the dashboard counted uncollected invoices as revenue. When `collected`
+   * is set, the invoice is marked Paid AND a matching "billing-payments"
+   * record is created (same shape the Billing > Payments form writes).
+   */
+  payment?: { collected: boolean; mode?: string; amount?: number }
+): Promise<void> {
   await assertCanActOnServiceCentre(partnerId);
-  const record = await getBusinessRecord(partnerId, "service-centre", workorderId);
-  if (!record) return;
+  const record = await requireWorkorder(partnerId, workorderId);
   const lifecycle = extractLifecycleFromRecord(record);
   if (lifecycle.stage !== "Closed") return;
   if (lifecycle.invoiceId) return; // already invoiced — don't double-create
@@ -166,11 +226,22 @@ export async function createInvoiceFromWorkorderAction(partnerId: string, workor
     ? `Warranty repair — no charge (${lifecycle.serviceLines.length} service line(s), ${lifecycle.partLines.length} part line(s))`
     : [...lifecycle.serviceLines.map((l: ServiceLine) => `${l.solutionLabel} (₹${l.laborCharge})`), ...partsSummary].join(", ");
 
-  const amountPaid = underWarranty ? totalAmount : 0;
+  // A warranty job is non-chargeable (₹0), so it is trivially settled.
+  // Otherwise the paid amount is whatever was actually collected at
+  // handover — defaulting to the invoice total when the operator ticked
+  // "payment collected" without overriding the amount.
+  const collected = Boolean(payment?.collected) && !underWarranty;
+  const collectedAmount = collected
+    ? Math.max(0, Math.min(totalAmount, Number(payment?.amount ?? totalAmount) || 0))
+    : 0;
+  const amountPaid = underWarranty ? totalAmount : collectedAmount;
+  const amountDue = totalAmount - amountPaid;
+  const issueDate = new Date().toISOString().slice(0, 10);
+
   const invoice = await createBusinessRecord(partnerId, "billing", {
     customer: record["customer"] ?? "",
-    issueDate: new Date().toISOString().slice(0, 10),
-    dueDate: new Date().toISOString().slice(0, 10),
+    issueDate,
+    dueDate: issueDate,
     lineItemsSummary: lineSummary || "No chargeable lines",
     subtotal,
     taxAmount,
@@ -178,15 +249,79 @@ export async function createInvoiceFromWorkorderAction(partnerId: string, workor
     roundOff: 0,
     totalAmount,
     amountPaid,
-    amountDue: totalAmount - amountPaid,
-    paymentStatus: underWarranty ? "Paid" : "Draft",
-    paymentMode: undefined,
+    amountDue,
+    paymentStatus: amountDue <= 0 ? "Paid" : amountPaid > 0 ? "Partially Paid" : "Draft",
+    paymentMode: collected ? payment?.mode : undefined,
     sourceWorkorderId: workorderId,
   });
 
-  await updateBusinessRecord(partnerId, "service-centre", workorderId, { ...record, invoiceId: invoice.id });
+  // Mirror the Billing > Payments record the manual form would have
+  // created, so the money shows up in the outstanding/statement reports
+  // rather than only as a field on the invoice.
+  if (collected && collectedAmount > 0) {
+    await createBusinessRecord(partnerId, "billing-payments", {
+      invoiceId: invoice.id,
+      contact: record["customer"] ?? "",
+      amount: collectedAmount,
+      mode: payment?.mode ?? "Cash",
+      date: issueDate,
+      reference: `Collected at handover — workorder ${workorderId}`,
+    });
+    revalidatePath(`/partner/${partnerId}/billing/payments`);
+  }
+
+  await updateBusinessRecord(partnerId, "service-centre", workorderId, {
+    ...record,
+    invoiceId: invoice.id,
+    paymentCollected: collected || underWarranty,
+    paymentMode: collected ? payment?.mode : undefined,
+    paymentCollectedAmount: amountPaid,
+    paymentCollectedAt: collected ? new Date().toISOString() : undefined,
+  });
   revalidatePath(`/partner/${partnerId}/service-centre/${workorderId}`);
   revalidatePath(`/partner/${partnerId}/service-centre/${workorderId}/invoice`);
+  revalidatePath(`/partner/${partnerId}/billing`);
+}
+
+/**
+ * Terminal cancellation of a workorder — the "CANCELLED" milestone
+ * (MILESTONE_STATUSES in service-centre.ts) previously had no way of ever
+ * being reached: no action, no button, no reason field. A reason is
+ * mandatory, since a cancelled job with no explanation is useless for the
+ * later "why did this never get done" question.
+ *
+ * Bind with .bind(null, partnerId, workorderId) before calling from a
+ * client button.
+ */
+export async function cancelWorkorderAction(
+  partnerId: string,
+  workorderId: string,
+  reason: string
+): Promise<void> {
+  await assertCanActOnServiceCentre(partnerId);
+  const trimmedReason = (reason ?? "").trim();
+  if (!trimmedReason) {
+    throw new Error("A cancellation reason is required.");
+  }
+  const record = await requireWorkorder(partnerId, workorderId);
+  if (record["cancelledAt"]) {
+    throw new Error("This workorder has already been cancelled.");
+  }
+  if (record["stage"] === "Closed") {
+    throw new Error("A closed workorder can no longer be cancelled.");
+  }
+
+  await updateBusinessRecord(partnerId, "service-centre", workorderId, {
+    ...record,
+    cancelReason: trimmedReason,
+    cancelledAt: new Date().toISOString(),
+    onHold: false,
+    holdReason: undefined,
+    holdSince: undefined,
+    stageHistory: appendStageHistory(record, "Cancelled"),
+  });
+  revalidatePath(`/partner/${partnerId}/service-centre/${workorderId}`);
+  revalidatePath(`/partner/${partnerId}/service-centre`);
 }
 
 /**
@@ -201,8 +336,7 @@ export async function setWorkorderHoldAction(
   reason?: string
 ): Promise<void> {
   await assertCanActOnServiceCentre(partnerId);
-  const record = await getBusinessRecord(partnerId, "service-centre", workorderId);
-  if (!record) return;
+  const record = await requireWorkorder(partnerId, workorderId);
   await updateBusinessRecord(partnerId, "service-centre", workorderId, {
     ...record,
     onHold: hold,

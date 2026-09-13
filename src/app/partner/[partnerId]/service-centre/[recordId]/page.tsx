@@ -54,11 +54,19 @@ export default async function ServiceCentreDetailPage({
       id: String(r["id"]),
       label: `${r["id"]} — ${r["description"] ?? ""}`,
       serialized: Boolean(r["serialized"]),
+      // Real catalog price/tax, stamped onto a part line when it's added so
+      // the quantity entered on the line actually prices out.
+      rate: typeof r["rate"] === "number" ? r["rate"] : undefined,
+      taxPercent: typeof r["taxPercent"] === "number" ? r["taxPercent"] : undefined,
     }));
   const solutionRecords = await listBusinessRecords(params.partnerId, "service-centre-solutions");
-  const solutionOptions = solutionRecords
-    .filter((r) => r["status"] === "Active")
-    .map((r) => ({ value: String(r["id"]), label: String(r["title"] ?? r["id"]) }));
+  const activeSolutions = solutionRecords.filter((r) => r["status"] === "Active");
+  const solutionOptions = activeSolutions.map((r) => ({ value: String(r["id"]), label: String(r["title"] ?? r["id"]) }));
+  // defaultLaborCharge lives on each Solution but was never read — service
+  // lines were always added at ₹0. Passed through so a new line pre-fills.
+  const solutionLaborCharges = Object.fromEntries(
+    activeSolutions.map((r) => [String(r["id"]), typeof r["defaultLaborCharge"] === "number" ? r["defaultLaborCharge"] : 0])
+  );
 
   const brandRecords = await listBusinessRecords(params.partnerId, "service-centre-brands");
   const brandOptions = brandRecords
@@ -83,9 +91,16 @@ export default async function ServiceCentreDetailPage({
   return (
     <AppShell topbarTitle={mod?.label ?? "Service Centre"}>
       <div>
+        {/* workorderId is params.recordId — the BusinessRecord recordKey,
+            which is the exact value every action in ./actions.ts passes to
+            getBusinessRecord(). This previously passed record["id"], a
+            display label that happens to coincide with the key today but
+            isn't the lookup key itself; binding the real route param
+            removes any chance of a lifecycle button targeting a key that
+            doesn't exist and silently doing nothing. */}
         <WorkorderLifecycle
           partnerId={params.partnerId}
-          workorderId={recordLabel}
+          workorderId={params.recordId}
           initialStage={lifecycle.stage}
           initialPartLines={lifecycle.partLines}
           initialServiceLines={lifecycle.serviceLines}
@@ -101,8 +116,11 @@ export default async function ServiceCentreDetailPage({
           estimateApproved={lifecycle.estimateApproved}
           underWarranty={Boolean(record["warrantyFlag"])}
           invoiceId={lifecycle.invoiceId}
+          cancelledAt={lifecycle.cancelledAt}
+          cancelReason={lifecycle.cancelReason}
           bomMaterials={bomMaterials}
           solutionOptions={solutionOptions}
+          solutionLaborCharges={solutionLaborCharges}
           brandOptions={brandOptions}
           modelOptions={modelOptions}
           technicianOptions={technicianOptions}

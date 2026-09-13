@@ -143,7 +143,10 @@ export async function getServiceCentreOverview(partnerId: string): Promise<Servi
     if (r.createdAt >= startOfWeek) workordersThisWeek++;
     if (r.createdAt >= startOfMonth) workordersThisMonth++;
     if (r.createdAt >= startOfYear) workordersThisYear++;
-    if (stage !== "Closed") {
+    // A cancelled job is terminal (see cancelWorkorderAction) — it is not
+    // open work and must not sit in a technician's workload forever.
+    const cancelled = Boolean(data.cancelledAt);
+    if (stage !== "Closed" && !cancelled) {
       openWorkorders++;
       const tech = typeof data.technicianName === "string" && data.technicianName.trim() ? data.technicianName.trim() : "Unassigned";
       workloadByTechnician.set(tech, (workloadByTechnician.get(tech) ?? 0) + 1);
@@ -151,9 +154,19 @@ export async function getServiceCentreOverview(partnerId: string): Promise<Servi
     if (stage === "Closed" && r.createdAt >= startOfMonth) closedThisMonth++;
   }
 
+  // Revenue = money actually COLLECTED, not money invoiced. This summed
+  // `totalAmount` over every invoice regardless of payment status, so a
+  // Draft/unpaid invoice (which is what a non-warranty workorder used to
+  // produce by default) counted as revenue the business had never received.
+  // `amountPaid` is maintained on every invoice — by the manual Billing
+  // form, and by createInvoiceFromWorkorderAction's handover payment
+  // capture — so summing it reports real collections. Invoices predating
+  // that field fall back to their total only when explicitly marked Paid.
   const revenueThisMonth = billingRowsThisMonth.reduce((total, r) => {
     const data = r.data as Record<string, unknown>;
-    return total + (typeof data.totalAmount === "number" ? data.totalAmount : 0);
+    if (typeof data.amountPaid === "number") return total + data.amountPaid;
+    if (data.paymentStatus === "Paid" && typeof data.totalAmount === "number") return total + data.totalAmount;
+    return total;
   }, 0);
 
   const technicianWorkload = Array.from(workloadByTechnician.entries())

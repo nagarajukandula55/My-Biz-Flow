@@ -78,8 +78,13 @@ async function buildInvoiceLines(partnerId: string, record: Awaited<ReturnType<t
       description: line.materialLabel,
       hsn: String(material?.["hsnCode"] ?? ""),
       quantity: line.qty,
-      rate: underWarranty ? 0 : Number(material?.["rate"] ?? 0),
-      gstRate: Number(material?.["taxPercent"] ?? 18),
+      // Prefer the price stamped onto the line when it was added — that's
+      // the figure createInvoiceFromWorkorderAction bills and the customer
+      // approved, so the printed document can't drift from the persisted
+      // invoice if the catalog price changes afterwards. Falls back to the
+      // live catalog for lines added before prices were stamped.
+      rate: underWarranty ? 0 : Number(line.unitPrice ?? material?.["rate"] ?? 0),
+      gstRate: Number(line.taxRate ?? material?.["taxPercent"] ?? 18),
     });
   }
   return items;

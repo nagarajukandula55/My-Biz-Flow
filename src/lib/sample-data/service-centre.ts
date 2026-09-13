@@ -61,7 +61,12 @@ export const MILESTONE_STATUSES: MilestoneStatus[] = [
   "CANCELLED",
 ];
 
-export function mapStageToMilestone(stage: WorkorderStage, onHold?: boolean): MilestoneStatus {
+export function mapStageToMilestone(stage: WorkorderStage, onHold?: boolean, cancelled?: boolean): MilestoneStatus {
+  // Cancellation is a terminal side-branch recorded as `cancelledAt` on the
+  // record rather than a WorkorderStage value (the four stages are the
+  // linear happy path), so it takes precedence over whatever stage the job
+  // was abandoned at.
+  if (cancelled) return "CANCELLED";
   if (stage === "In Progress" && onHold) return "PART_PENDING";
   switch (stage) {
     case "Created": return "CREATED";
@@ -115,6 +120,21 @@ export interface ServiceLine {
   symptomCodeLabel?: string;
   taxRate?: number;
   hsnCode?: string;
+}
+
+/**
+ * One real, persisted stage transition. Appended by
+ * patchServiceCentreWorkorderAction whenever a workorder's `stage` actually
+ * changes, and by cancelWorkorderAction — this is the only source the
+ * activity timeline reads transitions from (see getServiceCentreTimeline).
+ * No actor/IP is recorded because the module has a single business login,
+ * not per-user accounts.
+ */
+export interface StageHistoryEntry {
+  /** ISO timestamp of the transition. */
+  at: string;
+  /** The stage (or "Cancelled") the workorder moved INTO. */
+  stage: string;
 }
 
 /** Per-workorder lifecycle state, keyed by workorder id. Demo in-memory store — resets on reload, no backend yet. */
@@ -208,6 +228,13 @@ export function extractLifecycleFromRecord(record: Row): {
   serviceLines: ServiceLine[];
   handoverNotes?: string;
   inventoryDeducted?: boolean;
+  stageHistory: StageHistoryEntry[];
+  cancelled: boolean;
+  cancelReason?: string;
+  cancelledAt?: string;
+  paymentCollected?: boolean;
+  paymentMode?: string;
+  paymentCollectedAmount?: number;
 } {
   return {
     stage: (record["stage"] as WorkorderStage | undefined) ?? "Created",
@@ -227,6 +254,13 @@ export function extractLifecycleFromRecord(record: Row): {
     serviceLines: (record["serviceLines"] as ServiceLine[] | undefined) ?? [],
     handoverNotes: record["handoverNotes"] as string | undefined,
     inventoryDeducted: Boolean(record["inventoryDeducted"]),
+    stageHistory: (record["stageHistory"] as StageHistoryEntry[] | undefined) ?? [],
+    cancelled: Boolean(record["cancelledAt"]),
+    cancelReason: record["cancelReason"] as string | undefined,
+    cancelledAt: record["cancelledAt"] as string | undefined,
+    paymentCollected: Boolean(record["paymentCollected"]),
+    paymentMode: record["paymentMode"] as string | undefined,
+    paymentCollectedAmount: record["paymentCollectedAmount"] as number | undefined,
   };
 }
 
@@ -383,13 +417,56 @@ export function getServiceCentreDetailFields(record: Row): RecordField[] {
   ];
 }
 
+/**
+ * Real activity timeline for a workorder, derived ENTIRELY from timestamps
+ * already persisted on the record itself — intake date, the stageHistory
+ * entries appended by patchServiceCentreWorkorderAction on every stage
+ * change, technician assignment, estimate approval, hold, and cancellation.
+ *
+ * Deliberately carries NO `actor` and no IP address: Service Centre has a
+ * single login for the whole business (see requirePartnerSession.ts /
+ * assertCanActOnServiceCentre), so there is no per-action user identity to
+ * attribute an entry to. This function previously returned four hardcoded
+ * entries with invented staff names and invented IP addresses, identical
+ * for every workorder — a fabricated audit trail on a printable document.
+ * Anything that can't be backed by real stored data is omitted rather than
+ * invented.
+ */
 export function getServiceCentreTimeline(record: Row): TimelineEntry[] {
-  return [
-    { id: "t1", label: "Job created at intake counter by Suresh M. — IP 103.21.44.18", timestamp: "2026-08-03T09:30:00", actor: "Suresh M." },
-    { id: "t2", label: "Device diagnosed and estimate shared with customer by Technician — IP 103.21.44.18", timestamp: "2026-08-04T11:00:00", actor: "Technician" },
-    { id: "t3", label: "Technician checked in for pickup on-site (12.9352, 77.6146) — IP 103.21.44.30", timestamp: "2026-08-05T10:15:00", actor: "Field Technician" },
-    { id: "t4", label: "Status changed to Ready by Suresh M. — IP 103.21.44.18", timestamp: "2026-08-06T16:40:00", actor: "Suresh M." },
-  ];
+  const entries: TimelineEntry[] = [];
+  const push = (id: string, label: string, timestamp: unknown) => {
+    if (typeof timestamp !== "string" || !timestamp.trim()) return;
+    entries.push({ id, label, timestamp });
+  };
+
+  push("received", "Workorder created at intake", record["receivedDate"]);
+
+  const history = (record["stageHistory"] as StageHistoryEntry[] | undefined) ?? [];
+  history.forEach((h, i) => {
+    if (!h || typeof h.at !== "string") return;
+    push(`stage-${i}`, `Stage changed to ${h.stage}`, h.at);
+  });
+
+  if (record["technicianName"]) {
+    push("assigned", `Technician assigned — ${String(record["technicianName"])}`, record["assignedAt"]);
+  }
+  if (record["estimateApproved"]) {
+    push("estimate", "Estimate approved by customer", record["customerApprovalAt"]);
+  }
+  if (record["onHold"]) {
+    const reason = record["holdReason"] ? ` — ${String(record["holdReason"])}` : "";
+    push("hold", `Put on hold${reason}`, record["holdSince"]);
+  }
+  if (record["cancelledAt"]) {
+    const reason = record["cancelReason"] ? ` — ${String(record["cancelReason"])}` : "";
+    push("cancelled", `Workorder cancelled${reason}`, record["cancelledAt"]);
+  }
+  if (record["paymentCollectedAt"]) {
+    const mode = record["paymentMode"] ? ` via ${String(record["paymentMode"])}` : "";
+    push("payment", `Payment collected${mode}`, record["paymentCollectedAt"]);
+  }
+
+  return entries.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
 }
 
 export const serviceCentreRelated: RelatedRecord[] = [];
