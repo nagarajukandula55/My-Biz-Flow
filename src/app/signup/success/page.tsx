@@ -1,6 +1,8 @@
+import { cookies } from "next/headers";
 import Link from "next/link";
 import { LogoMark } from "@/components/LogoMark";
 import { registerPage } from "@/lib/designer/registry";
+import { ONE_TIME_CREDENTIAL_COOKIE, verifyOneTimeCredentialToken } from "@/lib/partnerSession";
 
 registerPage({
   id: "platform.signup.success",
@@ -11,16 +13,14 @@ registerPage({
   superAdminOnly: false,
   customizableRegions: [],
   explanation:
-    "Informative post-signup landing page — shows the assigned Partner ID and one-time password once (not stored/retrievable again), with clear next steps. Reached only via redirect from the signup Server Action, never linked to directly.",
+    "Informative post-signup landing page — shows the assigned Partner ID and one-time password once (not stored/retrievable again), with clear next steps. Reached only via redirect from the signup Server Action, which hands the credential over in a short-lived httpOnly cookie (mbf_onetime_credential) rather than a URL query string.",
   sourceFile: "src/app/signup/success/page.tsx",
 });
 
-export default function SignupSuccessPage({
-  searchParams,
-}: {
-  searchParams: { partnerId?: string; password?: string };
-}) {
-  const { partnerId, password } = searchParams;
+export default async function SignupSuccessPage() {
+  const claims = await verifyOneTimeCredentialToken(cookies().get(ONE_TIME_CREDENTIAL_COOKIE)?.value);
+  const partnerId = claims?.partnerId;
+  const password = claims?.password;
 
   return (
     <div className="flex min-h-screen w-full items-center justify-center bg-bg px-6 py-12">

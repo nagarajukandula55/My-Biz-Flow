@@ -2,43 +2,85 @@
 
 import { revalidatePath } from "next/cache";
 import { createBusinessRecord, updateBusinessRecord, getBusinessRecord, listBusinessRecords } from "@/lib/businessRecords";
-import { extractLifecycleFromRecord, type ServiceLine } from "@/lib/sample-data/service-centre";
-import { requireServiceCentreStaff } from "@/lib/staffAuth";
+import { extractLifecycleFromRecord, WORKORDER_STAGES, type ServiceLine, type WorkorderStage } from "@/lib/sample-data/service-centre";
+import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 
 /**
- * First-cut Service Centre authorization gate: every mutating action below
- * calls this first. A signed-in PartnerStaff session must belong to THIS
- * exact partnerId (requireServiceCentreStaff throws if it's scoped to a
- * different partner — the real cross-tenant risk). No staff session at all
- * is allowed through unchanged, since these mutations are also reachable
- * from the Partner owner's own session (which has no PartnerStaff row) and
- * locking that out would break the existing owner workflow. This does NOT
- * distinguish which staff role may perform which specific action (assign
- * vs. start vs. complete vs. cancel) — every Active staff member of the
- * partner can perform every action here. A full per-action permission
- * matrix (AN-CRM's Role/Permission/RolePermission) is a documented
- * fast-follow, not built in this pass.
+ * Tenant-isolation gate: every mutating action below calls this first.
+ * Service Centre has a single login for the whole business (the partner
+ * session — see requirePartnerSession.ts; the separate PartnerStaff
+ * sign-in/sign-up flow this used to check has been removed), so this just
+ * confirms the caller's session belongs to THIS exact partnerId. Does NOT
+ * implement a per-role permission matrix (assign vs. start vs. complete vs.
+ * cancel) — anyone signed in as this partner can perform every action here,
+ * which matches "one login for the business" rather than per-technician
+ * accounts.
  */
-async function assertStaffCanActOnServiceCentre(partnerId: string): Promise<void> {
-  await requireServiceCentreStaff(partnerId);
+async function assertCanActOnServiceCentre(partnerId: string): Promise<void> {
+  await requireSessionPartnerId(partnerId);
+}
+
+/**
+ * Server-side stage-transition rules — previously these lived ONLY in
+ * WorkorderLifecycle.tsx's advanceStage() (client-side), so a crafted
+ * request straight to patchServiceCentreWorkorderAction with
+ * `{ stage: "Closed" }` could skip the estimate-approval gate or the
+ * unresolved-serial check entirely. This mirrors the client's own rules
+ * (kept in sync deliberately) so the UI and the server never disagree, but
+ * the server's copy is the one that can't be bypassed.
+ */
+function assertLegalStageTransition(
+  existing: Record<string, unknown>,
+  nextStage: WorkorderStage
+): void {
+  const currentStage = (existing["stage"] as WorkorderStage | undefined) ?? "Created";
+  if (nextStage === currentStage) return; // no-op patch (e.g. re-saving other fields alongside the current stage)
+
+  const currentIdx = WORKORDER_STAGES.indexOf(currentStage);
+  const nextIdx = WORKORDER_STAGES.indexOf(nextStage);
+  if (nextIdx !== currentIdx + 1) {
+    throw new Error(`Cannot move workorder from "${currentStage}" directly to "${nextStage}" — stages can't be skipped or reversed.`);
+  }
+
+  if (nextStage === "In Progress") {
+    const underWarranty = Boolean(existing["warrantyFlag"]);
+    const approved = Boolean(existing["estimateApproved"]);
+    if (!underWarranty && !approved) {
+      throw new Error("The customer must approve the estimate before repair work starts.");
+    }
+  }
+
+  if (nextStage === "Closed") {
+    const partLines = (existing["partLines"] as { serialized?: boolean; serial?: string; pending?: boolean }[] | undefined) ?? [];
+    const unresolvedSerials = partLines.filter((p) => p.serialized && !p.serial && !p.pending);
+    if (unresolvedSerials.length > 0) {
+      throw new Error(
+        `${unresolvedSerials.length} part line(s) are serialized but missing a Serial/IMEI number. Enter the serial or mark the line Pending before closing.`
+      );
+    }
+  }
 }
 
 /**
  * Service-Centre-specific replacement for the generic patchBusinessRecordAction
- * — same merge-and-persist behavior, but gated by assertStaffCanActOnServiceCentre
- * first. Used by WorkorderLifecycle for every lifecycle patch (stage
+ * — same merge-and-persist behavior, but gated by assertCanActOnServiceCentre
+ * first, and — when the patch includes a `stage` change — validated against
+ * assertLegalStageTransition so the state machine can't be bypassed by a
+ * direct call. Used by WorkorderLifecycle for every lifecycle patch (stage
  * transitions, brand/model/technician assignment, parts/service lines,
- * handover notes) instead of calling the generic action directly, so those
- * mutations are covered by the partner-membership check above.
+ * handover notes) instead of calling the generic action directly.
  */
 export async function patchServiceCentreWorkorderAction(
   partnerId: string,
   workorderId: string,
   patch: Record<string, unknown>
 ): Promise<void> {
-  await assertStaffCanActOnServiceCentre(partnerId);
+  await assertCanActOnServiceCentre(partnerId);
   const existing = await getBusinessRecord(partnerId, "service-centre", workorderId);
   if (!existing) return;
+  if (typeof patch["stage"] === "string") {
+    assertLegalStageTransition(existing, patch["stage"] as WorkorderStage);
+  }
   await updateBusinessRecord(partnerId, "service-centre", workorderId, { ...existing, ...patch });
   revalidatePath(`/partner/${partnerId}/service-centre/${workorderId}`);
 }
@@ -55,7 +97,7 @@ export async function patchServiceCentreWorkorderAction(
  * Completed (e.g. after a later edit) never double-deducts.
  */
 export async function deductInventoryForWorkorderAction(partnerId: string, workorderId: string): Promise<void> {
-  await assertStaffCanActOnServiceCentre(partnerId);
+  await assertCanActOnServiceCentre(partnerId);
   const record = await getBusinessRecord(partnerId, "service-centre", workorderId);
   if (!record) return;
   const lifecycle = extractLifecycleFromRecord(record);
@@ -96,7 +138,7 @@ export async function deductInventoryForWorkorderAction(partnerId: string, worko
  * client button.
  */
 export async function createInvoiceFromWorkorderAction(partnerId: string, workorderId: string): Promise<void> {
-  await assertStaffCanActOnServiceCentre(partnerId);
+  await assertCanActOnServiceCentre(partnerId);
   const record = await getBusinessRecord(partnerId, "service-centre", workorderId);
   if (!record) return;
   const lifecycle = extractLifecycleFromRecord(record);
@@ -105,14 +147,24 @@ export async function createInvoiceFromWorkorderAction(partnerId: string, workor
 
   const underWarranty = Boolean(record["warrantyFlag"]);
   const laborTotal = underWarranty ? 0 : lifecycle.serviceLines.reduce((sum, l) => sum + (l.laborCharge || 0), 0);
-  const partsTotal = 0; // part pricing lives in Inventory's own rate — this pass totals labor only, same scope as the existing invoice render
+  // Parts were previously never billed at all (hardcoded to 0) — a
+  // workorder could consume real inventory and still invoice for labor
+  // only. Each PartLine already carries its own unitPrice/qty (see
+  // service-centre.ts), so bill fulfilled lines (not ones marked Pending —
+  // never actually supplied) at qty * unitPrice, same warranty rule as labor.
+  const partsTotal = underWarranty
+    ? 0
+    : lifecycle.partLines.reduce((sum, p) => (p.pending ? sum : sum + (p.unitPrice || 0) * (p.qty || 1)), 0);
   const subtotal = laborTotal + partsTotal;
   const taxAmount = Math.round(subtotal * 0.18);
   const totalAmount = subtotal + taxAmount;
 
+  const partsSummary = lifecycle.partLines
+    .filter((p) => !p.pending)
+    .map((p) => `${p.materialLabel} x${p.qty} (₹${(p.unitPrice || 0) * (p.qty || 1)})`);
   const lineSummary = underWarranty
-    ? `Warranty repair — no charge (${lifecycle.serviceLines.length} service line(s))`
-    : lifecycle.serviceLines.map((l: ServiceLine) => `${l.solutionLabel} (₹${l.laborCharge})`).join(", ");
+    ? `Warranty repair — no charge (${lifecycle.serviceLines.length} service line(s), ${lifecycle.partLines.length} part line(s))`
+    : [...lifecycle.serviceLines.map((l: ServiceLine) => `${l.solutionLabel} (₹${l.laborCharge})`), ...partsSummary].join(", ");
 
   const amountPaid = underWarranty ? totalAmount : 0;
   const invoice = await createBusinessRecord(partnerId, "billing", {
@@ -148,7 +200,7 @@ export async function setWorkorderHoldAction(
   hold: boolean,
   reason?: string
 ): Promise<void> {
-  await assertStaffCanActOnServiceCentre(partnerId);
+  await assertCanActOnServiceCentre(partnerId);
   const record = await getBusinessRecord(partnerId, "service-centre", workorderId);
   if (!record) return;
   await updateBusinessRecord(partnerId, "service-centre", workorderId, {
