@@ -5,6 +5,8 @@ import { getPartner } from "@/lib/partnerData";
 import { SettingsPageClient } from "./SettingsPageClient";
 import { BusinessProfileForm } from "./BusinessProfileForm";
 import { ConfigForm } from "./ConfigForm";
+import { NumberingPanel } from "./NumberingPanel";
+import { SettingsTabs } from "./SettingsTabs";
 
 registerPage({
   id: "settings.partner",
@@ -15,15 +17,9 @@ registerPage({
   superAdminOnly: false,
   customizableRegions: [],
   explanation:
-    "Partner settings, split into findable sections via the jump-nav at the top: the demo-stub profile/branding block (business name, timezone, currency, logo upload, enabled-modules toggle grid pre-set from this partner's real ModuleAccessKey state via getVisibleModuleSlugs), then two REAL persisted forms — Business Profile + Bank Details (updatePartnerBusinessProfile) and Config (updatePartnerConfig): default labour charge, the partner's own UPI VPA used to print a payment QR on the Sales Invoice, and Terms & Conditions (one general fallback plus a per-document-type override for Job Card / Estimate / Service Record / Sales Invoice, each falling back to the general text and printing nothing when both are blank).",
+    "Partner settings: the demo-stub profile/branding block (business name, timezone, currency, logo upload, enabled-modules toggle grid pre-set from this partner's real ModuleAccessKey state via getVisibleModuleSlugs), then a real tab switcher (SettingsTabs — only one panel visible at a time) over four REAL persisted sections: Business Profile, Bank Details (both inside the one updatePartnerBusinessProfile form/action — see BusinessProfileForm.tsx), Config (updatePartnerConfig: default labour charge, UPI VPA, Terms & Conditions), and Numbering (per-document-type numbering overrides, folded in from the former standalone settings/numbering page).",
   sourceFile: "src/app/partner/[partnerId]/settings/page.tsx",
 });
-
-const SETTINGS_SECTIONS = [
-  { href: "#business-profile", label: "Business Profile" },
-  { href: "#bank-details", label: "Bank Details" },
-  { href: "#config", label: "Config" },
-];
 
 /**
  * Server Component wrapper — computes navGroups here (buildPartnerAdminNavGroups
@@ -37,31 +33,13 @@ export default async function SettingsPage({ params }: { params: { partnerId: st
   ]);
   return (
     <AppShell topbarTitle="Settings">
-      <SettingsPageClient
-        visibleModuleSlugs={visibleModuleSlugs}
-        sectionNav={
-          /* Jump-nav rather than a JS tab widget: this repo has no existing
-             tab component to reuse, and the sections below are plain
-             Server-rendered forms — anchors keep the whole page printable,
-             linkable (/settings#config) and free of a new client bundle. */
-          <nav className="mt-6 flex flex-wrap gap-2 border-b border-border pb-4">
-            {SETTINGS_SECTIONS.map((section) => (
-              <a
-                key={section.href}
-                href={section.href}
-                className="rounded-md border border-border bg-bg-raised px-3 py-1.5 text-sm font-semibold text-text hover:border-accent hover:text-accent"
-              >
-                {section.label}
-              </a>
-            ))}
-          </nav>
-        }
-      />
+      <SettingsPageClient visibleModuleSlugs={visibleModuleSlugs} />
       {partner && (
-        <>
+        <SettingsTabs>
           <BusinessProfileForm partnerId={params.partnerId} partner={partner} />
           <ConfigForm partnerId={params.partnerId} partner={partner} />
-        </>
+          <NumberingPanel partnerId={params.partnerId} />
+        </SettingsTabs>
       )}
     </AppShell>
   );

@@ -100,7 +100,7 @@ export default async function ServiceCentreDetailPage({
   );
 
   return (
-    <AppShell topbarTitle={mod?.label ?? "Service Centre"}>
+    <AppShell topbarTitle={mod?.label ?? "Manage SC"}>
       <div>
         {/* workorderId is params.recordId — the BusinessRecord recordKey,
             which is the exact value every action in ./actions.ts passes to

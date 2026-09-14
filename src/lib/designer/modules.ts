@@ -36,7 +36,7 @@ export interface ModuleDefinition {
 export const MODULES: ModuleDefinition[] = [
   // --- Core four ---
   { slug: "pos", label: "POS", description: "Sales, store-exclusive point of sale.", taxonomy: "vertical" },
-  { slug: "service-centre", label: "Service Centre", description: "Workorders and billing for repair/service shops.", taxonomy: "vertical" },
+  { slug: "service-centre", label: "Manage SC", description: "Workorders and billing for repair/service shops.", taxonomy: "vertical" },
   { slug: "billing", label: "Billing", description: "Standalone invoicing and billing.", taxonomy: "vertical" },
   { slug: "brand", label: "Brand", description: "Multi-location / multi-partner hierarchy: Brand → Partners → Locations.", taxonomy: "brand" },
 
@@ -154,26 +154,40 @@ export const MODULE_SUB_NAV: Record<string, PartnerNavSubItem[]> = {
   "service-centre": [
     { key: "service-centre.list", label: "Workorders", href: "service-centre", section: "Workorders" },
     { key: "service-centre.new", label: "+ New Workorder", href: "service-centre/new", section: "Workorders" },
-    { key: "service-centre.brands", label: "Brands", href: "service-centre/brands", section: "Masters" },
-    { key: "service-centre.models", label: "Models", href: "service-centre/models", section: "Masters" },
-    { key: "service-centre.solutions", label: "Solutions", href: "service-centre/solutions", section: "Masters" },
-    { key: "service-centre.fault-codes", label: "Fault Codes", href: "service-centre/fault-codes", section: "Masters" },
-    { key: "service-centre.symptom-codes", label: "Symptom Codes", href: "service-centre/symptom-codes", section: "Masters" },
-    // Names only — the source of the suggestion lists on a workorder's Logged
-    // By / Engineer / Collected By fields. Not a login and not an assignment
-    // roster; Service Centre has neither.
-    { key: "service-centre.staff-names", label: "Staff Names", href: "service-centre/staff-names", section: "Masters" },
-    // Analytics is a partner-wide page (also linked from the Common
-    // group) — surfaced inside the module too, the way AN-CRM keeps a
-    // Reports section inside the same sidebar the workorders live in.
-    { key: "service-centre.analytics", label: "Analytics", href: "analytics", section: "Reports" },
+    // Masters used to be five (six, with Staff Names) flat rows each
+    // repeating the "Masters" section heading — collapsed into one nested
+    // nav item instead, so the module's sub-nav reads as one section
+    // rather than a stack of top-level rows (Sidebar.tsx renders a second
+    // nesting level for a sub-item that itself carries subItems).
+    {
+      key: "service-centre.masters",
+      label: "Masters",
+      href: "service-centre/brands",
+      subItems: [
+        { key: "service-centre.brands", label: "Brands", href: "service-centre/brands" },
+        { key: "service-centre.models", label: "Models", href: "service-centre/models" },
+        { key: "service-centre.solutions", label: "Solutions", href: "service-centre/solutions" },
+        { key: "service-centre.fault-codes", label: "Fault Codes", href: "service-centre/fault-codes" },
+        { key: "service-centre.symptom-codes", label: "Symptom Codes", href: "service-centre/symptom-codes" },
+        // Names only — the source of the suggestion lists on a workorder's
+        // Logged By / Engineer / Collected By fields. Not a login and not
+        // an assignment roster; Service Centre has neither.
+        { key: "service-centre.staff-names", label: "Staff Names", href: "service-centre/staff-names" },
+      ],
+    },
+    // Analytics dropped from here — same partner-wide page already
+    // reachable from the Common group; keeping it here too just
+    // duplicated the link.
     { key: "service-centre.reports", label: "Report Builder", href: "service-centre/reports", section: "Reports" },
-    { key: "service-centre.sc-profile", label: "SC Profiles", href: "service-centre/sc-profile", section: "Account" },
+    // SC Profiles (AN-CRM's own vendor-onboarding-status tracking — not
+    // applicable from a partner's own logged-in view of their own
+    // business) and the Admin scaffold (an unimplemented,
+    // Super-Admin-only placeholder superseded by nothing since it never
+    // had real functionality) are both removed.
     { key: "service-centre.sub-scs", label: "Sub-Centres", href: "service-centre/sub-scs", section: "Account" },
     { key: "service-centre.payments", label: "Payments & Settlements", href: "service-centre/payments", section: "Account" },
     { key: "service-centre.telegram", label: "Telegram Alerts", href: "service-centre/telegram", section: "Account" },
     { key: "service-centre.referrals", label: "Referrals", href: "service-centre/referrals", section: "Account" },
-    { key: "service-centre.admin", label: "Admin", href: "service-centre/admin", section: "Account" },
   ],
   "accounting-gst": [
     { key: "accounting-gst.dashboard", label: "Dashboard", href: "accounting-gst/dashboard" },
@@ -226,6 +240,13 @@ export interface PartnerNavSubItem {
    * exactly as before.
    */
   section?: string;
+  /**
+   * One extra level of nesting for a sub-item that is itself a group
+   * (e.g. "Masters" collecting Brands/Models/Solutions/Fault Codes/
+   * Symptom Codes/Staff Names) rather than a single page. Sidebar.tsx
+   * renders these as a second, further-indented expand/collapse list.
+   */
+  subItems?: PartnerNavSubItem[];
 }
 
 export interface PartnerNavGroup {

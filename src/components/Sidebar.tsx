@@ -20,6 +20,12 @@ export type NavSubItem = {
   href: string;
   /** Optional heading rendered above the first sub-item of each run sharing it. */
   section?: string;
+  /**
+   * One extra level of nesting — a sub-item that is itself a group
+   * (e.g. "Masters" collecting Brands/Models/Solutions/etc.) rather than
+   * a single page. Rendered as a further-indented expand/collapse list.
+   */
+  subItems?: NavSubItem[];
 };
 
 export type NavItem = {
@@ -79,6 +85,12 @@ export function Sidebar({
   function isActive(relative: string) {
     const href = hrefFor(relative);
     return pathname === href || pathname === `${href}/`;
+  }
+
+  /** True when `sub` or any of its nested subItems is the current page. */
+  function subTreeActive(sub: NavSubItem): boolean {
+    if (isActive(sub.href)) return true;
+    return !!sub.subItems?.some((s) => subTreeActive(s));
   }
 
   // Groups start expanded; a user can collapse ones they don't need.
@@ -167,6 +179,9 @@ export function Sidebar({
                             {item.subItems!.map((sub, subIndex) => {
                               const subHref = hrefFor(sub.href);
                               const active2 = isActive(sub.href);
+                              const hasNested = sub.subItems && sub.subItems.length > 0;
+                              const nestedActive = hasNested && sub.subItems!.some((s) => subTreeActive(s));
+                              const nestedExpanded = manuallyToggled[sub.key] ?? nestedActive;
                               // One heading per RUN of consecutive sub-items
                               // sharing a section — modules whose sub-items
                               // carry no section render exactly as before.
@@ -183,14 +198,53 @@ export function Sidebar({
                                       {sub.section}
                                     </p>
                                   )}
-                                  <Link
-                                    href={subHref}
-                                    className={`block rounded-md px-2 py-1 text-[12px] font-medium ${
-                                      active2 ? "text-sidebar-text" : "text-sidebar-text-dim hover:text-sidebar-text"
-                                    }`}
-                                  >
-                                    {sub.label}
-                                  </Link>
+                                  <div className="flex items-center gap-1">
+                                    <Link
+                                      href={subHref}
+                                      className={`block flex-1 rounded-md px-2 py-1 text-[12px] font-medium ${
+                                        active2 || nestedActive
+                                          ? "text-sidebar-text"
+                                          : "text-sidebar-text-dim hover:text-sidebar-text"
+                                      }`}
+                                    >
+                                      {sub.label}
+                                    </Link>
+                                    {hasNested && (
+                                      <button
+                                        type="button"
+                                        onClick={() => toggleItem(sub.key)}
+                                        aria-label={nestedExpanded ? "Collapse" : "Expand"}
+                                        className="rounded p-1 text-sidebar-text-dim hover:text-sidebar-text"
+                                      >
+                                        <ChevronDown
+                                          className={`h-3 w-3 transition-transform ${nestedExpanded ? "" : "-rotate-90"}`}
+                                          strokeWidth={2.5}
+                                        />
+                                      </button>
+                                    )}
+                                  </div>
+                                  {hasNested && nestedExpanded && (
+                                    <ul className="ml-3 mt-0.5 space-y-0.5 border-l border-sidebar-active/60 pl-3">
+                                      {sub.subItems!.map((nested) => {
+                                        const nestedHref = hrefFor(nested.href);
+                                        const nestedItemActive = isActive(nested.href);
+                                        return (
+                                          <li key={nested.key}>
+                                            <Link
+                                              href={nestedHref}
+                                              className={`block rounded-md px-2 py-1 text-[12px] font-medium ${
+                                                nestedItemActive
+                                                  ? "text-sidebar-text"
+                                                  : "text-sidebar-text-dim hover:text-sidebar-text"
+                                              }`}
+                                            >
+                                              {nested.label}
+                                            </Link>
+                                          </li>
+                                        );
+                                      })}
+                                    </ul>
+                                  )}
                                 </li>
                               );
                             })}

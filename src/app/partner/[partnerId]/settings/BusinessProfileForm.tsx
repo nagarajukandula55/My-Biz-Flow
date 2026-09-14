@@ -17,13 +17,28 @@ import {
  */
 export function BusinessProfileForm({ partnerId, partner }: { partnerId: string; partner: PartnerRecord }) {
   return (
-    <section id="business-profile" className="mt-10 scroll-mt-8 border-t border-border pt-8">
-      <h2 className="font-display text-lg font-bold text-text">Business Profile</h2>
-      <p className="mt-1 text-sm text-text-muted">
-        Fills in the business details signup didn&apos;t collect — real, saved fields.
-      </p>
+    // Both the Business Profile and Bank Details tabs render this same
+    // panel/form — see SettingsTabs.tsx's header for why they can't be
+    // split into two forms. The settings-heading-*/settings-fields-*
+    // pairs are toggled by SettingsTabs' CSS; the panel itself
+    // (#settings-panel-business) stays visible for either of those two
+    // tabs.
+    <section id="settings-panel-business" className="border-t border-border pt-8">
+      <div id="settings-heading-business-profile">
+        <h2 className="font-display text-lg font-bold text-text">Business Profile</h2>
+        <p className="mt-1 text-sm text-text-muted">
+          Fills in the business details signup didn&apos;t collect — real, saved fields.
+        </p>
+      </div>
+      <div id="settings-heading-bank-details">
+        <h2 className="font-display text-lg font-bold text-text">Bank Details</h2>
+        <p className="mt-1 text-sm text-text-muted">
+          Record only — no payouts are processed against these.
+        </p>
+      </div>
 
       <form action={saveBusinessProfileAction.bind(null, partnerId)} className="mt-4 grid max-w-2xl grid-cols-1 gap-4 sm:grid-cols-2">
+        <div id="settings-fields-business-profile" className="contents">
         <label className="text-xs font-semibold uppercase tracking-wide text-text-muted">
           Contact Person
           <input
@@ -108,13 +123,9 @@ export function BusinessProfileForm({ partnerId, partner }: { partnerId: string;
             where the general terms and the per-document-type overrides live
             together, so the fallback rule between them is visible in one
             place. */}
-
-        <div
-          id="bank-details"
-          className="sm:col-span-2 mt-2 scroll-mt-8 text-xs font-semibold uppercase tracking-wide text-text-muted"
-        >
-          Bank Details (record only — no payouts are processed against these)
         </div>
+
+        <div id="settings-fields-bank-details" className="contents">
         <label className="text-xs font-semibold uppercase tracking-wide text-text-muted">
           Account Holder Name
           <input
@@ -151,6 +162,7 @@ export function BusinessProfileForm({ partnerId, partner }: { partnerId: string;
             className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm normal-case text-text outline-none focus:border-accent"
           />
         </label>
+        </div>
 
         <div className="sm:col-span-2">
           <button type="submit" className="btn-accent">

@@ -31,7 +31,7 @@ export default async function EditServiceCentrePage({ params }: { params: { part
   const fields = await applyCustomizations("service-centre.edit", serviceCentreFormFields);
 
   return (
-    <AppShell topbarTitle={`Edit Workorder — ${mod?.label ?? "Service Centre"}`}>
+    <AppShell topbarTitle={`Edit Workorder — ${mod?.label ?? "Manage SC"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">Edit Workorder</h1>
         <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>

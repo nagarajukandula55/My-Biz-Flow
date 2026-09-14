@@ -65,10 +65,9 @@ export const DEFAULT_PAGE_TIERS: Record<string, PlanTier> = {
   // picks from it.
   "service-centre.staff-names.list": "pro",
   "service-centre.staff-names.create": "pro",
-  "service-centre.sc-profile.list": "pro",
-  "service-centre.sc-profile.create": "pro",
+  // SC Profiles (service-centre.sc-profile.*) and the Admin scaffold
+  // (service-centre.admin) both removed — see modules.ts task notes.
   "service-centre.sub-scs": "ultimate",
-  "service-centre.admin": "ultimate",
 
   // --- Billing ---
   // Mapped against MODULE_TIER_FEATURES["service-centre"] (moduleTiers.ts),

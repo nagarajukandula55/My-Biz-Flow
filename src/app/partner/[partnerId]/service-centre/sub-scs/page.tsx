@@ -1,7 +1,6 @@
 import { AppShell } from "@/components/AppShell";
 import { renderTierGate } from "@/lib/pageTierGate";
 import { registerPage } from "@/lib/designer/registry";
-import Link from "next/link";
 import { DataTable, type Column, type Row } from "@/components/DataTable";
 import { listBusinessRecords } from "@/lib/businessRecords";
 
@@ -14,7 +13,7 @@ registerPage({
   superAdminOnly: false,
   customizableRegions: [{ key: "columns", label: "Table columns" }],
   explanation:
-    "The sub-centre / multi-branch hierarchy view over SC Profiles: every profile whose parentScId is empty is a top-level centre, and the profiles pointing at it are its branches. Read/manage only — it reads the same BusinessRecord data SC Profiles writes; creating a sub-centre is done from SC Profiles by setting Parent SC Code. Ported from AN-CRM's vendor Sub-Vendors page, minus its payment-gateway sub-account provisioning, which has no equivalent here.",
+    "The sub-centre / multi-branch hierarchy view over SC Profiles (service-centre-sc-profile BusinessRecord data): every profile whose parentScId is empty is a top-level centre, and the profiles pointing at it are its branches. Read-only — the SC Profile CRUD UI that used to write/edit this data was removed (partner-side vendor-onboarding tracking is out of scope for a partner's own logged-in view of their own business); any existing records from the migration script or earlier use still render here. Ultimate-tier only. Ported from AN-CRM's vendor Sub-Vendors page, minus its payment-gateway sub-account provisioning, which has no equivalent here.",
   sourceFile: "src/app/partner/[partnerId]/service-centre/sub-scs/page.tsx",
 });
 
@@ -55,19 +54,11 @@ export default async function SubScsPage({ params }: { params: { partnerId: stri
   const totalChildren = profiles.length - parents.length;
 
   return (
-    <AppShell
-      topbarTitle="Sub-Centres"
-      topbarActions={
-        <Link href={`/partner/${params.partnerId}/service-centre/sc-profile`} className="btn-accent">
-          Manage SC Profiles
-        </Link>
-      }
-    >
+    <AppShell topbarTitle="Sub-Centres">
       <div>
         <p className="text-sm text-text-muted">
           {parents.length} top-level centre{parents.length === 1 ? "" : "s"} and {totalChildren} sub-centre
-          {totalChildren === 1 ? "" : "s"}. To attach a centre to a parent, edit its SC Profile and set{" "}
-          <span className="font-semibold text-text">Parent SC Code</span>.
+          {totalChildren === 1 ? "" : "s"}. Read-only hierarchy view over existing SC Profile data.
         </p>
 
         {parents.length === 0 && (
@@ -83,12 +74,9 @@ export default async function SubScsPage({ params }: { params: { partnerId: stri
             <section key={id} className="mt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <Link
-                    href={`/partner/${params.partnerId}/service-centre/sc-profile/${id}`}
-                    className="font-display text-base font-bold text-text hover:text-accent"
-                  >
+                  <p className="font-display text-base font-bold text-text">
                     {String(parent["businessName"] ?? id)}
-                  </Link>
+                  </p>
                   <p className="mt-0.5 text-xs text-text-muted">
                     {id} · {children.length} sub-centre{children.length === 1 ? "" : "s"}
                   </p>

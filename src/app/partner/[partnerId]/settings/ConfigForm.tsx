@@ -15,7 +15,7 @@ const INPUT_CLASS =
  */
 export function ConfigForm({ partnerId, partner }: { partnerId: string; partner: PartnerRecord }) {
   return (
-    <section id="config" className="mt-10 scroll-mt-8 border-t border-border pt-8">
+    <section id="settings-panel-config" className="border-t border-border pt-8">
       <h2 className="font-display text-lg font-bold text-text">Config</h2>
       <p className="mt-1 text-sm text-text-muted">
         Operational defaults and the Terms &amp; Conditions text printed on your documents — real,

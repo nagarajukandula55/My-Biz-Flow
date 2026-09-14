@@ -15,7 +15,6 @@ import "@/app/partner/[partnerId]/pos/admin/page";
 import "@/app/partner/[partnerId]/pos/checkout/page";
 import "@/app/partner/[partnerId]/pos/[recordId]/page";
 import "@/app/partner/[partnerId]/service-centre/page";
-import "@/app/partner/[partnerId]/service-centre/admin/page";
 import "@/app/partner/[partnerId]/service-centre/new/page";
 import "@/app/partner/[partnerId]/service-centre/[recordId]/page";
 import "@/app/partner/[partnerId]/service-centre/[recordId]/edit/page";

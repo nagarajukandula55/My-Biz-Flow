@@ -25,15 +25,20 @@ export async function buildPartnerAdminNavGroups(partnerId: string): Promise<Par
       { key: "analytics", label: "Analytics", dot: "neutral", href: "analytics" },
     ],
   };
+  // Numbering folded into Settings as a tab (Business Profile / Bank
+  // Details / Config / Numbering) rather than its own nav-reachable page —
+  // see settings/page.tsx.
   const partnerAdminGroup: PartnerNavGroup = {
     title: "Partner Admin",
     items: [
       { key: "settings", label: "Settings", dot: "amber", href: "settings" },
-      { key: "numbering", label: "Numbering", dot: "amber", href: "settings/numbering" },
       { key: "billing", label: "Subscription", dot: "amber", href: "admin/subscription" },
       { key: "users", label: "Users", dot: "amber", href: "admin/users" },
     ],
   };
   const visibleSlugs = await getVisibleModuleSlugs(partnerId);
-  return [commonGroup, partnerAdminGroup, ...(await buildPartnerNavGroups(visibleSlugs))];
+  // Partner Admin renders LAST, after every module group — an account/
+  // settings section reads better near the bottom of the sidebar, next to
+  // Sign out, than pinned right under Common.
+  return [commonGroup, ...(await buildPartnerNavGroups(visibleSlugs)), partnerAdminGroup];
 }

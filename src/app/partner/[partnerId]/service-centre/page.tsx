@@ -102,7 +102,7 @@ export default async function ServiceCentrePage({
 
   return (
     <AppShell
-      topbarTitle={mod?.label ?? "Service Centre"}
+      topbarTitle={mod?.label ?? "Manage SC"}
       topbarActions={
         <ServiceCentreNewButton partnerId={params.partnerId} fields={createFields} />
       }
