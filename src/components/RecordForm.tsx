@@ -1,8 +1,10 @@
 "use client";
 
 import { Fragment, useRef, useState, useTransition, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
 import { INDIAN_STATES } from "@/lib/sample-data/geo";
 import { lookupPincodeViaApi } from "@/lib/geo/pincodeClient";
+import { Modal } from "./Modal";
 
 export type FormFieldType =
   | "text"
@@ -24,6 +26,8 @@ export type FormFieldType =
   | "color"
   | "rating"
   | "file";
+
+export type RecordFormAction = (values: Record<string, unknown>) => Promise<void | { error?: string }>;
 
 export type FormFieldDef = {
   key: string;
@@ -67,6 +71,22 @@ export type FormFieldDef = {
   suggestions?: string[];
   /** Renders a small "+ <label>" link beside the field, to the page that creates a new catalog entry. */
   addNew?: { label: string; href: string };
+  /**
+   * Same "+ <label>" trigger as `addNew`, but opens an inline modal (a
+   * small nested RecordForm) instead of navigating to a separate page —
+   * for a quick "add and keep going" catalog entry (Brand/Model) the way
+   * AN-CRM's own "+" buttons work, rather than losing the workorder the
+   * operator is mid-way through filling in. Takes priority over `addNew`
+   * when both are set. On a successful create, the modal closes and the
+   * page refreshes so the new entry is immediately selectable/suggested.
+   */
+  addNewModal?: {
+    label: string;
+    title: string;
+    fields: FormFieldDef[];
+    action: RecordFormAction;
+    submitLabel?: string;
+  };
   /** Helper text rendered under the input. */
   help?: string;
   /**
@@ -120,7 +140,7 @@ type RecordFormProps = {
    * receives the form's values directly. When provided, this replaces
    * the demo-stub submit entirely; onSubmitDemo is ignored.
    */
-  action?: (values: Record<string, unknown>) => Promise<void | { error?: string }>;
+  action?: RecordFormAction;
   /**
    * "create" drops every field marked `createHidden`. Anything else (the
    * default) renders the full field set, so edit pages and every other
@@ -182,6 +202,11 @@ export function RecordForm({ fields: allFields, initialValues, submitLabel, onSu
   // Districts returned by the last successful pincode lookup, for the
   // sibling "city" field. Empty until one succeeds -> City stays free text.
   const [cityOptions, setCityOptions] = useState<string[]>([]);
+
+  // Which field's `addNewModal` is currently open, if any — a nested
+  // RecordForm for "quickly add a catalog entry without losing this form".
+  const [addNewModalKey, setAddNewModalKey] = useState<string | null>(null);
+  const router = useRouter();
 
   const pincodeKey = fields.find((f) => f.addressRole === "pincode")?.key;
   const stateKey = fields.find((f) => f.addressRole === "state")?.key;
@@ -281,15 +306,25 @@ export function RecordForm({ fields: allFields, initialValues, submitLabel, onSu
           {field.label}
           {field.required && <span className="ml-1 text-danger">*</span>}
         </span>
-        {field.addNew && (
-          <a
-            href={field.addNew.href}
-            target="_blank"
-            rel="noreferrer"
+        {field.addNewModal ? (
+          <button
+            type="button"
+            onClick={() => setAddNewModalKey(field.key)}
             className="font-semibold normal-case tracking-normal text-teal hover:underline"
           >
-            + {field.addNew.label}
-          </a>
+            + {field.addNewModal.label}
+          </button>
+        ) : (
+          field.addNew && (
+            <a
+              href={field.addNew.href}
+              target="_blank"
+              rel="noreferrer"
+              className="font-semibold normal-case tracking-normal text-teal hover:underline"
+            >
+              + {field.addNew.label}
+            </a>
+          )
         )}
       </label>
       {renderInput(field, values[field.key], setValue, {
@@ -321,6 +356,24 @@ export function RecordForm({ fields: allFields, initialValues, submitLabel, onSu
     </>
   );
 
+  const activeAddNewModal = fields.find((f) => f.key === addNewModalKey)?.addNewModal;
+  const addNewModalNode = activeAddNewModal && (
+    <Modal open onClose={() => setAddNewModalKey(null)} title={activeAddNewModal.title} size="md">
+      <RecordForm
+        fields={activeAddNewModal.fields}
+        submitLabel={activeAddNewModal.submitLabel ?? "Save"}
+        action={async (vals) => {
+          const result = await activeAddNewModal.action(vals);
+          if (!result || !("error" in (result as object)) || !(result as { error?: string }).error) {
+            setAddNewModalKey(null);
+            router.refresh();
+          }
+          return result;
+        }}
+      />
+    </Modal>
+  );
+
   if (layout === "columns") {
     // Sections, in the order they first appear, split across two columns by
     // their declared `column` — matching the reference intake screen's
@@ -344,36 +397,42 @@ export function RecordForm({ fields: allFields, initialValues, submitLabel, onSu
       </div>
     );
     return (
-      <form onSubmit={handleSubmit} className="w-full space-y-5">
-        <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
-          {renderColumn(1)}
-          {renderColumn(2)}
-        </div>
-        {footer}
-      </form>
+      <>
+        <form onSubmit={handleSubmit} className="w-full space-y-5">
+          <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+            {renderColumn(1)}
+            {renderColumn(2)}
+          </div>
+          {footer}
+        </form>
+        {addNewModalNode}
+      </>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="w-full max-w-2xl space-y-5">
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-        {fields.map((field, i) => {
-          const prevSection = i === 0 ? undefined : fields[i - 1].section;
-          const showSection = Boolean(field.section) && field.section !== prevSection;
-          return (
-            <Fragment key={field.key}>
-              {showSection && (
-                <h2 className="mt-2 border-b border-border pb-1.5 font-display text-sm font-bold text-text sm:col-span-2">
-                  {field.section}
-                </h2>
-              )}
-              {renderField(field)}
-            </Fragment>
-          );
-        })}
-      </div>
-      {footer}
-    </form>
+    <>
+      <form onSubmit={handleSubmit} className="w-full max-w-2xl space-y-5">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+          {fields.map((field, i) => {
+            const prevSection = i === 0 ? undefined : fields[i - 1].section;
+            const showSection = Boolean(field.section) && field.section !== prevSection;
+            return (
+              <Fragment key={field.key}>
+                {showSection && (
+                  <h2 className="mt-2 border-b border-border pb-1.5 font-display text-sm font-bold text-text sm:col-span-2">
+                    {field.section}
+                  </h2>
+                )}
+                {renderField(field)}
+              </Fragment>
+            );
+          })}
+        </div>
+        {footer}
+      </form>
+      {addNewModalNode}
+    </>
   );
 }
 

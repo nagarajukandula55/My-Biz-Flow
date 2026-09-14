@@ -4,9 +4,11 @@ import { listBusinessRecords } from "@/lib/businessRecords";
 import { getPartner } from "@/lib/partnerData";
 import { parseProductDomains } from "@/lib/catalog/productDomains";
 import { categoryOptionsForDomains } from "@/lib/catalog/serviceCatalog";
-import { filterByDomains } from "@/lib/sample-data/service-centre-brands";
+import { filterByDomains, scBrandFormFields } from "@/lib/sample-data/service-centre-brands";
+import { scModelFormFields } from "@/lib/sample-data/service-centre-models";
 import { activeStaffNames } from "@/lib/sample-data/service-centre-staff-names";
-import type { FormFieldDef } from "@/components/RecordForm";
+import { createBusinessRecordAction } from "@/lib/businessRecordActions";
+import type { FormFieldDef, RecordFormAction } from "@/components/RecordForm";
 
 /**
  * The one place the Service Centre workorder CREATE field set is built.
@@ -77,12 +79,29 @@ export async function buildServiceCentreCreateFields(partnerId: string): Promise
     brandName: distinct(filterByDomains(brands, domains), "name"),
     loggedBy: activeStaffNames(staffNames),
   };
+  // "Manage staff names" is a real list-management page (add/edit/deactivate
+  // many entries) — a link is the right affordance there. Brand/Model are a
+  // single quick add mid-workorder, so they open inline instead of
+  // abandoning the workorder the operator is filling in (see addNewModal on
+  // RecordForm — was previously a target="_blank" link to a whole page).
   const addNewByKey: Record<string, { label: string; href: string }> = {
-    brandName: { label: "Add new brand", href: `${base}/brands/new` },
-    modelName: { label: "Add new model", href: `${base}/models/new` },
-    // Only offered once the roster exists — a Starter partner can't reach
-    // the page, so pointing them at it would be a dead end.
     ...(staffNames.length ? { loggedBy: { label: "Manage staff names", href: `${base}/staff-names` } } : {}),
+  };
+  const addNewModalByKey: Record<string, FormFieldDef["addNewModal"]> = {
+    brandName: {
+      label: "Add new brand",
+      title: "New Brand",
+      submitLabel: "Create Brand",
+      fields: scBrandFormFields,
+      action: createBusinessRecordAction.bind(null, partnerId, "service-centre-brands") as RecordFormAction,
+    },
+    modelName: {
+      label: "Add new model",
+      title: "New Model",
+      submitLabel: "Create Model",
+      fields: scModelFormFields,
+      action: createBusinessRecordAction.bind(null, partnerId, "service-centre-models") as RecordFormAction,
+    },
   };
 
   const categoryOptions = categoryOptionsForDomains(domains);
@@ -93,5 +112,6 @@ export async function buildServiceCentreCreateFields(partnerId: string): Promise
     ...(f.key === "modelName" ? { suggestionsByParent: modelsByBrand } : {}),
     ...(suggestionsByKey[f.key]?.length ? { suggestions: suggestionsByKey[f.key] } : {}),
     ...(addNewByKey[f.key] ? { addNew: addNewByKey[f.key] } : {}),
+    ...(addNewModalByKey[f.key] ? { addNewModal: addNewModalByKey[f.key] } : {}),
   }));
 }

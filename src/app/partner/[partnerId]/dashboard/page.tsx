@@ -16,10 +16,10 @@ registerPage({
   customizableRegions: [
     { key: "enabled-modules", label: "Which modules generate a widget here" },
     { key: "widget-order", label: "Widget order" },
-    { key: "service-centre-overview", label: "Service Centre overview strip (period/open/technician cards)" },
+    { key: "service-centre-overview", label: "Service Centre overview strip (period/open cards)" },
   ],
   explanation:
-    "Not one hardcoded dashboard and not 21 separate per-module dashboards — this page is dynamically composed from whichever modules this partner is BOTH enabled for and holds an active access key for (getVisibleModuleSlugs, src/lib/designer/entitlements.ts), generating one DashboardWidget per module via a generic aggregation helper (computeModuleStat) rather than per-module logic repeated 21 times. A partner whose access key for a module gets revoked loses that widget immediately, independent of their plan. Partners with the service-centre module also get a real workorder overview strip (Today/Week/Month/Year volume, Open/Closed-this-month, revenue-this-month from billing, technician workload) computed from the same BusinessRecord store — see getServiceCentreOverview in src/lib/analyticsData.ts.",
+    "Not one hardcoded dashboard and not 21 separate per-module dashboards — this page is dynamically composed from whichever modules this partner is BOTH enabled for and holds an active access key for (getVisibleModuleSlugs, src/lib/designer/entitlements.ts), generating one DashboardWidget per module via a generic aggregation helper (computeModuleStat) rather than per-module logic repeated 21 times. A partner whose access key for a module gets revoked loses that widget immediately, independent of their plan. Partners with the service-centre module also get a real workorder overview strip (Today/Week/Month/Year volume, Open/Closed-this-month, revenue-this-month from billing) computed from the same BusinessRecord store — see getServiceCentreOverview in src/lib/analyticsData.ts. There is no technician/assignment concept in this app (by explicit design), so no per-technician breakdown.",
   sourceFile: "src/app/partner/[partnerId]/dashboard/page.tsx",
 });
 
