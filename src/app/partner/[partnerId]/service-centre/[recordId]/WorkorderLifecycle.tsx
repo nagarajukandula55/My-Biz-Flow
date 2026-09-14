@@ -116,6 +116,7 @@ export function WorkorderLifecycle({
   modelName,
   engineerName,
   collectedByName,
+  paymentMode: initialPaymentMode,
   onHold,
   holdReason,
   brandJobNoForPartOrder,
@@ -169,6 +170,8 @@ export function WorkorderLifecycle({
   modelName?: string;
   engineerName?: string;
   collectedByName?: string;
+  /** Mode of payment recorded at handover close (or later, if collected at invoice time instead) — the same PAYMENT_MODES list used by the Create Invoice modal. */
+  paymentMode?: string;
   onHold?: boolean;
   holdReason?: string;
   /**
@@ -329,7 +332,7 @@ export function WorkorderLifecycle({
   const [cancelReasonDraft, setCancelReasonDraft] = useState("");
   const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
   const [paymentCollected, setPaymentCollected] = useState(false);
-  const [paymentMode, setPaymentMode] = useState<string>(PAYMENT_MODES[0]);
+  const [paymentMode, setPaymentMode] = useState<string>(initialPaymentMode ?? PAYMENT_MODES[0]);
   const [paymentAmount, setPaymentAmount] = useState<string>("");
   const [actionError, setActionError] = useState<string | null>(null);
   // Every stage transition here is a client-side startTransition + patch —
@@ -947,6 +950,7 @@ export function WorkorderLifecycle({
         handoverNotes,
         engineerName: engineer.trim(),
         collectedByName: collectedBy.trim(),
+        paymentMode,
         handedOverAt: new Date().toISOString(),
       },
       "Workorder Closed."
@@ -2147,6 +2151,26 @@ export function WorkorderLifecycle({
               placeholder="Who handed it over / collected payment"
               className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm font-normal normal-case tracking-normal text-text"
             />
+          </label>
+          {/* Mode of Payment — same PAYMENT_MODES list and same `paymentMode`
+              state the Create Invoice modal already uses below, so picking
+              it here at handover carries straight through onto the invoice
+              (Create Invoice defaults its "payment collected" checkbox on
+              for a chargeable job) instead of only ever being capturable
+              later. */}
+          <label className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+            Mode of Payment
+            <select
+              value={paymentMode}
+              onChange={(e) => setPaymentMode(e.target.value)}
+              className="mt-1 w-full rounded-md border border-border bg-bg px-2 py-1.5 text-sm font-normal normal-case tracking-normal text-text"
+            >
+              {PAYMENT_MODES.map((mode) => (
+                <option key={mode} value={mode}>
+                  {mode}
+                </option>
+              ))}
+            </select>
           </label>
         </div>
         {staffNameOptions.length === 0 && (

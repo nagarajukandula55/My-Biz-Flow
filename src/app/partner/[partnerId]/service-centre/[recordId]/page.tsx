@@ -7,6 +7,7 @@ import {
   getServiceCentreTimeline,
   serviceCentreRelated,
   extractLifecycleFromRecord,
+  isUnderWarranty,
 } from "@/lib/sample-data/service-centre";
 import { getBusinessRecord, listBusinessRecords } from "@/lib/businessRecords";
 import { getPartner } from "@/lib/partnerData";
@@ -129,11 +130,12 @@ export default async function ServiceCentreDetailPage({
           modelName={lifecycle.modelName}
           engineerName={lifecycle.engineerName}
           collectedByName={lifecycle.collectedByName}
+          paymentMode={lifecycle.paymentMode}
           onHold={lifecycle.onHold}
           holdReason={lifecycle.holdReason}
           brandJobNoForPartOrder={lifecycle.brandJobNoForPartOrder}
           estimateApproved={lifecycle.estimateApproved}
-          underWarranty={Boolean(record["warrantyFlag"])}
+          underWarranty={isUnderWarranty(record)}
           invoiceId={lifecycle.invoiceId}
           cancelledAt={lifecycle.cancelledAt}
           cancelReason={lifecycle.cancelReason}

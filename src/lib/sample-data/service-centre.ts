@@ -122,6 +122,32 @@ export const WARRANTY_STATUS_LABELS: Record<string, string> = {
   "90_DAYS": "90 Days Warranty",
 };
 
+/**
+ * Single source of truth for "is this workorder under warranty" — matches
+ * AN-CRM's own isNonChargeableWarranty rule (src/core/catalog/warranty.ts):
+ * IW and 90_DAYS are non-chargeable/under-warranty, OOW is chargeable.
+ *
+ * Previously the detail page's badge, the chargeable-amount calc and the
+ * list's "Under Warranty" column each read the separate `warrantyFlag`
+ * boolean directly — a field independently editable on the edit form and
+ * never kept in sync with the `warrantyStatus` dropdown a partner actually
+ * picks at intake (Device > Warranty Type). That let a workorder set to
+ * Warranty Type "OOW"/"90 Days" still show "In Warranty" everywhere else,
+ * because `warrantyFlag` was left at its stale/default value. `warrantyStatus`
+ * is the field a partner actually sets and sees, so it's the real signal;
+ * every warranty-gated computation in this module should call this function
+ * instead of reading `warrantyFlag` on its own. The boolean is kept only as
+ * a fallback for any pre-existing record saved before `warrantyStatus`
+ * existed.
+ */
+export function isUnderWarranty(record: Record<string, unknown>): boolean {
+  const status = record["warrantyStatus"];
+  if (status === "IW" || status === "OOW" || status === "90_DAYS") {
+    return status !== "OOW";
+  }
+  return Boolean(record["warrantyFlag"]);
+}
+
 /** CrmJobSheet.appointmentType — the reference app's APPOINTMENT_TYPE option list is exactly these two. */
 export const APPOINTMENT_TYPES = ["ONSITE", "WALKIN"] as const;
 export const APPOINTMENT_TYPE_LABELS: Record<string, string> = {

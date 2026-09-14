@@ -1,4 +1,4 @@
-import { extractLifecycleFromRecord } from "@/lib/sample-data/service-centre";
+import { extractLifecycleFromRecord, isUnderWarranty } from "@/lib/sample-data/service-centre";
 import { getBusinessRecordsByKeys } from "@/lib/businessRecords";
 
 /**
@@ -38,7 +38,7 @@ export async function buildServiceCentreLines(
   record: Record<string, unknown> | null
 ): Promise<ServiceCentreLine[]> {
   if (!record) return [];
-  const underWarranty = Boolean(record["warrantyFlag"]);
+  const underWarranty = isUnderWarranty(record);
   const lifecycle = extractLifecycleFromRecord(record);
   const items: ServiceCentreLine[] = [];
 

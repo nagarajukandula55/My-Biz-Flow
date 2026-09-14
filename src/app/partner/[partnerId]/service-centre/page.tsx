@@ -6,7 +6,7 @@ import { ServiceCentreClientTable } from "./ServiceCentreClientTable";
 import { ServiceCentreNewButton } from "./ServiceCentreNewButton";
 import { buildServiceCentreCreateFields } from "@/lib/serviceCentreCreateFields";
 import { applyCustomizations } from "@/lib/designer/customizations";
-import { serviceCentreColumns } from "@/lib/sample-data/service-centre";
+import { serviceCentreColumns, isUnderWarranty } from "@/lib/sample-data/service-centre";
 import { listBusinessRecords, listBusinessRecordsPaginated } from "@/lib/businessRecords";
 
 registerPage({
@@ -84,6 +84,16 @@ export default async function ServiceCentrePage({
     listBusinessRecords(params.partnerId, "service-centre"),
   ]);
 
+  // The "Under Warranty" column reads `warrantyFlag` off each row, but that
+  // boolean is a separate, independently-editable field on the edit form
+  // that's never kept in sync with the `warrantyStatus` dropdown a partner
+  // actually picks at intake (Device > Warranty Type) — a workorder set to
+  // "OOW"/"90 Days" there could still show "In Warranty" here. Overriding
+  // it with isUnderWarranty() (the same function the detail page's badge
+  // and the invoice/estimate chargeable-amount calc use) keeps this list in
+  // sync with the one real source of truth instead of drifting on its own.
+  const displayRows = rows.map((row) => ({ ...row, warrantyFlag: isUnderWarranty(row) }));
+
   const rangeStart = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const rangeEnd = Math.min(total, page * pageSize);
 
@@ -141,7 +151,7 @@ export default async function ServiceCentrePage({
         </form>
 
         <div className="mt-6">
-          <ServiceCentreClientTable partnerId={params.partnerId} columns={columns} rows={rows} />
+          <ServiceCentreClientTable partnerId={params.partnerId} columns={columns} rows={displayRows} />
         </div>
 
         <div className="mt-4 flex items-center justify-between text-sm text-text-muted">

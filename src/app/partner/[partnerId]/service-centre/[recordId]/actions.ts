@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createBusinessRecord, updateBusinessRecord, getBusinessRecord, listBusinessRecords } from "@/lib/businessRecords";
 import {
   extractLifecycleFromRecord,
+  isUnderWarranty,
   WORKORDER_STAGES,
   PART_PENDING_STATUS_LABEL,
   type ServiceLine,
@@ -223,7 +224,7 @@ export async function createInvoiceFromWorkorderAction(
   if (lifecycle.stage !== "Closed") return;
   if (lifecycle.invoiceId) return; // already invoiced — don't double-create
 
-  const underWarranty = Boolean(record["warrantyFlag"]);
+  const underWarranty = isUnderWarranty(record);
   const laborTotal = underWarranty ? 0 : lifecycle.serviceLines.reduce((sum, l) => sum + (l.laborCharge || 0), 0);
   // Parts were previously never billed at all (hardcoded to 0) — a
   // workorder could consume real inventory and still invoice for labor
