@@ -650,12 +650,35 @@ model FieldForceSettings {
 /// send no-ops with a console log, exactly like src/lib/sms.ts does without
 /// SMS_API_KEY. Nothing here fabricates a bot connection.
 model TelegramSettings {
-  partnerId    String   @id
-  chatId       String?
-  enabledTypes Json     @default("[]")
-  updatedAt    DateTime @updatedAt
+  partnerId String @id
+  chatId    String?
+  enabledTypes Json @default("[]")
+  /// Automatic periodic business-summary digest cadence, matching AN-CRM's
+  /// VendorProfile.telegramReportFrequency (DAILY/WEEKLY/MONTHLY/NONE) —
+  /// see src/lib/telegramTemplates.ts's businessReportMessage(). The setting
+  /// is real and saved here; actually SENDING a scheduled digest still needs
+  /// a real bot token + cron wiring this repo doesn't have.
+  reportFrequency String   @default("NONE")
+  updatedAt       DateTime @updatedAt
 
   @@map("telegram_settings")
+}
+
+/// Audit trail of every attempted Telegram alert send — real even though no
+/// bot token exists yet, so the settings page can show recent activity.
+/// Mirrors AN-CRM's TelegramLog model (src/models/TelegramLog.ts).
+model TelegramLogEntry {
+  id        String   @id
+  partnerId String
+  type      String
+  message   String   @db.Text
+  chatId    String?
+  sent      Boolean  @default(false)
+  reason    String?
+  createdAt DateTime @default(now())
+
+  @@index([partnerId, createdAt])
+  @@map("telegram_log_entries")
 }
 
 /// The platform's own commission on a Booking — a single global row
