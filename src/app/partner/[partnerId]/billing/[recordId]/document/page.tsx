@@ -2,7 +2,7 @@ import type { LineItem } from "@/lib/sample-data/billing";
 import { registerPage } from "@/lib/designer/registry";
 import { notFound } from "next/navigation";
 import { getPartner, resolveDocumentTerms } from "@/lib/partnerData";
-import { getBusinessRecord, getBusinessRecordSequenceIndex } from "@/lib/businessRecords";
+import { getBusinessRecord, getBusinessRecordSequenceIndexFiltered } from "@/lib/businessRecords";
 import { getEffectiveScheme } from "@/lib/designer/numbering";
 import { formatNumber } from "@/lib/designer/numberingFormat";
 import { getDocumentTemplate } from "@/lib/designer/documentTemplates";
@@ -31,8 +31,21 @@ export default async function BillingDocumentPage({
   const record = await getBusinessRecord(params.partnerId, "billing", params.recordId);
   if (!record) notFound();
   const partner = await getPartner(params.partnerId);
-  const sequenceIndex = await getBusinessRecordSequenceIndex(params.partnerId, "billing", params.recordId);
-  const scheme = await getEffectiveScheme("billing.document", params.partnerId);
+  // B2B (has a real customer GSTIN) and B2C invoices get their own
+  // independent, gap-free numbering sequence — same check
+  // BillingInvoiceDocument.tsx uses for its own "Document Type" field, so
+  // the printed B2B/B2C label always matches which prefix this invoice
+  // actually got: BILL for B2C, INV for B2B.
+  const isB2B = Boolean(String(record["customerGstin"] ?? "").trim());
+  const numberingDocType = isB2B ? "billing.invoice.b2b" : "billing.invoice.b2c";
+  const numberingDefaults = isB2B ? { prefix: "INV" } : { prefix: "BILL" };
+  const sequenceIndex = await getBusinessRecordSequenceIndexFiltered(
+    params.partnerId,
+    "billing",
+    params.recordId,
+    (data) => Boolean(String(data["customerGstin"] ?? "").trim()) === isB2B
+  );
+  const scheme = await getEffectiveScheme(numberingDocType, params.partnerId, numberingDefaults);
   const invoiceNumber = formatNumber(scheme, scheme.sequenceStart + sequenceIndex);
   const customTemplate = await getDocumentTemplate("billing.document");
   const items = (record["items"] as LineItem[] | undefined) ?? [];

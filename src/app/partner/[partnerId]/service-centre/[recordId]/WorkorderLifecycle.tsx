@@ -327,7 +327,6 @@ export function WorkorderLifecycle({
   const [cancelled, setCancelled] = useState(Boolean(cancelledAt));
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [cancelReasonDraft, setCancelReasonDraft] = useState("");
-  const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
   const [paymentCollected, setPaymentCollected] = useState(false);
   const [paymentMode, setPaymentMode] = useState<string>(initialPaymentMode ?? PAYMENT_MODES[0]);
   const [paymentAmount, setPaymentAmount] = useState<string>("");
@@ -845,6 +844,16 @@ export function WorkorderLifecycle({
     run(() => setWorkorderHoldAction(partnerId, workorderId, false), () => announceSuccess("Repair resumed."));
   }
 
+  /**
+   * Failure-recovery only: creates the invoice for a workorder that is
+   * already Closed but has no `invoice` yet (i.e. the invoice-creation call
+   * inside confirmClose errored). This is NOT a general "create invoice
+   * whenever" button any more — it's only reachable from the "Retry
+   * Invoice Creation" affordance, which itself only renders for
+   * `stage === "Closed" && !invoice`. createInvoiceFromWorkorderAction is
+   * idempotent (it no-ops if the workorder already has an invoiceId), so
+   * this is safe even if it somehow fires twice.
+   */
   function createInvoice() {
     const amount = paymentAmount.trim() === "" ? undefined : Math.max(0, Number(paymentAmount) || 0);
     run(
@@ -855,7 +864,6 @@ export function WorkorderLifecycle({
           amount: paymentCollected ? amount : undefined,
         }),
       () => {
-        setInvoiceModalOpen(false);
         setInvoice("pending"); // optimistic; page revalidation fills in the real id on next load
         announceSuccess("Invoice created.");
       }
@@ -904,6 +912,14 @@ export function WorkorderLifecycle({
         );
         return;
       }
+      // Payment is now captured in the same modal as the close confirmation
+      // (invoice creation happens atomically with handover — see
+      // confirmClose) rather than as a later, separate "Create Invoice"
+      // step. Seed the same defaults the old standalone button used:
+      // payment assumed collected for a chargeable job, skipped entirely
+      // for a warranty job.
+      setPaymentCollected(!underWarranty);
+      setPaymentAmount("");
       setConfirmCloseOpen(true);
       return;
     }
@@ -927,23 +943,52 @@ export function WorkorderLifecycle({
    */
   const handoverNamesMissing = !engineer.trim() || !collectedBy.trim();
 
+  /**
+   * Close + invoice, atomically, as one confirm action — the invoice used
+   * to be a separate "Create Invoice" button reachable any time after
+   * Closed; now it's generated at the moment of handover and nowhere else.
+   * The two server calls still happen sequentially (there's no single
+   * transactional action spanning both records), so stage is flipped to
+   * "Closed" locally as soon as the close patch lands, before the invoice
+   * call runs — if invoice creation then fails, the workorder still shows
+   * Closed (matching what's now true server-side) and the "Retry Invoice
+   * Creation" affordance (stage === "Closed" && !invoice) picks up from
+   * there, rather than the UI silently reverting to "In Progress" for a
+   * close that actually succeeded.
+   */
   function confirmClose() {
     if (handoverNamesMissing) {
       setActionError("Engineer / Serviced By and Collected By are both required before a workorder can be closed.");
       return;
     }
-    setStage("Closed");
+    const collected = underWarranty ? false : paymentCollected;
+    const amount = paymentAmount.trim() === "" ? undefined : Math.max(0, Number(paymentAmount) || 0);
     setConfirmCloseOpen(false);
-    persist(
-      {
-        stage: "Closed",
-        handoverNotes,
-        engineerName: engineer.trim(),
-        collectedByName: collectedBy.trim(),
-        paymentMode,
-        handedOverAt: new Date().toISOString(),
+    run(
+      async () => {
+        await patchServiceCentreWorkorderAction(partnerId, workorderId, {
+          stage: "Closed",
+          handoverNotes,
+          engineerName: engineer.trim(),
+          collectedByName: collectedBy.trim(),
+          paymentMode,
+          handedOverAt: new Date().toISOString(),
+        });
+        setStage("Closed");
+        try {
+          await createInvoiceFromWorkorderAction(partnerId, workorderId, {
+            collected,
+            mode: collected ? paymentMode : undefined,
+            amount: collected ? amount : undefined,
+          });
+          setInvoice("pending"); // optimistic; page revalidation fills in the real id on next load
+        } catch {
+          throw new Error(
+            "Workorder closed, but invoice creation failed. Use \"Retry Invoice Creation\" below to try again."
+          );
+        }
       },
-      "Workorder Closed."
+      () => announceSuccess("Workorder Closed and Invoice Created.")
     );
   }
 
@@ -1721,23 +1766,21 @@ export function WorkorderLifecycle({
             Print Estimate
           </button>
         )}
+        {/* Failure-recovery only: the invoice is created atomically with
+            Close (see confirmClose). This only appears for a workorder
+            that is already Closed but has no invoice yet — i.e. the
+            create-invoice call inside confirmClose errored — so it can't
+            be used as a general "create invoice whenever" button. */}
         {stage === "Closed" && !cancelled && !invoice && (
           <button
             type="button"
             className="btn-outline"
             onClick={() => {
-              setPaymentCollected(!underWarranty);
-              setPaymentAmount("");
               setActionError(null);
-              if (underWarranty) {
-                // Nothing to collect on a warranty job — skip the payment prompt.
-                createInvoice();
-              } else {
-                setInvoiceModalOpen(true);
-              }
+              createInvoice();
             }}
           >
-            Create Invoice{underWarranty ? " (Warranty — ₹0)" : ""}
+            Retry Invoice Creation
           </button>
         )}
         {stage === "Closed" && invoice && (
@@ -2109,6 +2152,13 @@ export function WorkorderLifecycle({
         <p className="text-sm text-text-muted">
           All serialized parts are accounted for. Record who did the work and who handed the unit over, then close
           this workorder. Both names are required.
+          {!underWarranty && (
+            <>
+              {" "}Chargeable lines total <span className="font-semibold text-text">₹{estimateTotal}</span> before
+              GST — the invoice is generated the moment this workorder closes, so record the payment now if the
+              customer settled at handover.
+            </>
+          )}
         </p>
         {/* Suggestions come from the partner's own Staff Names roster when
             they keep one (Pro+). A `list` pointing at an empty <datalist>
@@ -2142,26 +2192,53 @@ export function WorkorderLifecycle({
               className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm font-normal normal-case tracking-normal text-text"
             />
           </label>
-          {/* Mode of Payment — same PAYMENT_MODES list and same `paymentMode`
-              state the Create Invoice modal already uses below, so picking
-              it here at handover carries straight through onto the invoice
-              (Create Invoice defaults its "payment collected" checkbox on
-              for a chargeable job) instead of only ever being capturable
-              later. */}
-          <label className="text-xs font-semibold uppercase tracking-wide text-text-muted">
-            Mode of Payment
-            <select
-              value={paymentMode}
-              onChange={(e) => setPaymentMode(e.target.value)}
-              className="mt-1 w-full rounded-md border border-border bg-bg px-2 py-1.5 text-sm font-normal normal-case tracking-normal text-text"
-            >
-              {PAYMENT_MODES.map((mode) => (
-                <option key={mode} value={mode}>
-                  {mode}
-                </option>
-              ))}
-            </select>
-          </label>
+          {/* Payment, captured in this same close step now instead of a
+              later separate "Create Invoice" modal — the invoice is
+              generated atomically with the close (see confirmClose), using
+              these same paymentCollected/paymentMode/paymentAmount values.
+              Nothing to collect on a warranty job, so the whole payment
+              section is skipped for one, same as createInvoice's rule. */}
+          {!underWarranty && (
+            <>
+              <label className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+                Mode of Payment
+                <select
+                  value={paymentMode}
+                  onChange={(e) => setPaymentMode(e.target.value)}
+                  className="mt-1 w-full rounded-md border border-border bg-bg px-2 py-1.5 text-sm font-normal normal-case tracking-normal text-text"
+                >
+                  {PAYMENT_MODES.map((mode) => (
+                    <option key={mode} value={mode}>
+                      {mode}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-text-muted">
+                <input
+                  type="checkbox"
+                  checked={paymentCollected}
+                  onChange={(e) => setPaymentCollected(e.target.checked)}
+                  className="h-4 w-4 rounded border-border"
+                />
+                Payment collected at handover
+              </label>
+              {paymentCollected && (
+                <label className="text-xs font-semibold uppercase tracking-wide text-text-muted sm:col-span-2">
+                  Amount Collected (₹)
+                  <input
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={paymentAmount}
+                    onChange={(e) => setPaymentAmount(e.target.value)}
+                    placeholder="Full invoice total"
+                    className="mt-1 w-full rounded-md border border-border bg-bg px-2 py-1.5 text-sm font-normal normal-case tracking-normal tabular-nums text-text"
+                  />
+                </label>
+              )}
+            </>
+          )}
         </div>
         {staffNameOptions.length === 0 && (
           <p className="mt-2 text-xs text-text-muted">
@@ -2202,69 +2279,6 @@ export function WorkorderLifecycle({
           rows={3}
           className="mt-3 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text"
         />
-      </Modal>
-      {/* Payment capture at handover — previously the invoice was always
-          left in Draft with no amount or mode ever recorded. */}
-      <Modal
-        open={invoiceModalOpen}
-        onClose={() => setInvoiceModalOpen(false)}
-        title="Create Invoice"
-        size="sm"
-        footer={
-          <>
-            <button type="button" className="btn-outline" onClick={() => setInvoiceModalOpen(false)}>
-              Cancel
-            </button>
-            <button type="button" className="btn-accent" onClick={createInvoice}>
-              Create Invoice
-            </button>
-          </>
-        }
-      >
-        <p className="text-sm text-text-muted">
-          Chargeable lines total <span className="font-semibold text-text">₹{estimateTotal}</span> before GST. Record
-          the payment now if the customer settled at handover — this marks the invoice Paid and files a matching
-          entry under Billing &gt; Payments.
-        </p>
-        <label className="mt-3 flex items-center gap-2 text-sm text-text">
-          <input
-            type="checkbox"
-            checked={paymentCollected}
-            onChange={(e) => setPaymentCollected(e.target.checked)}
-            className="h-4 w-4 rounded border-border"
-          />
-          Payment collected at handover
-        </label>
-        {paymentCollected && (
-          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <label className="text-xs font-semibold uppercase tracking-wide text-text-muted">
-              Payment Mode
-              <select
-                value={paymentMode}
-                onChange={(e) => setPaymentMode(e.target.value)}
-                className="mt-1 w-full rounded-md border border-border bg-bg px-2 py-1.5 text-sm font-normal normal-case tracking-normal text-text"
-              >
-                {PAYMENT_MODES.map((mode) => (
-                  <option key={mode} value={mode}>
-                    {mode}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="text-xs font-semibold uppercase tracking-wide text-text-muted">
-              Amount Collected (₹)
-              <input
-                type="number"
-                min={0}
-                step={1}
-                value={paymentAmount}
-                onChange={(e) => setPaymentAmount(e.target.value)}
-                placeholder="Full invoice total"
-                className="mt-1 w-full rounded-md border border-border bg-bg px-2 py-1.5 text-sm font-normal normal-case tracking-normal tabular-nums text-text"
-              />
-            </label>
-          </div>
-        )}
       </Modal>
     </div>
   );

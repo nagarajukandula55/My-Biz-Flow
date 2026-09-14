@@ -29,12 +29,16 @@ export const DEFAULT_SCHEME: NumberingScheme = {
 /** The document types that currently have a document page — see DESIGN_SYSTEM.md §5. */
 export const NUMBERED_DOCUMENT_TYPES = [
   { id: "billing.document", label: "Invoice (Billing)" },
+  { id: "billing.invoice.b2c", label: "B2C Invoice (Billing)" },
+  { id: "billing.invoice.b2b", label: "B2B Invoice (Billing)" },
   { id: "service-centre.document", label: "Job Card (Service Centre)" },
   { id: "service-centre.workorder", label: "Workorder / Job ID (Service Centre)" },
   { id: "service-centre.brand", label: "Brand Code (Service Centre)" },
   { id: "service-centre.model", label: "Model Code (Service Centre)" },
   { id: "inventory.bom-material", label: "Material Code (BOM)" },
   { id: "service-centre.invoice", label: "Sales Invoice (Service Centre)" },
+  { id: "service-centre.invoice.b2c", label: "B2C Sales Invoice (Service Centre)" },
+  { id: "service-centre.invoice.b2b", label: "B2B Sales Invoice (Service Centre)" },
   { id: "pos.document", label: "Receipt (POS)" },
   { id: "amc-field-service.document", label: "Service Report (AMC/Field Service)" },
   { id: "legal.document", label: "Engagement Letter (Legal)" },

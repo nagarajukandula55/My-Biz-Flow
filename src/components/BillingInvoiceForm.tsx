@@ -560,7 +560,14 @@ export function BillingInvoiceForm({
         <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted">
           Line Items
         </div>
-        <LineItemsEditor items={items} onChange={setItems} showTax={showTax} showHsn={showTax} itemOptions={itemOptions} />
+        <LineItemsEditor
+          items={items}
+          onChange={setItems}
+          showTax={showTax}
+          showHsn={showTax}
+          itemOptions={itemOptions}
+          interState={interState}
+        />
       </div>
 
       <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">

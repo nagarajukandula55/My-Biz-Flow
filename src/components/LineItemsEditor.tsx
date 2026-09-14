@@ -2,6 +2,7 @@
 
 import type { LineItem } from "@/lib/sample-data/billing";
 import { formatCurrencyINR } from "@/lib/format";
+import { HSN_CODES } from "@/lib/sample-data/bom";
 
 const EMPTY_ITEM: LineItem = { description: "", quantity: 1, unit: "pcs", unitPrice: 0, taxRate: 18 };
 
@@ -36,6 +37,7 @@ export function LineItemsEditor({
   showTax = true,
   showHsn = false,
   itemOptions,
+  interState,
 }: {
   items: LineItem[];
   onChange: (items: LineItem[]) => void;
@@ -54,6 +56,19 @@ export function LineItemsEditor({
    * rather than a separate Billing-only product list — see
    * lib/lineItemCatalog.ts. */
   itemOptions?: ItemOption[];
+  /**
+   * Place-of-supply result (customer state vs partner state), passed in by
+   * the caller (BillingInvoiceForm's own `interState`, same one that
+   * drives its Totals box) so this editor can show each line's own
+   * CGST/SGST or IGST split live, on the create form, rather than only
+   * ever surfacing that split later on the printed document (which
+   * ServiceCentreInvoiceDocument.tsx and BillingInvoiceDocument.tsx
+   * already compute per-line the same way — taxable * taxRate/100, halved
+   * into CGST+SGST when intra-state, or taken whole as IGST when
+   * inter-state). Only rendered when showTax is also true and this prop
+   * is provided — every other caller of this editor is unaffected.
+   */
+  interState?: boolean;
 }) {
   function updateItem(idx: number, patch: Partial<LineItem>) {
     onChange(items.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
@@ -81,6 +96,7 @@ export function LineItemsEditor({
   }
 
   const { subtotal, taxTotal, grandTotal } = computeTotals(items, showTax);
+  const showGstSplit = showTax && interState !== undefined;
 
   return (
     <div>
@@ -95,6 +111,13 @@ export function LineItemsEditor({
               <th className="w-24 px-3 py-2.5">Unit</th>
               <th className="w-32 px-3 py-2.5 text-right">Unit Price</th>
               {showTax && <th className="w-24 px-3 py-2.5 text-right">Tax %</th>}
+              {showGstSplit && interState && <th className="w-24 px-3 py-2.5 text-right">IGST</th>}
+              {showGstSplit && !interState && (
+                <>
+                  <th className="w-20 px-3 py-2.5 text-right">CGST</th>
+                  <th className="w-20 px-3 py-2.5 text-right">SGST</th>
+                </>
+              )}
               <th className="w-32 px-3 py-2.5 text-right">Line Total</th>
               <th className="w-10 px-2 py-2.5" />
             </tr>
@@ -102,6 +125,11 @@ export function LineItemsEditor({
           <tbody>
             {items.map((item, i) => {
               const lineTotal = item.quantity * item.unitPrice * (1 + (showTax ? item.taxRate : 0) / 100);
+              const lineTaxable = item.quantity * item.unitPrice;
+              const lineGst = showTax ? lineTaxable * (item.taxRate / 100) : 0;
+              const lineCgst = showGstSplit && !interState ? lineGst / 2 : 0;
+              const lineSgst = showGstSplit && !interState ? lineGst / 2 : 0;
+              const lineIgst = showGstSplit && interState ? lineGst : 0;
               return (
                 <tr key={i} className="border-b border-border last:border-b-0">
                   {itemOptions && (
@@ -130,10 +158,17 @@ export function LineItemsEditor({
                   </td>
                   {showHsn && (
                     <td className="px-3 py-2">
+                      {/* Pick-from-list-or-type-your-own, same convention as
+                          RecordForm's `suggestions` combobox fields: a plain
+                          text input with a `list` pointing at a shared
+                          <datalist>, not a closed <select> — real GST HSN
+                          data is broader than HSN_CODES's curated list, so
+                          a code that isn't in it must still be enterable. */}
                       <input
                         value={item.hsnCode ?? ""}
                         onChange={(e) => updateItem(i, { hsnCode: e.target.value })}
                         placeholder="HSN"
+                        list="line-item-hsn-codes"
                         className="w-full rounded-md border border-border bg-bg px-2.5 py-1.5 text-sm text-text outline-none focus:border-accent"
                       />
                     </td>
@@ -175,6 +210,21 @@ export function LineItemsEditor({
                       />
                     </td>
                   )}
+                  {showGstSplit && interState && (
+                    <td className="px-3 py-2 text-right font-mono text-sm tabular-nums text-text-muted">
+                      {formatCurrencyINR(lineIgst)}
+                    </td>
+                  )}
+                  {showGstSplit && !interState && (
+                    <>
+                      <td className="px-3 py-2 text-right font-mono text-sm tabular-nums text-text-muted">
+                        {formatCurrencyINR(lineCgst)}
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono text-sm tabular-nums text-text-muted">
+                        {formatCurrencyINR(lineSgst)}
+                      </td>
+                    </>
+                  )}
                   <td className="px-3 py-2 text-right font-mono text-sm font-semibold tabular-nums text-text">
                     {formatCurrencyINR(lineTotal)}
                   </td>
@@ -196,6 +246,15 @@ export function LineItemsEditor({
           </tbody>
         </table>
       </div>
+      {showHsn && (
+        <datalist id="line-item-hsn-codes">
+          {HSN_CODES.map((h) => (
+            <option key={h.code} value={h.code}>
+              {h.description}
+            </option>
+          ))}
+        </datalist>
+      )}
 
       <button type="button" onClick={addItem} className="btn-outline mt-3 px-3 py-1.5 text-xs">
         + Add line item

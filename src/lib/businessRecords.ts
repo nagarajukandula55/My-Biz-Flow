@@ -218,6 +218,31 @@ export async function getBusinessRecordSequenceIndex(
   return index >= 0 ? index : 0;
 }
 
+/**
+ * Same 0-based, oldest-first position as getBusinessRecordSequenceIndex,
+ * but scoped to only the peers matching `filterFn` — e.g. only this
+ * partner's B2B invoices, or only its B2C ones — so B2B and B2C invoices
+ * (Billing and Service Centre alike) get their own independent, gap-free
+ * numbering sequence instead of interleaving in one shared count. `data`
+ * is the record's own field bag (same shape `getBusinessRecord` returns
+ * minus `id`), so `filterFn` can check e.g. `Boolean(data.customerGstin)`.
+ */
+export async function getBusinessRecordSequenceIndexFiltered(
+  partnerId: string,
+  moduleSlug: string,
+  recordKey: string,
+  filterFn: (data: Record<string, unknown>) => boolean
+): Promise<number> {
+  const rows = await prisma.businessRecord.findMany({
+    where: { partnerId, moduleSlug },
+    orderBy: { createdAt: "asc" },
+    select: { recordKey: true, data: true },
+  });
+  const filtered = rows.filter((r) => filterFn(r.data as Record<string, unknown>));
+  const index = filtered.findIndex((r) => r.recordKey === recordKey);
+  return index >= 0 ? index : 0;
+}
+
 export async function deleteBusinessRecord(partnerId: string, moduleSlug: string, recordKey: string): Promise<void> {
   await prisma.businessRecord.delete({
     where: { partnerId_moduleSlug_recordKey: { partnerId, moduleSlug, recordKey } },

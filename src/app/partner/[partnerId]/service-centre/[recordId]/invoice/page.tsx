@@ -5,7 +5,7 @@ import { registerPage } from "@/lib/designer/registry";
 import { notFound } from "next/navigation";
 import { getDocumentTemplate } from "@/lib/designer/documentTemplates";
 import { getPartner, resolveDocumentTerms } from "@/lib/partnerData";
-import { getBusinessRecord, getBusinessRecordSequenceIndex } from "@/lib/businessRecords";
+import { getBusinessRecord, getBusinessRecordSequenceIndexFiltered } from "@/lib/businessRecords";
 import { ServiceCentreInvoiceDocument } from "./ServiceCentreInvoiceDocument";
 
 registerPage({
@@ -29,8 +29,20 @@ export default async function ServiceCentreInvoicePage({
   const record = await getBusinessRecord(params.partnerId, "service-centre", params.recordId);
   if (!record) notFound();
   const partner = await getPartner(params.partnerId);
-  const sequenceIndex = await getBusinessRecordSequenceIndex(params.partnerId, "service-centre", params.recordId);
-  const scheme = await getEffectiveScheme("service-centre.invoice", params.partnerId);
+  // Same B2B/B2C split as Billing's own invoice document (see
+  // billing/[recordId]/document/page.tsx): a real customer GSTIN makes it
+  // B2B (prefix INV), otherwise B2C (prefix BILL) — each with its own
+  // independent, gap-free sequence rather than one shared counter.
+  const isB2B = Boolean(String(record["customerGstin"] ?? "").trim());
+  const numberingDocType = isB2B ? "service-centre.invoice.b2b" : "service-centre.invoice.b2c";
+  const numberingDefaults = isB2B ? { prefix: "INV" } : { prefix: "BILL" };
+  const sequenceIndex = await getBusinessRecordSequenceIndexFiltered(
+    params.partnerId,
+    "service-centre",
+    params.recordId,
+    (data) => Boolean(String(data["customerGstin"] ?? "").trim()) === isB2B
+  );
+  const scheme = await getEffectiveScheme(numberingDocType, params.partnerId, numberingDefaults);
   const invoiceNumber = formatNumber(scheme, scheme.sequenceStart + sequenceIndex);
   const lines = await buildServiceCentreLines(params.partnerId, record);
   const customTemplate = await getDocumentTemplate("service-centre.invoice");
