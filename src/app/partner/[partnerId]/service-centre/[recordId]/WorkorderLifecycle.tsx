@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useEffect } from "react";
 import Link from "next/link";
-import { Check } from "lucide-react";
+import { Check, Trash2 } from "lucide-react";
 import { openPrintPopup } from "@/lib/openPrintPopup";
 import { StatusChip } from "@/components/StatusChip";
 import { Modal } from "@/components/Modal";
@@ -20,6 +20,7 @@ import {
   type ServiceLine,
   type StageHistoryEntry,
 } from "@/lib/sample-data/service-centre";
+import { GST_RATES, MATERIAL_TYPES, RATE_TYPES, UOM_OPTIONS, HSN_CODES } from "@/lib/sample-data/bom";
 import {
   setWorkorderHoldAction,
   createInvoiceFromWorkorderAction,
@@ -134,6 +135,7 @@ export function WorkorderLifecycle({
   solutionLaborCharges,
   addBrandAction,
   addModelAction,
+  addBomMaterialAction,
 }: {
   partnerId: string;
   workorderId: string;
@@ -227,12 +229,19 @@ export function WorkorderLifecycle({
    */
   addBrandAction?: (values: Record<string, unknown>) => Promise<{ error?: string; id?: string; label?: string }>;
   addModelAction?: (values: Record<string, unknown>) => Promise<{ error?: string; id?: string; label?: string }>;
+  /**
+   * Bound, tier-checked (inventory.bom.create, Pro+) server action for
+   * quick-adding a new BOM material right from this page's "+ Add New Part
+   * to BOM" — same createServiceCentreBomMaterialInlineAction the picker's
+   * catalog is otherwise read-only against, non-redirecting so this page
+   * never navigates away. Omitted entirely (not just disabled) on a partner
+   * below Pro, same as addBrandAction/addModelAction.
+   */
+  addBomMaterialAction?: (values: Record<string, unknown>) => Promise<{ error?: string; id?: string; label?: string }>;
 }) {
   const [stage, setStage] = useState<WorkorderStage>(initialStage);
   const [partLines, setPartLines] = useState<PartLine[]>(initialPartLines);
   const [serviceLines, setServiceLines] = useState<ServiceLine[]>(initialServiceLines);
-  const [partPickerOpen, setPartPickerOpen] = useState(false);
-  const [solutionPickerOpen, setSolutionPickerOpen] = useState(false);
   const [brandPickerOpen, setBrandPickerOpen] = useState(false);
   const [modelPickerOpen, setModelPickerOpen] = useState(false);
   // Seeded from the server-computed props, then appended to locally the
@@ -240,11 +249,29 @@ export function WorkorderLifecycle({
   // immediately selectable in the SAME picker session without a refetch.
   const [brandOptionsState, setBrandOptionsState] = useState(brandOptions);
   const [modelOptionsState, setModelOptionsState] = useState(modelOptions);
+  // Same pattern for BOM materials — the "+ Add New Part to BOM" quick-add
+  // modal below appends here the moment it succeeds, so the new material's
+  // "No materials found" warning banner clears immediately without a refetch.
+  const [bomMaterialsState, setBomMaterialsState] = useState(bomMaterials);
   const [addBrandOpen, setAddBrandOpen] = useState(false);
   const [addModelOpen, setAddModelOpen] = useState(false);
   const [newCatalogName, setNewCatalogName] = useState("");
   const [addCatalogError, setAddCatalogError] = useState<string | null>(null);
   const [addCatalogPending, setAddCatalogPending] = useState(false);
+  // "+ Add New Part to BOM" quick-add modal — mirrors the Brand/Model
+  // quick-add above but with the fuller BOM field set (see submitAddBom).
+  const [addBomOpen, setAddBomOpen] = useState(false);
+  const [bomDraft, setBomDraft] = useState({
+    description: "",
+    hsnCode: "",
+    uom: UOM_OPTIONS[0],
+    rate: "",
+    taxPercent: String(GST_RATES[GST_RATES.length - 2] ?? 18),
+    type: MATERIAL_TYPES[0] as string,
+    rateType: RATE_TYPES[1] as string, // "Without Tax" — matches this page's own Rate/"Excl. GST" convention
+  });
+  const [addBomError, setAddBomError] = useState<string | null>(null);
+  const [addBomPending, setAddBomPending] = useState(false);
   const [pendingLineId, setPendingLineId] = useState<string | null>(null);
   const [closeBlockedMessage, setCloseBlockedMessage] = useState<string | null>(null);
   const [confirmCloseOpen, setConfirmCloseOpen] = useState(false);
@@ -274,7 +301,6 @@ export function WorkorderLifecycle({
   const [holdReasonDraft, setHoldReasonDraft] = useState("");
   const [brandJobNoDraft, setBrandJobNoDraft] = useState(brandJobNoForPartOrder ?? "");
   const [brandJobNo, setBrandJobNo] = useState(brandJobNoForPartOrder ?? "");
-  const [approved, setApproved] = useState(Boolean(estimateApproved) || underWarranty);
   const [invoice, setInvoice] = useState(invoiceId);
   const [cancelled, setCancelled] = useState(Boolean(cancelledAt));
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
@@ -331,18 +357,42 @@ export function WorkorderLifecycle({
     setTimeout(() => setSuccessMessage((current) => (current === label ? null : current)), 4000);
   }
 
-  const bomOptions: SearchSelectOption[] = bomMaterials.map((m) => ({ value: m.id, label: m.label }));
+  /**
+   * Reverse-calc for a tax-inclusive entered price: when a line's rateMode
+   * is "incl", the number the user typed into Rate is already the
+   * per-unit price WITH taxRate% baked in, so the base (tax-exclusive)
+   * rate that must feed Subtotal/CGST/SGST is `entered / (1 + tax/100)`
+   * — otherwise tax would be charged twice on top of an already-taxed
+   * number. "excl" (the default for every line that predates this field)
+   * is the identity case: the entered number already IS the base rate.
+   */
+  function baseRateOf(entered: number, taxPercent: number, rateMode?: "excl" | "incl"): number {
+    return rateMode === "incl" ? entered / (1 + taxPercent / 100) : entered;
+  }
+
   // Estimate covers labor AND parts — parts were previously excluded, so
   // the figure the customer approved never mentioned the biggest cost.
-  const laborTotal = serviceLines.reduce((sum, l) => sum + (l.laborCharge || 0), 0);
-  const partsTotal = partLines.reduce((sum, p) => (p.pending ? sum : sum + (p.unitPrice || 0) * (p.qty || 1)), 0);
+  // Both totals are computed on the BASE (tax-exclusive) rate regardless
+  // of rateMode, via baseRateOf() above, so a tax-inclusive line's entered
+  // price isn't double-counted as pure profit before tax is added back
+  // below.
+  const laborTotal = serviceLines.reduce(
+    (sum, l) => sum + baseRateOf(l.laborCharge || 0, l.taxRate ?? 18, l.rateMode) * (l.qty || 1),
+    0
+  );
+  const partsTotal = partLines.reduce(
+    (sum, p) =>
+      p.pending ? sum : sum + baseRateOf(p.unitPrice || 0, p.taxRate ?? 18, p.rateMode) * (p.qty || 1),
+    0
+  );
   const estimateTotal = laborTotal + partsTotal;
   /**
    * Live tax preview over the same lines, mirroring the reference app's
    * Parts & Service Lines footer — previously the operator could see a bare
    * labour/parts figure but never what the customer would actually be asked
-   * to pay, which is the taxed total. Labour is SAC 9987 @ 18%, parts use
-   * each line's own stamped slab — the same rates buildServiceCentreLines()
+   * to pay, which is the taxed total. Labour and parts each use their own
+   * line's stamped/entered tax slab (defaulting to 18% for a line that
+   * predates a stored taxRate) — the same rates buildServiceCentreLines()
    * puts on the Estimate and the Sales Invoice, so the three agree.
    *
    * Split CGST/SGST here assumes intra-state supply, the common case and the
@@ -350,11 +400,23 @@ export function WorkorderLifecycle({
    * invoice is where place of supply is resolved for real (a customer in
    * another state is taxed IGST at the full slab instead).
    */
-  const laborTax = laborTotal * 0.18;
-  const partsTax = partLines.reduce(
-    (sum, p) => (p.pending ? sum : sum + (p.unitPrice || 0) * (p.qty || 1) * ((p.taxRate ?? 18) / 100)),
+  const laborTax = serviceLines.reduce(
+    (sum, l) =>
+      sum + baseRateOf(l.laborCharge || 0, l.taxRate ?? 18, l.rateMode) * ((l.taxRate ?? 18) / 100) * (l.qty || 1),
     0
   );
+  const partsTax = partLines.reduce(
+    (sum, p) =>
+      p.pending
+        ? sum
+        : sum + baseRateOf(p.unitPrice || 0, p.taxRate ?? 18, p.rateMode) * ((p.taxRate ?? 18) / 100) * (p.qty || 1),
+    0
+  );
+  // Tax Apply, unchecked, genuinely zeroes CGST/SGST for these lines — it
+  // isn't just a cosmetic checkbox: laborTax/partsTax above are computed
+  // unconditionally, but taxTotal (the only place they feed the footer/
+  // chargeableSubtotal math) collapses to 0 the moment taxApply is off or
+  // the job is under warranty.
   const taxTotal = underWarranty || !taxApply ? 0 : laborTax + partsTax;
   const chargeableSubtotal = underWarranty ? 0 : estimateTotal;
   const inr = (value: number) =>
@@ -385,31 +447,57 @@ export function WorkorderLifecycle({
       : undefined;
   const tatRunning = !terminal;
 
-  function addPart(option: SearchSelectOption) {
-    const material = bomMaterials.find((m) => m.id === option.value);
+  /**
+   * "+ Add Line" — used to open a SearchSelectModal picker over the BOM
+   * catalog (bomMaterials); per user feedback that modal never matched the
+   * intended row shape (a free-text "Part / service name" + Qty/Rate/Tax%/
+   * Total row you type straight into, not a catalog pick), so this now
+   * appends a single blank inline PartLine directly, same mechanism as
+   * addBlankServiceLine below. Nothing else on this page picks from the BOM
+   * catalog by search any more — the catalog itself still feeds the
+   * "No materials found" warning banner and the BOM quick-add modal further
+   * down.
+   */
+  function addBlankPartLine() {
     const next: PartLine[] = [
       ...partLines,
-      {
-        id: `PL-${Date.now()}`,
-        materialId: option.value,
-        materialLabel: option.label,
-        qty: 1,
-        serialized: Boolean(material?.serialized),
-        // Stamped from the partner's own BOM catalog so the quantity the
-        // operator sets below actually prices the line.
-        unitPrice: material?.rate,
-        taxRate: material?.taxPercent,
-      },
+      { id: `PL-${Date.now()}`, materialId: "", materialLabel: "", qty: 1, serialized: false, unitPrice: 0, taxRate: 18 },
     ];
     setPartLines(next);
-    setPartPickerOpen(false);
     persist({ partLines: next });
+  }
+
+  function setPartLabel(lineId: string, label: string) {
+    setPartLines((prev) => prev.map((p) => (p.id === lineId ? { ...p, materialLabel: label } : p)));
   }
 
   /** Editable per-line quantity — was previously hardcoded to 1 with no input at all. */
   function setPartQty(lineId: string, rawQty: string) {
     const qty = Math.max(1, Math.floor(Number(rawQty) || 1));
     setPartLines((prev) => prev.map((p) => (p.id === lineId ? { ...p, qty } : p)));
+  }
+
+  function setPartRate(lineId: string, rawRate: string) {
+    const unitPrice = Math.max(0, Number(rawRate) || 0);
+    setPartLines((prev) => prev.map((p) => (p.id === lineId ? { ...p, unitPrice } : p)));
+  }
+
+  function setPartTaxRate(lineId: string, rawRate: string) {
+    const taxRate = Math.max(0, Number(rawRate) || 0);
+    setPartLines((prev) => prev.map((p) => (p.id === lineId ? { ...p, taxRate } : p)));
+  }
+
+  /** Excl./Incl. GST toggle next to a part line's Rate input — see baseRateOf() for the reverse-calc this drives. A <select>, so it persists immediately on change rather than waiting for a blur. */
+  function setPartRateMode(lineId: string, rateMode: "excl" | "incl") {
+    const next = partLines.map((p) => (p.id === lineId ? { ...p, rateMode } : p));
+    setPartLines(next);
+    persist({ partLines: next });
+  }
+
+  function removePartLine(lineId: string) {
+    const next = partLines.filter((p) => p.id !== lineId);
+    setPartLines(next);
+    persist({ partLines: next });
   }
 
   function persistPartQty() {
@@ -420,6 +508,9 @@ export function WorkorderLifecycle({
     // Pre-fill from the solution's own defaultLaborCharge (Solutions
     // catalog) — it was defined there all along but never read, so every
     // service line was added at ₹0 and silently under-billed the job.
+    // Still used by the Engineer Remark & Solution card's own catalog-based
+    // "+ Add Solution" — unaffected by the blank-row change below, which is
+    // specific to this card's own "+ Add Service/Labour Charge" button.
     const next: ServiceLine[] = [
       ...serviceLines,
       {
@@ -427,10 +518,56 @@ export function WorkorderLifecycle({
         solutionId: option.value,
         solutionLabel: option.label,
         laborCharge: solutionLaborCharges[option.value] ?? 0,
+        qty: 1,
+        taxRate: 18,
       },
     ];
     setServiceLines(next);
-    setSolutionPickerOpen(false);
+    persist({ serviceLines: next });
+  }
+
+  /**
+   * "+ Add Service/Labour Charge" — used to open a SearchSelectModal picker
+   * over the Solutions catalog (title "Add Solution"); per user feedback
+   * this should instead append a single blank, free-text inline
+   * ServiceLine row directly (defaulting qty 1 / tax 18% / rate 0), same
+   * mechanism as addBlankPartLine above. The Solutions-catalog-based add
+   * (addSolution) is untouched and still reachable from the Engineer
+   * Remark & Solution card's own "Solution" dropdown + "+ Add Solution".
+   */
+  function addBlankServiceLine() {
+    const next: ServiceLine[] = [
+      ...serviceLines,
+      { id: `SL-${Date.now()}`, solutionId: "", solutionLabel: "", laborCharge: 0, qty: 1, taxRate: 18 },
+    ];
+    setServiceLines(next);
+    persist({ serviceLines: next });
+  }
+
+  function setServiceLabel(lineId: string, label: string) {
+    setServiceLines((prev) => prev.map((l) => (l.id === lineId ? { ...l, solutionLabel: label } : l)));
+  }
+
+  function setServiceQty(lineId: string, rawQty: string) {
+    const qty = Math.max(1, Math.floor(Number(rawQty) || 1));
+    setServiceLines((prev) => prev.map((l) => (l.id === lineId ? { ...l, qty } : l)));
+  }
+
+  function setServiceTaxRate(lineId: string, rawRate: string) {
+    const taxRate = Math.max(0, Number(rawRate) || 0);
+    setServiceLines((prev) => prev.map((l) => (l.id === lineId ? { ...l, taxRate } : l)));
+  }
+
+  /** Excl./Incl. GST toggle next to a service line's Rate input — see baseRateOf() for the reverse-calc this drives. A <select>, so it persists immediately on change rather than waiting for a blur. */
+  function setServiceRateMode(lineId: string, rateMode: "excl" | "incl") {
+    const next = serviceLines.map((l) => (l.id === lineId ? { ...l, rateMode } : l));
+    setServiceLines(next);
+    persist({ serviceLines: next });
+  }
+
+  function removeServiceLine(lineId: string) {
+    const next = serviceLines.filter((l) => l.id !== lineId);
+    setServiceLines(next);
     persist({ serviceLines: next });
   }
 
@@ -513,6 +650,87 @@ export function WorkorderLifecycle({
     }
   }
 
+  function openAddBom() {
+    setBomDraft({
+      description: "",
+      hsnCode: "",
+      uom: UOM_OPTIONS[0],
+      rate: "",
+      taxPercent: String(GST_RATES[GST_RATES.length - 2] ?? 18),
+      type: MATERIAL_TYPES[0] as string,
+      rateType: RATE_TYPES[1] as string,
+    });
+    setAddBomError(null);
+    setAddBomOpen(true);
+  }
+
+  /**
+   * "+ Add New Part to BOM" quick-add — used to be a plain Link navigating
+   * to /inventory/bom/new (an entire separate page), abandoning whatever
+   * was in progress on this workorder. Now a modal, mirroring the Add
+   * Brand/Model pattern above but with the fuller field set the real BOM
+   * catalog (Material Catalog) actually asks for on its own create form
+   * (see bomFormFields in src/lib/sample-data/bom.ts): Description, HSN
+   * Code, Type, UOM, Rate, Rate Type ("this rate is" inclusive/exclusive of
+   * tax), and Tax %. Calls the same non-redirecting, tier-checked
+   * createServiceCentreBomMaterialInlineAction the standalone page's
+   * redirecting sibling wraps.
+   */
+  async function submitAddBom() {
+    const description = bomDraft.description.trim();
+    const hsnCode = bomDraft.hsnCode.trim();
+    const rate = Number(bomDraft.rate);
+    if (!description) {
+      setAddBomError("Part / Material name is required.");
+      return;
+    }
+    if (!hsnCode) {
+      setAddBomError("HSN Code is required.");
+      return;
+    }
+    if (!bomDraft.rate.trim() || Number.isNaN(rate) || rate < 0) {
+      setAddBomError("Enter a valid Rate.");
+      return;
+    }
+    if (!addBomMaterialAction) return;
+    const taxPercent = Number(bomDraft.taxPercent) || 0;
+    // "This rate is" — With Tax means the number just typed already has
+    // taxPercent baked in, so the value actually stored (and read back by
+    // every part-line consumer of bomMaterials[].rate, which all assume an
+    // exclusive base rate — see baseRateOf() above) must be reverse-
+    // calculated to the tax-exclusive base, exactly like a part/service
+    // line's own Incl. GST mode does.
+    const rateExclTax = bomDraft.rateType === "With Tax" ? rate / (1 + taxPercent / 100) : rate;
+    setAddBomPending(true);
+    setAddBomError(null);
+    const result = await addBomMaterialAction({
+      description,
+      hsnCode,
+      uom: bomDraft.uom,
+      rate: rateExclTax,
+      rateType: "Without Tax", // stored rate is now always tax-exclusive, regardless of which mode the user picked
+      taxPercent,
+      type: bomDraft.type,
+      status: "Active",
+    });
+    setAddBomPending(false);
+    if (result?.error) {
+      setAddBomError(result.error);
+      return;
+    }
+    setBomMaterialsState((prev) => [
+      ...prev,
+      {
+        id: result?.id ?? description,
+        label: result?.label ?? description,
+        serialized: false,
+        rate: rateExclTax,
+        taxPercent,
+      },
+    ]);
+    setAddBomOpen(false);
+  }
+
   /**
    * Going on hold now captures WHY and the brand's part-order reference
    * (the reference app's Mark Part Pending modal does the same) instead of
@@ -574,12 +792,6 @@ export function WorkorderLifecycle({
         announceSuccess("Workorder Cancelled.");
       }
     );
-  }
-
-  function approveEstimate() {
-    setApproved(true);
-    setCloseBlockedMessage(null);
-    persist({ estimateApproved: true });
   }
 
   function advanceStage() {
@@ -983,26 +1195,37 @@ export function WorkorderLifecycle({
             </label>
             {editable && (
               <div className="flex flex-wrap items-center gap-2">
-                <button type="button" className="btn-outline" onClick={() => setSolutionPickerOpen(true)}>
+                {/* Appends a blank, free-text inline row directly to the
+                    table (below) — no longer a modal picker over the
+                    Solutions catalog. That catalog-based add still exists,
+                    just on the Engineer Remark & Solution card's own
+                    "+ Add Solution" button further down the page. */}
+                <button type="button" className="btn-outline" onClick={addBlankServiceLine}>
                   + Add Service/Labour Charge
                 </button>
-                <button type="button" className="btn-outline" onClick={() => setPartPickerOpen(true)}>
+                {/* Appends a blank, free-text inline row directly to the
+                    table — no longer a modal picker over the BOM catalog. */}
+                <button type="button" className="btn-outline" onClick={addBlankPartLine}>
                   + Add Line
                 </button>
                 {/* Adds a genuinely new material to this partner's own BOM
-                    catalog (Inventory > Material Catalog) — distinct from
-                    "+ Add Line" above, which only picks an EXISTING BOM
-                    material onto this job. Same create route the Material
-                    Catalog's own "New" button already uses. */}
-                <Link href={`/partner/${partnerId}/inventory/bom/new`} className="btn-outline">
-                  + Add New Part to BOM
-                </Link>
+                    catalog (Inventory > Material Catalog) via an inline
+                    modal — distinct from "+ Add Line" above, which only
+                    adds a line to THIS job. Used to navigate away to
+                    /inventory/bom/new; now stays on this page (see the
+                    addBomOpen Modal further down), matching the
+                    Add Brand/Model quick-add pattern. */}
+                {addBomMaterialAction && (
+                  <button type="button" className="btn-outline" onClick={openAddBom}>
+                    + Add New Part to BOM
+                  </button>
+                )}
               </div>
             )}
           </div>
         </div>
 
-        {editable && bomMaterials.length === 0 && (
+        {editable && bomMaterialsState.length === 0 && (
           <div className="mt-3 rounded-md border border-warning bg-warning-soft px-3 py-2 text-sm text-warning">
             No materials found in your BOM yet — add parts under Material Catalog to have them listed here for quick
             selection.
@@ -1013,74 +1236,207 @@ export function WorkorderLifecycle({
           <p className="mt-3 text-sm text-text-muted">No lines yet — add a part or service charge.</p>
         ) : (
           <div className="mt-3 space-y-2">
-            {serviceLines.map((line) => (
-              <div key={line.id} className="flex items-center justify-between gap-3 rounded-md border border-border bg-bg px-3 py-2 text-sm">
-                <div>
-                  <span className="font-semibold text-text">{line.solutionLabel}</span>
-                  <span className="ml-2 text-xs text-text-muted">Solution</span>
-                </div>
-                <label className="flex shrink-0 items-center gap-1.5 text-xs text-text-muted">
-                  <span>Labor ₹</span>
+            {/* Service / Labour Charge rows — a plain free-text description
+                (typed directly, not picked from the Solutions catalog) plus
+                Qty/Rate/Tax%/Total, matching the "Add Line" transcribed
+                screenshot's row shape. The Rate field's Excl./Incl. GST
+                dropdown drives baseRateOf()'s reverse-calc above: on
+                "Incl. GST" the number typed is the tax-inclusive per-unit
+                price, so Total still equals qty × entered rate exactly,
+                while the base rate feeding Subtotal/CGST/SGST is backed
+                out instead of double-taxed. */}
+            {serviceLines.map((line) => {
+              const qty = line.qty || 1;
+              const taxRate = line.taxRate ?? 18;
+              const base = baseRateOf(line.laborCharge || 0, taxRate, line.rateMode);
+              const lineTotal = (base + (!underWarranty && taxApply ? base * (taxRate / 100) : 0)) * qty;
+              return (
+                <div key={line.id} className="flex flex-wrap items-end gap-2 rounded-md border border-border bg-bg px-3 py-2 text-sm">
                   <input
-                    type="number"
-                    min={0}
-                    step={1}
-                    value={line.laborCharge}
+                    type="text"
+                    placeholder="Service / Labour Charge"
+                    value={line.solutionLabel}
                     disabled={!editable}
-                    onChange={(e) => setLaborCharge(line.id, e.target.value)}
+                    onChange={(e) => setServiceLabel(line.id, e.target.value)}
                     onBlur={persistLaborCharge}
-                    className="w-24 rounded-md border border-border bg-bg-raised px-2 py-1 text-right text-sm tabular-nums text-text disabled:opacity-60"
+                    className="min-w-[10rem] flex-1 rounded-md border border-border bg-bg-raised px-2 py-1.5 text-sm text-text disabled:opacity-60"
                   />
-                </label>
-              </div>
-            ))}
-            {partLines.map((line) => (
-              <div key={line.id} className="rounded-md border border-border bg-bg px-3 py-2 text-sm">
-                <div className="flex items-center justify-between">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-semibold text-text">{line.materialLabel}</span>
-                    <label className="flex items-center gap-1.5 text-xs text-text-muted">
-                      <span>Qty</span>
+                  <label className="flex shrink-0 flex-col gap-0.5 text-[10px] font-semibold uppercase tracking-wide text-text-muted">
+                    Qty
+                    <input
+                      type="number"
+                      min={1}
+                      step={1}
+                      value={qty}
+                      disabled={!editable}
+                      onChange={(e) => setServiceQty(line.id, e.target.value)}
+                      onBlur={persistLaborCharge}
+                      className="w-16 rounded-md border border-border bg-bg-raised px-2 py-1 text-right text-sm tabular-nums text-text disabled:opacity-60"
+                    />
+                  </label>
+                  <label className="flex shrink-0 flex-col gap-0.5 text-[10px] font-semibold uppercase tracking-wide text-text-muted">
+                    Rate
+                    <input
+                      type="number"
+                      min={0}
+                      step={1}
+                      value={line.laborCharge}
+                      disabled={!editable}
+                      onChange={(e) => setLaborCharge(line.id, e.target.value)}
+                      onBlur={persistLaborCharge}
+                      className="w-24 rounded-md border border-border bg-bg-raised px-2 py-1 text-right text-sm tabular-nums text-text disabled:opacity-60"
+                    />
+                    <select
+                      value={line.rateMode ?? "excl"}
+                      disabled={!editable}
+                      onChange={(e) => setServiceRateMode(line.id, e.target.value as "excl" | "incl")}
+                      className="mt-0.5 w-24 rounded-md border border-border bg-bg-raised px-1 py-0.5 text-[10px] font-normal normal-case tracking-normal text-text-muted disabled:opacity-60"
+                    >
+                      <option value="excl">Excl. GST</option>
+                      <option value="incl">Incl. GST</option>
+                    </select>
+                  </label>
+                  <label className="flex shrink-0 flex-col gap-0.5 text-[10px] font-semibold uppercase tracking-wide text-text-muted">
+                    Tax %
+                    <select
+                      value={taxRate}
+                      disabled={!editable}
+                      onChange={(e) => setServiceTaxRate(line.id, e.target.value)}
+                      onBlur={persistLaborCharge}
+                      className="w-16 rounded-md border border-border bg-bg-raised px-1 py-1 text-right text-sm tabular-nums text-text disabled:opacity-60"
+                    >
+                      {GST_RATES.map((r) => (
+                        <option key={r} value={r}>
+                          {r}%
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <div className="flex shrink-0 flex-col gap-0.5 text-[10px] font-semibold uppercase tracking-wide text-text-muted">
+                    Total
+                    <span className="w-24 py-1 text-right text-sm font-semibold tabular-nums text-text">₹{inr(lineTotal)}</span>
+                  </div>
+                  {editable && (
+                    <button
+                      type="button"
+                      aria-label="Remove line"
+                      onClick={() => removeServiceLine(line.id)}
+                      className="shrink-0 rounded-md p-1.5 text-danger hover:bg-danger-soft"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+            {partLines.map((line) => {
+              const qty = line.qty || 1;
+              const taxRate = line.taxRate ?? 18;
+              const base = baseRateOf(line.unitPrice || 0, taxRate, line.rateMode);
+              const lineTotal = (base + (!underWarranty && taxApply && !line.pending ? base * (taxRate / 100) : 0)) * qty;
+              return (
+                <div key={line.id} className="rounded-md border border-border bg-bg px-3 py-2 text-sm">
+                  <div className="flex flex-wrap items-end gap-2">
+                    <input
+                      type="text"
+                      placeholder="Part / service name"
+                      value={line.materialLabel}
+                      disabled={!editable || line.pending}
+                      onChange={(e) => setPartLabel(line.id, e.target.value)}
+                      onBlur={persistPartQty}
+                      className="min-w-[10rem] flex-1 rounded-md border border-border bg-bg-raised px-2 py-1.5 text-sm text-text disabled:opacity-60"
+                    />
+                    <label className="flex shrink-0 flex-col gap-0.5 text-[10px] font-semibold uppercase tracking-wide text-text-muted">
+                      Qty
                       <input
                         type="number"
                         min={1}
                         step={1}
-                        value={line.qty}
+                        value={qty}
                         disabled={!editable || line.pending}
                         onChange={(e) => setPartQty(line.id, e.target.value)}
                         onBlur={persistPartQty}
                         className="w-16 rounded-md border border-border bg-bg-raised px-2 py-1 text-right text-sm tabular-nums text-text disabled:opacity-60"
                       />
                     </label>
-                    {typeof line.unitPrice === "number" && (
-                      <span className="text-xs tabular-nums text-text-muted">
-                        @ ₹{line.unitPrice} = ₹{line.unitPrice * (line.qty || 1)}
-                      </span>
+                    <label className="flex shrink-0 flex-col gap-0.5 text-[10px] font-semibold uppercase tracking-wide text-text-muted">
+                      Rate
+                      <input
+                        type="number"
+                        min={0}
+                        step={1}
+                        value={line.unitPrice ?? 0}
+                        disabled={!editable || line.pending}
+                        onChange={(e) => setPartRate(line.id, e.target.value)}
+                        onBlur={persistPartQty}
+                        className="w-24 rounded-md border border-border bg-bg-raised px-2 py-1 text-right text-sm tabular-nums text-text disabled:opacity-60"
+                      />
+                      <select
+                        value={line.rateMode ?? "excl"}
+                        disabled={!editable || line.pending}
+                        onChange={(e) => setPartRateMode(line.id, e.target.value as "excl" | "incl")}
+                        className="mt-0.5 w-24 rounded-md border border-border bg-bg-raised px-1 py-0.5 text-[10px] font-normal normal-case tracking-normal text-text-muted disabled:opacity-60"
+                      >
+                        <option value="excl">Excl. GST</option>
+                        <option value="incl">Incl. GST</option>
+                      </select>
+                    </label>
+                    <label className="flex shrink-0 flex-col gap-0.5 text-[10px] font-semibold uppercase tracking-wide text-text-muted">
+                      Tax %
+                      <select
+                        value={taxRate}
+                        disabled={!editable || line.pending}
+                        onChange={(e) => setPartTaxRate(line.id, e.target.value)}
+                        onBlur={persistPartQty}
+                        className="w-16 rounded-md border border-border bg-bg-raised px-1 py-1 text-right text-sm tabular-nums text-text disabled:opacity-60"
+                      >
+                        {GST_RATES.map((r) => (
+                          <option key={r} value={r}>
+                            {r}%
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <div className="flex shrink-0 flex-col gap-0.5 text-[10px] font-semibold uppercase tracking-wide text-text-muted">
+                      Total
+                      <span className="w-24 py-1 text-right text-sm font-semibold tabular-nums text-text">₹{inr(lineTotal)}</span>
+                    </div>
+                    {editable && (
+                      <button
+                        type="button"
+                        aria-label="Remove line"
+                        onClick={() => removePartLine(line.id)}
+                        className="shrink-0 rounded-md p-1.5 text-danger hover:bg-danger-soft"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                     )}
+                  </div>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
                     {line.serialized && <StatusChip label="Serialized" variant="amber" />}
                     {line.pending && <StatusChip label="Pending" variant="warning" />}
+                    {editable && !line.pending && (
+                      <button type="button" className="text-xs text-danger hover:underline" onClick={() => setPendingLineId(line.id)}>
+                        Mark Pending
+                      </button>
+                    )}
                   </div>
-                  {editable && !line.pending && (
-                    <button type="button" className="text-xs text-danger hover:underline" onClick={() => setPendingLineId(line.id)}>
-                      Mark Pending
-                    </button>
+                  {line.serialized && !line.pending && (
+                    <div className="mt-2">
+                      <input
+                        type="text"
+                        placeholder="Serial / IMEI number"
+                        value={line.serial ?? ""}
+                        disabled={!editable}
+                        onChange={(e) => setSerial(line.id, e.target.value)}
+                        onBlur={() => persistSerial(line.id)}
+                        className="w-full rounded-md border border-border bg-bg-raised px-2 py-1.5 text-sm text-text disabled:opacity-60"
+                      />
+                    </div>
                   )}
                 </div>
-                {line.serialized && !line.pending && (
-                  <div className="mt-2">
-                    <input
-                      type="text"
-                      placeholder="Serial / IMEI number"
-                      value={line.serial ?? ""}
-                      disabled={!editable}
-                      onChange={(e) => setSerial(line.id, e.target.value)}
-                      onBlur={() => persistSerial(line.id)}
-                      className="w-full rounded-md border border-border bg-bg-raised px-2 py-1.5 text-sm text-text disabled:opacity-60"
-                    />
-                  </div>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
@@ -1192,24 +1548,6 @@ export function WorkorderLifecycle({
         </div>
       </div>
 
-      {/* Estimate approval — gates entry into In Progress unless under warranty */}
-      {stage === "Created" && !underWarranty && !cancelled && (
-        <div className="mt-6 rounded-md border border-border bg-bg-raised p-4">
-          <h2 className="font-display text-base font-bold text-text">Estimate</h2>
-          <p className="mt-1 text-sm text-text-muted">
-            Current estimate: <span className="font-semibold text-text">₹{estimateTotal}</span> — ₹{laborTotal} labor
-            across {serviceLines.length} service line(s) plus ₹{partsTotal} in parts, priced from the Material Catalog.
-          </p>
-          {approved ? (
-            <StatusChip label="Approved by customer" variant="success" className="mt-2" />
-          ) : (
-            <button type="button" className="btn-accent mt-2" onClick={approveEstimate}>
-              Mark Estimate Approved
-            </button>
-          )}
-        </div>
-      )}
-
       {/* Brand Job No. display — the Mark Part Pending / Resume Repair
           toggle itself now lives once, in the header row above; this just
           surfaces the supplier reference captured when the job was put on
@@ -1287,13 +1625,6 @@ export function WorkorderLifecycle({
       </div>
 
       <SearchSelectModal
-        open={partPickerOpen}
-        onClose={() => setPartPickerOpen(false)}
-        title="Add Part"
-        options={bomOptions}
-        onSelect={addPart}
-      />
-      <SearchSelectModal
         open={brandPickerOpen}
         onClose={() => setBrandPickerOpen(false)}
         title="Select Brand"
@@ -1355,13 +1686,119 @@ export function WorkorderLifecycle({
           </div>
         </div>
       </Modal>
-      <SearchSelectModal
-        open={solutionPickerOpen}
-        onClose={() => setSolutionPickerOpen(false)}
-        title="Add Solution"
-        options={solutionOptions}
-        onSelect={addSolution}
-      />
+      {/* "+ Add New Part to BOM" quick-add — mirrors the Add Brand/Model
+          Modal above but with the fuller BOM field set (see submitAddBom).
+          Only rendered when addBomMaterialAction exists (Pro+, tier-checked
+          in page.tsx), same as the button that opens it. */}
+      <Modal open={addBomOpen} onClose={() => setAddBomOpen(false)} title="Add New Part to BOM">
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs font-medium text-text-muted">Part / Material Name</label>
+            <input
+              autoFocus
+              value={bomDraft.description}
+              onChange={(e) => setBomDraft((d) => ({ ...d, description: e.target.value }))}
+              className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text outline-none focus:border-accent"
+              placeholder="e.g. iPhone 13 Display Assembly"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-medium text-text-muted">HSN Code</label>
+              <select
+                value={bomDraft.hsnCode}
+                onChange={(e) => setBomDraft((d) => ({ ...d, hsnCode: e.target.value }))}
+                className="mt-1 w-full rounded-md border border-border bg-bg px-2 py-2 text-sm text-text outline-none focus:border-accent"
+              >
+                <option value="">Select…</option>
+                {HSN_CODES.map((h) => (
+                  <option key={h.code} value={h.code}>
+                    {h.code} — {h.description}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-text-muted">Unit</label>
+              <select
+                value={bomDraft.uom}
+                onChange={(e) => setBomDraft((d) => ({ ...d, uom: e.target.value }))}
+                className="mt-1 w-full rounded-md border border-border bg-bg px-2 py-2 text-sm text-text outline-none focus:border-accent"
+              >
+                {UOM_OPTIONS.map((u) => (
+                  <option key={u} value={u}>
+                    {u}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-medium text-text-muted">Rate</label>
+              <input
+                type="number"
+                min={0}
+                step={1}
+                value={bomDraft.rate}
+                onChange={(e) => setBomDraft((d) => ({ ...d, rate: e.target.value }))}
+                className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm tabular-nums text-text outline-none focus:border-accent"
+                placeholder="0"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-text-muted">Tax %</label>
+              <select
+                value={bomDraft.taxPercent}
+                onChange={(e) => setBomDraft((d) => ({ ...d, taxPercent: e.target.value }))}
+                className="mt-1 w-full rounded-md border border-border bg-bg px-2 py-2 text-sm tabular-nums text-text outline-none focus:border-accent"
+              >
+                {GST_RATES.map((r) => (
+                  <option key={r} value={String(r)}>
+                    {r}%
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-medium text-text-muted">Type</label>
+              <select
+                value={bomDraft.type}
+                onChange={(e) => setBomDraft((d) => ({ ...d, type: e.target.value }))}
+                className="mt-1 w-full rounded-md border border-border bg-bg px-2 py-2 text-sm text-text outline-none focus:border-accent"
+              >
+                {MATERIAL_TYPES.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-text-muted">This rate is</label>
+              <select
+                value={bomDraft.rateType}
+                onChange={(e) => setBomDraft((d) => ({ ...d, rateType: e.target.value }))}
+                className="mt-1 w-full rounded-md border border-border bg-bg px-2 py-2 text-sm text-text outline-none focus:border-accent"
+              >
+                <option value="Without Tax">Without tax</option>
+                <option value="With Tax">With tax</option>
+              </select>
+            </div>
+          </div>
+          {addBomError && <p className="text-sm text-danger">{addBomError}</p>}
+          <div className="flex justify-end gap-2">
+            <button type="button" className="btn-outline" onClick={() => setAddBomOpen(false)}>
+              Cancel
+            </button>
+            <button type="button" className="btn-primary" disabled={addBomPending} onClick={submitAddBom}>
+              {addBomPending ? "Saving…" : "Save to BOM"}
+            </button>
+          </div>
+        </div>
+      </Modal>
       <Modal
         open={pendingLineId !== null}
         onClose={() => setPendingLineId(null)}

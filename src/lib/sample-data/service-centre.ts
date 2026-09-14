@@ -252,6 +252,8 @@ export interface PartLine {
   solutionLabel?: string;
   unit?: string;
   unitPrice?: number;
+  /** Whether `unitPrice` above is tax-exclusive ("excl", the historical/default assumption every existing reader of unitPrice already makes) or tax-inclusive ("incl" — the entered price already has taxRate baked in, so it must be reverse-calculated back to a base rate before it feeds Subtotal/CGST/SGST). Unset on any pre-existing line is treated as "excl", so nothing already persisted changes behavior. */
+  rateMode?: "excl" | "incl";
   taxRate?: number;
   hsnCode?: string;
   materialCode?: string;
@@ -265,6 +267,10 @@ export interface ServiceLine {
   solutionId: string;
   solutionLabel: string;
   laborCharge: number;
+  /** Defaults to 1 for a blank "+ Add Service/Labour Charge" row — a catalog-picked solution line (addSolution()) leaves this unset and is still treated as qty 1. */
+  qty?: number;
+  /** Same excl/incl-GST semantics as PartLine.rateMode, applied to `laborCharge` instead of `unitPrice`. Unset means "excl" (today's implicit behavior). */
+  rateMode?: "excl" | "incl";
   /** Per-line refs, same rationale as PartLine — a service line's fault/symptom needn't match another line's. */
   faultCodeId?: string;
   faultCodeLabel?: string;

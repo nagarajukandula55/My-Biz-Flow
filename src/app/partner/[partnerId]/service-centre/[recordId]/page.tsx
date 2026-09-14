@@ -13,7 +13,11 @@ import { getPartner } from "@/lib/partnerData";
 import { activeStaffNames } from "@/lib/sample-data/service-centre-staff-names";
 import { WorkorderLifecycle } from "./WorkorderLifecycle";
 import { getPageTierAccess } from "@/lib/tenant";
-import { createServiceCentreBrandInlineAction, createServiceCentreModelInlineAction } from "@/lib/serviceCentreCatalogActions";
+import {
+  createServiceCentreBrandInlineAction,
+  createServiceCentreModelInlineAction,
+  createServiceCentreBomMaterialInlineAction,
+} from "@/lib/serviceCentreCatalogActions";
 
 registerPage({
   id: "service-centre.detail",
@@ -99,9 +103,13 @@ export default async function ServiceCentreDetailPage({
   // Same tier check as the New Workorder form's inline "+ Add new" — Brand
   // and Model catalogs are Pro+, so the button on this repair page must not
   // even render for a Starter partner (server-checked, not just hidden).
-  const [brandsTier, modelsTier] = await Promise.all([
+  // BOM materials are Pro+ gated exactly the same way — the "+ Add New
+  // Part to BOM" quick-add modal must not even render for a Starter
+  // partner, matching the standalone /inventory/bom/new page's own gate.
+  const [brandsTier, modelsTier, bomTier] = await Promise.all([
     getPageTierAccess(params.partnerId, "service-centre.brands.create"),
     getPageTierAccess(params.partnerId, "service-centre.models.create"),
+    getPageTierAccess(params.partnerId, "inventory.bom.create"),
   ]);
 
   return (
@@ -154,6 +162,7 @@ export default async function ServiceCentreDetailPage({
           staffNameOptions={staffNameOptions}
           addBrandAction={brandsTier.allowed ? createServiceCentreBrandInlineAction.bind(null, params.partnerId) : undefined}
           addModelAction={modelsTier.allowed ? createServiceCentreModelInlineAction.bind(null, params.partnerId) : undefined}
+          addBomMaterialAction={bomTier.allowed ? createServiceCentreBomMaterialInlineAction.bind(null, params.partnerId) : undefined}
         />
 
         {/* Everything below is secondary detail, not a second page header —
