@@ -133,6 +133,7 @@ export function WorkorderLifecycle({
   modelOptions,
   staffNameOptions,
   solutionLaborCharges,
+  partnerDefaultLaborCharge,
   addBrandAction,
   addModelAction,
   addBomMaterialAction,
@@ -207,6 +208,8 @@ export function WorkorderLifecycle({
   solutionOptions: SearchSelectOption[];
   /** Default labor charge per solution id, from the partner's Solutions catalog. */
   solutionLaborCharges: Record<string, number>;
+  /** Settings > Config's plain default labour charge — used to pre-fill a blank "+ Add Service/Labour Charge" row, which (unlike addSolution) isn't tied to any one Solution's own defaultLaborCharge. */
+  partnerDefaultLaborCharge?: number;
   /** This partner's own live Device Brands catalog. */
   brandOptions: SearchSelectOption[];
   /** This partner's own live Device Models catalog — labeled with brand for clarity since it isn't pre-filtered by the currently selected brand (that selection can change client-side after this prop was computed). */
@@ -579,7 +582,14 @@ export function WorkorderLifecycle({
   function addBlankServiceLine() {
     const next: ServiceLine[] = [
       ...serviceLines,
-      { id: `SL-${Date.now()}`, solutionId: "", solutionLabel: "", laborCharge: 0, qty: 1, taxRate: 18 },
+      {
+        id: `SL-${Date.now()}`,
+        solutionId: "",
+        solutionLabel: "",
+        laborCharge: partnerDefaultLaborCharge ?? 0,
+        qty: 1,
+        taxRate: 18,
+      },
     ];
     setServiceLines(next);
     persist({ serviceLines: next });

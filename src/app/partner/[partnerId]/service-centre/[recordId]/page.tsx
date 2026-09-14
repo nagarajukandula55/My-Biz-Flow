@@ -157,6 +157,7 @@ export default async function ServiceCentreDetailPage({
           bomMaterials={bomMaterials}
           solutionOptions={solutionOptions}
           solutionLaborCharges={solutionLaborCharges}
+          partnerDefaultLaborCharge={partner?.defaultLaborCharge ?? 0}
           brandOptions={brandOptions}
           modelOptions={modelOptions}
           staffNameOptions={staffNameOptions}
