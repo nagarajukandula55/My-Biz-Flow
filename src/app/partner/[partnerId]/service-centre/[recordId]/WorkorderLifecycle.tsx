@@ -137,6 +137,7 @@ export function WorkorderLifecycle({
   addBrandAction,
   addModelAction,
   addBomMaterialAction,
+  addSolutionAction,
 }: {
   partnerId: string;
   workorderId: string;
@@ -241,6 +242,8 @@ export function WorkorderLifecycle({
    * below Pro, same as addBrandAction/addModelAction.
    */
   addBomMaterialAction?: (values: Record<string, unknown>) => Promise<{ error?: string; id?: string; label?: string }>;
+  /** Bound server action for quick-adding a new Solution to this partner's catalog directly from the "no Solutions yet" empty state — Solutions has no tier gate, so this is always provided (unlike addBrandAction/addModelAction/addBomMaterialAction). */
+  addSolutionAction?: (values: Record<string, unknown>) => Promise<{ error?: string; id?: string; label?: string }>;
 }) {
   const [stage, setStage] = useState<WorkorderStage>(initialStage);
   const [partLines, setPartLines] = useState<PartLine[]>(initialPartLines);
@@ -256,6 +259,15 @@ export function WorkorderLifecycle({
   // modal below appends here the moment it succeeds, so the new material's
   // "No materials found" warning banner clears immediately without a refetch.
   const [bomMaterialsState, setBomMaterialsState] = useState(bomMaterials);
+  // Same pattern for Solutions — the "+ New Solution" quick-add modal
+  // below appends here the moment it succeeds, so it's immediately
+  // selectable without a refetch and the "no Solutions yet" hint clears.
+  const [solutionOptionsState, setSolutionOptionsState] = useState(solutionOptions);
+  const [addSolutionOpen, setAddSolutionOpen] = useState(false);
+  const [newSolutionTitle, setNewSolutionTitle] = useState("");
+  const [newSolutionCharge, setNewSolutionCharge] = useState("");
+  const [addSolutionError, setAddSolutionError] = useState<string | null>(null);
+  const [addSolutionPending, setAddSolutionPending] = useState(false);
   const [addBrandOpen, setAddBrandOpen] = useState(false);
   const [addModelOpen, setAddModelOpen] = useState(false);
   const [newCatalogName, setNewCatalogName] = useState("");
@@ -795,6 +807,29 @@ export function WorkorderLifecycle({
     setAddBomOpen(false);
   }
 
+  /** "+ New Solution"/"+ New" quick-add — adds a Solution to this partner's catalog without leaving the workorder, using the same non-redirecting inline-action pattern as Brand/Model/BOM above. */
+  async function submitAddSolution() {
+    const title = newSolutionTitle.trim();
+    if (!title) {
+      setAddSolutionError("Solution name is required.");
+      return;
+    }
+    if (!addSolutionAction) return;
+    const defaultLaborCharge = Number(newSolutionCharge) || 0;
+    setAddSolutionPending(true);
+    setAddSolutionError(null);
+    const result = await addSolutionAction({ title, defaultLaborCharge });
+    setAddSolutionPending(false);
+    if (result?.error) {
+      setAddSolutionError(result.error);
+      return;
+    }
+    const option: SearchSelectOption = { value: result?.id ?? title, label: result?.label ?? title };
+    setSolutionOptionsState((prev) => [...prev, option]);
+    setSolutionSelectValue(option.value);
+    setAddSolutionOpen(false);
+  }
+
   /**
    * Going on hold now captures WHY and the brand's part-order reference
    * (the reference app's Mark Part Pending modal does the same) instead of
@@ -947,7 +982,7 @@ export function WorkorderLifecycle({
    * already uses, just picked from an inline <select> instead of the
    * search modal, matching AN-CRM's own layout for this card. */
   function addSelectedSolution() {
-    const option = solutionOptions.find((o) => o.value === solutionSelectValue);
+    const option = solutionOptionsState.find((o) => o.value === solutionSelectValue);
     if (!option) return;
     addSolution(option);
     setSolutionSelectValue("");
@@ -1570,13 +1605,27 @@ export function WorkorderLifecycle({
           </div>
         )}
 
-        {editable && solutionOptions.length === 0 && (
-          <div className="mt-3 rounded-md border border-warning bg-warning-soft px-3 py-2 text-sm text-warning">
-            No Solutions found in your catalog yet — add one under{" "}
-            <Link href={`/partner/${partnerId}/service-centre/solutions/new`} className="font-semibold underline">
-              Solutions
-            </Link>{" "}
-            to have it listed here for quick selection.
+        {editable && solutionOptionsState.length === 0 && (
+          <div className="mt-3 flex flex-wrap items-center gap-2 rounded-md border border-warning bg-warning-soft px-3 py-2 text-sm text-warning">
+            <span>No Solutions found in your catalog yet.</span>
+            {addSolutionAction ? (
+              <button
+                type="button"
+                className="font-semibold underline"
+                onClick={() => {
+                  setNewSolutionTitle("");
+                  setNewSolutionCharge("");
+                  setAddSolutionError(null);
+                  setAddSolutionOpen(true);
+                }}
+              >
+                + New Solution
+              </button>
+            ) : (
+              <Link href={`/partner/${partnerId}/service-centre/solutions/new`} className="font-semibold underline">
+                Add one under Solutions
+              </Link>
+            )}
           </div>
         )}
 
@@ -1602,7 +1651,7 @@ export function WorkorderLifecycle({
                 className="w-full rounded-md border border-border bg-bg px-2 py-2 text-sm font-normal normal-case tracking-normal text-text disabled:opacity-60"
               >
                 <option value="">Select a Solution…</option>
-                {solutionOptions.map((o) => (
+                {solutionOptionsState.map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>
@@ -1616,6 +1665,21 @@ export function WorkorderLifecycle({
               >
                 + Add Solution
               </button>
+              {addSolutionAction && (
+                <button
+                  type="button"
+                  className="btn-outline shrink-0"
+                  disabled={!editable}
+                  onClick={() => {
+                    setNewSolutionTitle("");
+                    setNewSolutionCharge("");
+                    setAddSolutionError(null);
+                    setAddSolutionOpen(true);
+                  }}
+                >
+                  + New
+                </button>
+              )}
             </div>
           </div>
           <label className="text-xs font-semibold uppercase tracking-wide text-text-muted">
@@ -1964,6 +2028,41 @@ export function WorkorderLifecycle({
             </button>
             <button type="button" className="btn-primary" disabled={addBomPending} onClick={submitAddBom}>
               {addBomPending ? "Saving…" : "Save to BOM"}
+            </button>
+          </div>
+        </div>
+      </Modal>
+      <Modal open={addSolutionOpen} onClose={() => setAddSolutionOpen(false)} title="New Solution">
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs font-medium text-text-muted">Solution name</label>
+            <input
+              autoFocus
+              value={newSolutionTitle}
+              onChange={(e) => setNewSolutionTitle(e.target.value)}
+              className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text outline-none focus:border-accent"
+              placeholder="e.g. Screen replacement"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-text-muted">Default Labor Charge</label>
+            <input
+              type="number"
+              min={0}
+              step={1}
+              value={newSolutionCharge}
+              onChange={(e) => setNewSolutionCharge(e.target.value)}
+              className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm tabular-nums text-text outline-none focus:border-accent"
+              placeholder="0"
+            />
+          </div>
+          {addSolutionError && <p className="text-sm text-danger">{addSolutionError}</p>}
+          <div className="flex justify-end gap-2">
+            <button type="button" className="btn-outline" onClick={() => setAddSolutionOpen(false)}>
+              Cancel
+            </button>
+            <button type="button" className="btn-primary" disabled={addSolutionPending} onClick={submitAddSolution}>
+              {addSolutionPending ? "Saving…" : "Save Solution"}
             </button>
           </div>
         </div>

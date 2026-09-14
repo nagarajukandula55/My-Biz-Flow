@@ -17,6 +17,7 @@ import {
   createServiceCentreBrandInlineAction,
   createServiceCentreModelInlineAction,
   createServiceCentreBomMaterialInlineAction,
+  createServiceCentreSolutionInlineAction,
 } from "@/lib/serviceCentreCatalogActions";
 
 registerPage({
@@ -164,6 +165,7 @@ export default async function ServiceCentreDetailPage({
           addBrandAction={brandsTier.allowed ? createServiceCentreBrandInlineAction.bind(null, params.partnerId) : undefined}
           addModelAction={modelsTier.allowed ? createServiceCentreModelInlineAction.bind(null, params.partnerId) : undefined}
           addBomMaterialAction={bomTier.allowed ? createServiceCentreBomMaterialInlineAction.bind(null, params.partnerId) : undefined}
+          addSolutionAction={createServiceCentreSolutionInlineAction.bind(null, params.partnerId)}
         />
 
         {/* Everything below is secondary detail, not a second page header —

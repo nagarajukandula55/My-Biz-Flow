@@ -98,6 +98,26 @@ export async function createServiceCentreModelInlineAction(
   return { id: String(record.id), label: String(record["name"] ?? record.id) };
 }
 
+/**
+ * Solutions has no tier gate (Basic can already create them via the full
+ * /solutions/new form) — this inline variant exists purely so the
+ * workorder repair page's "+ Add Solution" quick-add modal doesn't
+ * navigate away, same reasoning as the Brand/Model/BOM inline actions
+ * above, just without an assertPageTierAccess call.
+ */
+export async function createServiceCentreSolutionInlineAction(
+  partnerId: string,
+  values: Record<string, unknown>
+): Promise<InlineCreateResult> {
+  const record = await createBusinessRecord(partnerId, "service-centre-solutions", {
+    status: "Active",
+    category: "Other",
+    ...values,
+  });
+  revalidatePath(`/partner/${partnerId}/service-centre/solutions`);
+  return { id: String(record.id), label: String(record["title"] ?? record.id) };
+}
+
 export async function createServiceCentreBomMaterialInlineAction(
   partnerId: string,
   values: Record<string, unknown>
