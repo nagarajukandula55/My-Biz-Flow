@@ -1,11 +1,8 @@
 import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { RecordDetail } from "@/components/RecordDetail";
-import { DeleteBusinessRecordButton } from "@/components/DeleteBusinessRecordButton";
-import { PrintPopupLink } from "@/components/PrintPopupLink";
 import {
   getServiceCentreDetailFields,
   getServiceCentreTimeline,
@@ -125,6 +122,12 @@ export default async function ServiceCentreDetailPage({
         <WorkorderLifecycle
           partnerId={params.partnerId}
           workorderId={params.recordId}
+          recordLabel={recordLabel}
+          customerName={typeof record["customer"] === "string" ? (record["customer"] as string) : undefined}
+          customerPhone={typeof record["customerPhone"] === "string" ? (record["customerPhone"] as string) : undefined}
+          imeiOrSerialNumber={typeof record["imeiOrSerialNumber"] === "string" ? (record["imeiOrSerialNumber"] as string) : undefined}
+          faultDescription={typeof record["faultDescription"] === "string" ? (record["faultDescription"] as string) : undefined}
+          loggedBy={typeof record["loggedBy"] === "string" ? (record["loggedBy"] as string) : undefined}
           initialStage={lifecycle.stage}
           initialPartLines={lifecycle.partLines}
           initialServiceLines={lifecycle.serviceLines}
@@ -155,6 +158,13 @@ export default async function ServiceCentreDetailPage({
           addModelAction={modelsTier.allowed ? createServiceCentreModelInlineAction.bind(null, params.partnerId) : undefined}
         />
 
+        {/* Everything below is secondary detail, not a second page header —
+            the WO#/customer/device summary, back/print/proceed/cancel
+            actions and Edit/Delete all now live once, in the unified
+            header WorkorderLifecycle renders above. This block just holds
+            the remaining fields (company/GSTIN/address/city/state/pincode
+            etc.) that aren't in the curated Customer & Device card, plus
+            the Activity timeline and Related records rail. */}
         <div className="mt-8">
         <RecordDetail
           fields={fields}
@@ -162,43 +172,7 @@ export default async function ServiceCentreDetailPage({
           searchParams={searchParams}
           timeline={timeline}
           related={serviceCentreRelated}
-          headerSlot={
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="font-display text-xl font-bold text-text">{recordLabel}</h1>
-                <p className="mt-1 text-xs text-text-muted">Workorder detail</p>
-              </div>
-              <div className="flex items-center gap-3">
-                <Link href={`/partner/${params.partnerId}/service-centre`} className="btn-outline">
-                  &larr; Back
-                </Link>
-                <PrintPopupLink
-                  href={`/partner/${params.partnerId}/service-centre/${params.recordId}/document`}
-                  className="btn-outline"
-                >
-                  View document
-                </PrintPopupLink>
-                <PrintPopupLink
-                  href={`/partner/${params.partnerId}/service-centre/${params.recordId}/service-record`}
-                  className="btn-outline"
-                >
-                  Service record
-                </PrintPopupLink>
-                <Link
-                  href={`/partner/${params.partnerId}/service-centre/${params.recordId}/edit`}
-                  className="btn-outline"
-                >
-                  Edit
-                </Link>
-                <DeleteBusinessRecordButton
-                  partnerId={params.partnerId}
-                  moduleSlug="service-centre"
-                  recordKey={params.recordId}
-                  recordLabel={recordLabel}
-                />
-              </div>
-            </div>
-          }
+          headerSlot={<h2 className="font-display text-base font-bold text-text">More details</h2>}
         />
         </div>
       </div>

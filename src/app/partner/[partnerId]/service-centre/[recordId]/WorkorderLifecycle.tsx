@@ -1,10 +1,13 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
+import Link from "next/link";
 import { Check } from "lucide-react";
 import { openPrintPopup } from "@/lib/openPrintPopup";
 import { StatusChip } from "@/components/StatusChip";
 import { Modal } from "@/components/Modal";
+import { DeleteBusinessRecordButton } from "@/components/DeleteBusinessRecordButton";
+import { PrintPopupLink } from "@/components/PrintPopupLink";
 import { SearchSelectModal, type SearchSelectOption } from "@/components/SearchSelectModal";
 import {
   WORKORDER_STAGES,
@@ -86,9 +89,20 @@ function stepDateFor(milestone: MilestoneStatus, history: StageHistoryEntry[], c
   return hit?.at;
 }
 
+/** Elapsed hours between intake and now (or the Closed timestamp once closed), matching AN-CRM's running "TAT: Xh" badge. */
+function formatTat(hours: number): string {
+  return `${hours.toFixed(1)}h`;
+}
+
 export function WorkorderLifecycle({
   partnerId,
   workorderId,
+  recordLabel,
+  customerName,
+  customerPhone,
+  imeiOrSerialNumber,
+  faultDescription,
+  loggedBy,
   initialStage,
   initialPartLines,
   initialServiceLines,
@@ -120,6 +134,13 @@ export function WorkorderLifecycle({
 }: {
   partnerId: string;
   workorderId: string;
+  /** Display label for this workorder — the WO number shown as the page's title (e.g. "WO-26-27-0001"). */
+  recordLabel: string;
+  customerName?: string;
+  customerPhone?: string;
+  imeiOrSerialNumber?: string;
+  faultDescription?: string;
+  loggedBy?: string;
   initialStage: WorkorderStage;
   initialPartLines: PartLine[];
   initialServiceLines: ServiceLine[];
@@ -234,6 +255,15 @@ export function WorkorderLifecycle({
   // already is on failure.
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [, startPersist] = useTransition();
+  // Ticks once a minute so the running TAT badge advances without a page
+  // reload, matching AN-CRM's "TAT: 47.7h (running)" badge — frozen once
+  // the job is Closed/Cancelled (closedAt below stops changing then).
+  const [nowTick, setNowTick] = useState(() => Date.now());
+  useEffect(() => {
+    if (stage === "Closed" || cancelledAt) return;
+    const id = setInterval(() => setNowTick(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, [stage, cancelledAt]);
 
   /**
    * Every mutation goes through here so a Server Action rejection (an
@@ -297,6 +327,19 @@ export function WorkorderLifecycle({
   const editable = stage === "In Progress" && !hold && !cancelled;
   const terminal = cancelled || stage === "Closed";
   const unresolvedSerials = partLines.filter((p) => p.serialized && !p.serial && !p.pending);
+
+  // TAT — elapsed time since intake, running until Closed/Cancelled (then
+  // frozen at the terminal timestamp), mirroring AN-CRM's "TAT: 47.7h
+  // (running)" badge next to the stepper.
+  const closedHistoryEntry = (stageHistory ?? []).find((h) => h.stage === "Closed");
+  const tatEndIso = cancelledAt ?? closedHistoryEntry?.at;
+  const tatStartMs = receivedDate ? new Date(receivedDate).getTime() : undefined;
+  const tatEndMs = tatEndIso ? new Date(tatEndIso).getTime() : nowTick;
+  const tatHours =
+    tatStartMs !== undefined && !Number.isNaN(tatStartMs) && !Number.isNaN(tatEndMs)
+      ? Math.max(0, (tatEndMs - tatStartMs) / 3_600_000)
+      : undefined;
+  const tatRunning = !terminal;
 
   function addPart(option: SearchSelectOption) {
     const material = bomMaterials.find((m) => m.id === option.value);
@@ -567,16 +610,87 @@ export function WorkorderLifecycle({
     persist({ handoverNotes });
   }
 
+  // Primary stage-progress action's label — same rule advanceStage() itself
+  // gates against (estimate approval / non-empty lines / unresolved
+  // serials), just surfaced up in the unified header too, alongside the
+  // identical button that already sits in the Stage actions row below.
+  const primaryStageLabel =
+    stage === "Created" ? "Proceed for Repair" : stage === "In Progress" ? "Mark Completed" : stage === "Completed" ? "Handover & Close" : null;
+
+  const deviceLabel = [brand.name, model.name].filter(Boolean).join(" · ") || "Not set";
+
   return (
     <div>
+      {/* Unified page header — WO number + customer/device subtitle on the
+          left, one row of page-level actions on the right. Replaces what
+          used to be TWO separate headers (this panel had none, and a
+          second "WO-xxxx / Workorder detail" header lived further down in
+          the generic RecordDetail block) with the single header AN-CRM's
+          own job-sheet detail page has. */}
+      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-border pb-4">
+        <div>
+          <h1 className="font-display text-xl font-bold italic text-text">{recordLabel}</h1>
+          {(customerName || deviceLabel) && (
+            <p className="mt-1 text-sm text-text-muted">
+              {customerName || "—"}
+              {deviceLabel !== "Not set" && <> &mdash; {deviceLabel}</>}
+            </p>
+          )}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href={`/partner/${partnerId}/service-centre`} className="btn-outline">
+            &larr; Back
+          </Link>
+          <PrintPopupLink href={`/partner/${partnerId}/service-centre/${workorderId}/document`} className="btn-outline">
+            🖨 Print Workorder
+          </PrintPopupLink>
+          {!terminal && primaryStageLabel && (
+            <button
+              type="button"
+              className="btn-accent disabled:opacity-50"
+              onClick={advanceStage}
+              disabled={stage === "In Progress" && hold}
+            >
+              {primaryStageLabel}
+            </button>
+          )}
+          {!terminal && (
+            <button
+              type="button"
+              className="btn-outline text-danger"
+              onClick={() => {
+                setCancelReasonDraft("");
+                setActionError(null);
+                setCancelModalOpen(true);
+              }}
+            >
+              Cancel Job Sheet
+            </button>
+          )}
+          <PrintPopupLink href={`/partner/${partnerId}/service-centre/${workorderId}/service-record`} className="btn-outline">
+            Service record
+          </PrintPopupLink>
+          <Link href={`/partner/${partnerId}/service-centre/${workorderId}/edit`} className="btn-outline">
+            Edit
+          </Link>
+          <DeleteBusinessRecordButton
+            partnerId={partnerId}
+            moduleSlug="service-centre"
+            recordKey={workorderId}
+            recordLabel={recordLabel}
+          />
+        </div>
+      </div>
+
       {/* Milestone stepper — 7-stage MilestoneStatus (mirrors AN-CRM's CrmJobSheet lifecycle),
           derived from the underlying 4-stage WorkorderStage + onHold via mapStageToMilestone()
           so existing records/persistence keep working unmodified (see service-centre.ts). */}
       {cancelled && (
-        <div className="mb-3">
+        <div className="mb-3 mt-4">
           <StatusChip label={`Cancelled${cancelReason ? ` — ${cancelReason}` : ""}`} variant="danger" />
         </div>
       )}
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
       {(() => {
         // PART_PENDING and REPAIR_STARTED collapse onto the REPAIR_IN_PROGRESS
         // step for stepper purposes (see MILESTONE_STEPPER's comment) — only
@@ -610,33 +724,82 @@ export function WorkorderLifecycle({
         );
       })()}
 
+      {/* Warranty + running TAT badges — sit at the far right of the same
+          stepper row, matching AN-CRM's "Out of Warranty (OOW)" / "TAT:
+          47.7h (running)" pair. */}
+      <div className="flex flex-wrap items-center gap-2">
+        <StatusChip
+          label={underWarranty ? "In Warranty" : "Out of Warranty (OOW)"}
+          variant={underWarranty ? "teal" : "amber"}
+        />
+        {tatHours !== undefined && (
+          <StatusChip
+            label={`TAT: ${formatTat(tatHours)}${tatRunning ? " (running)" : ""}`}
+            variant={tatRunning ? "amber" : "neutral"}
+          />
+        )}
+      </div>
+      </div>
+
       <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-text-muted">
-        {underWarranty && <StatusChip label="Under Warranty — non-chargeable" variant="teal" />}
         {hold && <StatusChip label={`On Hold${holdReason ? ` — ${holdReason}` : ""}`} variant="danger" />}
       </div>
 
-      {/* Device — Brand/Model only. There is deliberately no third
-          "assigned to" tile: Service Centre has no assignment concept at
-          all. Who did the work is recorded at handover, as a fact, not
-          allocated up front as a plan. */}
-      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <button
-          type="button"
-          onClick={() => setBrandPickerOpen(true)}
-          className="rounded-md border border-border bg-bg-raised px-3 py-2 text-left text-sm"
-        >
-          <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">Brand</div>
-          <div className="mt-0.5 text-text">{brand.name ?? "Select brand"}</div>
-        </button>
-        <button
-          type="button"
-          onClick={() => brand.id && setModelPickerOpen(true)}
-          disabled={!brand.id}
-          className="rounded-md border border-border bg-bg-raised px-3 py-2 text-left text-sm disabled:opacity-50"
-        >
-          <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">Model</div>
-          <div className="mt-0.5 text-text">{model.name ?? (brand.id ? "Select model" : "Pick a brand first")}</div>
-        </button>
+      {/* Customer & Device — one curated summary card, matching AN-CRM's
+          single "Customer & Device" card (Customer / Phone / Device /
+          IMEI-Serial, then Fault Reported + Logged By below). Everything
+          else about the customer (company/GSTIN/address/city/state/
+          pincode) stays in the "More details" section further down the
+          page rather than duplicating a whole second field grid here.
+          Brand/Model keep their existing picker behaviour — clicking the
+          Device row opens the same Brand/Model SearchSelectModals as
+          before, just inline in this card instead of two raw boxes. */}
+      <div className="mt-4 rounded-md border border-border bg-bg-raised p-4">
+        <h2 className="font-display text-base font-bold text-text">Customer &amp; Device</h2>
+        <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">Customer</div>
+            <div className="mt-0.5 text-sm text-text">{customerName || "—"}</div>
+          </div>
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">Phone</div>
+            <div className="mt-0.5 text-sm text-text">{customerPhone || "—"}</div>
+          </div>
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">Device</div>
+            <button
+              type="button"
+              onClick={() => setBrandPickerOpen(true)}
+              className="mt-0.5 block text-left text-sm text-text hover:underline"
+            >
+              {brand.name ?? "Select brand"}
+              {" · "}
+              <span
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (brand.id) setModelPickerOpen(true);
+                }}
+                className={brand.id ? "hover:underline" : "text-text-muted"}
+              >
+                {model.name ?? (brand.id ? "Select model" : "Pick a brand first")}
+              </span>
+            </button>
+          </div>
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">IMEI / Serial</div>
+            <div className="mt-0.5 text-sm text-text">{imeiOrSerialNumber || "—"}</div>
+          </div>
+        </div>
+        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">Fault Reported</div>
+            <div className="mt-0.5 text-sm text-text">{faultDescription || "—"}</div>
+          </div>
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">Logged by (CCO)</div>
+            <div className="mt-0.5 text-sm text-text">{loggedBy || "—"}</div>
+          </div>
+        </div>
       </div>
 
       {(closeBlockedMessage || actionError) && (
