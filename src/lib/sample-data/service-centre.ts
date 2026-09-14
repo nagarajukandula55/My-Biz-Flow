@@ -7,6 +7,17 @@ import type { FormFieldDef } from "@/components/RecordForm";
 // field modeling, no backend wired up in this pass beyond the BusinessRecord
 // store (see CLAUDE.md).
 //
+// DOMAIN: electronics and appliance repair, never vehicle service. The
+// reference app this module is ported from types its job sheet's device
+// against a fixed 45-category taxonomy (DEVICE_CATEGORIES below) that
+// contains no vehicle category at all, and its CrmJobSheet model has no
+// odometer/mileage/registration field of any kind. The two-wheeler sample
+// devices and the `odometerReading` field that used to live here were
+// invented by an earlier build pass rather than ported, and have been
+// removed — `odometerReading` deliberately has no replacement, because
+// inventing an "equivalent" electronics field with no counterpart in the
+// reference app would repeat the same mistake.
+//
 // JobSheet <-> lineitem <-> invoice <-> payment chain: kept BusinessRecord-
 // backed (this module, plus the existing "billing" module for the invoice
 // itself) rather than promoted to real Prisma tables. Unlike Booking/
@@ -263,8 +274,8 @@ export const workorderLifecycle: Record<
 > = {
   "WO-2291": {
     stage: "In Progress",
-    brandName: "Honda",
-    modelName: "Activa 6G",
+    brandName: "Samsung",
+    modelName: "Galaxy S23",
     partLines: [
       { id: "PL-1", materialId: "MAT-1001", materialLabel: "MAT-1001 — Front Brake Pad Set", qty: 1, serialized: false },
     ],
@@ -272,22 +283,22 @@ export const workorderLifecycle: Record<
   },
   "WO-2290": {
     stage: "Completed",
-    brandName: "TVS",
-    modelName: "Jupiter",
+    brandName: "Dell",
+    modelName: "Inspiron 15 3520",
     partLines: [],
     serviceLines: [{ id: "SL-1", solutionId: "SOL-004", solutionLabel: "General service / cleaning", laborCharge: 200 }],
   },
   "WO-2289": {
     stage: "Created",
-    brandName: "Royal Enfield",
-    modelName: "Classic 350",
+    brandName: "LG",
+    modelName: "GL-T292RPZY Double Door",
     partLines: [],
     serviceLines: [],
   },
   "WO-2288": {
     stage: "Closed",
-    brandName: "Bajaj",
-    modelName: "Chetak EV",
+    brandName: "Sony",
+    modelName: "Bravia X75L 55\"",
     partLines: [],
     serviceLines: [{ id: "SL-1", solutionId: "SOL-001", solutionLabel: "Screen replacement", laborCharge: 300 }],
     handoverNotes: "Handed over to customer at front desk.",
@@ -379,7 +390,7 @@ export const serviceCentreColumns: Column[] = [
   { key: "customerPincode", label: "Pincode", type: "text" },
   { key: "loggedBy", label: "Logged By", type: "text" },
   { key: "deviceCategory", label: "Device Type", type: "text" },
-  { key: "device", label: "Device / Vehicle", type: "text" },
+  { key: "device", label: "Device", type: "text" },
   { key: "brandName", label: "Brand", type: "text" },
   { key: "modelName", label: "Model", type: "text" },
   { key: "technicianName", label: "Assigned Technician", type: "text" },
@@ -398,7 +409,6 @@ export const serviceCentreColumns: Column[] = [
   { key: "deviceAppearance", label: "Appearance", type: "select-chip" },
   { key: "fileBackupDescription", label: "File Backup Done", type: "text" },
   { key: "warrantyStatus", label: "Warranty Type", type: "select-chip" },
-  { key: "odometerReading", label: "Odometer Reading", type: "text" },
   { key: "appointmentType", label: "Appointment Type", type: "select-chip" },
   { key: "requestType", label: "Request Type", type: "select-chip" },
   { key: "warrantyExpiryDate", label: "Warranty Expiry Date", type: "date" },
@@ -411,7 +421,7 @@ export const serviceCentreRows: Row[] = [
   {
     id: "WO-2291",
     customer: "Ravi Shankar",
-    device: "Honda Activa 6G",
+    device: "Samsung Galaxy S23",
     technician: "Suresh M.",
     priority: "High",
     status: "In repair",
@@ -425,7 +435,7 @@ export const serviceCentreRows: Row[] = [
   {
     id: "WO-2290",
     customer: "Priya Nair",
-    device: "TVS Jupiter",
+    device: "Dell Inspiron 15 3520",
     technician: "Arjun K.",
     priority: "Medium",
     status: "Ready",
@@ -439,7 +449,7 @@ export const serviceCentreRows: Row[] = [
   {
     id: "WO-2289",
     customer: "Faisal Ahmed",
-    device: "Royal Enfield Classic 350",
+    device: "LG GL-T292RPZY Double Door",
     technician: "Suresh M.",
     priority: "Urgent",
     status: "Diagnosed",
@@ -453,7 +463,7 @@ export const serviceCentreRows: Row[] = [
   {
     id: "WO-2288",
     customer: "Divya Menon",
-    device: "Bajaj Chetak EV",
+    device: "Sony Bravia X75L 55\"",
     technician: "Neha P.",
     priority: "Low",
     status: "Delivered",
@@ -508,12 +518,11 @@ export const serviceCentreFormFields: FormFieldDef[] = [
   // this app's equivalent of the reference screen's add-and-save modal.
   { section: "Device", key: "brandName", label: "Brand", type: "text", required: false, placeholder: "e.g. Samsung — pick a saved brand or type a new one" },
   { section: "Device", key: "modelName", label: "Model", type: "text", required: false, placeholder: "e.g. Galaxy M14 — pick a saved model or type a new one" },
-  { section: "Device", key: "imeiOrSerialNumber", label: "IMEI / Serial Number", type: "text", required: true, placeholder: "Device IMEI, serial number, or vehicle VIN" },
+  { section: "Device", key: "imeiOrSerialNumber", label: "IMEI / Serial Number", type: "text", required: true, placeholder: "15-digit IMEI for a phone/tablet, otherwise the manufacturer serial number" },
   { section: "Device", key: "deviceAppearance", label: "Appearance", type: "select", required: false, options: [...DEVICE_APPEARANCE_OPTIONS], optionLabels: DEVICE_APPEARANCE_LABELS },
   { section: "Device", key: "fileBackupDescription", label: "File Backup Done", type: "select", required: false, options: [...FILE_BACKUP_OPTIONS], optionLabels: FILE_BACKUP_LABELS },
   { section: "Device", key: "warrantyStatus", label: "Warranty Type", type: "select", required: false, options: [...WARRANTY_STATUSES], optionLabels: WARRANTY_STATUS_LABELS, help: "In-warranty and 90-day jobs are non-chargeable — their invoice lines bill at zero." },
-  { section: "Device", key: "device", label: "Device / Vehicle (free text)", type: "text", required: false, placeholder: "Optional one-line description when Brand/Model don't capture it" },
-  { section: "Device", key: "odometerReading", label: "Odometer Reading", type: "text", required: false, placeholder: "For vehicle service — e.g. 18420 km" },
+  { section: "Device", key: "device", label: "Device (free text)", type: "text", required: false, placeholder: "Optional one-line description when Brand/Model don't capture it" },
   { section: "Device", key: "standardAccessories", label: "Standard Accessories Received", type: "textarea", required: false },
 
   // --- Issue ---
@@ -571,7 +580,7 @@ export function getServiceCentreDetailFields(record: Row): RecordField[] {
     { label: "Pincode", value: r["customerPincode"], type: "text" },
     { label: "Logged By", value: r["loggedBy"], type: "text" },
     { label: "Device Type", value: DEVICE_CATEGORY_LABELS[String(r["deviceCategory"])] ?? r["deviceCategory"], type: "text" },
-    { label: "Device / Vehicle", value: r["device"], type: "text" },
+    { label: "Device", value: r["device"], type: "text" },
     { label: "Brand", value: r["brandName"], type: "text" },
     { label: "Model", value: r["modelName"], type: "text" },
     { label: "Assigned Technician", value: r["technicianName"], type: "text" },
@@ -584,7 +593,6 @@ export function getServiceCentreDetailFields(record: Row): RecordField[] {
     { label: "Pickup Latitude", value: r["latitude"], type: "text" },
     { label: "Pickup Longitude", value: r["longitude"], type: "text" },
     { label: "IMEI / Serial Number", value: r["imeiOrSerialNumber"], type: "text" },
-    { label: "Odometer Reading", value: r["odometerReading"], type: "text" },
     { label: "Appointment Type", value: APPOINTMENT_TYPE_LABELS[String(r["appointmentType"])] ?? r["appointmentType"], type: "text" },
     { label: "Request Type", value: REQUEST_TYPE_LABELS[String(r["requestType"])] ?? r["requestType"], type: "text" },
     { label: "Appearance", value: DEVICE_APPEARANCE_LABELS[String(r["deviceAppearance"])] ?? r["deviceAppearance"], type: "text" },

@@ -4,7 +4,10 @@ import type { RecordField, TimelineEntry, RelatedRecord } from "@/components/Rec
 import type { StatusVariant } from "@/components/StatusChip";
 import type { NavGroup } from "@/components/AppShell";
 
-// Service Centre "Workorders" module — realistic sample data.
+// Service Centre "Workorders" module — realistic sample data, used only by
+// the /design-system showcase page. Electronics/appliance repair, never
+// vehicle service: see src/lib/sample-data/service-centre.ts's own domain
+// note on why the two-wheeler framing this file used to carry was wrong.
 
 const STATUS_VARIANT: Record<string, StatusVariant> = {
   Diagnosed: "warning",
@@ -17,7 +20,7 @@ const STATUS_VARIANT: Record<string, StatusVariant> = {
 export const workorderColumns: Column[] = [
   { key: "id", label: "Job ID", type: "text" },
   { key: "customer", label: "Customer", type: "relation-link" },
-  { key: "vehicle", label: "Vehicle", type: "text" },
+  { key: "device", label: "Device", type: "text" },
   { key: "technician", label: "Technician", type: "text" },
   {
     key: "status",
@@ -33,7 +36,7 @@ export const workorderRows: Row[] = [
   {
     id: "WO-2291",
     customer: "Ravi Shankar",
-    vehicle: "Honda Activa 6G",
+    device: "Samsung Galaxy S23",
     technician: "Suresh M.",
     status: "In repair",
     amount: 3200,
@@ -42,7 +45,7 @@ export const workorderRows: Row[] = [
   {
     id: "WO-2290",
     customer: "Priya Nair",
-    vehicle: "TVS Jupiter",
+    device: "Dell Inspiron 15 3520",
     technician: "Arjun K.",
     status: "Ready",
     amount: 1450,
@@ -51,7 +54,7 @@ export const workorderRows: Row[] = [
   {
     id: "WO-2289",
     customer: "Mohammed Faizal",
-    vehicle: "Hero Splendor+",
+    device: "Xiaomi Redmi Note 12",
     technician: "Suresh M.",
     status: "Delivered",
     amount: 890,
@@ -60,7 +63,7 @@ export const workorderRows: Row[] = [
   {
     id: "WO-2288",
     customer: "Anjali Deshmukh",
-    vehicle: "Bajaj Pulsar 150",
+    device: "LG GL-T292RPZY Double Door",
     technician: "Vikram S.",
     status: "Diagnosed",
     amount: 5600,
@@ -69,7 +72,7 @@ export const workorderRows: Row[] = [
   {
     id: "WO-2287",
     customer: "Karthik Iyer",
-    vehicle: "Royal Enfield Classic 350",
+    device: 'Sony Bravia X75L 55"',
     technician: "Arjun K.",
     status: "On hold",
     amount: 7800,
@@ -78,7 +81,7 @@ export const workorderRows: Row[] = [
   {
     id: "WO-2286",
     customer: "Fatima Sheikh",
-    vehicle: "Yamaha Fascino",
+    device: "Apple iPhone 14",
     technician: "Vikram S.",
     status: "Delivered",
     amount: 620,
@@ -94,18 +97,18 @@ export const workorderStages: KanbanStage[] = [
 ];
 
 export const workorderCards: KanbanCard[] = [
-  { id: "WO-2288", stageKey: "diagnosed", title: "WO-2288 · Anjali Deshmukh", meta: "Bajaj Pulsar 150 · Vikram S.", amount: 5600 },
-  { id: "WO-2287", stageKey: "diagnosed", title: "WO-2287 · Karthik Iyer", meta: "Royal Enfield Classic 350 · Arjun K.", amount: 7800 },
-  { id: "WO-2291", stageKey: "in-repair", title: "WO-2291 · Ravi Shankar", meta: "Honda Activa 6G · Suresh M.", amount: 3200 },
-  { id: "WO-2290", stageKey: "ready", title: "WO-2290 · Priya Nair", meta: "TVS Jupiter · Arjun K.", amount: 1450 },
-  { id: "WO-2289", stageKey: "delivered", title: "WO-2289 · Mohammed Faizal", meta: "Hero Splendor+ · Suresh M.", amount: 890 },
-  { id: "WO-2286", stageKey: "delivered", title: "WO-2286 · Fatima Sheikh", meta: "Yamaha Fascino · Vikram S.", amount: 620 },
+  { id: "WO-2288", stageKey: "diagnosed", title: "WO-2288 · Anjali Deshmukh", meta: "LG GL-T292RPZY Double Door · Vikram S.", amount: 5600 },
+  { id: "WO-2287", stageKey: "diagnosed", title: "WO-2287 · Karthik Iyer", meta: 'Sony Bravia X75L 55" · Arjun K.', amount: 7800 },
+  { id: "WO-2291", stageKey: "in-repair", title: "WO-2291 · Ravi Shankar", meta: "Samsung Galaxy S23 · Suresh M.", amount: 3200 },
+  { id: "WO-2290", stageKey: "ready", title: "WO-2290 · Priya Nair", meta: "Dell Inspiron 15 3520 · Arjun K.", amount: 1450 },
+  { id: "WO-2289", stageKey: "delivered", title: "WO-2289 · Mohammed Faizal", meta: "Xiaomi Redmi Note 12 · Suresh M.", amount: 890 },
+  { id: "WO-2286", stageKey: "delivered", title: "WO-2286 · Fatima Sheikh", meta: "Apple iPhone 14 · Vikram S.", amount: 620 },
 ];
 
 export const sampleRecordFields: RecordField[] = [
   { label: "Job ID", value: "WO-2291", type: "text" },
   { label: "Customer", value: "Ravi Shankar", type: "relation" },
-  { label: "Vehicle", value: "Honda Activa 6G", type: "text" },
+  { label: "Device", value: "Samsung Galaxy S23", type: "text" },
   { label: "Technician", value: "Suresh M.", type: "relation" },
   { label: "Status", value: "In repair", type: "select", chipVariant: "amber" },
   { label: "Amount", value: 3200, type: "currency" },
@@ -115,14 +118,14 @@ export const sampleRecordFields: RecordField[] = [
 
 export const sampleTimeline: TimelineEntry[] = [
   { id: "t1", label: "Job created", timestamp: "2026-08-04", actor: "Front desk" },
-  { id: "t2", label: "Diagnosis completed — clutch plate wear", timestamp: "2026-08-05", actor: "Suresh M." },
+  { id: "t2", label: "Diagnosis completed — battery swelling", timestamp: "2026-08-05", actor: "Suresh M." },
   { id: "t3", label: "Parts ordered from partner", timestamp: "2026-08-06", actor: "Suresh M." },
   { id: "t4", label: "Repair in progress", timestamp: "2026-08-07", actor: "Suresh M." },
 ];
 
 export const sampleRelated: RelatedRecord[] = [
   { id: "c1", title: "Ravi Shankar", subtitle: "Customer · 3 prior jobs" },
-  { id: "v1", title: "Honda Activa 6G · KA-05-AB-2291", subtitle: "Vehicle" },
+  { id: "v1", title: "Samsung Galaxy S23 · IMEI 356938035643809", subtitle: "Device" },
   { id: "i1", title: "INV-1188", subtitle: "Draft invoice · ₹3,200" },
 ];
 

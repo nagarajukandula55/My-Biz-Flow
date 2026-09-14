@@ -1,22 +1,25 @@
 import type { Column, Row } from "@/components/DataTable";
 import type { RecordField, TimelineEntry, RelatedRecord } from "@/components/RecordDetail";
 import type { FormFieldDef } from "@/components/RecordForm";
+import { DEVICE_CATEGORIES, DEVICE_CATEGORY_LABELS } from "./service-centre";
 
 // Fault Code catalog for the service-centre module — partner-owned data,
 // same pattern as service-centre-brands.ts/service-centre-models.ts. A
-// Fault Code is the underlying cause of a device/vehicle issue (distinct
-// from a Symptom Code, which is what the customer observed) — ported from
+// Fault Code is the underlying cause of a device issue (distinct from a
+// Symptom Code, which is what the customer observed) — ported from
 // AN-CRM's FaultCode model. Selected per-line on a workorder's Parts &
 // Service Lines (see PartLine/ServiceLine.faultCodeId in service-centre.ts).
 
-export const DEVICE_CATEGORY_OPTIONS = [
-  "Two-Wheeler",
-  "Four-Wheeler",
-  "Electronics",
-  "Appliance",
-  "Computer",
-  "Other",
-];
+/**
+ * Scope options for `deviceCategoryScope`. The reference app types its
+ * FaultCode/SymptomCode `deviceCategory` as an enum over the very same 45
+ * DEVICE_CATEGORIES the workorder intake form uses, so this reuses that
+ * one list rather than keeping a parallel, coarser vocabulary of its own —
+ * the "Two-Wheeler"/"Four-Wheeler" values here previously were invented by
+ * an earlier build pass and have no counterpart in the reference app,
+ * which has no vehicle category anywhere.
+ */
+export const DEVICE_CATEGORY_OPTIONS: string[] = DEVICE_CATEGORIES.map((c) => DEVICE_CATEGORY_LABELS[c]);
 
 export const scFaultCodeColumns: Column[] = [
   { key: "id", label: "Fault Code", type: "text" },
@@ -31,8 +34,8 @@ export const scFaultCodeRows: Row[] = [
   {
     id: "FLT-001",
     description: "Battery not holding charge",
-    category: "Electrical",
-    deviceCategoryScope: ["Two-Wheeler", "Electronics"],
+    category: "Battery",
+    deviceCategoryScope: ["Mobile Phones", "Laptops", "Tablets"],
     parentId: "",
     isActive: "Active",
     moduleSlug: "service-centre",
@@ -40,17 +43,17 @@ export const scFaultCodeRows: Row[] = [
   {
     id: "FLT-002",
     description: "Display panel cracked",
-    category: "Hardware",
-    deviceCategoryScope: ["Electronics", "Computer"],
+    category: "Screen",
+    deviceCategoryScope: ["Mobile Phones", "Laptops", "Monitors", "Television"],
     parentId: "",
     isActive: "Active",
     moduleSlug: "service-centre",
   },
   {
     id: "FLT-003",
-    description: "Engine overheating",
-    category: "Mechanical",
-    deviceCategoryScope: ["Two-Wheeler", "Four-Wheeler"],
+    description: "Compressor not cooling",
+    category: "Cooling",
+    deviceCategoryScope: ["Refrigerator", "Air Conditioner"],
     parentId: "",
     isActive: "Active",
     moduleSlug: "service-centre",

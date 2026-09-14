@@ -5,6 +5,9 @@ import { getScBrandOptions } from "./service-centre-brands";
 
 // Device Model catalog owned by the service-centre module, each model
 // belonging to one Brand from service-centre-brands.ts. Partner-owned data.
+//
+// Electronics and appliances only — see service-centre-brands.ts's own note
+// on why the vehicle models this file used to carry were a fabrication.
 
 export const scModelColumns: Column[] = [
   { key: "id", label: "Model Code", type: "text" },
@@ -14,11 +17,14 @@ export const scModelColumns: Column[] = [
 ];
 
 export const scModelRows: Row[] = [
-  { id: "SCM-001", brandName: "Honda", name: "Activa 6G", status: "Active", moduleSlug: "service-centre" },
-  { id: "SCM-002", brandName: "TVS", name: "Jupiter", status: "Active", moduleSlug: "service-centre" },
-  { id: "SCM-003", brandName: "Royal Enfield", name: "Classic 350", status: "Active", moduleSlug: "service-centre" },
-  { id: "SCM-004", brandName: "Bajaj", name: "Chetak EV", status: "Active", moduleSlug: "service-centre" },
-  { id: "SCM-005", brandName: "Samsung", name: "Galaxy S24", status: "Active", moduleSlug: "service-centre" },
+  { id: "SCM-001", brandName: "Samsung", name: "Galaxy S23", status: "Active", moduleSlug: "service-centre" },
+  { id: "SCM-002", brandName: "Apple", name: "iPhone 14", status: "Active", moduleSlug: "service-centre" },
+  { id: "SCM-003", brandName: "Xiaomi", name: "Redmi Note 12", status: "Active", moduleSlug: "service-centre" },
+  { id: "SCM-004", brandName: "Dell", name: "Inspiron 15 3520", status: "Active", moduleSlug: "service-centre" },
+  { id: "SCM-005", brandName: "HP", name: "Pavilion 14", status: "Active", moduleSlug: "service-centre" },
+  { id: "SCM-006", brandName: "Sony", name: "Bravia X75L 55\"", status: "Active", moduleSlug: "service-centre" },
+  { id: "SCM-007", brandName: "LG", name: "GL-T292RPZY Double Door", status: "Active", moduleSlug: "service-centre" },
+  { id: "SCM-008", brandName: "Whirlpool", name: "Stainwash Pro 7.5 kg", status: "Active", moduleSlug: "service-centre" },
 ];
 
 export const scModelFormFields: FormFieldDef[] = [
