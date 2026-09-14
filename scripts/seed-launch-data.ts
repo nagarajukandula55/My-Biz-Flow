@@ -74,7 +74,15 @@ async function main() {
     create: {
       id: "service-centre",
       description: "Repair/service shops running workorders, inventory, and GST billing.",
-      defaultModules: ["service-centre", "inventory"],
+      // "billing" is a required dependency, not an optional add-on: closing a
+      // chargeable workorder (createInvoiceFromWorkorderAction in
+      // service-centre/[recordId]/actions.ts) creates a real Billing invoice
+      // directly via createBusinessRecord(partnerId, "billing", ...), and the
+      // Service Centre invoice page reads that same Billing data. Without
+      // "billing" here, getVisibleModuleSlugs() never shows Sales
+      // Invoice/Credit Note/Debit Note/Quotation/Delivery Challan/Proforma in
+      // the sidebar even though the partner is already generating invoices.
+      defaultModules: ["service-centre", "inventory", "billing"],
       assignableRoleIds: [],
       planTierByPage: SERVICE_CENTRE_PAGES,
       planIds: plans.map((p) => p.id),
@@ -83,7 +91,7 @@ async function main() {
       status: "Active",
     },
     update: {
-      defaultModules: ["service-centre", "inventory"],
+      defaultModules: ["service-centre", "inventory", "billing"],
       planTierByPage: SERVICE_CENTRE_PAGES,
       planIds: plans.map((p) => p.id),
       idPrefix: "SC",
