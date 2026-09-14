@@ -13,12 +13,18 @@ import { DEVICE_CATEGORY_OPTIONS } from "./service-centre-fault-codes";
 // automatically instead of being typed in fresh each time, and
 // deviceCategoryScope lets the catalog be filtered by relevant device
 // categories the same way Fault/Symptom codes are.
+//
+// No labor-charge field: a Solution here is purely a name/category label,
+// not a price list. Every service line's charge is typed on the job itself
+// (or defaults from Settings > Config's plain default labour charge) —
+// keeping "what repair was done" and "what it cost this job" decoupled,
+// per explicit feedback that tying a price to the catalog entry wasn't
+// wanted.
 
 export const solutionsColumns: Column[] = [
   { key: "id", label: "Solution Code", type: "text" },
   { key: "title", label: "Solution", type: "text" },
   { key: "category", label: "Category", type: "select-chip" },
-  { key: "defaultLaborCharge", label: "Default Labor Charge", type: "currency" },
   { key: "estimatedRepairMinutes", label: "Est. Repair Time (min)", type: "text" },
   { key: "standardLaborCost", label: "Standard Labor Cost", type: "currency" },
   { key: "deviceCategoryScope", label: "Applicable Device Categories", type: "multi-chip" },
@@ -31,7 +37,6 @@ export const solutionsRows: Row[] = [
     id: "SOL-001",
     title: "Screen replacement",
     category: "Hardware",
-    defaultLaborCharge: 300,
     notes: "Includes calibration after fitment.",
     status: "Active",
     moduleSlug: "service-centre",
@@ -40,7 +45,6 @@ export const solutionsRows: Row[] = [
     id: "SOL-002",
     title: "Battery replacement",
     category: "Hardware",
-    defaultLaborCharge: 150,
     notes: "",
     status: "Active",
     moduleSlug: "service-centre",
@@ -49,7 +53,6 @@ export const solutionsRows: Row[] = [
     id: "SOL-003",
     title: "Software reflash",
     category: "Software",
-    defaultLaborCharge: 100,
     notes: "No parts consumed.",
     status: "Active",
     moduleSlug: "service-centre",
@@ -58,7 +61,6 @@ export const solutionsRows: Row[] = [
     id: "SOL-004",
     title: "General service / cleaning",
     category: "Maintenance",
-    defaultLaborCharge: 200,
     notes: "",
     status: "Active",
     moduleSlug: "service-centre",
@@ -67,7 +69,6 @@ export const solutionsRows: Row[] = [
     id: "SOL-005",
     title: "Water damage repair",
     category: "Hardware",
-    defaultLaborCharge: 500,
     notes: "No warranty coverage.",
     status: "Inactive",
     moduleSlug: "service-centre",
@@ -78,7 +79,6 @@ export const solutionsFormFields: FormFieldDef[] = [
   { key: "id", label: "Solution Code", type: "text", required: false, placeholder: "Auto-generated if left empty" },
   { key: "title", label: "Solution", type: "text", required: true },
   { key: "category", label: "Category", type: "select", required: true, options: ["Hardware", "Software", "Maintenance", "Other"] },
-  { key: "defaultLaborCharge", label: "Default Labor Charge", type: "currency", required: false },
   { key: "estimatedRepairMinutes", label: "Est. Repair Time (minutes)", type: "number", required: false },
   { key: "standardLaborCost", label: "Standard Labor Cost", type: "currency", required: false },
   { key: "deviceCategoryScope", label: "Applicable Device Categories", type: "multi-select", required: false, options: DEVICE_CATEGORY_OPTIONS },
@@ -95,7 +95,6 @@ export function getSolutionDetailFields(record: Row): RecordField[] {
     { label: "Solution Code", value: record["id"], type: "text" },
     { label: "Solution", value: record["title"], type: "text" },
     { label: "Category", value: record["category"], type: "select" },
-    { label: "Default Labor Charge", value: record["defaultLaborCharge"], type: "currency" },
     { label: "Est. Repair Time (minutes)", value: record["estimatedRepairMinutes"], type: "text" },
     { label: "Standard Labor Cost", value: record["standardLaborCost"], type: "currency" },
     { label: "Applicable Device Categories", value: record["deviceCategoryScope"], type: "text" },

@@ -132,7 +132,6 @@ export function WorkorderLifecycle({
   brandOptions,
   modelOptions,
   staffNameOptions,
-  solutionLaborCharges,
   partnerDefaultLaborCharge,
   addBrandAction,
   addModelAction,
@@ -205,11 +204,9 @@ export function WorkorderLifecycle({
    * persisted Billing invoice and the printed invoice document agree.
    */
   bomMaterials: { id: string; label: string; serialized: boolean; rate?: number; taxPercent?: number }[];
-  /** This partner's own live Solutions catalog. `defaultLaborCharge` pre-fills a new service line's charge. */
+  /** This partner's own live Solutions catalog — a name/category label only, no price attached. */
   solutionOptions: SearchSelectOption[];
-  /** Default labor charge per solution id, from the partner's Solutions catalog. */
-  solutionLaborCharges: Record<string, number>;
-  /** Settings > Config's plain default labour charge — used to pre-fill a blank "+ Add Service/Labour Charge" row, which (unlike addSolution) isn't tied to any one Solution's own defaultLaborCharge. */
+  /** Settings > Config's plain default labour charge — pre-fills a new service line's charge, however it was added. */
   partnerDefaultLaborCharge?: number;
   /** This partner's own live Device Brands catalog. */
   brandOptions: SearchSelectOption[];
@@ -265,7 +262,6 @@ export function WorkorderLifecycle({
   const [solutionOptionsState, setSolutionOptionsState] = useState(solutionOptions);
   const [addSolutionOpen, setAddSolutionOpen] = useState(false);
   const [newSolutionTitle, setNewSolutionTitle] = useState("");
-  const [newSolutionCharge, setNewSolutionCharge] = useState("");
   const [addSolutionError, setAddSolutionError] = useState<string | null>(null);
   const [addSolutionPending, setAddSolutionPending] = useState(false);
   const [addBrandOpen, setAddBrandOpen] = useState(false);
@@ -561,19 +557,17 @@ export function WorkorderLifecycle({
   }
 
   function addSolution(option: SearchSelectOption) {
-    // Pre-fill from the solution's own defaultLaborCharge (Solutions
-    // catalog) — it was defined there all along but never read, so every
-    // service line was added at ₹0 and silently under-billed the job.
-    // Still used by the Engineer Remark & Solution card's own catalog-based
-    // "+ Add Solution" — unaffected by the blank-row change below, which is
-    // specific to this card's own "+ Add Service/Labour Charge" button.
+    // A Solution is just a name/category label, not a price list — no
+    // per-solution charge is stored or read here. Pre-fills from Settings
+    // > Config's plain default labour charge (same as a blank "+ Add
+    // Service/Labour Charge" row), fully editable on the line afterwards.
     const next: ServiceLine[] = [
       ...serviceLines,
       {
         id: `SL-${Date.now()}`,
         solutionId: option.value,
         solutionLabel: option.label,
-        laborCharge: solutionLaborCharges[option.value] ?? 0,
+        laborCharge: partnerDefaultLaborCharge ?? 0,
         qty: 1,
         taxRate: 18,
       },
@@ -807,7 +801,7 @@ export function WorkorderLifecycle({
     setAddBomOpen(false);
   }
 
-  /** "+ New Solution"/"+ New" quick-add — adds a Solution to this partner's catalog without leaving the workorder, using the same non-redirecting inline-action pattern as Brand/Model/BOM above. */
+  /** "+ New Solution"/"+ New" quick-add — adds a Solution to this partner's catalog without leaving the workorder, using the same non-redirecting inline-action pattern as Brand/Model/BOM above. No price field — a Solution is a name/category label only. */
   async function submitAddSolution() {
     const title = newSolutionTitle.trim();
     if (!title) {
@@ -815,10 +809,9 @@ export function WorkorderLifecycle({
       return;
     }
     if (!addSolutionAction) return;
-    const defaultLaborCharge = Number(newSolutionCharge) || 0;
     setAddSolutionPending(true);
     setAddSolutionError(null);
-    const result = await addSolutionAction({ title, defaultLaborCharge });
+    const result = await addSolutionAction({ title });
     setAddSolutionPending(false);
     if (result?.error) {
       setAddSolutionError(result.error);
@@ -1652,7 +1645,6 @@ export function WorkorderLifecycle({
                     addSelectedSolution();
                   } else if (addSolutionAction) {
                     setNewSolutionTitle("");
-                    setNewSolutionCharge("");
                     setAddSolutionError(null);
                     setAddSolutionOpen(true);
                   }
@@ -2022,18 +2014,6 @@ export function WorkorderLifecycle({
               onChange={(e) => setNewSolutionTitle(e.target.value)}
               className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text outline-none focus:border-accent"
               placeholder="e.g. Screen replacement"
-            />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-text-muted">Default Labor Charge</label>
-            <input
-              type="number"
-              min={0}
-              step={1}
-              value={newSolutionCharge}
-              onChange={(e) => setNewSolutionCharge(e.target.value)}
-              className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm tabular-nums text-text outline-none focus:border-accent"
-              placeholder="0"
             />
           </div>
           {addSolutionError && <p className="text-sm text-danger">{addSolutionError}</p>}

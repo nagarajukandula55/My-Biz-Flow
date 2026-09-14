@@ -65,22 +65,7 @@ export default async function ServiceCentreDetailPage({
   const solutionRecords = await listBusinessRecords(params.partnerId, "service-centre-solutions");
   const activeSolutions = solutionRecords.filter((r) => r["status"] === "Active");
   const solutionOptions = activeSolutions.map((r) => ({ value: String(r["id"]), label: String(r["title"] ?? r["id"]) }));
-  // Settings > Config's default labour charge — used below as the fallback
-  // when a Solution itself carries no defaultLaborCharge, so a new service
-  // line pre-fills with the partner's own default rather than ₹0.
   const partner = await getPartner(params.partnerId);
-  // defaultLaborCharge lives on each Solution but was never read — service
-  // lines were always added at ₹0. Passed through so a new line pre-fills;
-  // a Solution with no charge of its own falls back to the partner-level
-  // default set in Settings > Config, and only then to ₹0.
-  const solutionLaborCharges = Object.fromEntries(
-    activeSolutions.map((r) => [
-      String(r["id"]),
-      typeof r["defaultLaborCharge"] === "number" && r["defaultLaborCharge"] > 0
-        ? r["defaultLaborCharge"]
-        : partner?.defaultLaborCharge ?? 0,
-    ])
-  );
 
   const brandRecords = await listBusinessRecords(params.partnerId, "service-centre-brands");
   const brandOptions = brandRecords
@@ -157,7 +142,6 @@ export default async function ServiceCentreDetailPage({
           recordCreatedAt={typeof record["recordCreatedAt"] === "string" ? (record["recordCreatedAt"] as string) : undefined}
           bomMaterials={bomMaterials}
           solutionOptions={solutionOptions}
-          solutionLaborCharges={solutionLaborCharges}
           partnerDefaultLaborCharge={partner?.defaultLaborCharge ?? 0}
           brandOptions={brandOptions}
           modelOptions={modelOptions}
