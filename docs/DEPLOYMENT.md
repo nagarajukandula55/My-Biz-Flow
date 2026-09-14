@@ -26,7 +26,8 @@ but set before the corresponding feature is advertised to users.
 - **Subscription checkout / billing (Razorpay):** `RAZORPAY_KEY_ID`,
   `RAZORPAY_KEY_SECRET`, `NEXT_PUBLIC_RAZORPAY_KEY_ID`,
   `RAZORPAY_WEBHOOK_SECRET`.
-- **Vendor payment sync into AN-Accounting:** `CENTRAL_API_URL`,
+- **Sync into AN-Accounting** (subscription payments, Billing invoices, and
+  Service Centre invoices created on workorder close): `CENTRAL_API_URL`,
   `CENTRAL_API_KEY` (from AN-Accounting's Settings > Sales API page).
 - **Field Force SMS job-offer pings:** `SMS_API_KEY`, `SMS_SENDER_ID`.
 - **Vercel Cron route auth:** `CRON_SECRET` (set alongside the cron
@@ -95,7 +96,10 @@ left out — do not add them to Vercel for this project:
   / `ACCOUNTING_API_KEY` push AN-CRM's own vendor billing invoices into the
   separate AN-Accounting app. My-Biz-Flow's `CENTRAL_API_URL` /
   `CENTRAL_API_KEY` do the same *for this app's* captured subscription
-  payments — same shape, same target (AN-Accounting), but a distinct
-  business/API key pair. Do not reuse AN-CRM's key here.
+  payments, standalone Billing invoices, and Service Centre invoices
+  created on workorder close (`notifyCentralApiSale` /
+  `notifyCentralApiBillingInvoice` in `src/lib/centralApi.ts`) — same
+  shape, same target (AN-Accounting), but a distinct business/API key
+  pair. Do not reuse AN-CRM's key here.
 - **Razorpay.** Same provider, same var names, independent Razorpay account
   keys — do not reuse AN-CRM's Razorpay credentials for this project.

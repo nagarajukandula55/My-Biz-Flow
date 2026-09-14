@@ -10,6 +10,8 @@ import {
   type WorkorderStage,
 } from "@/lib/sample-data/service-centre";
 import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
+import { getPartner } from "@/lib/partnerData";
+import { notifyCentralApiBillingInvoice } from "@/lib/centralApi";
 
 /**
  * Shared lookup for every action below. Previously each action did
@@ -292,6 +294,45 @@ export async function createInvoiceFromWorkorderAction(
       reference: `Collected at handover — workorder ${workorderId}`,
     });
     revalidatePath(`/partner/${partnerId}/billing/payments`);
+  }
+
+  // Same AN-Accounting push the generic createBusinessRecordAction makes
+  // for a manually-created Billing invoice (src/lib/businessRecordActions.ts)
+  // — this invoice is created directly via createBusinessRecord above so it
+  // bypasses that hook, and without this call a Service Centre invoice would
+  // never reach AN-Accounting at all. Best-effort: notifyCentralApiBillingInvoice
+  // never throws, so a sync failure can't block the workorder from closing.
+  const partner = await getPartner(partnerId);
+  if (partner) {
+    const items = [
+      ...(underWarranty
+        ? []
+        : lifecycle.serviceLines.map((l: ServiceLine) => ({
+            description: l.solutionLabel,
+            quantity: 1,
+            unitPrice: l.laborCharge || 0,
+            taxRate: 18,
+          }))),
+      ...(underWarranty
+        ? []
+        : lifecycle.partLines
+            .filter((p) => !p.pending)
+            .map((p) => ({
+              description: p.materialLabel,
+              quantity: p.qty || 1,
+              unitPrice: p.unitPrice || 0,
+              taxRate: 18,
+            }))),
+    ];
+    await notifyCentralApiBillingInvoice(partner, {
+      externalOrderId: String(invoice.id),
+      customer: String(record["customer"] ?? ""),
+      customerGstin: record["customerGstin"] ? String(record["customerGstin"]) : undefined,
+      customerState: record["customerState"] ? String(record["customerState"]) : undefined,
+      items,
+      totalAmount,
+      issueDate,
+    });
   }
 
   await updateBusinessRecord(partnerId, "service-centre", workorderId, {

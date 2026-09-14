@@ -1,8 +1,10 @@
 /**
  * Central place for reading required environment variables. Reads are
  * lazy (checked when the value is actually used, not at import time) —
- * CENTRAL_API_URL isn't wired to anything yet, so eager validation at
- * module load would crash every page before that feature even exists.
+ * a partner who never sets CENTRAL_API_URL/CENTRAL_API_KEY should still be
+ * able to use every other page; only the actual AN-Accounting sync calls
+ * (notifyCentralApiSale, notifyCentralApiBillingInvoice in centralApi.ts)
+ * throw, and they catch that themselves and no-op.
  * Once a variable is actually consumed somewhere, its getter here is the
  * only place that should read `process.env` directly for it — don't
  * reach for `process.env.X` ad hoc elsewhere, so there's exactly one

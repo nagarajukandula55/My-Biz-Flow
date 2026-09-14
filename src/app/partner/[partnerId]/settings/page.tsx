@@ -33,7 +33,7 @@ export default async function SettingsPage({ params }: { params: { partnerId: st
   ]);
   return (
     <AppShell topbarTitle="Settings">
-      <SettingsPageClient visibleModuleSlugs={visibleModuleSlugs} />
+      <SettingsPageClient visibleModuleSlugs={visibleModuleSlugs} partnerId={params.partnerId} />
       {partner && (
         <SettingsTabs>
           <BusinessProfileForm partnerId={params.partnerId} partner={partner} />

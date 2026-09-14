@@ -4,6 +4,7 @@ import { useState } from "react";
 import { RecordForm, type FormFieldDef } from "@/components/RecordForm";
 import { StatusChip } from "@/components/StatusChip";
 import { MODULES } from "@/lib/designer/modules";
+import { DataBackupDownloadButton } from "./DataBackupDownloadButton";
 
 const SETTINGS_FIELDS: FormFieldDef[] = [
   { key: "businessName", label: "Business Name", type: "text", required: true, placeholder: "e.g. Demo Retail Co." },
@@ -21,8 +22,10 @@ const SETTINGS_FIELDS: FormFieldDef[] = [
  */
 export function SettingsPageClient({
   visibleModuleSlugs,
+  partnerId,
 }: {
   visibleModuleSlugs: string[];
+  partnerId: string;
 }) {
   const [logoName, setLogoName] = useState<string | null>(null);
   // Reflects this partner's real ModuleAccessKey state (src/lib/designer/accessKeys.ts)
@@ -105,6 +108,19 @@ export function SettingsPageClient({
               </button>
             </div>
           ))}
+        </div>
+      </div>
+
+      <div className="mt-8 max-w-2xl">
+        <h2 className="font-display text-lg font-bold text-text">Data Export / Backup</h2>
+        <p className="mt-1 text-sm text-text-muted">
+          Download every record you own across all modules (POS, Billing, Service Centre, Inventory, and the
+          rest) as a single JSON file — a local copy for your own records, independent of this app. Your
+          database itself already has automatic point-in-time backups on the hosting side; this is a
+          personal export, not a substitute for that.
+        </p>
+        <div className="mt-4">
+          <DataBackupDownloadButton partnerId={partnerId} />
         </div>
       </div>
 
