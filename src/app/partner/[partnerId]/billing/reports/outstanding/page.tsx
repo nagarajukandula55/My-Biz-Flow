@@ -27,6 +27,13 @@ const AGING_COLUMNS: Column[] = [
   { key: "balance", label: "Balance Due", type: "currency" },
 ];
 
+function inRange(date: string, from?: string, to?: string): boolean {
+  if (!date) return true;
+  if (from && date < from) return false;
+  if (to && date > to) return false;
+  return true;
+}
+
 function bucketFor(days: number): string {
   if (days <= 0) return "Not Due";
   if (days <= 30) return "0-30";
@@ -35,7 +42,14 @@ function bucketFor(days: number): string {
   return "90+";
 }
 
-export default async function OutstandingReportPage({ params }: { params: { partnerId: string } }) {
+export default async function OutstandingReportPage({
+  params,
+  searchParams,
+}: {
+  params: { partnerId: string };
+  searchParams?: { from?: string; to?: string };
+}) {
+  const { from, to } = searchParams ?? {};
   const [invoices, payments] = await Promise.all([
     listBusinessRecords(params.partnerId, "billing"),
     listBusinessRecords(params.partnerId, "billing-payments"),
@@ -50,6 +64,7 @@ export default async function OutstandingReportPage({ params }: { params: { part
     const { balance } = getInvoiceBalance(payments, id, Number(inv["totalAmount"] ?? 0));
     if (balance <= 0) continue;
     const dueDate = String(inv["dueDate"] ?? "");
+    if (!inRange(dueDate, from, to)) continue;
     const daysOverdue = dueDate ? Math.floor((today - new Date(dueDate).getTime()) / 86400000) : 0;
     totalOutstanding += balance;
     rows.push({
@@ -67,7 +82,31 @@ export default async function OutstandingReportPage({ params }: { params: { part
   return (
     <AppShell topbarTitle="Outstanding / AR Aging">
       <div>
-        <p className="text-sm text-text-muted">
+        <form method="get" className="flex flex-wrap items-end gap-3">
+          <label className="block">
+            <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-text-muted">Due From</span>
+            <input
+              type="date"
+              name="from"
+              defaultValue={from ?? ""}
+              className="rounded-md border border-border bg-bg px-3 py-2 text-sm font-mono text-text outline-none focus:border-teal"
+            />
+          </label>
+          <label className="block">
+            <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-text-muted">Due To</span>
+            <input
+              type="date"
+              name="to"
+              defaultValue={to ?? ""}
+              className="rounded-md border border-border bg-bg px-3 py-2 text-sm font-mono text-text outline-none focus:border-teal"
+            />
+          </label>
+          <button type="submit" className="btn-outline">Apply</button>
+          {(from || to) && (
+            <a href={`/partner/${params.partnerId}/billing/reports/outstanding`} className="btn-outline">Clear</a>
+          )}
+        </form>
+        <p className="mt-4 text-sm text-text-muted">
           Total outstanding: <span className="font-mono font-semibold text-text">₹{totalOutstanding.toLocaleString("en-IN")}</span> across {rows.length} unpaid invoice{rows.length === 1 ? "" : "s"}.
         </p>
         <div className="mt-4">

@@ -17,6 +17,13 @@ registerPage({
 
 export const dynamic = "force-dynamic";
 
+function inRange(date: string, from?: string, to?: string): boolean {
+  if (!date) return true;
+  if (from && date < from) return false;
+  if (to && date > to) return false;
+  return true;
+}
+
 const SALES_COLUMNS: Column[] = [
   { key: "id", label: "Invoice", type: "relation-link" },
   { key: "customer", label: "Customer", type: "text" },
@@ -27,9 +34,18 @@ const SALES_COLUMNS: Column[] = [
   { key: "paymentStatus", label: "Status", type: "select-chip" },
 ];
 
-export default async function SalesRegisterPage({ params }: { params: { partnerId: string } }) {
+export default async function SalesRegisterPage({
+  params,
+  searchParams,
+}: {
+  params: { partnerId: string };
+  searchParams?: { from?: string; to?: string };
+}) {
+  const { from, to } = searchParams ?? {};
   const invoices = await listBusinessRecords(params.partnerId, "billing");
-  const rows: Row[] = [...invoices].sort((a, b) => String(b["issueDate"] ?? "").localeCompare(String(a["issueDate"] ?? "")));
+  const rows: Row[] = invoices
+    .filter((r) => inRange(String(r["issueDate"] ?? ""), from, to))
+    .sort((a, b) => String(b["issueDate"] ?? "").localeCompare(String(a["issueDate"] ?? "")));
 
   type Totals = { subtotal: number; taxAmount: number; totalAmount: number };
   const totals = rows.reduce<Totals>(
@@ -44,7 +60,31 @@ export default async function SalesRegisterPage({ params }: { params: { partnerI
   return (
     <AppShell topbarTitle="Sales Register">
       <div>
-        <p className="text-sm text-text-muted">
+        <form method="get" className="flex flex-wrap items-end gap-3">
+          <label className="block">
+            <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-text-muted">From</span>
+            <input
+              type="date"
+              name="from"
+              defaultValue={from ?? ""}
+              className="rounded-md border border-border bg-bg px-3 py-2 text-sm font-mono text-text outline-none focus:border-teal"
+            />
+          </label>
+          <label className="block">
+            <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-text-muted">To</span>
+            <input
+              type="date"
+              name="to"
+              defaultValue={to ?? ""}
+              className="rounded-md border border-border bg-bg px-3 py-2 text-sm font-mono text-text outline-none focus:border-teal"
+            />
+          </label>
+          <button type="submit" className="btn-outline">Apply</button>
+          {(from || to) && (
+            <a href={`/partner/${params.partnerId}/billing/reports/sales`} className="btn-outline">Clear</a>
+          )}
+        </form>
+        <p className="mt-4 text-sm text-text-muted">
           {rows.length} invoice{rows.length === 1 ? "" : "s"} — Subtotal ₹{totals.subtotal.toLocaleString("en-IN")}, Tax ₹
           {totals.taxAmount.toLocaleString("en-IN")}, Total ₹{totals.totalAmount.toLocaleString("en-IN")}
         </p>

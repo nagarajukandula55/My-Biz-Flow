@@ -67,6 +67,8 @@ import "@/app/partner/[partnerId]/billing/reports/sales/page";
 import "@/app/partner/[partnerId]/billing/reports/tax-summary/page";
 import "@/app/partner/[partnerId]/billing/reports/contact-statement/page";
 import "@/app/partner/[partnerId]/billing/reports/contact-statement/[contactId]/page";
+import "@/app/partner/[partnerId]/billing/reports/profit-loss/page";
+import "@/app/partner/[partnerId]/billing/reports/gst-export/page";
 import "@/app/partner/[partnerId]/billing/recurring/page";
 import "@/app/partner/[partnerId]/billing/recurring/new/page";
 import "@/app/partner/[partnerId]/billing/recurring/[recordId]/page";

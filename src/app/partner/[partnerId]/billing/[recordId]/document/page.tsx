@@ -3,7 +3,7 @@ import { billingColumns } from "@/lib/sample-data/billing";
 import type { LineItem } from "@/lib/sample-data/billing";
 import { registerPage } from "@/lib/designer/registry";
 import { notFound } from "next/navigation";
-import { getPartner } from "@/lib/partnerData";
+import { getPartner, resolveDocumentTerms } from "@/lib/partnerData";
 import { getBusinessRecord, getBusinessRecordSequenceIndex } from "@/lib/businessRecords";
 
 registerPage({
@@ -41,6 +41,7 @@ export default async function BillingDocumentPage({
       columns={billingColumns}
       sequenceIndex={sequenceIndex}
       lineItems={record["items"] as LineItem[] | undefined}
+      termsText={resolveDocumentTerms(partner, "invoice")}
     />
   );
 }
