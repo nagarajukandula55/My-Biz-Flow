@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createBusinessRecord, updateBusinessRecord, deleteBusinessRecord, getBusinessRecord } from "@/lib/businessRecords";
+import { createBusinessRecord, updateBusinessRecord, getBusinessRecord } from "@/lib/businessRecords";
 import { getPartner } from "@/lib/partnerData";
 import { notifyCentralApiBillingInvoice } from "@/lib/centralApi";
 
@@ -59,14 +59,22 @@ export async function updateBusinessRecordAction(
   redirect(`/partner/${partnerId}/${moduleSlug}/${recordKey}?updated=1`);
 }
 
-/** Bind with .bind(null, partnerId, moduleSlug, recordKey) before calling from a delete confirm handler. */
-export async function deleteBusinessRecordAction(partnerId: string, moduleSlug: string, recordKey: string) {
-  await deleteBusinessRecord(partnerId, moduleSlug, recordKey);
-  revalidatePath(`/partner/${partnerId}/${moduleSlug}`);
-  // ?deleted=1 — picked up by GlobalActionBanner (rendered from AppShell on
-  // every partner page), so the list page shows a real "Record deleted"
-  // acknowledgment instead of a silent redirect.
-  redirect(`/partner/${partnerId}/${moduleSlug}?deleted=1`);
+/**
+ * Deleting a BusinessRecord is disabled, full stop — not just hidden from
+ * the UI. There is no partner-facing "Delete" button left anywhere in the
+ * app (`DeleteBusinessRecordButton` is a permanent no-op), and no separate
+ * Super-Admin delete UI exists either, so there is no legitimate caller
+ * left for this action. It stays defined (rather than being deleted itself)
+ * only so any stray reference fails loudly instead of silently deleting
+ * data, in case some other code path is ever wired to call it directly.
+ * Records should be archived/marked inactive via a Status field instead.
+ */
+export async function deleteBusinessRecordAction(
+  _partnerId: string,
+  _moduleSlug: string,
+  _recordKey: string
+): Promise<never> {
+  throw new Error("Deleting records is not permitted. Mark the record inactive instead.");
 }
 
 /**

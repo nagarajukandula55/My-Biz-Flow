@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createBusinessRecord, deleteBusinessRecord, updateBusinessRecord } from "@/lib/businessRecords";
+import { createBusinessRecord, updateBusinessRecord } from "@/lib/businessRecords";
 import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import { normaliseDefinition, REPORT_DEFINITIONS_MODULE } from "@/lib/reportBuilder";
 
@@ -49,9 +49,13 @@ export async function saveReportDefinitionAction(partnerId: string, formData: Fo
   redirect(`/partner/${partnerId}/service-centre/reports/${id}`);
 }
 
-export async function deleteReportDefinitionAction(partnerId: string, recordKey: string) {
-  await requireSessionPartnerId(partnerId);
-  await deleteBusinessRecord(partnerId, REPORT_DEFINITIONS_MODULE, recordKey);
-  revalidatePath(`/partner/${partnerId}/service-centre/reports`);
-  redirect(`/partner/${partnerId}/service-centre/reports`);
+/**
+ * Deleting a saved report definition is disabled, full stop — same policy
+ * as `deleteBusinessRecordAction` (see its doc comment in
+ * `@/lib/businessRecordActions`): no partner-facing delete UI exists for
+ * this, and this action is kept only so a direct call fails loudly instead
+ * of silently deleting data.
+ */
+export async function deleteReportDefinitionAction(_partnerId: string, _recordKey: string): Promise<never> {
+  throw new Error("Deleting a saved report is not permitted.");
 }
