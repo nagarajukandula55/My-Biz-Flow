@@ -9,13 +9,28 @@ export type InvoiceLine = {
   quantity: number;
   rate: number;
   gstRate: number;
+  /** Per-line discount in rupees, applied before tax. */
+  discount?: number;
 };
+
+export type InvoiceBankDetails = {
+  accountName?: string;
+  bankName?: string;
+  accountNumber?: string;
+  ifsc?: string;
+};
+
+/** Normalizes "Karnataka" / "karnataka " so a place-of-supply comparison isn't defeated by casing. */
+function normalizeState(value?: string): string {
+  return (value ?? "").trim().toLowerCase();
+}
 
 /**
  * Service Centre's Sales Invoice — A4/A5 only (no thermal, unlike POS).
  * Independently built against this repo's own design tokens/components;
- * general shape (letterhead + meta box, Bill To, itemized GST table,
- * totals box, signatures, declaration) references AN-CRM's invoice
+ * general shape (letterhead + meta box, Bill To / Payment boxes, itemized
+ * GST table with the per-line CGST/SGST/IGST split, HSN summary, totals
+ * box, bank details, signatures, declaration) references AN-CRM's invoice
  * layout per CLAUDE.md's documented UX-pattern exception — no code,
  * copy, or visual styling copied.
  */
@@ -23,8 +38,16 @@ export function ServiceCentreInvoiceDocument({
   partnerName,
   partnerGstin,
   partnerPhone,
+  partnerAddress,
+  partnerCity,
+  partnerState,
+  partnerPincode,
   invoiceNumber,
   invoiceDate,
+  workorderNumber,
+  paymentMode,
+  paymentReference,
+  bankDetails,
   customerName,
   customerPhone,
   customerCompany,
@@ -40,8 +63,19 @@ export function ServiceCentreInvoiceDocument({
   /** The issuing partner's own GSTIN/contact — blank renders as an em dash, never a fabricated number. */
   partnerGstin?: string;
   partnerPhone?: string;
+  partnerAddress?: string;
+  partnerCity?: string;
+  /** The place of SUPPLY. Compared against the customer's state to decide CGST+SGST vs IGST. */
+  partnerState?: string;
+  partnerPincode?: string;
   invoiceNumber: string;
   invoiceDate: string;
+  /** The workorder this invoice was raised from — printed so a customer can tie the two documents together. */
+  workorderNumber?: string;
+  paymentMode?: string;
+  paymentReference?: string;
+  /** The issuing partner's own bank account, for a customer paying by transfer. Omitted entirely when unset. */
+  bankDetails?: InvoiceBankDetails;
   customerName: string;
   customerPhone?: string;
   customerCompany?: string;
@@ -56,17 +90,60 @@ export function ServiceCentreInvoiceDocument({
    * {{placeholder}} mechanism as every other document page; when set, replaces the default layout below. */
   customTemplate?: string;
 }) {
+  // Place of supply decides the split: a customer in the service centre's
+  // own state is an intra-state supply taxed as CGST + SGST at half the
+  // slab each; a customer in another state is inter-state and takes the
+  // whole slab as IGST. Previously this document showed a single flat
+  // "GST" line, which is not a valid tax invoice either way. When the
+  // customer's state is blank we fall back to intra-state — the common
+  // case for a walk-in repair, and the same default the reference app's
+  // close-and-invoice step uses.
+  const interState =
+    normalizeState(customerState) !== "" &&
+    normalizeState(partnerState) !== "" &&
+    normalizeState(customerState) !== normalizeState(partnerState);
+
   const rows = lines.map((l) => {
-    const taxable = l.quantity * l.rate;
+    const discount = l.discount ?? 0;
+    const taxable = Math.max(0, l.quantity * l.rate - discount);
     const gstAmount = taxable * (l.gstRate / 100);
-    return { ...l, taxable, gstAmount, total: taxable + gstAmount };
+    return {
+      ...l,
+      discount,
+      taxable,
+      gstAmount,
+      cgst: interState ? 0 : gstAmount / 2,
+      sgst: interState ? 0 : gstAmount / 2,
+      igst: interState ? gstAmount : 0,
+      total: taxable + gstAmount,
+    };
   });
   const taxableTotal = rows.reduce((s, r) => s + r.taxable, 0);
-  const gstTotal = rows.reduce((s, r) => s + r.gstAmount, 0);
+  const discountTotal = rows.reduce((s, r) => s + r.discount, 0);
+  const cgstTotal = rows.reduce((s, r) => s + r.cgst, 0);
+  const sgstTotal = rows.reduce((s, r) => s + r.sgst, 0);
+  const igstTotal = rows.reduce((s, r) => s + r.igst, 0);
+  const gstTotal = cgstTotal + sgstTotal + igstTotal;
   const grandTotal = taxableTotal + gstTotal;
   // A GST-registered recipient makes this a B2B document — previously
   // hardcoded "B2C" because no GSTIN was ever collected at intake.
   const documentType = customerGstin?.trim() ? "B2B" : "B2C";
+  // A B2C document carrying no tax at all (e.g. an entirely non-chargeable
+  // warranty job) is a plain Bill, not a Tax Invoice — calling it one would
+  // be a false statement on the document.
+  const isPlainBill = documentType === "B2C" && gstTotal === 0;
+
+  // One row per HSN code, which is the summary a GST-registered recipient
+  // needs to claim input credit. Only meaningful on a B2B document.
+  const hsnSummary = Object.values(
+    rows.reduce<Record<string, { hsn: string; taxable: number; tax: number }>>((acc, r) => {
+      const key = r.hsn || "—";
+      acc[key] ??= { hsn: key, taxable: 0, tax: 0 };
+      acc[key].taxable += r.taxable;
+      acc[key].tax += r.gstAmount;
+      return acc;
+    }, {})
+  );
 
   if (customTemplate) {
     const html = renderTemplate(customTemplate, {
@@ -81,7 +158,12 @@ export function ServiceCentreInvoiceDocument({
       customerState: customerState ?? "",
       customerPincode: customerPincode ?? "",
       documentType,
+      workorderNumber: workorderNumber ?? "",
       taxableTotal,
+      discountTotal,
+      cgstTotal,
+      sgstTotal,
+      igstTotal,
       taxAmount: gstTotal,
       totalAmount: grandTotal,
     });
@@ -111,43 +193,80 @@ export function ServiceCentreInvoiceDocument({
 
         <PrintFrame sizes={["a4", "a5"]}>
           <div className="rounded-lg border border-border bg-bg-raised p-10 shadow-sm print:rounded-none print:border-0 print:shadow-none">
-            <h1 className="text-center font-display text-xl font-bold tracking-wide text-text">TAX INVOICE</h1>
+            <h1 className="text-center font-display text-xl font-bold tracking-wide text-text">
+              {isPlainBill ? "BILL" : "TAX INVOICE"}
+            </h1>
 
             <div className="mt-6 flex items-start justify-between gap-6">
               <div className="rounded-md bg-bg-sunken px-4 py-3">
                 <div className="font-display text-base font-bold text-text">{partnerName}</div>
+                {partnerAddress && <div className="mt-1 whitespace-pre-line text-xs text-text-muted">{partnerAddress}</div>}
+                {(partnerCity || partnerState || partnerPincode) && (
+                  <div className="text-xs text-text-muted">
+                    {[partnerCity, partnerState].filter(Boolean).join(", ")}
+                    {partnerPincode ? ` — ${partnerPincode}` : ""}
+                  </div>
+                )}
                 <div className="mt-1 text-xs text-text-muted">GSTIN: {partnerGstin || "—"}</div>
                 <div className="text-xs text-text-muted">Phone: {partnerPhone || "—"}</div>
               </div>
               <div className="rounded-md border border-border px-4 py-3 text-right text-xs text-text-muted">
                 <div>
-                  Invoice No: <span className="font-mono font-semibold text-text">{invoiceNumber}</span>
+                  {isPlainBill ? "Bill No" : "Invoice No"}:{" "}
+                  <span className="font-mono font-semibold text-text">{invoiceNumber}</span>
+                </div>
+                {workorderNumber && (
+                  <div>
+                    Workorder No: <span className="font-mono font-semibold text-text">{workorderNumber}</span>
+                  </div>
+                )}
+                <div>
+                  {isPlainBill ? "Bill Date" : "Invoice Date"}:{" "}
+                  <span className="font-semibold text-text">{formatDate(invoiceDate)}</span>
                 </div>
                 <div>
-                  Invoice Date: <span className="font-semibold text-text">{formatDate(invoiceDate)}</span>
+                  Document Type:{" "}
+                  <span className="font-semibold text-text">{isPlainBill ? "Bill (No Tax)" : documentType}</span>
                 </div>
                 <div>
-                  Document Type: <span className="font-semibold text-text">{documentType}</span>
+                  Supply Type:{" "}
+                  <span className="font-semibold text-text">{interState ? "Inter-state (IGST)" : "Intra-state (CGST + SGST)"}</span>
                 </div>
               </div>
             </div>
 
-            <div className="mt-6 border-t border-border pt-4">
-              <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">Bill To</div>
-              <div className="mt-1.5 text-sm text-text">
-                <div className="font-semibold">{customerName}</div>
-                {customerCompany && <div className="text-text-muted">{customerCompany}</div>}
-                {customerAddress && <div className="whitespace-pre-line text-text-muted">{customerAddress}</div>}
-                {(customerCity || customerState || customerPincode) && (
-                  <div className="text-text-muted">
-                    {[customerCity, customerState].filter(Boolean).join(", ")}
-                    {customerPincode ? ` — ${customerPincode}` : ""}
+            <div className="mt-6 grid grid-cols-2 gap-6 border-t border-border pt-4">
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">Bill To</div>
+                <div className="mt-1.5 text-sm text-text">
+                  <div className="font-semibold">{customerName}</div>
+                  {customerCompany && <div className="text-text-muted">{customerCompany}</div>}
+                  {customerAddress && <div className="whitespace-pre-line text-text-muted">{customerAddress}</div>}
+                  {(customerCity || customerState || customerPincode) && (
+                    <div className="text-text-muted">
+                      {[customerCity, customerState].filter(Boolean).join(", ")}
+                      {customerPincode ? ` — ${customerPincode}` : ""}
+                    </div>
+                  )}
+                  {customerPhone && <div className="text-text-muted">{customerPhone}</div>}
+                  {customerGstin && (
+                    <div className="font-mono text-text-muted">GSTIN: {customerGstin}</div>
+                  )}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">Payment</div>
+                <div className="mt-1.5 text-sm text-text-muted">
+                  <div>
+                    Payment Mode: <span className="font-semibold text-text">{paymentMode || "—"}</span>
                   </div>
-                )}
-                {customerPhone && <div className="text-text-muted">{customerPhone}</div>}
-                {customerGstin && (
-                  <div className="font-mono text-text-muted">GSTIN: {customerGstin}</div>
-                )}
+                  <div>
+                    Reference: <span className="font-mono text-text">{paymentReference || "—"}</span>
+                  </div>
+                  <div>
+                    Place of Supply: <span className="font-semibold text-text">{customerState || partnerState || "—"}</span>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -161,8 +280,17 @@ export function ServiceCentreInvoiceDocument({
                     <th className="px-2 py-2">HSN</th>
                     <th className="px-2 py-2 text-right">Qty</th>
                     <th className="px-2 py-2 text-right">Rate</th>
+                    <th className="px-2 py-2 text-right">Disc</th>
                     <th className="px-2 py-2 text-right">Taxable</th>
                     <th className="px-2 py-2 text-right">GST%</th>
+                    {interState ? (
+                      <th className="px-2 py-2 text-right">IGST</th>
+                    ) : (
+                      <>
+                        <th className="px-2 py-2 text-right">CGST</th>
+                        <th className="px-2 py-2 text-right">SGST</th>
+                      </>
+                    )}
                     <th className="px-2 py-2 text-right">Total</th>
                   </tr>
                 </thead>
@@ -174,17 +302,70 @@ export function ServiceCentreInvoiceDocument({
                       <td className="px-2 py-2 text-text-muted">{r.hsn || "—"}</td>
                       <td className="px-2 py-2 text-right font-mono tabular-nums text-text">{r.quantity}</td>
                       <td className="px-2 py-2 text-right font-mono tabular-nums text-text">{formatCurrencyINR(r.rate)}</td>
+                      <td className="px-2 py-2 text-right font-mono tabular-nums text-text-muted">{formatCurrencyINR(r.discount)}</td>
                       <td className="px-2 py-2 text-right font-mono tabular-nums text-text">{formatCurrencyINR(r.taxable)}</td>
                       <td className="px-2 py-2 text-right font-mono tabular-nums text-text">{r.gstRate}%</td>
+                      {interState ? (
+                        <td className="px-2 py-2 text-right font-mono tabular-nums text-text">{formatCurrencyINR(r.igst)}</td>
+                      ) : (
+                        <>
+                          <td className="px-2 py-2 text-right font-mono tabular-nums text-text">{formatCurrencyINR(r.cgst)}</td>
+                          <td className="px-2 py-2 text-right font-mono tabular-nums text-text">{formatCurrencyINR(r.sgst)}</td>
+                        </>
+                      )}
                       <td className="px-2 py-2 text-right font-mono tabular-nums font-semibold text-text">
                         {formatCurrencyINR(r.total)}
                       </td>
                     </tr>
                   ))}
                 </tbody>
+                <tfoot>
+                  <tr className="border-t-2 border-border font-semibold text-text">
+                    <td className="px-2 py-2" colSpan={6}>
+                      Total
+                    </td>
+                    <td className="px-2 py-2 text-right font-mono tabular-nums">{formatCurrencyINR(taxableTotal)}</td>
+                    <td className="px-2 py-2" />
+                    {interState ? (
+                      <td className="px-2 py-2 text-right font-mono tabular-nums">{formatCurrencyINR(igstTotal)}</td>
+                    ) : (
+                      <>
+                        <td className="px-2 py-2 text-right font-mono tabular-nums">{formatCurrencyINR(cgstTotal)}</td>
+                        <td className="px-2 py-2 text-right font-mono tabular-nums">{formatCurrencyINR(sgstTotal)}</td>
+                      </>
+                    )}
+                    <td className="px-2 py-2 text-right font-mono tabular-nums">{formatCurrencyINR(grandTotal)}</td>
+                  </tr>
+                </tfoot>
               </table>
               <p className="mt-1 text-xs text-text-muted">Total Items: {rows.length}</p>
             </div>
+
+            {/* A GST-registered recipient needs the per-HSN breakup to claim
+                input credit; a B2C walk-in has no use for it. */}
+            {documentType === "B2B" && hsnSummary.length > 0 && (
+              <div className="mt-5">
+                <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">HSN Summary</div>
+                <table className="mt-2 w-full border-collapse text-xs">
+                  <thead>
+                    <tr className="border-b border-border text-left uppercase tracking-wide text-text-muted">
+                      <th className="px-2 py-1.5">HSN</th>
+                      <th className="px-2 py-1.5 text-right">Taxable</th>
+                      <th className="px-2 py-1.5 text-right">Tax</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {hsnSummary.map((h) => (
+                      <tr key={h.hsn} className="border-b border-border last:border-b-0">
+                        <td className="px-2 py-1.5 font-mono text-text">{h.hsn}</td>
+                        <td className="px-2 py-1.5 text-right font-mono tabular-nums text-text">{formatCurrencyINR(h.taxable)}</td>
+                        <td className="px-2 py-1.5 text-right font-mono tabular-nums text-text">{formatCurrencyINR(h.tax)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
 
             <div className="mt-6 flex justify-end">
               <div className="w-full max-w-xs rounded-md border border-border bg-bg-sunken p-4 text-sm">
@@ -192,16 +373,52 @@ export function ServiceCentreInvoiceDocument({
                   <span>Taxable Amount</span>
                   <span className="font-mono tabular-nums">{formatCurrencyINR(taxableTotal)}</span>
                 </div>
-                <div className="mt-1.5 flex justify-between text-text-muted">
-                  <span>GST</span>
-                  <span className="font-mono tabular-nums">{formatCurrencyINR(gstTotal)}</span>
-                </div>
+                {discountTotal > 0 && (
+                  <div className="mt-1.5 flex justify-between text-text-muted">
+                    <span>Discount</span>
+                    <span className="font-mono tabular-nums">{formatCurrencyINR(discountTotal)}</span>
+                  </div>
+                )}
+                {/* Only the split that actually applies is printed — showing
+                    a zeroed IGST row on every intra-state invoice (and vice
+                    versa) conveys nothing and reads as an error. */}
+                {interState ? (
+                  <div className="mt-1.5 flex justify-between text-text-muted">
+                    <span>IGST</span>
+                    <span className="font-mono tabular-nums">{formatCurrencyINR(igstTotal)}</span>
+                  </div>
+                ) : (
+                  <>
+                    <div className="mt-1.5 flex justify-between text-text-muted">
+                      <span>CGST</span>
+                      <span className="font-mono tabular-nums">{formatCurrencyINR(cgstTotal)}</span>
+                    </div>
+                    <div className="mt-1.5 flex justify-between text-text-muted">
+                      <span>SGST</span>
+                      <span className="font-mono tabular-nums">{formatCurrencyINR(sgstTotal)}</span>
+                    </div>
+                  </>
+                )}
                 <div className="mt-2 flex justify-between border-t border-border pt-2 text-base font-bold text-text">
                   <span>Grand Total</span>
                   <span className="font-mono tabular-nums">{formatCurrencyINR(grandTotal)}</span>
                 </div>
               </div>
             </div>
+
+            {/* Rendered only when the partner has actually saved bank
+                details on their profile — never a placeholder account. */}
+            {(bankDetails?.accountName || bankDetails?.bankName || bankDetails?.accountNumber || bankDetails?.ifsc) && (
+              <div className="mt-6 rounded-md border border-border p-4 text-xs text-text-muted">
+                <div className="font-semibold uppercase tracking-wide">Bank Details</div>
+                <div className="mt-1.5 grid grid-cols-2 gap-x-6 gap-y-1">
+                  {bankDetails.accountName && <div>Account Name: <span className="text-text">{bankDetails.accountName}</span></div>}
+                  {bankDetails.bankName && <div>Bank: <span className="text-text">{bankDetails.bankName}</span></div>}
+                  {bankDetails.accountNumber && <div>Account No: <span className="font-mono text-text">{bankDetails.accountNumber}</span></div>}
+                  {bankDetails.ifsc && <div>IFSC: <span className="font-mono text-text">{bankDetails.ifsc}</span></div>}
+                </div>
+              </div>
+            )}
 
             <div className="mt-10 grid grid-cols-2 gap-6 text-center text-xs text-text-muted">
               <div className="border-t border-border pt-2">Customer Signature</div>
@@ -214,6 +431,11 @@ export function ServiceCentreInvoiceDocument({
                 Certified that the particulars given above are true and correct. This invoice is generated
                 electronically and does not require a physical signature.
               </p>
+            </div>
+
+            <div className="mt-6 text-center text-xs text-text-muted">
+              <div>Thank you for your business with {partnerName}</div>
+              <div>{isPlainBill ? "This is a computer generated bill." : "This is a computer generated GST invoice."}</div>
             </div>
           </div>
         </PrintFrame>

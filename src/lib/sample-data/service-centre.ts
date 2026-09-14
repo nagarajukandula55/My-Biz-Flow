@@ -77,9 +77,110 @@ export function mapStageToMilestone(stage: WorkorderStage, onHold?: boolean, can
   }
 }
 
+// --- Intake option lists, matched 1:1 to the AN-CRM reference app's own
+// --- stored codes and labels so nothing here is an invented placeholder.
+
+/** CrmJobSheet.warrantyStatus. IW and 90_DAYS are non-chargeable jobs. */
 export const WARRANTY_STATUSES = ["IW", "OOW", "90_DAYS"] as const;
-export const APPOINTMENT_TYPES = ["Walk-in", "Onsite", "Phone", "Online", "Referral"] as const;
-export const DEVICE_APPEARANCE_OPTIONS = ["Good", "Used", "Dents", "Broken"] as const;
+export const WARRANTY_STATUS_LABELS: Record<string, string> = {
+  IW: "In Warranty (IW)",
+  OOW: "Out of Warranty (OOW)",
+  "90_DAYS": "90 Days Warranty",
+};
+
+/** CrmJobSheet.appointmentType — the reference app's APPOINTMENT_TYPE option list is exactly these two. */
+export const APPOINTMENT_TYPES = ["ONSITE", "WALKIN"] as const;
+export const APPOINTMENT_TYPE_LABELS: Record<string, string> = {
+  ONSITE: "Onsite",
+  WALKIN: "Walk-in",
+};
+
+/** CrmJobSheet.requestType — the REQUEST_TYPE option list. */
+export const REQUEST_TYPES = ["REPAIR", "INSTALLATION"] as const;
+export const REQUEST_TYPE_LABELS: Record<string, string> = {
+  REPAIR: "Repair",
+  INSTALLATION: "Installation",
+};
+
+/** CrmJobSheet.deviceAppearance — the DEVICE_APPEARANCE option list. */
+export const DEVICE_APPEARANCE_OPTIONS = ["GOOD", "USED", "DENTS", "BROKEN"] as const;
+export const DEVICE_APPEARANCE_LABELS: Record<string, string> = {
+  GOOD: "Good",
+  USED: "Used",
+  DENTS: "Dents/Scratches",
+  BROKEN: "Broken/Damaged",
+};
+
+/** CrmJobSheet.fileBackupDescription — a plain yes/no at intake, not a note. */
+export const FILE_BACKUP_OPTIONS = ["YES", "NO"] as const;
+export const FILE_BACKUP_LABELS: Record<string, string> = { YES: "Yes", NO: "No" };
+
+/**
+ * Device Type taxonomy (CrmJobSheet.deviceCategory) — the reference app's
+ * full 45-category electronics/appliance list, stored as the same codes so
+ * a record is portable between the two apps.
+ */
+export const DEVICE_CATEGORIES = [
+  "MOBILE", "FEATURE_PHONE", "TABLET", "LAPTOP", "DESKTOP", "MONITOR",
+  "COMPUTER_ACCESSORY", "PRINTER_SCANNER", "TELEVISION", "PROJECTOR",
+  "SET_TOP_BOX", "SOUNDBAR", "SPEAKER", "HEADPHONE_EARBUD", "SMARTWATCH",
+  "FITNESS_BAND", "CAMERA", "CAMCORDER", "DRONE", "GAMING_CONSOLE",
+  "ROUTER_NETWORKING", "POWER_BANK", "UPS_INVERTER", "CCTV_SECURITY",
+  "SMART_HOME", "REFRIGERATOR", "WASHING_MACHINE", "AIR_CONDITIONER",
+  "MICROWAVE", "OTG_OVEN", "DISHWASHER", "WATER_PURIFIER", "AIR_PURIFIER",
+  "VACUUM_CLEANER", "CHIMNEY", "INDUCTION_COOKTOP", "MIXER_GRINDER",
+  "WATER_HEATER", "IRON", "PERSONAL_GROOMING", "FAN", "AIR_COOLER",
+  "CALCULATOR", "VR_HEADSET", "E_READER",
+] as const;
+
+export const DEVICE_CATEGORY_LABELS: Record<string, string> = {
+  MOBILE: "Mobile Phones",
+  FEATURE_PHONE: "Feature Phones",
+  TABLET: "Tablets",
+  LAPTOP: "Laptops",
+  DESKTOP: "Desktop / PC",
+  MONITOR: "Monitors",
+  COMPUTER_ACCESSORY: "Computer Accessories",
+  PRINTER_SCANNER: "Printers & Scanners",
+  TELEVISION: "Television",
+  PROJECTOR: "Projectors",
+  SET_TOP_BOX: "Set-Top Box",
+  SOUNDBAR: "Soundbars",
+  SPEAKER: "Speakers",
+  HEADPHONE_EARBUD: "Headphones & Earbuds",
+  SMARTWATCH: "Smartwatches",
+  FITNESS_BAND: "Fitness Bands",
+  CAMERA: "Cameras",
+  CAMCORDER: "Camcorders",
+  DRONE: "Drones",
+  GAMING_CONSOLE: "Gaming Consoles",
+  ROUTER_NETWORKING: "Routers & Networking",
+  POWER_BANK: "Power Banks",
+  UPS_INVERTER: "UPS & Inverters",
+  CCTV_SECURITY: "CCTV & Security",
+  SMART_HOME: "Smart Home Devices",
+  REFRIGERATOR: "Refrigerator",
+  WASHING_MACHINE: "Washing Machine",
+  AIR_CONDITIONER: "Air Conditioner",
+  MICROWAVE: "Microwave",
+  OTG_OVEN: "OTG / Oven Toaster Griller",
+  DISHWASHER: "Dishwasher",
+  WATER_PURIFIER: "Water Purifier",
+  AIR_PURIFIER: "Air Purifier",
+  VACUUM_CLEANER: "Vacuum Cleaner",
+  CHIMNEY: "Kitchen Chimney",
+  INDUCTION_COOKTOP: "Induction Cooktop",
+  MIXER_GRINDER: "Mixer Grinder",
+  WATER_HEATER: "Water Heater / Geyser",
+  IRON: "Iron",
+  PERSONAL_GROOMING: "Personal Grooming (Trimmer/Dryer)",
+  FAN: "Fans",
+  AIR_COOLER: "Air Cooler",
+  CALCULATOR: "Calculators",
+  VR_HEADSET: "VR Headsets",
+  E_READER: "E-Readers",
+};
+
 export const PAYMENT_MODES = ["Cash", "UPI", "Card", "Bank Transfer", "Credit", "Other"] as const;
 
 export interface PartLine {
@@ -277,6 +378,7 @@ export const serviceCentreColumns: Column[] = [
   { key: "customerState", label: "State", type: "text" },
   { key: "customerPincode", label: "Pincode", type: "text" },
   { key: "loggedBy", label: "Logged By", type: "text" },
+  { key: "deviceCategory", label: "Device Type", type: "text" },
   { key: "device", label: "Device / Vehicle", type: "text" },
   { key: "brandName", label: "Brand", type: "text" },
   { key: "modelName", label: "Model", type: "text" },
@@ -291,8 +393,14 @@ export const serviceCentreColumns: Column[] = [
   { key: "longitude", label: "Pickup Longitude", type: "text" },
   // --- Future-proofing fields (beyond AN-CRM's current CrmJobSheet shape) ---
   { key: "imeiOrSerialNumber", label: "IMEI / Serial Number", type: "text" },
+  { key: "faultDescription", label: "Fault in Device", type: "text" },
+  { key: "remark", label: "Remark", type: "text" },
+  { key: "deviceAppearance", label: "Appearance", type: "select-chip" },
+  { key: "fileBackupDescription", label: "File Backup Done", type: "text" },
+  { key: "warrantyStatus", label: "Warranty Type", type: "select-chip" },
   { key: "odometerReading", label: "Odometer Reading", type: "text" },
-  { key: "appointmentType", label: "Source Channel", type: "select-chip" },
+  { key: "appointmentType", label: "Appointment Type", type: "select-chip" },
+  { key: "requestType", label: "Request Type", type: "select-chip" },
   { key: "warrantyExpiryDate", label: "Warranty Expiry Date", type: "date" },
   { key: "slaDate", label: "Promised Delivery (SLA)", type: "date" },
   { key: "estimatedCost", label: "Estimated Cost", type: "currency" },
@@ -358,55 +466,90 @@ export const serviceCentreRows: Row[] = [
   },
 ];
 
+/**
+ * Workorder intake form. Grouped into the same four sections the AN-CRM
+ * reference app's own job-sheet intake screen uses — Customer / Address /
+ * Device / Issue — with this app's own extra operational fields following
+ * in two further sections rather than interleaved with them.
+ *
+ * Required-ness matches the reference app's server-side create validation
+ * (api/crm/jobsheets POST): customer name, phone, address, city, state,
+ * pincode and the fault description are all rejected server-side when
+ * blank there, and IMEI/serial + "logged by" are enforced at intake.
+ */
 export const serviceCentreFormFields: FormFieldDef[] = [
-  { key: "id", label: "Job ID", type: "text", required: true },
-  { key: "customer", label: "Customer Name", type: "relation", required: true },
   // --- Customer intake block ---
-  // Phone is first-class (and drives the returning-customer lookup on the
-  // create page — see ServiceCentreCustomerLookup). The address block
-  // mirrors AN-CRM's own jobsheet intake, where address/city/state/pincode
-  // are server-side required because the printed invoice and any B2B
-  // GST document are unusable without them.
-  { key: "customerPhone", label: "Customer Phone", type: "phone", required: true, placeholder: "Type to prefill a returning customer" },
-  { key: "customerEmail", label: "Customer Email", type: "email", required: false },
-  { key: "customerCompany", label: "Company (B2B customer)", type: "text", required: false },
-  { key: "customerGstin", label: "Customer GSTIN", type: "text", required: false, placeholder: "22AAAAA0000A1Z5 — leave blank for a B2C job" },
-  { key: "customerAddress", label: "Address", type: "textarea", required: true },
-  { key: "customerCity", label: "City", type: "text", required: true },
-  { key: "customerState", label: "State", type: "text", required: true },
-  { key: "customerPincode", label: "Pincode", type: "text", required: true },
+  // Phone is first and drives the returning-customer lookup on the create
+  // page (see serviceCentreCustomerLookup.ts) — the same "type a number,
+  // the rest fills itself in" behaviour as the reference intake screen,
+  // with every prefilled field left fully editable afterwards.
+  { section: "Customer", key: "customerPhone", label: "Contact No", type: "phone", required: true, placeholder: "Type to prefill a returning customer" },
+  { section: "Customer", key: "customer", label: "Customer Name", type: "relation", required: true, placeholder: "Fills in automatically if the number matches, or type it in" },
+  { section: "Customer", key: "customerEmail", label: "Customer Email", type: "email", required: false },
+  { section: "Customer", key: "customerCompany", label: "Company (B2B customer)", type: "text", required: false },
+  { section: "Customer", key: "customerGstin", label: "Customer GSTIN", type: "text", required: false, placeholder: "22AAAAA0000A1Z5 — leave blank for a B2C job" },
+
+  // The address block is required because the printed invoice and any B2B
+  // GST document are unusable without it — and because the place of supply
+  // (customer state vs. the service centre's own) is what decides whether
+  // the invoice splits tax as CGST+SGST or charges IGST.
+  { section: "Address", key: "customerAddress", label: "Address", type: "textarea", required: true },
+  { section: "Address", key: "customerPincode", label: "Pincode", type: "text", required: true, placeholder: "400001" },
+  { section: "Address", key: "customerState", label: "State", type: "text", required: true },
+  { section: "Address", key: "customerCity", label: "City", type: "text", required: true },
+
+  // --- Device ---
+  { section: "Device", key: "deviceCategory", label: "Device Type", type: "select", required: true, options: [...DEVICE_CATEGORIES], optionLabels: DEVICE_CATEGORY_LABELS },
+  // Brand/Model are free text backed by this partner's own catalog as
+  // suggestions, never a closed dropdown: a device that isn't catalogued
+  // yet must never block a walk-in from being booked in. The create page
+  // fills `suggestions` from the live Brands/Models records and the
+  // "+ Add new" links point at those modules' own create pages, which is
+  // this app's equivalent of the reference screen's add-and-save modal.
+  { section: "Device", key: "brandName", label: "Brand", type: "text", required: false, placeholder: "e.g. Samsung — pick a saved brand or type a new one" },
+  { section: "Device", key: "modelName", label: "Model", type: "text", required: false, placeholder: "e.g. Galaxy M14 — pick a saved model or type a new one" },
+  { section: "Device", key: "imeiOrSerialNumber", label: "IMEI / Serial Number", type: "text", required: true, placeholder: "Device IMEI, serial number, or vehicle VIN" },
+  { section: "Device", key: "deviceAppearance", label: "Appearance", type: "select", required: false, options: [...DEVICE_APPEARANCE_OPTIONS], optionLabels: DEVICE_APPEARANCE_LABELS },
+  { section: "Device", key: "fileBackupDescription", label: "File Backup Done", type: "select", required: false, options: [...FILE_BACKUP_OPTIONS], optionLabels: FILE_BACKUP_LABELS },
+  { section: "Device", key: "warrantyStatus", label: "Warranty Type", type: "select", required: false, options: [...WARRANTY_STATUSES], optionLabels: WARRANTY_STATUS_LABELS, help: "In-warranty and 90-day jobs are non-chargeable — their invoice lines bill at zero." },
+  { section: "Device", key: "device", label: "Device / Vehicle (free text)", type: "text", required: false, placeholder: "Optional one-line description when Brand/Model don't capture it" },
+  { section: "Device", key: "odometerReading", label: "Odometer Reading", type: "text", required: false, placeholder: "For vehicle service — e.g. 18420 km" },
+  { section: "Device", key: "standardAccessories", label: "Standard Accessories Received", type: "textarea", required: false },
+
+  // --- Issue ---
+  { section: "Issue", key: "faultDescription", label: "Fault in Device", type: "textarea", required: true, placeholder: "What's actually wrong — this is the job's title on every list and printed document" },
+  { section: "Issue", key: "issueDescription", label: "Issue Description (customer's own words)", type: "textarea", required: false },
+  { section: "Issue", key: "remark", label: "Remark", type: "text", required: false },
   // Free text, not a picker: the technician roster (PartnerStaff) is the
   // roster of people who REPAIR, while this records the front-desk person
-  // who took the job in — often not on that roster at all. AN-CRM makes
-  // the same call for its equivalent `ccoName` field.
-  { key: "loggedBy", label: "Logged By (intake staff)", type: "text", required: true, placeholder: "Name of the person taking the job in" },
-  { key: "device", label: "Device / Vehicle", type: "text", required: false, placeholder: "Free-text fallback — pick a real Brand/Model from the job's detail page once created" },
-  { key: "priority", label: "Priority", type: "select", required: true, options: ["Low","Medium","High","Urgent"] },
-  { key: "status", label: "Status", type: "select", required: true, options: ["Diagnosed","In repair","Ready","Delivered","On hold"] },
-  { key: "receivedDate", label: "Received Date", type: "date", required: true },
-  { key: "estimatedAmount", label: "Estimated Amount", type: "currency", required: false },
-  { key: "warrantyFlag", label: "Under Warranty", type: "boolean", required: false },
-  { key: "branch", label: "Branch / Location", type: "text", required: false },
-  { key: "latitude", label: "Pickup Latitude", type: "number", required: false },
-  { key: "longitude", label: "Pickup Longitude", type: "number", required: false },
-  // --- Future-proofing fields — all optional, defaulted so existing sample rows keep working unmodified ---
-  { key: "imeiOrSerialNumber", label: "IMEI / Serial Number", type: "text", required: false, placeholder: "Device IMEI, serial number, or odometer-tracked vehicle VIN" },
-  { key: "odometerReading", label: "Odometer Reading", type: "text", required: false, placeholder: "For vehicle service — e.g. 18420 km" },
-  { key: "appointmentType", label: "Source Channel", type: "select", required: false, options: [...APPOINTMENT_TYPES] },
-  { key: "deviceAppearance", label: "Intake Condition", type: "select", required: false, options: [...DEVICE_APPEARANCE_OPTIONS] },
-  { key: "warrantyStatus", label: "Warranty Status", type: "select", required: false, options: [...WARRANTY_STATUSES] },
-  { key: "warrantyExpiryDate", label: "Warranty Expiry Date", type: "date", required: false },
-  { key: "slaDate", label: "Promised Delivery (SLA)", type: "date", required: false },
-  { key: "estimatedCost", label: "Estimated Cost", type: "currency", required: false },
-  { key: "actualCost", label: "Actual Cost", type: "currency", required: false },
-  { key: "customerApprovalAt", label: "Customer Approval Timestamp", type: "text", required: false, placeholder: "Set automatically when the estimate is approved" },
-  { key: "beforePhotos", label: "Before Photos (URLs, comma-separated)", type: "textarea", required: false },
-  { key: "afterPhotos", label: "After Photos (URLs, comma-separated)", type: "textarea", required: false },
-  { key: "internalNotes", label: "Internal Notes (staff-only)", type: "textarea", required: false },
-  { key: "customerNotes", label: "Customer-visible Notes", type: "textarea", required: false },
-  { key: "standardAccessories", label: "Standard Accessories Received", type: "textarea", required: false },
-  { key: "fileBackupDescription", label: "File Backup Notes", type: "textarea", required: false },
-  { key: "issueDescription", label: "Issue Description (customer's own words)", type: "textarea", required: false },
+  // who took the job in — often not on that roster at all. The reference
+  // app makes the same call for its equivalent `ccoName` field, offering
+  // recently-used names as suggestions rather than a fixed list.
+  { section: "Issue", key: "loggedBy", label: "Logged By (CCO Name)", type: "text", required: true, placeholder: "Select a recent name or type a new one" },
+
+  // --- Job handling (this app's own operational fields) ---
+  { section: "Job handling", key: "id", label: "Job ID", type: "text", required: true },
+  { section: "Job handling", key: "priority", label: "Priority", type: "select", required: true, options: ["Low","Medium","High","Urgent"] },
+  { section: "Job handling", key: "status", label: "Status", type: "select", required: true, options: ["Diagnosed","In repair","Ready","Delivered","On hold"] },
+  { section: "Job handling", key: "receivedDate", label: "Received Date", type: "date", required: true },
+  { section: "Job handling", key: "appointmentType", label: "Appointment Type", type: "select", required: false, options: [...APPOINTMENT_TYPES], optionLabels: APPOINTMENT_TYPE_LABELS },
+  { section: "Job handling", key: "requestType", label: "Request Type", type: "select", required: false, options: [...REQUEST_TYPES], optionLabels: REQUEST_TYPE_LABELS },
+  { section: "Job handling", key: "branch", label: "Branch / Location", type: "text", required: false },
+  { section: "Job handling", key: "warrantyFlag", label: "Under Warranty", type: "boolean", required: false },
+  { section: "Job handling", key: "warrantyExpiryDate", label: "Warranty Expiry Date", type: "date", required: false },
+  { section: "Job handling", key: "slaDate", label: "Promised Delivery (SLA)", type: "date", required: false },
+  { section: "Job handling", key: "estimatedAmount", label: "Estimated Amount", type: "currency", required: false },
+  { section: "Job handling", key: "estimatedCost", label: "Estimated Cost", type: "currency", required: false },
+  { section: "Job handling", key: "actualCost", label: "Actual Cost", type: "currency", required: false },
+  { section: "Job handling", key: "latitude", label: "Pickup Latitude", type: "number", required: false },
+  { section: "Job handling", key: "longitude", label: "Pickup Longitude", type: "number", required: false },
+
+  // --- Notes & attachments ---
+  { section: "Notes & attachments", key: "customerApprovalAt", label: "Customer Approval Timestamp", type: "text", required: false, placeholder: "Set automatically when the estimate is approved" },
+  { section: "Notes & attachments", key: "beforePhotos", label: "Before Photos (URLs, comma-separated)", type: "textarea", required: false },
+  { section: "Notes & attachments", key: "afterPhotos", label: "After Photos (URLs, comma-separated)", type: "textarea", required: false },
+  { section: "Notes & attachments", key: "internalNotes", label: "Internal Notes (staff-only)", type: "textarea", required: false },
+  { section: "Notes & attachments", key: "customerNotes", label: "Customer-visible Notes", type: "textarea", required: false },
 ];
 
 export function getServiceCentreRecord(recordId: string): Row {
@@ -427,6 +570,7 @@ export function getServiceCentreDetailFields(record: Row): RecordField[] {
     { label: "State", value: r["customerState"], type: "text" },
     { label: "Pincode", value: r["customerPincode"], type: "text" },
     { label: "Logged By", value: r["loggedBy"], type: "text" },
+    { label: "Device Type", value: DEVICE_CATEGORY_LABELS[String(r["deviceCategory"])] ?? r["deviceCategory"], type: "text" },
     { label: "Device / Vehicle", value: r["device"], type: "text" },
     { label: "Brand", value: r["brandName"], type: "text" },
     { label: "Model", value: r["modelName"], type: "text" },
@@ -441,14 +585,19 @@ export function getServiceCentreDetailFields(record: Row): RecordField[] {
     { label: "Pickup Longitude", value: r["longitude"], type: "text" },
     { label: "IMEI / Serial Number", value: r["imeiOrSerialNumber"], type: "text" },
     { label: "Odometer Reading", value: r["odometerReading"], type: "text" },
-    { label: "Source Channel", value: r["appointmentType"], type: "text" },
-    { label: "Intake Condition", value: r["deviceAppearance"], type: "text" },
-    { label: "Warranty Status", value: r["warrantyStatus"], type: "text" },
+    { label: "Appointment Type", value: APPOINTMENT_TYPE_LABELS[String(r["appointmentType"])] ?? r["appointmentType"], type: "text" },
+    { label: "Request Type", value: REQUEST_TYPE_LABELS[String(r["requestType"])] ?? r["requestType"], type: "text" },
+    { label: "Appearance", value: DEVICE_APPEARANCE_LABELS[String(r["deviceAppearance"])] ?? r["deviceAppearance"], type: "text" },
+    { label: "File Backup Done", value: FILE_BACKUP_LABELS[String(r["fileBackupDescription"])] ?? r["fileBackupDescription"], type: "text" },
+    { label: "Warranty Type", value: WARRANTY_STATUS_LABELS[String(r["warrantyStatus"])] ?? r["warrantyStatus"], type: "text" },
     { label: "Warranty Expiry Date", value: r["warrantyExpiryDate"], type: "date" },
     { label: "Promised Delivery (SLA)", value: r["slaDate"], type: "date" },
     { label: "Estimated Cost", value: r["estimatedCost"], type: "currency" },
     { label: "Actual Cost", value: r["actualCost"], type: "currency" },
+    { label: "Fault in Device", value: r["faultDescription"], type: "text" },
     { label: "Issue Description", value: r["issueDescription"], type: "text" },
+    { label: "Remark", value: r["remark"], type: "text" },
+    { label: "Standard Accessories Received", value: r["standardAccessories"], type: "text" },
     { label: "Internal Notes", value: r["internalNotes"], type: "text" },
     { label: "Customer-visible Notes", value: r["customerNotes"], type: "text" },
   ];

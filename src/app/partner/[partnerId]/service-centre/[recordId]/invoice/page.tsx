@@ -17,7 +17,7 @@ registerPage({
   superAdminOnly: false,
   customizableRegions: [{ key: "document-template", label: "Sales Invoice layout" }],
   explanation:
-    "Renders a closed Service Centre workorder's Parts & Service Lines as a billable GST Sales Invoice — A4/A5 print only (no thermal, unlike POS). General layout shape (letterhead + meta box, Bill To, itemized GST table, totals box, signatures, declaration) references AN-CRM's invoice per CLAUDE.md's documented UX-pattern exception; built from scratch against this repo's own design tokens. Line items now derive from this partner's own live BOM materials, not the global sample catalog.",
+    "Renders a closed Service Centre workorder's Parts & Service Lines as a billable GST Sales Invoice — A4/A5 print only (no thermal, unlike POS). General layout shape (letterhead + meta box with the originating workorder number, Bill To and Payment boxes, itemized GST table, HSN summary, totals box, bank details, signatures, declaration) references AN-CRM's invoice per CLAUDE.md's documented UX-pattern exception; built from scratch against this repo's own design tokens. Tax is split by place of supply: a customer in the partner's own state is intra-state and taxed CGST + SGST at half the slab each, a customer elsewhere is inter-state and taxed IGST at the full slab. A B2C document carrying no tax at all (e.g. a fully non-chargeable warranty job) prints as a plain BILL rather than a TAX INVOICE. Line items derive from this partner's own live BOM materials, not the global sample catalog.",
   sourceFile: "src/app/partner/[partnerId]/service-centre/[recordId]/invoice/page.tsx",
 });
 
@@ -40,8 +40,25 @@ export default async function ServiceCentreInvoicePage({
       partnerName={partner?.businessName ?? "Your Business"}
       partnerGstin={partner?.gstin ?? ""}
       partnerPhone={partner?.businessContact ?? ""}
+      partnerAddress={partner?.addressLine ?? ""}
+      partnerCity={partner?.city ?? ""}
+      // The issuing partner's own state IS the place of supply — comparing
+      // it with the customer's is what decides CGST+SGST vs IGST.
+      partnerState={partner?.state ?? ""}
+      partnerPincode={partner?.pincode ?? ""}
+      bankDetails={{
+        accountName: partner?.bankAccountName ?? undefined,
+        bankName: partner?.bankName ?? undefined,
+        accountNumber: partner?.bankAccountNumber ?? undefined,
+        ifsc: partner?.bankIfsc ?? undefined,
+      }}
       invoiceNumber={invoiceNumber}
       invoiceDate={String(record["receivedDate"] ?? new Date().toISOString())}
+      workorderNumber={String(record["id"] ?? "")}
+      // Only what was actually collected at handover — an uncollected job
+      // prints an em dash rather than a guessed payment mode.
+      paymentMode={String(record["paymentMode"] ?? "")}
+      paymentReference={String(record["paymentReference"] ?? "")}
       customerName={String(record["customer"] ?? "Walk-in Customer")}
       customerPhone={String(record["customerPhone"] ?? "")}
       customerCompany={String(record["customerCompany"] ?? "")}

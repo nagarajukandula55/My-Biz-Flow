@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition, type FormEvent } from "react";
+import { Fragment, useRef, useState, useTransition, type FormEvent } from "react";
 
 export type FormFieldType =
   | "text"
@@ -28,8 +28,34 @@ export type FormFieldDef = {
   label: string;
   type: FormFieldType;
   required?: boolean;
+  /**
+   * Stored VALUES for a select/multi-select. Deliberately still a plain
+   * string[] so the Designer's option-override merge (applyCustomizations,
+   * which types its generic as `options?: string[]`) keeps working
+   * unchanged; display text that differs from the stored value goes in
+   * `optionLabels` instead of turning this into an object array.
+   */
   options?: string[];
+  /** value -> human label, for options whose stored code isn't readable ("OOW" -> "Out of Warranty (OOW)"). */
+  optionLabels?: Record<string, string>;
   placeholder?: string;
+  /**
+   * Section heading this field belongs under. Fields are rendered in the
+   * order given and a heading is emitted whenever the section changes —
+   * matching the grouped intake layout (Customer / Address / Device /
+   * Issue) rather than one long flat column of inputs.
+   */
+  section?: string;
+  /**
+   * Free-text field backed by a `<datalist>` of existing values — type
+   * anything, or pick a known one. Used for Brand/Model/"Logged by", where
+   * the catalog is a suggestion, not a closed set.
+   */
+  suggestions?: string[];
+  /** Renders a small "+ <label>" link beside the field, to the page that creates a new catalog entry. */
+  addNew?: { label: string; href: string };
+  /** Helper text rendered under the input. */
+  help?: string;
 };
 
 type RecordFormProps = {
@@ -137,24 +163,47 @@ export function RecordForm({ fields, initialValues, submitLabel, onSubmitDemo, a
   return (
     <form onSubmit={handleSubmit} className="w-full max-w-2xl space-y-5">
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-        {fields.map((field) => (
-          <div
-            key={field.key}
-            className={field.type === "textarea" ? "sm:col-span-2" : ""}
-          >
-            <label
-              htmlFor={field.key}
-              className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-text-muted"
-            >
-              {field.label}
-              {field.required && <span className="ml-1 text-danger">*</span>}
-            </label>
-            {renderInput(field, values[field.key], setValue)}
-            {lookupHint && lookup?.watchKey === field.key && (
-              <p className="mt-1 text-[11px] font-normal normal-case text-teal">{lookupHint}</p>
-            )}
-          </div>
-        ))}
+        {fields.map((field, i) => {
+          const prevSection = i === 0 ? undefined : fields[i - 1].section;
+          const showSection = Boolean(field.section) && field.section !== prevSection;
+          return (
+            <Fragment key={field.key}>
+              {showSection && (
+                <h2 className="mt-2 border-b border-border pb-1.5 font-display text-sm font-bold text-text sm:col-span-2">
+                  {field.section}
+                </h2>
+              )}
+              <div className={field.type === "textarea" ? "sm:col-span-2" : ""}>
+                <label
+                  htmlFor={field.key}
+                  className="mb-1.5 flex items-baseline justify-between gap-2 text-xs font-semibold uppercase tracking-wide text-text-muted"
+                >
+                  <span>
+                    {field.label}
+                    {field.required && <span className="ml-1 text-danger">*</span>}
+                  </span>
+                  {field.addNew && (
+                    <a
+                      href={field.addNew.href}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-semibold normal-case tracking-normal text-teal hover:underline"
+                    >
+                      + {field.addNew.label}
+                    </a>
+                  )}
+                </label>
+                {renderInput(field, values[field.key], setValue)}
+                {field.help && (
+                  <p className="mt-1 text-[11px] font-normal normal-case text-text-muted">{field.help}</p>
+                )}
+                {lookupHint && lookup?.watchKey === field.key && (
+                  <p className="mt-1 text-[11px] font-normal normal-case text-teal">{lookupHint}</p>
+                )}
+              </div>
+            </Fragment>
+          );
+        })}
       </div>
 
       <div className="flex items-center gap-3 pt-2">
@@ -218,7 +267,7 @@ function renderInput(
           </option>
           {field.options?.map((opt) => (
             <option key={opt} value={opt}>
-              {opt}
+              {field.optionLabels?.[opt] ?? opt}
             </option>
           ))}
         </select>
@@ -404,17 +453,32 @@ function renderInput(
       );
     case "relation":
     case "text":
-    default:
+    default: {
+      // A `suggestions` list makes this a combobox: the existing catalog
+      // entries are offered, but anything can still be typed — a device
+      // brand/model that isn't in the catalog yet must never block intake.
+      const listId = field.suggestions?.length ? `${field.key}-suggestions` : undefined;
       return (
-        <input
-          id={field.key}
-          type="text"
-          className={baseClass}
-          value={String(value ?? "")}
-          placeholder={field.placeholder}
-          required={field.required}
-          onChange={(e) => setValue(field.key, e.target.value)}
-        />
+        <>
+          <input
+            id={field.key}
+            type="text"
+            list={listId}
+            className={baseClass}
+            value={String(value ?? "")}
+            placeholder={field.placeholder}
+            required={field.required}
+            onChange={(e) => setValue(field.key, e.target.value)}
+          />
+          {listId && (
+            <datalist id={listId}>
+              {field.suggestions?.map((s) => (
+                <option key={s} value={s} />
+              ))}
+            </datalist>
+          )}
+        </>
       );
+    }
   }
 }
