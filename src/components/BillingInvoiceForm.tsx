@@ -4,6 +4,8 @@ import { useState, useTransition } from "react";
 import { LineItemsEditor, computeTotals, type ItemOption } from "./LineItemsEditor";
 import type { LineItem } from "@/lib/sample-data/billing";
 import { formatCurrencyINR } from "@/lib/format";
+import { INDIAN_STATES } from "@/lib/sample-data/geo";
+import { SearchSelectModal, type SearchSelectOption } from "./SearchSelectModal";
 
 export type ContactOption = {
   id: string;
@@ -20,11 +22,26 @@ export type ContactOption = {
 
 export type InvoiceType = "GST" | "Non-GST";
 
+/** A partner's own standing Customer directory (service-centre-customers module) — a second source of customer prefill alongside Billing Contacts, browsed via a search modal. */
+export type CustomerOption = {
+  id: string;
+  name: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  gstin?: string;
+};
+
 export type BillingInvoiceValues = {
   customer: string;
   /** Id of the Billing Contact this customer name was picked from, if any — see the Customer field below. Lets centralApi.ts look up the contact's actual state instead of guessing. */
   customerContactId?: string | null;
   invoiceType: InvoiceType;
+  /** Explicit place-of-supply choice — see the Intrastate/Interstate toggle below. Defaults from the customer-vs-partner state comparison but, once the user clicks a toggle button, is the real value sent to the server (never silently re-derived). */
+  supplyType?: "INTRASTATE" | "INTERSTATE";
   customerGstin: string;
   customerCompany: string;
   customerPhone: string;
@@ -50,6 +67,15 @@ function normalizeState(value?: string): string {
   return (value ?? "").trim().toLowerCase();
 }
 
+/** Auto-detected default for the Intrastate/Interstate toggle — a customer in this partner's own state is intra-state; blank customer state falls back to intra-state, same default ServiceCentreInvoiceDocument.tsx uses. Only a *default*: the toggle below is the real, sticky, user-overridable value. */
+function suggestSupplyType(customerSt?: string, partnerSt?: string | null): "INTRASTATE" | "INTERSTATE" {
+  const inter =
+    normalizeState(customerSt) !== "" &&
+    normalizeState(partnerSt ?? "") !== "" &&
+    normalizeState(customerSt) !== normalizeState(partnerSt ?? "");
+  return inter ? "INTERSTATE" : "INTRASTATE";
+}
+
 /**
  * Billing's invoice creation/edit form — a deliberate exception to
  * RecordForm (see LineItemsEditor's docs for why): customer/date fields
@@ -63,19 +89,22 @@ function normalizeState(value?: string): string {
  * full customer block (company/phone/email/address/city/state/pincode/
  * GSTIN) and per-line HSN codes so the printed tax invoice can show a real
  * Bill To and a correct B2B/B2C document type — same general shape as the
- * Service Centre Sales Invoice's own customer block. Place of supply is
- * derived automatically by comparing the customer's state against this
- * partner's own registered state (`partnerState`, passed in by the page)
- * to decide CGST+SGST (intra-state) vs IGST (inter-state), the same
- * comparison already used by ServiceCentreInvoiceDocument.tsx — not a
- * manual toggle, so the two GST-aware invoice flows in this app behave
- * consistently.
+ * Service Centre Sales Invoice's own customer block. Place of supply
+ * (Intrastate CGST+SGST vs Interstate IGST) starts from comparing the
+ * customer's state against this partner's own registered state
+ * (`partnerState`, passed in by the page) — the same comparison
+ * ServiceCentreInvoiceDocument.tsx uses — but is a real manual toggle
+ * (`supplyType` state), matching AN-CRM's real invoice-creation page: the
+ * auto-detected value is only the default / re-suggestion whenever a new
+ * customer/contact is picked, and once the user clicks a toggle button
+ * directly it sticks — it is never silently recomputed back on a re-render.
  */
 export function BillingInvoiceForm({
   initialValues,
   submitLabel,
   action,
   contactOptions,
+  customerOptions,
   itemOptions,
   partnerState,
 }: {
@@ -85,6 +114,8 @@ export function BillingInvoiceForm({
   action?: (values: Record<string, unknown>) => Promise<void>;
   /** Billing Contacts to pick a customer from (see billing-contacts.ts) — the field stays a free-text input with these as suggestions, so existing invoices with a plain name keep working. */
   contactOptions?: ContactOption[];
+  /** This partner's own Customers (service-centre-customers module) — browsed via the "Browse Customers" modal, a second explicit source of customer prefill alongside the Billing Contacts datalist above. */
+  customerOptions?: CustomerOption[];
   /** Billing Items catalog for the line-items "pick from catalog" autofill. */
   itemOptions?: ItemOption[];
   /** This partner's own registered state (Partner.state) — the place of
@@ -107,6 +138,17 @@ export function BillingInvoiceForm({
   const [customerCity, setCustomerCity] = useState(initialValues?.customerCity ?? "");
   const [customerState, setCustomerState] = useState(initialValues?.customerState ?? "");
   const [customerPincode, setCustomerPincode] = useState(initialValues?.customerPincode ?? "");
+  // Place of supply: a real manual toggle (Intrastate/Interstate), not just
+  // auto-detection. Initialized from the auto-detected comparison (or a
+  // persisted explicit value on edit) and re-suggested whenever a new
+  // customer/contact is picked — but only until the user clicks a toggle
+  // button directly, after which `supplyTypeManual` keeps the pick from
+  // being silently overwritten by a later customer pick or re-render.
+  const [supplyType, setSupplyType] = useState<"INTRASTATE" | "INTERSTATE">(
+    initialValues?.supplyType ?? suggestSupplyType(initialValues?.customerState, partnerState)
+  );
+  const [supplyTypeManual, setSupplyTypeManual] = useState(Boolean(initialValues?.supplyType));
+  const [browseCustomersOpen, setBrowseCustomersOpen] = useState(false);
   const [issueDate, setIssueDate] = useState(initialValues?.issueDate ?? "");
   const [dueDate, setDueDate] = useState(initialValues?.dueDate ?? "");
   const [discountAmount, setDiscountAmount] = useState(initialValues?.discountAmount ?? 0);
@@ -121,15 +163,9 @@ export function BillingInvoiceForm({
   const showTax = invoiceType === "GST";
   const totals = computeTotals(items, showTax);
 
-  // Place of supply: a customer in this partner's own state is an
-  // intra-state supply (CGST+SGST, half the slab each); a customer in a
-  // different state is inter-state (IGST, the full slab). Blank customer
-  // state falls back to intra-state — same default as
-  // ServiceCentreInvoiceDocument.tsx.
-  const interState =
-    normalizeState(customerState) !== "" &&
-    normalizeState(partnerState ?? "") !== "" &&
-    normalizeState(customerState) !== normalizeState(partnerState ?? "");
+  // The manual toggle (supplyType state, above) is the real value — CGST+SGST
+  // for INTRASTATE, IGST for INTERSTATE. It is not recomputed here.
+  const interState = supplyType === "INTERSTATE";
   const igstTotal = showTax && interState ? totals.taxTotal : 0;
   const cgstTotal = showTax && !interState ? totals.taxTotal / 2 : 0;
   const sgstTotal = showTax && !interState ? totals.taxTotal / 2 : 0;
@@ -156,6 +192,27 @@ export function BillingInvoiceForm({
     setCustomerCity(c.city ?? "");
     setCustomerState(c.state ?? "");
     setCustomerPincode(c.pincode ?? "");
+    if (!supplyTypeManual) setSupplyType(suggestSupplyType(c.state, partnerState));
+  }
+
+  /** Prefill from a picked Customer (service-centre-customers module) — a second, additional source of customer prefill alongside applyContact() above. Not linked to a Billing Contact id, so it clears customerContactId. */
+  function applyCustomer(c: CustomerOption) {
+    setCustomer(c.name);
+    setCustomerContactId(null);
+    setCustomerGstin(c.gstin ?? "");
+    setCustomerCompany("");
+    setCustomerPhone(c.phone ?? "");
+    setCustomerEmail(c.email ?? "");
+    setCustomerAddress(c.address ?? "");
+    setCustomerCity(c.city ?? "");
+    setCustomerState(c.state ?? "");
+    setCustomerPincode(c.pincode ?? "");
+    if (!supplyTypeManual) setSupplyType(suggestSupplyType(c.state, partnerState));
+  }
+
+  function handleSupplyTypeChange(next: "INTRASTATE" | "INTERSTATE") {
+    setSupplyType(next);
+    setSupplyTypeManual(true);
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -164,6 +221,7 @@ export function BillingInvoiceForm({
       customer,
       customerContactId,
       invoiceType,
+      supplyType,
       customerGstin,
       customerCompany,
       customerPhone,
@@ -188,7 +246,7 @@ export function BillingInvoiceForm({
           lineItemsSummary: items.map((it) => it.description).filter(Boolean).join("; "),
           subtotal: totals.subtotal,
           taxAmount: totals.taxTotal,
-          supplyType: showTax ? (interState ? "INTERSTATE" : "INTRASTATE") : undefined,
+          supplyType: showTax ? supplyType : undefined,
           cgstAmount: cgstTotal,
           sgstAmount: sgstTotal,
           igstAmount: igstTotal,
@@ -222,15 +280,35 @@ export function BillingInvoiceForm({
             ))}
           </div>
           {showTax && (
-            <p className="mt-3 text-xs text-text-muted">
-              Place of Supply:{" "}
-              <span className="font-semibold text-text">
-                {interState ? "Inter-state — IGST applies" : "Intra-state — CGST + SGST applies"}
-              </span>
-              {customerState ? ` (customer in ${customerState}` : ""}
-              {customerState && partnerState ? `, business in ${partnerState})` : customerState ? ")" : ""}
-              {!customerState && " — set the customer's state below to detect this automatically."}
-            </p>
+            <div className="mt-3">
+              <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-text-muted">Place of Supply</div>
+              <div className="flex gap-2 rounded-md border border-border bg-bg p-1">
+                {(
+                  [
+                    { key: "INTRASTATE", label: "Intrastate (CGST + SGST)" },
+                    { key: "INTERSTATE", label: "Interstate (IGST)" },
+                  ] as const
+                ).map((opt) => (
+                  <button
+                    key={opt.key}
+                    type="button"
+                    onClick={() => handleSupplyTypeChange(opt.key)}
+                    className={`flex-1 rounded px-3 py-1.5 text-sm font-semibold transition-colors ${
+                      supplyType === opt.key ? "bg-accent text-white" : "text-text-muted hover:text-text"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              <p className="mt-2 text-xs text-text-muted">
+                {supplyTypeManual
+                  ? "Manually set — won't change automatically when the customer's state changes."
+                  : customerState
+                  ? `Auto-detected from customer in ${customerState}${partnerState ? `, business in ${partnerState}` : ""} — click a button above to override.`
+                  : "Defaults to Intrastate until the customer's state is set below — click a button above to override."}
+              </p>
+            </div>
           )}
         </div>
 
@@ -289,24 +367,35 @@ export function BillingInvoiceForm({
         <h2 className="mb-3 font-display text-sm font-bold text-text">Bill To</h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="Customer" required>
-            <input
-              value={customer}
-              onChange={(e) => {
-                setCustomer(e.target.value);
-                // The field stays free-text (see the contactOptions doc below), so a
-                // linked contact only exists when the typed value exactly matches a
-                // suggestion's label. Any further edit — including picking a
-                // different suggestion — re-evaluates this and drops the link if it
-                // no longer matches, so a free-typed name never carries a stale id.
-                const match = contactOptions?.find((c) => c.label === e.target.value);
-                if (match) applyContact(match);
-                else setCustomerContactId(null);
-              }}
-              placeholder="Customer or partner name"
-              required
-              list={contactOptions ? "billing-contact-options" : undefined}
-              className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text outline-none focus:border-teal"
-            />
+            <div className="flex gap-2">
+              <input
+                value={customer}
+                onChange={(e) => {
+                  setCustomer(e.target.value);
+                  // The field stays free-text (see the contactOptions doc below), so a
+                  // linked contact only exists when the typed value exactly matches a
+                  // suggestion's label. Any further edit — including picking a
+                  // different suggestion — re-evaluates this and drops the link if it
+                  // no longer matches, so a free-typed name never carries a stale id.
+                  const match = contactOptions?.find((c) => c.label === e.target.value);
+                  if (match) applyContact(match);
+                  else setCustomerContactId(null);
+                }}
+                placeholder="Customer or partner name"
+                required
+                list={contactOptions ? "billing-contact-options" : undefined}
+                className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text outline-none focus:border-teal"
+              />
+              {customerOptions && customerOptions.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setBrowseCustomersOpen(true)}
+                  className="shrink-0 whitespace-nowrap rounded-md border border-border bg-bg px-3 py-2 text-sm font-medium text-text hover:bg-bg-sunken"
+                >
+                  Browse Customers
+                </button>
+              )}
+            </div>
             {contactOptions && (
               <datalist id="billing-contact-options">
                 {contactOptions.map((c) => (
@@ -370,12 +459,21 @@ export function BillingInvoiceForm({
             />
           </Field>
           <Field label="State">
-            <input
+            <select
               value={customerState}
-              onChange={(e) => setCustomerState(e.target.value)}
-              placeholder="Used for the CGST/SGST vs IGST split"
+              onChange={(e) => {
+                setCustomerState(e.target.value);
+                if (!supplyTypeManual) setSupplyType(suggestSupplyType(e.target.value, partnerState));
+              }}
               className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text outline-none focus:border-teal"
-            />
+            >
+              <option value="">Select a state</option>
+              {INDIAN_STATES.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
           </Field>
           <Field label="Pincode">
             <input
@@ -467,6 +565,24 @@ export function BillingInvoiceForm({
           <span className="text-sm font-semibold text-success">Saved (demo — no backend yet)</span>
         )}
       </div>
+
+      {customerOptions && (
+        <SearchSelectModal
+          open={browseCustomersOpen}
+          onClose={() => setBrowseCustomersOpen(false)}
+          title="Browse Customers"
+          searchPlaceholder="Search by name or phone…"
+          options={customerOptions.map<SearchSelectOption>((c) => ({
+            value: c.id,
+            label: c.name,
+            sublabel: [c.phone, c.city].filter(Boolean).join(" · ") || undefined,
+          }))}
+          onSelect={(opt) => {
+            const picked = customerOptions.find((c) => c.id === opt.value);
+            if (picked) applyCustomer(picked);
+          }}
+        />
+      )}
     </form>
   );
 }

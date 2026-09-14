@@ -31,8 +31,9 @@ export default async function EditBillingPage({ params }: { params: { partnerId:
   if (!record) notFound();
   const items = (record["items"] as LineItem[] | undefined) ?? [];
   const invoiceType = items.some((it) => it.taxRate > 0) ? "GST" : "Non-GST";
-  const [contacts, partner, itemOptions] = await Promise.all([
+  const [contacts, customers, partner, itemOptions] = await Promise.all([
     listBusinessRecords(params.partnerId, "billing-contacts"),
+    listBusinessRecords(params.partnerId, "service-centre-customers"),
     getPartner(params.partnerId),
     getLineItemCatalogOptions(params.partnerId),
   ]);
@@ -47,6 +48,19 @@ export default async function EditBillingPage({ params }: { params: { partnerId:
     state: c["state"] ? String(c["state"]) : undefined,
     pincode: c["pincode"] ? String(c["pincode"]) : undefined,
   }));
+  const customerOptions = customers
+    .filter((c) => c["status"] !== "Inactive")
+    .map((c) => ({
+      id: String(c["id"]),
+      name: String(c["name"] ?? c["id"]),
+      phone: c["phone"] ? String(c["phone"]) : undefined,
+      email: c["email"] ? String(c["email"]) : undefined,
+      address: c["address"] ? String(c["address"]) : undefined,
+      city: c["city"] ? String(c["city"]) : undefined,
+      state: c["state"] ? String(c["state"]) : undefined,
+      pincode: c["pincode"] ? String(c["pincode"]) : undefined,
+      gstin: c["gstin"] ? String(c["gstin"]) : undefined,
+    }));
 
   return (
     <AppShell topbarTitle={`Edit Invoice — ${mod?.label ?? "Billing"}`}>
@@ -59,6 +73,12 @@ export default async function EditBillingPage({ params }: { params: { partnerId:
               customer: String(record["customer"] ?? ""),
               customerContactId: record["customerContactId"] ? String(record["customerContactId"]) : null,
               invoiceType,
+              supplyType:
+                record["supplyType"] === "INTERSTATE"
+                  ? ("INTERSTATE" as const)
+                  : record["supplyType"] === "INTRASTATE"
+                  ? ("INTRASTATE" as const)
+                  : undefined,
               customerGstin: String(record["customerGstin"] ?? ""),
               customerCompany: String(record["customerCompany"] ?? ""),
               customerPhone: String(record["customerPhone"] ?? ""),
@@ -79,6 +99,7 @@ export default async function EditBillingPage({ params }: { params: { partnerId:
             submitLabel="Save changes"
             action={updateBusinessRecordAction.bind(null, params.partnerId, "billing", params.recordId)}
             contactOptions={contactOptions}
+            customerOptions={customerOptions}
             itemOptions={itemOptions}
             partnerState={partner?.state}
           />

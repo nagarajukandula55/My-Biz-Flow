@@ -25,8 +25,9 @@ registerPage({
 
 export default async function NewBillingPage({ params }: { params: { partnerId: string } }) {
   const mod = await getModule("billing");
-  const [contacts, partner, itemOptions] = await Promise.all([
+  const [contacts, customers, partner, itemOptions] = await Promise.all([
     listBusinessRecords(params.partnerId, "billing-contacts"),
+    listBusinessRecords(params.partnerId, "service-centre-customers"),
     getPartner(params.partnerId),
     getLineItemCatalogOptions(params.partnerId),
   ]);
@@ -41,6 +42,22 @@ export default async function NewBillingPage({ params }: { params: { partnerId: 
     state: c["state"] ? String(c["state"]) : undefined,
     pincode: c["pincode"] ? String(c["pincode"]) : undefined,
   }));
+  // This partner's own Customer directory (service-centre-customers module)
+  // — browsed via BillingInvoiceForm's "Browse Customers" modal, a second
+  // customer-prefill source alongside the Billing Contacts datalist above.
+  const customerOptions = customers
+    .filter((c) => c["status"] !== "Inactive")
+    .map((c) => ({
+      id: String(c["id"]),
+      name: String(c["name"] ?? c["id"]),
+      phone: c["phone"] ? String(c["phone"]) : undefined,
+      email: c["email"] ? String(c["email"]) : undefined,
+      address: c["address"] ? String(c["address"]) : undefined,
+      city: c["city"] ? String(c["city"]) : undefined,
+      state: c["state"] ? String(c["state"]) : undefined,
+      pincode: c["pincode"] ? String(c["pincode"]) : undefined,
+      gstin: c["gstin"] ? String(c["gstin"]) : undefined,
+    }));
 
   return (
     <AppShell topbarTitle={`New Invoice — ${mod?.label ?? "Billing"}`}>
@@ -52,6 +69,7 @@ export default async function NewBillingPage({ params }: { params: { partnerId: 
             submitLabel="Create Invoice"
             action={createBusinessRecordAction.bind(null, params.partnerId, "billing")}
             contactOptions={contactOptions}
+            customerOptions={customerOptions}
             itemOptions={itemOptions}
             partnerState={partner?.state}
           />
