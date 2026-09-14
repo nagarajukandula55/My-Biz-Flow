@@ -16,7 +16,7 @@ registerPage({
   superAdminOnly: true,
   customizableRegions: [],
   explanation:
-    "The main key for an entire module, per partner. A module being in a Partner Type's default module set only toggles it on for the plan — this is the actual per-partner secret that gates whether that module's data is reachable (assertModuleAccess in src/lib/tenant.ts). Issue one here to turn a module on for a specific partner, revoke to turn it off — independent of plan/type changes.",
+    "The main key for an entire module, per partner. A module being in a Partner Type's default module set only toggles it on for the plan — this is the actual per-partner secret that gates whether that module's data is reachable (assertModuleAccess in src/lib/tenant.ts). Issue one here to turn a module on for a specific partner, revoke to turn it off — independent of plan/type changes. A partner can no longer flip a module on themselves from Settings; they can only submit a request (status 'requested', accessKeys.requestAccessKey), which shows up here for a Super Admin to Approve (issueAccessKeyAction — same action as a normal grant) or Deny (revokeAccessKeyAction).",
   sourceFile: "src/app/admin/(protected)/access-keys/page.tsx",
 });
 
@@ -51,6 +51,7 @@ export default async function AccessKeysPage() {
                 MODULES.map((mod) => {
                   const record = keyByPair.get(`${partner.id}:${mod.slug}`);
                   const active = record?.status === "active";
+                  const requested = record?.status === "requested";
                   return (
                     <tr key={`${partner.id}:${mod.slug}`} className="border-b border-border/60">
                       <td className="py-2 pr-4 text-text">
@@ -62,13 +63,17 @@ export default async function AccessKeysPage() {
                           className={
                             active
                               ? "rounded-full bg-success-soft px-2 py-0.5 text-xs font-semibold text-success"
+                              : requested
+                              ? "rounded-full bg-warning-soft px-2 py-0.5 text-xs font-semibold text-warning"
                               : "rounded-full bg-bg px-2 py-0.5 text-xs font-semibold text-text-muted"
                           }
                         >
-                          {active ? "Active" : record ? "Revoked" : "None"}
+                          {active ? "Active" : requested ? "Requested" : record ? "Revoked" : "None"}
                         </span>
                       </td>
-                      <td className="py-2 pr-4 font-mono text-xs text-text-muted">{record?.key ?? "—"}</td>
+                      <td className="py-2 pr-4 font-mono text-xs text-text-muted">
+                        {requested ? "— pending approval" : record?.key ?? "—"}
+                      </td>
                       <td className="py-2 pr-4">
                         {active ? (
                           <form action={revokeAccessKeyAction}>
@@ -78,6 +83,23 @@ export default async function AccessKeysPage() {
                               Revoke
                             </button>
                           </form>
+                        ) : requested ? (
+                          <div className="flex items-center gap-2">
+                            <form action={issueAccessKeyAction}>
+                              <input type="hidden" name="partnerId" value={partner.id} />
+                              <input type="hidden" name="moduleSlug" value={mod.slug} />
+                              <button type="submit" className="btn-accent text-xs">
+                                Approve
+                              </button>
+                            </form>
+                            <form action={revokeAccessKeyAction}>
+                              <input type="hidden" name="partnerId" value={partner.id} />
+                              <input type="hidden" name="moduleSlug" value={mod.slug} />
+                              <button type="submit" className="btn-ghost text-xs">
+                                Deny
+                              </button>
+                            </form>
+                          </div>
                         ) : (
                           <form action={issueAccessKeyAction}>
                             <input type="hidden" name="partnerId" value={partner.id} />

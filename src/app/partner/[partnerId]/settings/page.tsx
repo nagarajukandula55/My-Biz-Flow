@@ -1,11 +1,13 @@
 import { AppShell } from "@/components/AppShell";
 import { registerPage } from "@/lib/designer/registry";
 import { getVisibleModuleSlugs } from "@/lib/designer/entitlements";
+import { listAccessKeysForPartner } from "@/lib/designer/accessKeys";
 import { getPartner } from "@/lib/partnerData";
 import { SettingsPageClient } from "./SettingsPageClient";
 import { BusinessProfileForm } from "./BusinessProfileForm";
 import { ConfigForm } from "./ConfigForm";
 import { NumberingPanel } from "./NumberingPanel";
+import { ServiceCentrePanel } from "./ServiceCentrePanel";
 import { SettingsTabs } from "./SettingsTabs";
 
 registerPage({
@@ -17,7 +19,7 @@ registerPage({
   superAdminOnly: false,
   customizableRegions: [],
   explanation:
-    "Partner settings: the demo-stub profile/branding block (business name, timezone, currency, logo upload, enabled-modules toggle grid pre-set from this partner's real ModuleAccessKey state via getVisibleModuleSlugs), then a real tab switcher (SettingsTabs — only one panel visible at a time) over four REAL persisted sections: Business Profile, Bank Details (both inside the one updatePartnerBusinessProfile form/action — see BusinessProfileForm.tsx), Config (updatePartnerConfig: default labour charge, UPI VPA, Terms & Conditions), and Numbering (per-document-type numbering overrides, folded in from the former standalone settings/numbering page).",
+    "Partner settings: the demo-stub profile/branding block (business name, timezone, currency, logo upload, enabled-modules toggle grid pre-set from this partner's real ModuleAccessKey state via getVisibleModuleSlugs), then a real tab switcher (SettingsTabs — only one panel visible at a time) over four REAL persisted sections: Business Profile, Bank Details (both inside the one updatePartnerBusinessProfile form/action — see BusinessProfileForm.tsx), Config (updatePartnerConfig: default labour charge, UPI VPA, Terms & Conditions), Numbering (per-document-type numbering overrides, folded in from the former standalone settings/numbering page), and — only for partners with the Service Centre module enabled — a Service Centre summary tab (ServiceCentrePanel: productDomains/labour charge/terms rollup plus live Telegram connection status, linking back to the tabs/page that actually edit each).",
   sourceFile: "src/app/partner/[partnerId]/settings/page.tsx",
 });
 
@@ -27,18 +29,29 @@ registerPage({
  * Client Component) and hands the interactive body to SettingsPageClient.
  */
 export default async function SettingsPage({ params }: { params: { partnerId: string } }) {
-  const [visibleModuleSlugs, partner] = await Promise.all([
+  const [visibleModuleSlugs, partner, accessKeys] = await Promise.all([
     getVisibleModuleSlugs(params.partnerId),
     getPartner(params.partnerId),
+    listAccessKeysForPartner(params.partnerId),
   ]);
+  const moduleStatuses: Record<string, "active" | "requested" | "none"> = {};
+  for (const key of accessKeys) {
+    if (key.status === "active" || key.status === "requested") moduleStatuses[key.moduleSlug] = key.status;
+  }
+  const showServiceCentre = visibleModuleSlugs.includes("service-centre");
   return (
     <AppShell topbarTitle="Settings">
-      <SettingsPageClient visibleModuleSlugs={visibleModuleSlugs} partnerId={params.partnerId} />
+      <SettingsPageClient
+        visibleModuleSlugs={visibleModuleSlugs}
+        moduleStatuses={moduleStatuses}
+        partnerId={params.partnerId}
+      />
       {partner && (
-        <SettingsTabs>
+        <SettingsTabs showServiceCentre={showServiceCentre}>
           <BusinessProfileForm partnerId={params.partnerId} partner={partner} />
           <ConfigForm partnerId={params.partnerId} partner={partner} />
           <NumberingPanel partnerId={params.partnerId} />
+          {showServiceCentre && <ServiceCentrePanel partnerId={params.partnerId} partner={partner} />}
         </SettingsTabs>
       )}
     </AppShell>

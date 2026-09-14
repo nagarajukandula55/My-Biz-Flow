@@ -29,17 +29,23 @@ const TABS = [
   { id: "bank-details", label: "Bank Details" },
   { id: "config", label: "Config" },
   { id: "numbering", label: "Numbering" },
+  { id: "service-centre", label: "Service Centre" },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
 
-export function SettingsTabs({ children }: { children: ReactNode }) {
+export function SettingsTabs({ children, showServiceCentre = false }: { children: ReactNode; showServiceCentre?: boolean }) {
   const [active, setActive] = useState<TabId>("business-profile");
+  // Service Centre tab only makes sense for a partner whose SC module is
+  // actually visible to them — same "only shown when the module is
+  // enabled" precedent as the Serialized Inventory block above on this
+  // same page.
+  const tabs = showServiceCentre ? TABS : TABS.filter((t) => t.id !== "service-centre");
 
   return (
     <div className="mt-6">
       <style>{`
-        #settings-panel-business, #settings-panel-config, #settings-panel-numbering { display: none; }
+        #settings-panel-business, #settings-panel-config, #settings-panel-numbering, #settings-panel-service-centre { display: none; }
         #settings-heading-business-profile, #settings-heading-bank-details,
         #settings-fields-business-profile, #settings-fields-bank-details { display: none; }
         [data-settings-tab="business-profile"] #settings-panel-business { display: block; }
@@ -50,9 +56,10 @@ export function SettingsTabs({ children }: { children: ReactNode }) {
         [data-settings-tab="bank-details"] #settings-fields-bank-details { display: contents; }
         [data-settings-tab="config"] #settings-panel-config { display: block; }
         [data-settings-tab="numbering"] #settings-panel-numbering { display: block; }
+        [data-settings-tab="service-centre"] #settings-panel-service-centre { display: block; }
       `}</style>
       <nav className="flex flex-wrap gap-2 border-b border-border pb-4">
-        {TABS.map((tab) => (
+        {tabs.map((tab) => (
           <button
             key={tab.id}
             type="button"

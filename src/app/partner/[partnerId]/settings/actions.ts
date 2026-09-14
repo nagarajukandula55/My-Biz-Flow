@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import { updatePartnerBusinessProfile, updatePartnerConfig } from "@/lib/partnerData";
+import { requestAccessKey } from "@/lib/designer/accessKeys";
 
 /** Real, persisted save — distinct from SettingsPageClient's demo-stub form above it on the same page. */
 export async function saveBusinessProfileAction(partnerId: string, formData: FormData): Promise<void> {
@@ -49,6 +50,25 @@ export async function savePartnerConfigAction(partnerId: string, formData: FormD
     invoiceTerms: String(formData.get("invoiceTerms") ?? ""),
     serviceRecordTerms: String(formData.get("serviceRecordTerms") ?? ""),
   });
+
+  revalidatePath(`/partner/${partnerId}/settings`);
+  redirect(`/partner/${partnerId}/settings?saved=1`);
+}
+
+/**
+ * A partner can no longer self-enable a module directly — this only
+ * records a pending request (ModuleAccessKey.status = "requested") for a
+ * Super Admin to approve/deny from /admin/access-keys (see
+ * requestAccessKey in src/lib/designer/accessKeys.ts). Nothing becomes
+ * reachable to this partner until that approval happens.
+ */
+export async function requestModuleAccessAction(partnerId: string, formData: FormData): Promise<void> {
+  await requireSessionPartnerId(partnerId);
+
+  const moduleSlug = String(formData.get("moduleSlug") ?? "").trim();
+  if (!moduleSlug) throw new Error("Module is required");
+
+  await requestAccessKey(partnerId, moduleSlug, "Requested by partner from Settings");
 
   revalidatePath(`/partner/${partnerId}/settings`);
   redirect(`/partner/${partnerId}/settings?saved=1`);
