@@ -269,9 +269,20 @@ export function WorkorderLifecycle({
     taxPercent: String(GST_RATES[GST_RATES.length - 2] ?? 18),
     type: MATERIAL_TYPES[0] as string,
     rateType: RATE_TYPES[1] as string, // "Without Tax" — matches this page's own Rate/"Excl. GST" convention
+    // Optional Brand/Model association — mirrors AN-CRM's own BOM model
+    // (brandId/deviceModelId, both optional: a part can be brand-agnostic or
+    // pinned to one exact model). Sourced from the SAME brandOptionsState/
+    // modelOptionsState already loaded on this page for the Customer &
+    // Device picker above, not a separate lookup.
+    brandId: "",
+    modelId: "",
   });
   const [addBomError, setAddBomError] = useState<string | null>(null);
   const [addBomPending, setAddBomPending] = useState(false);
+  // "that list should be visible here" — a simple filter over the existing
+  // BOM catalog, shown inside the same modal so the user can see what's
+  // already there before deciding to add a new material.
+  const [bomBrowseFilter, setBomBrowseFilter] = useState("");
   const [pendingLineId, setPendingLineId] = useState<string | null>(null);
   const [closeBlockedMessage, setCloseBlockedMessage] = useState<string | null>(null);
   const [confirmCloseOpen, setConfirmCloseOpen] = useState(false);
@@ -467,8 +478,38 @@ export function WorkorderLifecycle({
     persist({ partLines: next });
   }
 
+  /**
+   * The "Part / service name" free-text input is backed by the
+   * `wo-bom-materials` <datalist> below (bomMaterialsState) — same
+   * type-or-pick pattern RecordForm's own `suggestions`/`suggestionsByParent`
+   * fields use elsewhere in this app (a plain HTML datalist, no picker
+   * component). Typing a value that matches an existing material's label
+   * exactly (i.e. the user picked the suggestion, or typed the name of a
+   * material that's already in the BOM) stamps that material's own catalog
+   * price onto the line — materialId/serialized/unitPrice/taxRate — the
+   * same fields the old catalog-picker's addPart() used to stamp, so a
+   * looked-up part still prices out correctly instead of sitting at ₹0/18%
+   * defaults. Typing something that matches nothing just keeps it a plain
+   * free-text line, unpriced, exactly as before.
+   */
   function setPartLabel(lineId: string, label: string) {
-    setPartLines((prev) => prev.map((p) => (p.id === lineId ? { ...p, materialLabel: label } : p)));
+    setPartLines((prev) =>
+      prev.map((p) => {
+        if (p.id !== lineId) return p;
+        const match = bomMaterialsState.find((m) => m.label === label);
+        if (match) {
+          return {
+            ...p,
+            materialLabel: label,
+            materialId: match.id,
+            serialized: match.serialized,
+            unitPrice: match.rate ?? p.unitPrice,
+            taxRate: match.taxPercent ?? p.taxRate,
+          };
+        }
+        return { ...p, materialLabel: label, materialId: "" };
+      })
+    );
   }
 
   /** Editable per-line quantity — was previously hardcoded to 1 with no input at all. */
@@ -659,7 +700,10 @@ export function WorkorderLifecycle({
       taxPercent: String(GST_RATES[GST_RATES.length - 2] ?? 18),
       type: MATERIAL_TYPES[0] as string,
       rateType: RATE_TYPES[1] as string,
+      brandId: "",
+      modelId: "",
     });
+    setBomBrowseFilter("");
     setAddBomError(null);
     setAddBomOpen(true);
   }
@@ -694,6 +738,12 @@ export function WorkorderLifecycle({
     }
     if (!addBomMaterialAction) return;
     const taxPercent = Number(bomDraft.taxPercent) || 0;
+    // Resolve the picked Brand/Model ids to their display labels from the
+    // SAME options already loaded on this page (brandOptionsState/
+    // modelOptionsState) rather than a separate lookup — both optional,
+    // mirroring AN-CRM's own brand-agnostic-by-default BOM rows.
+    const pickedBrand = brandOptionsState.find((b) => b.value === bomDraft.brandId);
+    const pickedModel = modelOptionsState.find((m) => m.value === bomDraft.modelId);
     // "This rate is" — With Tax means the number just typed already has
     // taxPercent baked in, so the value actually stored (and read back by
     // every part-line consumer of bomMaterials[].rate, which all assume an
@@ -712,6 +762,10 @@ export function WorkorderLifecycle({
       taxPercent,
       type: bomDraft.type,
       status: "Active",
+      brandId: pickedBrand?.value || undefined,
+      brandName: pickedBrand?.label || undefined,
+      modelId: pickedModel?.value || undefined,
+      modelName: pickedModel?.label || undefined,
     });
     setAddBomPending(false);
     if (result?.error) {
@@ -1225,6 +1279,15 @@ export function WorkorderLifecycle({
           </div>
         </div>
 
+        {/* Backs the "Part / service name" free-text input's typeahead — see
+            setPartLabel()'s comment. Suggestions only, same inert-when-empty
+            behaviour as the "wo-staff-names" datalist further down. */}
+        <datalist id="wo-bom-materials">
+          {bomMaterialsState.map((m) => (
+            <option key={m.id} value={m.label} />
+          ))}
+        </datalist>
+
         {editable && bomMaterialsState.length === 0 && (
           <div className="mt-3 rounded-md border border-warning bg-warning-soft px-3 py-2 text-sm text-warning">
             No materials found in your BOM yet — add parts under Material Catalog to have them listed here for quick
@@ -1339,6 +1402,7 @@ export function WorkorderLifecycle({
                   <div className="flex flex-wrap items-end gap-2">
                     <input
                       type="text"
+                      list="wo-bom-materials"
                       placeholder="Part / service name"
                       value={line.materialLabel}
                       disabled={!editable || line.pending}
@@ -1692,7 +1756,41 @@ export function WorkorderLifecycle({
           in page.tsx), same as the button that opens it. */}
       <Modal open={addBomOpen} onClose={() => setAddBomOpen(false)} title="Add New Part to BOM">
         <div className="space-y-3">
+          {/* "that list should be visible here" — lets the user see what's
+              already in the BOM catalog before deciding to add a new
+              material, instead of a blank create form with no way to check
+              for a duplicate first. */}
           <div>
+            <label className="text-xs font-medium text-text-muted">Existing BOM materials ({bomMaterialsState.length})</label>
+            <input
+              type="text"
+              value={bomBrowseFilter}
+              onChange={(e) => setBomBrowseFilter(e.target.value)}
+              placeholder="Filter existing materials…"
+              className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text outline-none focus:border-accent"
+            />
+            <div className="mt-2 max-h-32 overflow-y-auto rounded-md border border-border">
+              {(() => {
+                const q = bomBrowseFilter.trim().toLowerCase();
+                const filtered = q
+                  ? bomMaterialsState.filter((m) => m.label.toLowerCase().includes(q))
+                  : bomMaterialsState;
+                if (filtered.length === 0) {
+                  return <p className="px-3 py-2 text-xs text-text-muted">No materials found.</p>;
+                }
+                return filtered.map((m) => (
+                  <div
+                    key={m.id}
+                    className="flex items-center justify-between gap-2 border-b border-border px-3 py-1.5 text-xs last:border-b-0"
+                  >
+                    <span className="text-text">{m.label}</span>
+                    {m.rate !== undefined && <span className="tabular-nums text-text-muted">₹{inr(m.rate)}</span>}
+                  </div>
+                ));
+              })()}
+            </div>
+          </div>
+          <div className="border-t border-border pt-3">
             <label className="text-xs font-medium text-text-muted">Part / Material Name</label>
             <input
               autoFocus
@@ -1728,6 +1826,44 @@ export function WorkorderLifecycle({
                 {UOM_OPTIONS.map((u) => (
                   <option key={u} value={u}>
                     {u}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          {/* Optional Brand/Model association, mirroring AN-CRM's own BOM
+              model (brandId/deviceModelId, both optional — a part can be
+              brand-agnostic or pinned to one exact model). Uses the SAME
+              brandOptionsState/modelOptionsState already loaded on this
+              page for the Customer & Device brand/model pickers above,
+              not a separate catalog lookup. */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-medium text-text-muted">Brand <span className="font-normal text-text-muted">(optional)</span></label>
+              <select
+                value={bomDraft.brandId}
+                onChange={(e) => setBomDraft((d) => ({ ...d, brandId: e.target.value, modelId: "" }))}
+                className="mt-1 w-full rounded-md border border-border bg-bg px-2 py-2 text-sm text-text outline-none focus:border-accent"
+              >
+                <option value="">Any brand</option>
+                {brandOptionsState.map((b) => (
+                  <option key={b.value} value={b.value}>
+                    {b.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-text-muted">Model <span className="font-normal text-text-muted">(optional)</span></label>
+              <select
+                value={bomDraft.modelId}
+                onChange={(e) => setBomDraft((d) => ({ ...d, modelId: e.target.value }))}
+                className="mt-1 w-full rounded-md border border-border bg-bg px-2 py-2 text-sm text-text outline-none focus:border-accent"
+              >
+                <option value="">Any model</option>
+                {modelOptionsState.map((m) => (
+                  <option key={m.value} value={m.value}>
+                    {m.label}
                   </option>
                 ))}
               </select>
