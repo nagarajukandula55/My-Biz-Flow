@@ -232,9 +232,21 @@ model Partner {
   planId             String?
   offerId            String?
 
+  /// Referral tracking: the Partner id (e.g. "SC0001") of whoever referred
+  /// this partner, captured from the optional referral code entered at
+  /// /signup. Null for organic signups. There is no self-referral (the code
+  /// can only name an already-existing partner) and no rewards/credit
+  /// ledger attached — this column records WHO referred WHOM only; issuing
+  /// an actual reward is real money movement and deliberately left as a
+  /// separate follow-up. Referral codes themselves aren't stored: they are
+  /// derived deterministically from the partner id (see
+  /// src/lib/referrals.ts), so there is nothing to generate or keep unique.
+  referredByPartnerId String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([referredByPartnerId])
   @@map("partners")
 }
 
@@ -580,6 +592,29 @@ model FieldForceSettings {
   providerSignupEnabled Boolean @default(false)
 
   @@map("field_force_settings")
+}
+
+/// Per-partner Telegram alert setup — the same shape as FieldForceSettings
+/// above (one row per partner, partnerId as the primary key, all-optional
+/// toggles), which is this app's established per-partner-settings pattern.
+///
+/// chatId is the partner's OWN Telegram chat/group id (they get it from
+/// @userinfobot or by adding a bot to their group). enabledTypes is the
+/// list of alert-occasion keys (see TELEGRAM_ALERT_TYPES in
+/// src/lib/telegram.ts, which map 1:1 onto the message-copy functions in
+/// src/lib/telegramTemplates.ts) the partner wants delivered there.
+///
+/// NOTE: settings here are real and honoured by sendPartnerTelegramAlert(),
+/// but actual delivery needs a real bot: with no TELEGRAM_BOT_TOKEN set the
+/// send no-ops with a console log, exactly like src/lib/sms.ts does without
+/// SMS_API_KEY. Nothing here fabricates a bot connection.
+model TelegramSettings {
+  partnerId    String   @id
+  chatId       String?
+  enabledTypes Json     @default("[]")
+  updatedAt    DateTime @updatedAt
+
+  @@map("telegram_settings")
 }
 
 /// The platform's own commission on a Booking — a single global row

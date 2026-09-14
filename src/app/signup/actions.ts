@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { createPartner } from "@/lib/partnerData";
 import { createSignupRequest } from "@/lib/partnerSignupRequestsData";
 import { getPartnerType } from "@/lib/designer/partnerTypesData";
+import { partnerIdFromReferralCode } from "@/lib/referrals";
 import { sendPartnerWelcomeEmail } from "@/lib/email";
 import { sendPartnerApplicationReceivedEmail } from "@/lib/email/partnerEmails";
 import {
@@ -32,13 +33,29 @@ export async function registerBusiness(formData: FormData) {
   const businessEmail = String(formData.get("businessEmail") ?? "").trim();
   const businessContact = String(formData.get("businessContact") ?? "").trim();
   const loginContact = String(formData.get("loginContact") ?? "").trim();
+  const referralCode = String(formData.get("referralCode") ?? "").trim();
 
   if (!partnerTypeId || !businessName || !city || !state || !pincode || !businessEmail || !businessContact || !loginContact) {
     throw new Error("Missing required signup fields");
   }
 
   const partnerType = await getPartnerType(partnerTypeId);
-  const input = { partnerTypeId, businessName, addressLine, city, state, pincode, gstin, businessEmail, businessContact, loginContact };
+  // No self-referral, no fabricated match — an unknown/malformed code
+  // simply resolves to undefined and the signup proceeds as organic.
+  const referredByPartnerId = referralCode ? await partnerIdFromReferralCode(referralCode) : undefined;
+  const input = {
+    partnerTypeId,
+    businessName,
+    addressLine,
+    city,
+    state,
+    pincode,
+    gstin,
+    businessEmail,
+    businessContact,
+    loginContact,
+    referredByPartnerId,
+  };
 
   if (partnerType?.requiresApproval) {
     let password: string;

@@ -163,9 +163,13 @@ export const MODULE_SUB_NAV: Record<string, PartnerNavSubItem[]> = {
     // group) — surfaced inside the module too, the way AN-CRM keeps a
     // Reports section inside the same sidebar the workorders live in.
     { key: "service-centre.analytics", label: "Analytics", href: "analytics", section: "Reports" },
+    { key: "service-centre.reports", label: "Report Builder", href: "service-centre/reports", section: "Reports" },
     { key: "service-centre.sc-profile", label: "SC Profiles", href: "service-centre/sc-profile", section: "Account" },
     { key: "service-centre.sub-scs", label: "Sub-Centres", href: "service-centre/sub-scs", section: "Account" },
     { key: "service-centre.technicians", label: "Technicians", href: "service-centre/technicians", section: "Account" },
+    { key: "service-centre.payments", label: "Payments & Settlements", href: "service-centre/payments", section: "Account" },
+    { key: "service-centre.telegram", label: "Telegram Alerts", href: "service-centre/telegram", section: "Account" },
+    { key: "service-centre.referrals", label: "Referrals", href: "service-centre/referrals", section: "Account" },
     { key: "service-centre.admin", label: "Admin", href: "service-centre/admin", section: "Account" },
   ],
   "accounting-gst": [
