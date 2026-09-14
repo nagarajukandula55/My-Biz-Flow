@@ -125,6 +125,7 @@ export function WorkorderLifecycle({
   cancelReason,
   stageHistory,
   receivedDate,
+  recordCreatedAt,
   bomMaterials,
   solutionOptions,
   brandOptions,
@@ -184,6 +185,15 @@ export function WorkorderLifecycle({
   stageHistory?: StageHistoryEntry[];
   /** Intake timestamp — the CREATED milestone's date. */
   receivedDate?: string;
+  /**
+   * The record's real, full-precision creation timestamp (DB `createdAt`,
+   * exposed by businessRecords.ts's toRow() as `recordCreatedAt`) — used
+   * for the CREATED milestone date and as TAT's start instead of
+   * `receivedDate` above, which is a plain date-only field with no
+   * time-of-day component (mirrors AN-CRM's own TAT, which runs from the
+   * job sheet's real `createdAt`, not a user-entered date).
+   */
+  recordCreatedAt?: string;
   /**
    * This partner's own live BOM materials (Inventory > Material Catalog) —
    * not the global sample catalog. `rate`/`taxPercent` are the material's
@@ -359,7 +369,15 @@ export function WorkorderLifecycle({
   // (running)" badge next to the stepper.
   const closedHistoryEntry = (stageHistory ?? []).find((h) => h.stage === "Closed");
   const tatEndIso = cancelledAt ?? closedHistoryEntry?.at;
-  const tatStartMs = receivedDate ? new Date(receivedDate).getTime() : undefined;
+  // Start from the record's real, full-precision createdAt rather than the
+  // date-only `receivedDate` field — the latter has no time-of-day
+  // component at all, so it was silently rounding every TAT down to
+  // midnight (mirrors AN-CRM's own TAT, which runs from createdAt too).
+  const tatStartMs = recordCreatedAt
+    ? new Date(recordCreatedAt).getTime()
+    : receivedDate
+      ? new Date(receivedDate).getTime()
+      : undefined;
   const tatEndMs = tatEndIso ? new Date(tatEndIso).getTime() : nowTick;
   const tatHours =
     tatStartMs !== undefined && !Number.isNaN(tatStartMs) && !Number.isNaN(tatEndMs)
@@ -568,12 +586,11 @@ export function WorkorderLifecycle({
     const idx = WORKORDER_STAGES.indexOf(stage);
     const next = WORKORDER_STAGES[idx + 1];
     if (!next) return;
-    if (next === "In Progress" && !approved) {
-      setCloseBlockedMessage(
-        "The customer must approve the estimate before repair work starts (skipped automatically for in-warranty jobs)."
-      );
-      return;
-    }
+    // Estimate approval no longer gates entering "In Progress" — AN-CRM's
+    // real flow has no equivalent block, so Proceed for Repair now works
+    // unconditionally. The estimate/approval UI itself (Mark Estimate
+    // Approved, the Estimate card, Generate/Print Estimate) is untouched —
+    // it's just no longer a precondition to advancing the stage.
     // Mirrors assertLegalStageTransition's server-side rule (and the
     // reference app's close route): a repair with nothing recorded against
     // it would produce an empty invoice at handover.
@@ -662,10 +679,37 @@ export function WorkorderLifecycle({
 
   // Primary stage-progress action's label — same rule advanceStage() itself
   // gates against (estimate approval / non-empty lines / unresolved
-  // serials), just surfaced up in the unified header too, alongside the
-  // identical button that already sits in the Stage actions row below.
+  // serials), surfaced as the header's primary button (the only place it
+  // now renders — see "Stage actions" below, which used to duplicate it).
   const primaryStageLabel =
     stage === "Created" ? "Proceed for Repair" : stage === "In Progress" ? "Mark Completed" : stage === "Completed" ? "Handover & Close" : null;
+
+  /**
+   * Explicit "Save" — matches AN-CRM's header, which has one even though
+   * (like here) most fields already persist on blur/change. Re-sends every
+   * field this panel can edit inline through the same
+   * patchServiceCentreWorkorderAction other controls already use, so a
+   * click always leaves the server in sync with whatever's on screen right
+   * now — no new mutation invented.
+   */
+  function saveAll() {
+    persist(
+      {
+        partLines,
+        serviceLines,
+        handoverNotes,
+        remark: remarkText,
+        engineerRemark: engineerRemarkText,
+        engineerName: engineer.trim() || undefined,
+      },
+      "Saved."
+    );
+  }
+
+  // Same eligibility AN-CRM's own "Generate Estimate" greys out on: there's
+  // nothing to estimate on a non-chargeable warranty job, once cancelled,
+  // or before any part/service line exists.
+  const canGenerateEstimate = !underWarranty && !cancelled && (serviceLines.length > 0 || partLines.length > 0);
 
   const deviceLabel = [brand.name, model.name].filter(Boolean).join(" · ") || "Not set";
 
@@ -694,6 +738,47 @@ export function WorkorderLifecycle({
           <PrintPopupLink href={`/partner/${partnerId}/service-centre/${workorderId}/document`} className="btn-outline">
             🖨 Print Workorder
           </PrintPopupLink>
+          {/* Generate Estimate — greyed out (not hidden) until there's
+              something to estimate, matching AN-CRM's own header exactly.
+              Same document the "Print Estimate" button used to open lower
+              on the page (removed from there to avoid a second identical
+              button once it's here). */}
+          <button
+            type="button"
+            className="btn-outline disabled:opacity-50"
+            disabled={!canGenerateEstimate}
+            onClick={() => openPrintPopup(`/partner/${partnerId}/service-centre/${workorderId}/estimate`)}
+          >
+            Generate Estimate
+          </button>
+          <button type="button" className="btn-outline" onClick={saveAll}>
+            Save
+          </button>
+          {/* Mark Part Pending / Resume Repair — the Hold side-state toggle,
+              moved up into the header row alongside AN-CRM's own layout
+              (previously it only existed further down the page). Same
+              handlers (confirmHold via the modal below / resumeFromHold) —
+              only reachable mid-repair, same as before. */}
+          {stage === "In Progress" && !cancelled && (
+            hold ? (
+              <button type="button" className="btn-outline" onClick={resumeFromHold}>
+                Resume Repair
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="btn-outline"
+                onClick={() => {
+                  setHoldReasonDraft(holdReason ?? "");
+                  setBrandJobNoDraft(brandJobNo);
+                  setActionError(null);
+                  setHoldModalOpen(true);
+                }}
+              >
+                Mark Part Pending
+              </button>
+            )
+          )}
           {!terminal && primaryStageLabel && (
             <button
               type="button"
@@ -760,7 +845,7 @@ export function WorkorderLifecycle({
           <div className="flex flex-wrap items-center gap-1">
             {MILESTONE_STEPPER.map((m, i) => {
               const done = i <= currentIdx;
-              const date = fmtStepDate(stepDateFor(m, history, receivedDate));
+              const date = fmtStepDate(stepDateFor(m, history, recordCreatedAt ?? receivedDate));
               return (
                 <div key={m} className="flex items-center gap-1">
                   <div className={`flex flex-col items-center gap-1 rounded-md px-3 py-1.5 ${done ? "bg-accent-soft" : "bg-bg-raised"}`}>
@@ -1125,28 +1210,13 @@ export function WorkorderLifecycle({
         </div>
       )}
 
-      {/* Hold (Parts Pending) — a side-state, not a stage; pauses editing without cancelling the job */}
-      {stage === "In Progress" && !cancelled && (
+      {/* Brand Job No. display — the Mark Part Pending / Resume Repair
+          toggle itself now lives once, in the header row above; this just
+          surfaces the supplier reference captured when the job was put on
+          hold. */}
+      {stage === "In Progress" && !cancelled && brandJobNo && (
         <div className="mt-4 flex flex-wrap items-center gap-3">
-          {hold ? (
-            <button type="button" className="btn-outline text-xs" onClick={resumeFromHold}>
-              Resume Repair
-            </button>
-          ) : (
-            <button
-              type="button"
-              className="btn-outline text-xs"
-              onClick={() => {
-                setHoldReasonDraft(holdReason ?? "");
-                setBrandJobNoDraft(brandJobNo);
-                setActionError(null);
-                setHoldModalOpen(true);
-              }}
-            >
-              Mark Part Pending
-            </button>
-          )}
-          {brandJobNo && <span className="text-xs text-text-muted">Brand Job No.: {brandJobNo}</span>}
+          <span className="text-xs text-text-muted">Brand Job No.: {brandJobNo}</span>
         </div>
       )}
 
@@ -1165,27 +1235,15 @@ export function WorkorderLifecycle({
         </div>
       )}
 
-      {/* Stage actions */}
+      {/* Stage actions — the primary stage-advance button ("Start
+          Progress"/"Mark Completed"/"Handover & Close"), "Print Job Card",
+          and "Cancel Workorder" that used to sit here were exact duplicates
+          of the header's primary stage-action button, "Print Workorder",
+          and "Cancel Job Sheet" respectively (same handlers: advanceStage,
+          the same /document print route, and the same cancel modal) — a
+          leftover bottom action row from before the header was unified.
+          Removed; only the actions with no header equivalent remain. */}
       <div className="mt-6 flex flex-wrap items-center gap-3">
-        {!terminal && (
-          <button
-            type="button"
-            className="btn-accent disabled:opacity-50"
-            onClick={advanceStage}
-            disabled={stage === "In Progress" && hold}
-          >
-            {stage === "Created" && "Start Progress"}
-            {stage === "In Progress" && "Mark Completed"}
-            {stage === "Completed" && "Handover & Close"}
-          </button>
-        )}
-        <button
-          type="button"
-          className="btn-outline"
-          onClick={() => openPrintPopup(`/partner/${partnerId}/service-centre/${workorderId}/document`)}
-        >
-          Print Job Card
-        </button>
         {/* The priced quote the customer approves. Only offered once there's
             something to price, and never for a warranty job — a
             non-chargeable repair has no estimate to approve. */}
@@ -1196,22 +1254,6 @@ export function WorkorderLifecycle({
             onClick={() => openPrintPopup(`/partner/${partnerId}/service-centre/${workorderId}/estimate`)}
           >
             Print Estimate
-          </button>
-        )}
-        {/* Cancel is available from any non-terminal stage — a job can be
-            abandoned before, during, or after repair, but never once it's
-            already Closed or Cancelled. */}
-        {!terminal && (
-          <button
-            type="button"
-            className="btn-outline text-danger"
-            onClick={() => {
-              setCancelReasonDraft("");
-              setActionError(null);
-              setCancelModalOpen(true);
-            }}
-          >
-            Cancel Workorder
           </button>
         )}
         {stage === "Closed" && !cancelled && !invoice && (

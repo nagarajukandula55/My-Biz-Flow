@@ -4,13 +4,10 @@ import { registerPage } from "@/lib/designer/registry";
 import { notFound } from "next/navigation";
 import { RecordDetail } from "@/components/RecordDetail";
 import {
-  getServiceCentreDetailFields,
   getServiceCentreTimeline,
   serviceCentreRelated,
-  serviceCentreColumns,
   extractLifecycleFromRecord,
 } from "@/lib/sample-data/service-centre";
-import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
 import { getBusinessRecord, listBusinessRecords } from "@/lib/businessRecords";
 import { getPartner } from "@/lib/partnerData";
 import { activeStaffNames } from "@/lib/sample-data/service-centre-staff-names";
@@ -26,11 +23,10 @@ registerPage({
   kind: "detail",
   superAdminOnly: false,
   customizableRegions: [
-    { key: "field-grid", label: "Detail field grid" },
     { key: "timeline", label: "Activity timeline" },
     { key: "related-records", label: "Related records rail" },
   ],
-  explanation: "Read-only detail view of a single workorder, rendered via the shared RecordDetail component (field grid + activity timeline), with Edit and Delete actions in the header. The WorkorderLifecycle panel above it carries the real domain logic: Brand/Model selection against this partner's own live catalogs, an estimate-approval gate before repair work starts (skipped for in-warranty jobs, which are also non-chargeable throughout), a Hold (Parts Pending) side-state distinct from Cancelled, and real Billing-invoice creation on Close.",
+  explanation: "Read-only detail view of a single workorder, rendered via the shared RecordDetail component (activity timeline + related records rail only — the old field-grid section was removed as pure duplication of AN-CRM's real job-sheet page), with Delete in the header. The WorkorderLifecycle panel above it carries the real domain logic: Brand/Model selection against this partner's own live catalogs, an estimate-approval feature (Mark Estimate Approved) that does NOT gate stage progression (matching AN-CRM — Proceed for Repair works unconditionally), a Hold (Parts Pending) side-state distinct from Cancelled, and real Billing-invoice creation on Close.",
   sourceFile: "src/app/partner/[partnerId]/service-centre/[recordId]/page.tsx",
 });
 
@@ -46,7 +42,6 @@ export default async function ServiceCentreDetailPage({
   const mod = await getModule("service-centre");
   const record = await getBusinessRecord(params.partnerId, "service-centre", params.recordId);
   if (!record) notFound();
-  const fields = await applyCustomizationsToDetailFields("service-centre.detail", getServiceCentreDetailFields(record), serviceCentreColumns);
   const timeline = getServiceCentreTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
   const lifecycle = extractLifecycleFromRecord(record);
@@ -150,6 +145,7 @@ export default async function ServiceCentreDetailPage({
           cancelReason={lifecycle.cancelReason}
           stageHistory={lifecycle.stageHistory}
           receivedDate={typeof record["receivedDate"] === "string" ? (record["receivedDate"] as string) : undefined}
+          recordCreatedAt={typeof record["recordCreatedAt"] === "string" ? (record["recordCreatedAt"] as string) : undefined}
           bomMaterials={bomMaterials}
           solutionOptions={solutionOptions}
           solutionLaborCharges={solutionLaborCharges}
@@ -163,18 +159,22 @@ export default async function ServiceCentreDetailPage({
         {/* Everything below is secondary detail, not a second page header —
             the WO#/customer/device summary, back/print/proceed/cancel
             actions and Edit/Delete all now live once, in the unified
-            header WorkorderLifecycle renders above. This block just holds
-            the remaining fields (company/GSTIN/address/city/state/pincode
-            etc.) that aren't in the curated Customer & Device card, plus
-            the Activity timeline and Related records rail. */}
+            header WorkorderLifecycle renders above. The old "More details"
+            field grid (Customer Email, Company, GSTIN, address/city/state/
+            pincode, priority, dates, cost tracking, notes, etc.) has been
+            removed outright — AN-CRM's real job-sheet detail page has no
+            equivalent section, and it was pure duplication/clutter here.
+            This block now only holds the Activity timeline and Related
+            records rail, via RecordDetail with an empty `fields` list
+            (RecordDetail only renders the field-grid box when fields is
+            non-empty, so passing none renders nothing extra). */}
         <div className="mt-8">
         <RecordDetail
-          fields={fields}
+          fields={[]}
           recordLabel={recordLabel}
           searchParams={searchParams}
           timeline={timeline}
           related={serviceCentreRelated}
-          headerSlot={<h2 className="font-display text-base font-bold text-text">More details</h2>}
         />
         </div>
       </div>

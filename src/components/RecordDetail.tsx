@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { StatusChip, type StatusVariant } from "./StatusChip";
 import { SuccessBanner } from "./SuccessBanner";
-import { formatCurrencyINR, formatDate } from "@/lib/format";
+import { formatCurrencyINR, formatDate, formatDateTime } from "@/lib/format";
 
 export type FieldType =
   | "text"
@@ -179,18 +179,20 @@ export function RecordDetail({ fields, timeline, related, headerSlot, recordLabe
         )}
         {headerSlot}
 
-        <div className="rounded-lg border border-border bg-bg-raised p-5">
-          <div className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
-            {fields.map((field) => (
-              <div key={field.label}>
-                <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">
-                  {field.label}
+        {fields.length > 0 && (
+          <div className="rounded-lg border border-border bg-bg-raised p-5">
+            <div className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
+              {fields.map((field) => (
+                <div key={field.label}>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+                    {field.label}
+                  </div>
+                  <div className="mt-1 text-sm">{renderFieldValue(field)}</div>
                 </div>
-                <div className="mt-1 text-sm">{renderFieldValue(field)}</div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {timeline && timeline.length > 0 && (
           <div className="rounded-lg border border-border bg-bg-raised p-5">
@@ -203,7 +205,7 @@ export function RecordDetail({ fields, timeline, related, headerSlot, recordLabe
                     <div className="text-text">{entry.label}</div>
                     <div className="text-xs text-text-muted">
                       {entry.actor ? `${entry.actor} · ` : ""}
-                      {formatDate(entry.timestamp)}
+                      {formatDateTime(entry.timestamp)}
                     </div>
                   </div>
                 </li>

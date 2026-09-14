@@ -734,7 +734,12 @@ export function getServiceCentreTimeline(record: Row): TimelineEntry[] {
     entries.push({ id, label, timestamp });
   };
 
-  push("received", "Workorder created at intake", record["receivedDate"]);
+  // `recordCreatedAt` (added to every record by businessRecords.ts's toRow(),
+  // from the DB row's real createdAt) carries a genuine time-of-day; the
+  // user-entered `receivedDate` field is date-only and would always render
+  // as a fake midnight. Falls back to receivedDate only for the
+  // theoretical case recordCreatedAt is somehow missing.
+  push("received", "Workorder created at intake", record["recordCreatedAt"] ?? record["receivedDate"]);
 
   const history = (record["stageHistory"] as StageHistoryEntry[] | undefined) ?? [];
   history.forEach((h, i) => {

@@ -85,13 +85,13 @@ function assertLegalStageTransition(
     throw new Error(`Cannot move workorder from "${currentStage}" directly to "${nextStage}" — stages can't be skipped or reversed.`);
   }
 
-  if (nextStage === "In Progress") {
-    const underWarranty = Boolean(existing["warrantyFlag"]);
-    const approved = Boolean(existing["estimateApproved"]);
-    if (!underWarranty && !approved) {
-      throw new Error("The customer must approve the estimate before repair work starts.");
-    }
-  }
+  // Estimate approval is intentionally NOT a precondition for entering "In
+  // Progress" — AN-CRM's real job-sheet flow (Proceed for Repair /
+  // Complete Repair & Invoice) has no equivalent gate, so this used to
+  // block a transition the reference app allows unconditionally. The
+  // estimate/approval feature itself (Mark Estimate Approved, the Estimate
+  // card, Generate/Print Estimate) is unaffected — it simply no longer
+  // blocks stage progression.
 
   if (nextStage === "Completed") {
     // Mirrors the reference app's close route ("Cannot close a job sheet

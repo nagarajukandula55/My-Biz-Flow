@@ -10,8 +10,16 @@ import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 import type { Row } from "@/components/DataTable";
 
-function toRow(row: { recordKey: string; data: unknown }): Row {
-  return { ...(row.data as Record<string, unknown>), id: row.recordKey };
+function toRow(row: { recordKey: string; data: unknown; createdAt: Date }): Row {
+  // `recordCreatedAt` is the real, immutable DB insert timestamp (full
+  // date+time) — always placed AFTER the data spread so it wins over any
+  // stray same-named copy that got persisted into the JSON blob by an
+  // earlier `{...existing, ...patch}` write-back (see updateBusinessRecord).
+  // Added so callers have a genuine full-precision "when was this record
+  // actually created" moment to use for TAT/timeline purposes, instead of
+  // relying on a user-entered, date-only field like `receivedDate` (which
+  // has no time-of-day component at all).
+  return { ...(row.data as Record<string, unknown>), id: row.recordKey, recordCreatedAt: row.createdAt.toISOString() };
 }
 
 export async function listBusinessRecords(partnerId: string, moduleSlug: string): Promise<Row[]> {
