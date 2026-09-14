@@ -54,8 +54,16 @@ const STATUS_VARIANT: Record<string, StatusVariant> = {
   "In repair": "amber",
   "Ready": "teal",
   "Delivered": "success",
-  "On hold": "danger"
+  "On hold": "danger",
+  // Kept in sync with the record's real onHold/holdReason state by
+  // setWorkorderHoldAction (see actions.ts) — this is the label shown
+  // whenever a job is on hold waiting for a part, everywhere `status` is
+  // displayed (list page, detail page, printed documents).
+  "Part Pending": "danger",
 };
+
+/** Label written into the legacy `status` field when a workorder is put on/taken off hold — see setWorkorderHoldAction. */
+export const PART_PENDING_STATUS_LABEL = "Part Pending";
 
 /** Single-page workorder lifecycle stages — see WorkorderLifecycle.tsx. Kept as-is for backward compat with existing records/UI. */
 export type WorkorderStage = "Created" | "In Progress" | "Completed" | "Closed";
@@ -638,7 +646,7 @@ export const serviceCentreFormFields: FormFieldDef[] = [
   { section: "Job handling", column: 1, key: "id", label: "Job ID", type: "text", required: false, createHidden: true, help: "Assigned automatically from this partner's workorder numbering scheme." },
   { section: "Job handling", column: 1, key: "priority", label: "Priority", type: "select", required: false, options: ["Low","Medium","High","Urgent"], createHidden: true },
   // Set to "Created" server-side at intake; advanced by the lifecycle panel.
-  { section: "Job handling", column: 1, key: "status", label: "Status", type: "select", required: false, options: ["Diagnosed","In repair","Ready","Delivered","On hold"], createHidden: true },
+  { section: "Job handling", column: 1, key: "status", label: "Status", type: "select", required: false, options: ["Diagnosed","In repair","Ready","Delivered","On hold","Part Pending"], createHidden: true },
   // Stamped with the intake time server-side (the record's createdAt).
   { section: "Job handling", column: 1, key: "receivedDate", label: "Received Date", type: "date", required: false, createHidden: true },
   { section: "Job handling", column: 1, key: "appointmentType", label: "Appointment Type", type: "select", required: false, options: [...APPOINTMENT_TYPES], optionLabels: APPOINTMENT_TYPE_LABELS, createHidden: true },

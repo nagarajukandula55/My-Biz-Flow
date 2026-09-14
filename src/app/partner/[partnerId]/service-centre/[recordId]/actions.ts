@@ -5,6 +5,7 @@ import { createBusinessRecord, updateBusinessRecord, getBusinessRecord, listBusi
 import {
   extractLifecycleFromRecord,
   WORKORDER_STAGES,
+  PART_PENDING_STATUS_LABEL,
   type ServiceLine,
   type StageHistoryEntry,
   type WorkorderStage,
@@ -402,11 +403,25 @@ export async function setWorkorderHoldAction(
 ): Promise<void> {
   await assertCanActOnServiceCentre(partnerId);
   const record = await requireWorkorder(partnerId, workorderId);
+  // The legacy `status` field (serviceCentreColumns / serviceCentreFormFields)
+  // is a completely separate value from the real onHold lifecycle side-state
+  // and was never updated when a job went on/off hold — so the Workorders
+  // list page (which renders `status` raw, not the stage/onHold-derived
+  // milestone the detail page uses) kept showing whatever status was set at
+  // intake even while the job was genuinely on hold waiting for a part.
+  // Sync it here so the list — and anywhere else `status` is displayed —
+  // reflects "Part Pending" while on hold, restoring whatever status was in
+  // effect immediately before the hold once it's resumed.
+  const extra: Record<string, unknown> = hold
+    ? { statusBeforeHold: record["status"], status: PART_PENDING_STATUS_LABEL }
+    : { status: record["statusBeforeHold"] ?? record["status"], statusBeforeHold: undefined };
   await updateBusinessRecord(partnerId, "service-centre", workorderId, {
     ...record,
     onHold: hold,
     holdReason: hold ? reason ?? "Awaiting parts" : undefined,
     holdSince: hold ? new Date().toISOString() : undefined,
+    ...extra,
   });
   revalidatePath(`/partner/${partnerId}/service-centre/${workorderId}`);
+  revalidatePath(`/partner/${partnerId}/service-centre`);
 }

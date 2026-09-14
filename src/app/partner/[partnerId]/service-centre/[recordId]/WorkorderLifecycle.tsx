@@ -1557,6 +1557,29 @@ export function WorkorderLifecycle({
           modal further down. */}
       <div className="mt-6 rounded-md border border-border bg-bg-raised p-4">
         <h2 className="font-display text-base font-bold text-text">Engineer Remark &amp; Solution</h2>
+
+        {!editable && (
+          <div className="mt-3 rounded-md border border-warning bg-warning-soft px-3 py-2 text-sm text-warning">
+            {cancelled
+              ? "This workorder is cancelled — its Engineer Remark & Solution can no longer be edited."
+              : stage === "Closed"
+                ? "This workorder is closed — its Engineer Remark & Solution can no longer be edited."
+                : hold
+                  ? "This workorder is on hold (Part Pending) — resume the repair below to edit the Engineer Remark & Solution."
+                  : "Only editable while the job is In Progress — move it to In Progress to add a solution or edit these fields."}
+          </div>
+        )}
+
+        {editable && solutionOptions.length === 0 && (
+          <div className="mt-3 rounded-md border border-warning bg-warning-soft px-3 py-2 text-sm text-warning">
+            No Solutions found in your catalog yet — add one under{" "}
+            <Link href={`/partner/${partnerId}/service-centre/solutions/new`} className="font-semibold underline">
+              Solutions
+            </Link>{" "}
+            to have it listed here for quick selection.
+          </div>
+        )}
+
         <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
           <label className="text-xs font-semibold uppercase tracking-wide text-text-muted">
             Engineer Remark
