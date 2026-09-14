@@ -10,12 +10,19 @@ import {
   getSubscriptionState,
   getOffer,
   computePartnerDueAmount,
+  computeCyclePrice,
   BILLING_CYCLES,
+  CYCLE_DISCOUNT_PCT,
   cycleLabel,
 } from "@/lib/subscriptionData";
 import { chooseSubscriptionAction } from "./actions";
 import { RazorpayCheckoutButton } from "@/components/RazorpayCheckoutButton";
 import { env } from "@/lib/env";
+// Real per-tier feature bullets (verbatim from AN-CRM's own plan
+// definitions, see this file's own comment) and the tier-vs-price index
+// this app already uses on /pricing -- reused here so the Subscription
+// page's plan picker shows the same real features, not invented copy.
+import { TIER_FEATURES, tierForPlanIndex } from "@/lib/designer/pageTiers";
 
 /** My Biz Flow is the seller on this one document — see src/lib/env.ts. */
 const PLATFORM_BILLING_HEADER = `My Biz Flow — a unit of ${env.platformLegalEntityName()}`;
@@ -148,18 +155,38 @@ export default async function PartnerSubscriptionPage({ params }: { params: { pa
             ) : (
               <form action={action} className="mt-4 space-y-4">
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                  {bundledPlans.map((p) => (
-                    <label
-                      key={p.id}
-                      className="flex cursor-pointer items-start gap-2 rounded-md border border-border bg-bg p-3 text-sm text-text"
-                    >
-                      <input type="radio" name="planId" value={p.id} required className="mt-0.5 h-4 w-4 accent-accent" />
-                      <span>
-                        <span className="block font-semibold">{p.name}</span>
-                        <span className="block text-xs text-text-muted">₹{p.price.toLocaleString("en-IN")}/mo base</span>
-                      </span>
-                    </label>
-                  ))}
+                  {bundledPlans.map((p, i) => {
+                    const tier = tierForPlanIndex(i, bundledPlans.length);
+                    const features = TIER_FEATURES[tier];
+                    return (
+                      <label
+                        key={p.id}
+                        className="flex cursor-pointer items-start gap-2 rounded-md border border-border bg-bg p-3 text-sm text-text"
+                      >
+                        <input type="radio" name="planId" value={p.id} required className="mt-0.5 h-4 w-4 accent-accent" />
+                        <span>
+                          <span className="block font-semibold">{p.name}</span>
+                          <span className="block text-xs text-text-muted">₹{p.price.toLocaleString("en-IN")}/mo base</span>
+                          <span className="mt-1.5 block space-y-0.5 text-xs text-text-muted">
+                            {BILLING_CYCLES.map((c) => (
+                              <span key={c} className="block">
+                                {cycleLabel(c)}: ₹{computeCyclePrice(p.price, c).toLocaleString("en-IN")}
+                                {" "}total ({CYCLE_DISCOUNT_PCT[c]}% off)
+                              </span>
+                            ))}
+                          </span>
+                          <ul className="mt-2 space-y-1">
+                            {features.map((feature) => (
+                              <li key={feature} className="flex items-start gap-1.5 text-xs text-text">
+                                <span className="mt-1 h-1 w-1 flex-shrink-0 rounded-full bg-accent" />
+                                {feature}
+                              </li>
+                            ))}
+                          </ul>
+                        </span>
+                      </label>
+                    );
+                  })}
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   {BILLING_CYCLES.map((c) => (
@@ -168,14 +195,14 @@ export default async function PartnerSubscriptionPage({ params }: { params: { pa
                       className="flex cursor-pointer items-center gap-2 rounded-md border border-border bg-bg p-3 text-sm text-text"
                     >
                       <input type="radio" name="billingCycle" value={c} required className="h-4 w-4 accent-accent" />
-                      {cycleLabel(c)}
+                      {cycleLabel(c)} ({CYCLE_DISCOUNT_PCT[c]}% off)
                     </label>
                   ))}
                 </div>
                 <p className="text-xs text-text-muted">
-                  Pricing shown is monthly base — Yearly and 2-Year cycles carry a built-in discount for committing
-                  longer, applied at checkout
-                  {offer ? `, plus your active offer "${offer.name}"` : ""}.
+                  Yearly and 2-Year totals shown above already include the discount — that&apos;s the real amount
+                  charged, not the plan&apos;s monthly rate multiplied out
+                  {offer ? `, plus your active offer "${offer.name}" applied at checkout` : ""}.
                 </p>
                 <button type="submit" className="btn-accent">
                   Choose plan

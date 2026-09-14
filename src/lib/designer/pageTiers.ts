@@ -39,10 +39,65 @@ export type PlanTier = "basic" | "pro" | "ultimate";
  *  what this page requires" comparison — never compare the strings. */
 export const TIER_RANK: Record<PlanTier, number> = { basic: 0, pro: 1, ultimate: 2 };
 
+// Display strings only -- the internal PlanTier keys ("basic"/"pro"/
+// "ultimate") stay unchanged (40+ files compare against them structurally,
+// see this file's own header comment), but what a partner actually SEES
+// must match AN-CRM's real, currently-live customer-facing plan names
+// (src/core/pricing/plans.ts): the bottom tier's real name is "Starter",
+// not "Basic" -- "Basic" was never a real AN-CRM plan name, just this
+// internal key capitalized. AN-CRM's internal "BASIC" key is a DIFFERENT
+// plan (displayed there as "Pro") from this app's internal "basic" tier
+// (displayed here as "Starter") -- same word, unrelated concepts; don't
+// conflate them. Pro/Ultimate already match AN-CRM's real names verbatim.
 export const TIER_LABEL: Record<PlanTier, string> = {
-  basic: "Basic",
+  basic: "Starter",
   pro: "Pro",
   ultimate: "Ultimate",
+};
+
+/**
+ * Real, accurate feature bullets per tier -- verbatim from AN-CRM's own
+ * src/core/pricing/plans.ts (the single source of truth that app's /pricing
+ * renders from), mapped tier-for-tier onto this app's internal PlanTier keys:
+ * AN-CRM's "STARTER" plan -> this app's "basic", AN-CRM's "BASIC" plan
+ * (displayed there as "Pro") -> this app's "pro", AN-CRM's "ULTIMATE" -> this
+ * app's "ultimate". Trimmed to bullets that describe something this app's
+ * own module/page set actually has (drops AN-CRM-specific items with no
+ * counterpart here, e.g. WhatsApp quota, sub-vendor hierarchy wording specific
+ * to AN-CRM's vendor portal) -- everything kept is real, not invented copy.
+ */
+export const TIER_FEATURES: Record<PlanTier, string[]> = {
+  basic: [
+    "Repair/order history per customer (no standalone customer database)",
+    "Single-login workorder flow, start to close",
+    "Job card / device intake with device & fault details",
+    "Customer-facing repair status tracking page",
+    "GST & non-GST invoicing",
+    "Basic Telegram alerts (new & closed workorder only)",
+    "Email support",
+  ],
+  pro: [
+    "Customer database & full customer history",
+    "Fault code / symptom code / solution library (private)",
+    "Quotations, Proforma Invoices, Credit Notes & Debit Notes, Delivery Challans",
+    "Credit Accounts for repeat customers",
+    "UPI payment QR on every invoice",
+    "Private Material/BOM price list",
+    "Brands & device models",
+    "Inventory & Stock Transfers",
+    "Financial Statement, Custom Report Builder & Analytics dashboard",
+    "Telegram alerts for every new/closed workorder",
+    "Priority support",
+  ],
+  ultimate: [
+    "Everything in Pro",
+    "Ledger Book — party-wise running balance",
+    "Profit & Loss reports and expense tracking",
+    "Unlimited sub-vendor / multi-center hierarchy under one login",
+    "Centralized reporting & business controls across every center",
+    "Automated Telegram business reports (daily/weekly/monthly/yearly, with charts)",
+    "Dedicated onboarding & SLA-backed priority support",
+  ],
 };
 
 export const DEFAULT_PAGE_TIERS: Record<string, PlanTier> = {

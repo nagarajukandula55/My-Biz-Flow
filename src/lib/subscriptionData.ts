@@ -34,6 +34,9 @@ export const BILLING_CYCLES: BillingCycle[] = ["Yearly", "TwoYearly"];
 const CYCLE_MONTHS: Record<BillingCycle, number> = { Yearly: 12, TwoYearly: 24 };
 const CYCLE_DISCOUNT: Record<BillingCycle, number> = { Yearly: 0.35, TwoYearly: 0.55 };
 
+/** Exported whole-percent form of CYCLE_DISCOUNT, for display (e.g. "35% off") without every caller re-deriving `* 100` from the fractional rate. */
+export const CYCLE_DISCOUNT_PCT: Record<BillingCycle, number> = { Yearly: 35, TwoYearly: 55 };
+
 // Accepts `string` (not just BillingCycle) on purpose: a Partner row created
 // before this change may still carry a legacy cycle ("Monthly"/"Quarterly"/
 // "HalfYearly") that Super Admin hasn't corrected yet. Showing that raw

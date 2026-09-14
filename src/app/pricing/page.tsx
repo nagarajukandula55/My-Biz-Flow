@@ -13,6 +13,11 @@ import { listActivePartnerTypes, type PartnerTypeRecord, type PlanTier } from "@
 import { TIER_LABEL, tierForPlanIndex } from "@/lib/designer/pageTiers";
 import { MODULE_TIER_FEATURES } from "@/lib/designer/moduleTiers";
 import { SITE_URL, SITE_NAME } from "@/lib/seo";
+// Real Yearly/2-Year totals (35%/55% off, AN-CRM's actual live discounts --
+// see subscriptionData.ts) computed from each plan's monthly rate, so a
+// visitor sees the real amount they'd pay up front instead of only a
+// monthly base rate with billing-cycle math left implicit.
+import { BILLING_CYCLES, CYCLE_DISCOUNT_PCT, computeCyclePrice, cycleLabel } from "@/lib/subscriptionData";
 
 // Reads live DB-backed module label overrides / partner type + plan data —
 // must not be baked into a static build.
@@ -196,6 +201,13 @@ export default async function PricingPage({
             <p className="mt-2 text-sm text-text-muted">
               Up to {plan.maxUsers} users · {plan.maxLocations} location{plan.maxLocations === 1 ? "" : "s"}
             </p>
+            <div className="mt-2 space-y-0.5 text-xs text-text-muted">
+              {BILLING_CYCLES.map((c) => (
+                <div key={c}>
+                  {cycleLabel(c)}: <span className="font-semibold text-text">₹{computeCyclePrice(plan.price, c).toLocaleString("en-IN")}</span> total ({CYCLE_DISCOUNT_PCT[c]}% off)
+                </div>
+              ))}
+            </div>
 
             <div className="mt-5 flex-1">
               <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted">

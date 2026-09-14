@@ -38,6 +38,17 @@ const prisma = new PrismaClient();
 // fall back to it.
 const SERVICE_CENTRE_PAGES = DEFAULT_PAGE_TIERS;
 
+// Exported (not just a local literal in main()) so scripts/backfill-plan-prices.ts
+// can correct any already-stored Plan row (wrong price and/or a stale display
+// name like "Basic" left over from before this seed's naming convention)
+// against these exact same values, instead of re-typing the same
+// name/price pairs a second time and risking the two drifting apart.
+export const LAUNCH_PLANS = [
+  { id: "PLAN-BASIC", name: "Starter", price: 799, billingCycle: "monthly", includedModuleSlugs: ["service-centre"], maxUsers: 1, maxLocations: 1, isPublic: true },
+  { id: "PLAN-PRO", name: "Pro", price: 1199, billingCycle: "monthly", includedModuleSlugs: ["service-centre", "inventory", "billing"], maxUsers: 5, maxLocations: 1, isPublic: true },
+  { id: "PLAN-ULTIMATE", name: "Ultimate", price: 2499, billingCycle: "monthly", includedModuleSlugs: ["service-centre", "inventory", "billing", "accounting-gst"], maxUsers: 9999, maxLocations: 9999, isPublic: true },
+];
+
 async function main() {
   // Plan ids kept as PLAN-BASIC/PLAN-PRO/PLAN-ULTIMATE (matching this
   // app's basic/pro/ultimate PlanTier keys) even though the bottom tier's
@@ -54,11 +65,7 @@ async function main() {
   // which rendered as ₹79,900/₹1,19,900/₹2,49,900 on every plan-priced page
   // and would have charged 100x too much through Razorpay — fixed to the
   // real rupee values.
-  const plans = [
-    { id: "PLAN-BASIC", name: "Starter", price: 799, billingCycle: "monthly", includedModuleSlugs: ["service-centre"], maxUsers: 1, maxLocations: 1, isPublic: true },
-    { id: "PLAN-PRO", name: "Pro", price: 1199, billingCycle: "monthly", includedModuleSlugs: ["service-centre", "inventory", "billing"], maxUsers: 5, maxLocations: 1, isPublic: true },
-    { id: "PLAN-ULTIMATE", name: "Ultimate", price: 2499, billingCycle: "monthly", includedModuleSlugs: ["service-centre", "inventory", "billing", "accounting-gst"], maxUsers: 9999, maxLocations: 9999, isPublic: true },
-  ];
+  const plans = LAUNCH_PLANS;
 
   for (const plan of plans) {
     await prisma.plan.upsert({
