@@ -8,6 +8,8 @@ import { BrandLogo } from "./BrandLogo";
 import { getIconComponent } from "@/lib/designer/icons";
 import { signOutAction } from "@/app/login/actions";
 import { ThemeToggle } from "./ThemeToggle";
+import { AlertsBell } from "./AlertsBell";
+import type { Alert } from "@/lib/alerts";
 
 export type NavDotVariant = "teal" | "amber" | "neutral";
 
@@ -58,7 +60,16 @@ const ICON_CLASS: Record<NavDotVariant, string> = {
  * static server-computed flag, since one Sidebar instance now serves
  * every page in the partner section.
  */
-export function Sidebar({ partnerId, navGroups }: { partnerId: string; navGroups: NavGroup[] }) {
+export function Sidebar({
+  partnerId,
+  navGroups,
+  alerts,
+}: {
+  partnerId: string;
+  navGroups: NavGroup[];
+  /** Server-computed in the partner layout (computeAlerts) — see AlertsBell. */
+  alerts: Alert[];
+}) {
   const pathname = usePathname();
 
   function hrefFor(relative: string) {
@@ -86,8 +97,9 @@ export function Sidebar({ partnerId, navGroups }: { partnerId: string; navGroups
 
   return (
     <aside className="sticky top-0 flex h-screen w-64 flex-shrink-0 flex-col bg-sidebar-bg print:hidden">
-      <div className="flex items-center gap-2 px-4 py-4">
+      <div className="flex items-center justify-between gap-2 px-4 py-4">
         <BrandLogo height={24} />
+        <AlertsBell partnerId={partnerId} alerts={alerts} />
       </div>
 
       <nav className="flex-1 space-y-4 overflow-y-auto px-2.5 pb-4">

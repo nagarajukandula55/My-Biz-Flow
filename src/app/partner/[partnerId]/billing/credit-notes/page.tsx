@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/AppShell";
+import { renderTierGate } from "@/lib/pageTierGate";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { CreditNotesClientTable } from "./CreditNotesClientTable";
@@ -24,6 +25,9 @@ registerPage({
 export const dynamic = "force-dynamic";
 
 export default async function CreditNotesPage({ params }: { params: { partnerId: string } }) {
+  const tierGate = await renderTierGate(params.partnerId, "billing.credit-notes.list", "Credit & Debit Notes");
+  if (tierGate) return <AppShell topbarTitle={"Credit & Debit Notes"}>{tierGate}</AppShell>;
+
   const columns = await applyCustomizations("billing.credit-notes.list", creditNoteColumns);
   const rows = await listBusinessRecords(params.partnerId, "billing-credit-notes");
 

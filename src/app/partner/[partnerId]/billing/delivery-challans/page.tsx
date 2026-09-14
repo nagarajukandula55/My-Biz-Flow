@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/AppShell";
+import { renderTierGate } from "@/lib/pageTierGate";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { DeliveryChallansClientTable } from "./DeliveryChallansClientTable";
@@ -24,6 +25,9 @@ registerPage({
 export const dynamic = "force-dynamic";
 
 export default async function DeliveryChallansPage({ params }: { params: { partnerId: string } }) {
+  const tierGate = await renderTierGate(params.partnerId, "billing.delivery-challans.list", "Delivery Challans");
+  if (tierGate) return <AppShell topbarTitle={"Delivery Challans"}>{tierGate}</AppShell>;
+
   const columns = await applyCustomizations("billing.delivery-challans.list", deliveryChallanColumns);
   const rows = await listBusinessRecords(params.partnerId, "billing-delivery-challans");
 

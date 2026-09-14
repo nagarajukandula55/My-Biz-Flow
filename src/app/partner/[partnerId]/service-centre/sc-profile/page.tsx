@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/AppShell";
+import { renderTierGate } from "@/lib/pageTierGate";
 import { registerPage } from "@/lib/designer/registry";
 import { ScProfileClientTable } from "./ScProfileClientTable";
 import { ScProfileNewButton } from "./ScProfileNewButton";
@@ -25,6 +26,9 @@ registerPage({
 export const dynamic = "force-dynamic";
 
 export default async function ScProfileListPage({ params }: { params: { partnerId: string } }) {
+  const tierGate = await renderTierGate(params.partnerId, "service-centre.sc-profile.list", "Service Centre Profiles");
+  if (tierGate) return <AppShell topbarTitle={"Service Centre Profiles"}>{tierGate}</AppShell>;
+
   const columns = await applyCustomizations("service-centre.sc-profile.list", scProfileColumns);
   const rows = await listBusinessRecords(params.partnerId, "service-centre-sc-profile");
 

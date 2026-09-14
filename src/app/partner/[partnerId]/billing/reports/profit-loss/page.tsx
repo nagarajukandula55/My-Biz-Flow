@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/AppShell";
+import { renderTierGate } from "@/lib/pageTierGate";
 import { registerPage } from "@/lib/designer/registry";
 import { DataTable, type Column, type Row } from "@/components/DataTable";
 import { listBusinessRecords } from "@/lib/businessRecords";
@@ -46,6 +47,9 @@ export default async function ProfitLossReportPage({
   params: { partnerId: string };
   searchParams?: { from?: string; to?: string };
 }) {
+  const tierGate = await renderTierGate(params.partnerId, "billing.reports.profit-loss", "the Profit & Loss report");
+  if (tierGate) return <AppShell topbarTitle={"Profit & Loss"}>{tierGate}</AppShell>;
+
   const fallback = defaultRange();
   const from = searchParams?.from || fallback.from;
   const to = searchParams?.to || fallback.to;

@@ -26,24 +26,17 @@
  * Usage: DATABASE_URL=... npx tsx scripts/seed-launch-data.ts
  */
 import { PrismaClient } from "@prisma/client";
+import { DEFAULT_PAGE_TIERS } from "../src/lib/designer/pageTiers";
 
 const prisma = new PrismaClient();
 
-const SERVICE_CENTRE_PAGES = {
-  "service-centre.list": "basic",
-  "service-centre.create": "basic",
-  "service-centre.detail": "basic",
-  "service-centre.solutions.list": "basic",
-  "service-centre.fault-codes.list": "pro",
-  "service-centre.symptom-codes.list": "pro",
-  "service-centre.brands.list": "pro",
-  "service-centre.models.list": "pro",
-  "service-centre.sc-profile.list": "pro",
-  "service-centre.staff.list": "pro",
-  "service-centre.staff-login": "pro",
-  "service-centre.staff-change-password": "pro",
-  "service-centre.admin": "ultimate",
-} as const;
+// The pageId -> tier split is no longer a literal here. It lives in
+// src/lib/designer/pageTiers.ts so that the RUNTIME enforcement path
+// (assertPageTierAccess / getPageTierAccess in src/lib/tenant.ts) and this
+// seed read the exact same map — when it was only a literal in this script,
+// the split existed solely as a database row and nothing in the app could
+// fall back to it.
+const SERVICE_CENTRE_PAGES = DEFAULT_PAGE_TIERS;
 
 async function main() {
   // Plan ids kept as PLAN-BASIC/PLAN-PRO/PLAN-ULTIMATE (matching this

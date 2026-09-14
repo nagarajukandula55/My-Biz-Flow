@@ -186,7 +186,10 @@ export default function DesignSystemPage() {
       <Section title="Sidebar + AppShell">
         <div className="overflow-hidden rounded-lg border border-border" style={{ height: 420 }}>
           <div className="flex h-full w-full overflow-auto">
-            <Sidebar partnerId="demo" navGroups={sampleNavGroups} />
+            {/* alerts=[] deliberately: this is the design-system gallery, not a
+                real partner — showing a fabricated alert count here would put
+                invented data on screen. The empty state is the honest render. */}
+            <Sidebar partnerId="demo" navGroups={sampleNavGroups} alerts={[]} />
             <AppShell topbarTitle="Dashboard">
               <p className="mbf-prose text-sm text-text-muted">
                 Sidebar (dark sidebar-bg, grouped nav with teal / amber / neutral

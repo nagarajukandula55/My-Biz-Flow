@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/AppShell";
+import { renderTierGate } from "@/lib/pageTierGate";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { QuotationsClientTable } from "./QuotationsClientTable";
@@ -24,6 +25,9 @@ registerPage({
 export const dynamic = "force-dynamic";
 
 export default async function QuotationsPage({ params }: { params: { partnerId: string } }) {
+  const tierGate = await renderTierGate(params.partnerId, "billing.quotations.list", "Quotations");
+  if (tierGate) return <AppShell topbarTitle={"Quotations"}>{tierGate}</AppShell>;
+
   const columns = await applyCustomizations("billing.quotations.list", quotationColumns);
   const rows = await listBusinessRecords(params.partnerId, "billing-quotations");
 

@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/AppShell";
+import { renderTierGate } from "@/lib/pageTierGate";
 import { registerPage } from "@/lib/designer/registry";
 import { ExpensesClientTable } from "./ExpensesClientTable";
 import { ExpensesNewButton } from "./ExpensesNewButton";
@@ -25,6 +26,9 @@ registerPage({
 export const dynamic = "force-dynamic";
 
 export default async function ExpensesPage({ params }: { params: { partnerId: string } }) {
+  const tierGate = await renderTierGate(params.partnerId, "billing.expenses.list", "Expenses");
+  if (tierGate) return <AppShell topbarTitle={"Expenses"}>{tierGate}</AppShell>;
+
   const columns = await applyCustomizations("billing.expenses.list", expenseColumns);
   const rows = await listBusinessRecords(params.partnerId, "billing-expenses");
   const total = sumExpenses(rows);

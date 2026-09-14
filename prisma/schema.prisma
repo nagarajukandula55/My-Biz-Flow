@@ -191,6 +191,32 @@ model Partner {
   mustChangePassword Boolean @default(true)
   status             String  @default("Active")
 
+  /// --- Business profile (editable by the partner from /partner/<id>/settings) ---
+  /// Signup only ever collected the bare minimum needed to create an
+  /// account; these are the remaining business-detail fields AN-CRM's own
+  /// vendor profile page collects (src/app/vendor/profile/page.tsx), so a
+  /// partner can complete their profile after the fact. All nullable —
+  /// every existing Partner row predates them and none are required to
+  /// operate the account.
+  contactPerson      String?
+  pan                String?
+  businessCategory   String?
+  /// Free-text terms printed on the partner's own quotes/invoices.
+  serviceTerms       String? @db.Text
+  /// e.g. "Mon-Sat, 9:30am - 7:00pm"
+  serviceHours       String?
+  /// A public support number, distinct from businessContact (the number we
+  /// reach the partner on).
+  supportHotline     String?
+
+  /// --- Bank details (for payouts/settlement; display + record only) ---
+  /// Deliberately stored as plain nullable columns matching AN-CRM's four
+  /// fields. Nothing debits these — there is no payout engine wired up.
+  bankAccountName    String?
+  bankName           String?
+  bankAccountNumber  String?
+  bankIfsc           String?
+
   /// Subscription lifecycle: "Trial" | "Active" | "PastDue" | "Cancelled".
   /// Set to "Trial" automatically on signup with a 7-day trialEndAt; a
   /// Super Admin can freely override status/dates/plan/cycle from

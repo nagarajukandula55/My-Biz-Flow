@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/AppShell";
+import { renderTierGate } from "@/lib/pageTierGate";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { expenseFormFields } from "@/lib/sample-data/billing-expenses";
@@ -22,6 +23,9 @@ registerPage({
 });
 
 export default async function NewExpensePage({ params }: { params: { partnerId: string } }) {
+  const tierGate = await renderTierGate(params.partnerId, "billing.expenses.create", "Expenses");
+  if (tierGate) return <AppShell topbarTitle={"New Expense"}>{tierGate}</AppShell>;
+
   const fields = await applyCustomizations("billing.expenses.create", expenseFormFields);
 
   return (

@@ -1,7 +1,9 @@
 import { AppShell } from "@/components/AppShell";
 import { registerPage } from "@/lib/designer/registry";
 import { getVisibleModuleSlugs } from "@/lib/designer/entitlements";
+import { getPartner } from "@/lib/partnerData";
 import { SettingsPageClient } from "./SettingsPageClient";
+import { BusinessProfileForm } from "./BusinessProfileForm";
 
 registerPage({
   id: "settings.partner",
@@ -22,10 +24,14 @@ registerPage({
  * Client Component) and hands the interactive body to SettingsPageClient.
  */
 export default async function SettingsPage({ params }: { params: { partnerId: string } }) {
-  const visibleModuleSlugs = await getVisibleModuleSlugs(params.partnerId);
+  const [visibleModuleSlugs, partner] = await Promise.all([
+    getVisibleModuleSlugs(params.partnerId),
+    getPartner(params.partnerId),
+  ]);
   return (
     <AppShell topbarTitle="Settings">
       <SettingsPageClient visibleModuleSlugs={visibleModuleSlugs} />
+      {partner && <BusinessProfileForm partnerId={params.partnerId} partner={partner} />}
     </AppShell>
   );
 }

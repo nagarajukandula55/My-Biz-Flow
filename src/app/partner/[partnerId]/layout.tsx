@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Sidebar } from "@/components/Sidebar";
 import { buildPartnerAdminNavGroups } from "@/lib/designer/partnerAdminNav";
 import { requirePartnerSessionForPage } from "@/lib/requirePartnerSession";
+import { computeAlerts } from "@/lib/alerts";
 
 /**
  * Shared layout for every /partner/[partnerId]/* route — renders the
@@ -29,9 +30,13 @@ export default async function PartnerLayout({
 }) {
   await requirePartnerSessionForPage(params.partnerId);
   const navGroups = await buildPartnerAdminNavGroups(params.partnerId);
+  // Alerts are computed here rather than in each page so the bell's count is
+  // correct on every partner screen, and recomputed on each server render
+  // rather than cached — see src/lib/alerts.ts for why nothing is stored.
+  const alerts = await computeAlerts(params.partnerId);
   return (
     <div className="flex min-h-screen w-full">
-      <Sidebar partnerId={params.partnerId} navGroups={navGroups} />
+      <Sidebar partnerId={params.partnerId} navGroups={navGroups} alerts={alerts} />
       {children}
     </div>
   );

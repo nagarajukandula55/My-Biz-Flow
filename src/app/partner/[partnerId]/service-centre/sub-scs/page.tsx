@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/AppShell";
+import { renderTierGate } from "@/lib/pageTierGate";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { DataTable, type Column, type Row } from "@/components/DataTable";
@@ -29,6 +30,9 @@ const CHILD_COLUMNS: Column[] = [
 ];
 
 export default async function SubScsPage({ params }: { params: { partnerId: string } }) {
+  const tierGate = await renderTierGate(params.partnerId, "service-centre.sub-scs", "Sub-Centres");
+  if (tierGate) return <AppShell topbarTitle={"Sub-Centres"}>{tierGate}</AppShell>;
+
   const profiles = await listBusinessRecords(params.partnerId, "service-centre-sc-profile");
 
   const parents = profiles.filter((p) => !String(p["parentScId"] ?? "").trim());

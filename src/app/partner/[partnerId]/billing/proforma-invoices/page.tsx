@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/AppShell";
+import { renderTierGate } from "@/lib/pageTierGate";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { ProformaInvoicesClientTable } from "./ProformaInvoicesClientTable";
@@ -24,6 +25,9 @@ registerPage({
 export const dynamic = "force-dynamic";
 
 export default async function ProformaInvoicesPage({ params }: { params: { partnerId: string } }) {
+  const tierGate = await renderTierGate(params.partnerId, "billing.proforma-invoices.list", "Proforma Invoices");
+  if (tierGate) return <AppShell topbarTitle={"Proforma Invoices"}>{tierGate}</AppShell>;
+
   const columns = await applyCustomizations("billing.proforma-invoices.list", proformaInvoiceColumns);
   const rows = await listBusinessRecords(params.partnerId, "billing-proforma-invoices");
 

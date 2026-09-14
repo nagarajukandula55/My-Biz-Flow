@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/AppShell";
+import { renderTierGate } from "@/lib/pageTierGate";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { scProfileFormFields } from "@/lib/sample-data/service-centre-sc-profile";
@@ -22,6 +23,9 @@ registerPage({
 });
 
 export default async function NewScProfilePage({ params }: { params: { partnerId: string } }) {
+  const tierGate = await renderTierGate(params.partnerId, "service-centre.sc-profile.create", "Service Centre Profiles");
+  if (tierGate) return <AppShell topbarTitle={"New Service Centre Profile"}>{tierGate}</AppShell>;
+
   const fields = await applyCustomizations("service-centre.sc-profile.create", scProfileFormFields);
 
   return (

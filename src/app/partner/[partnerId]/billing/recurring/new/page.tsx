@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/AppShell";
+import { renderTierGate } from "@/lib/pageTierGate";
 import { registerPage } from "@/lib/designer/registry";
 import { RecurringInvoiceForm } from "@/components/RecurringInvoiceForm";
 import { createBusinessRecordAction } from "@/lib/businessRecordActions";
@@ -21,6 +22,9 @@ registerPage({
 });
 
 export default async function NewRecurringInvoicePage({ params }: { params: { partnerId: string } }) {
+  const tierGate = await renderTierGate(params.partnerId, "billing.recurring.create", "Recurring Invoices");
+  if (tierGate) return <AppShell topbarTitle={"New Recurring Invoice"}>{tierGate}</AppShell>;
+
   const [contacts, items] = await Promise.all([
     listBusinessRecords(params.partnerId, "billing-contacts"),
     listBusinessRecords(params.partnerId, "billing-items"),

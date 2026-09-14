@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/AppShell";
+import { renderTierGate } from "@/lib/pageTierGate";
 import { registerPage } from "@/lib/designer/registry";
 import { CreditNoteForm } from "@/components/CreditNoteForm";
 import { createBusinessRecordAction } from "@/lib/businessRecordActions";
@@ -21,6 +22,9 @@ registerPage({
 });
 
 export default async function NewCreditNotePage({ params }: { params: { partnerId: string } }) {
+  const tierGate = await renderTierGate(params.partnerId, "billing.credit-notes.create", "Credit & Debit Notes");
+  if (tierGate) return <AppShell topbarTitle={"New Credit Note"}>{tierGate}</AppShell>;
+
   const [contacts, items, invoices] = await Promise.all([
     listBusinessRecords(params.partnerId, "billing-contacts"),
     listBusinessRecords(params.partnerId, "billing-items"),

@@ -6,6 +6,11 @@ import { registerPage } from "@/lib/designer/registry";
 import { listPublicPlans, type PlanRecord } from "@/lib/plansData";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { listActivePartnerTypes, type PartnerTypeRecord, type PlanTier } from "@/lib/designer/partnerTypesData";
+// TIER_LABEL/tierForPlanIndex used to be defined inline here. They now live
+// in pageTiers.ts alongside DEFAULT_PAGE_TIERS, so the tier this page
+// ADVERTISES for a plan and the tier the runtime gate ENFORCES for that
+// same plan are computed by one function, not two copies that can drift.
+import { TIER_LABEL, tierForPlanIndex } from "@/lib/designer/pageTiers";
 import { MODULE_TIER_FEATURES } from "@/lib/designer/moduleTiers";
 import { SITE_URL, SITE_NAME } from "@/lib/seo";
 
@@ -37,18 +42,7 @@ registerPage({
   sourceFile: "src/app/pricing/page.tsx",
 });
 
-const TIER_LABEL: Record<PlanTier, string> = { basic: "Basic", pro: "Pro", ultimate: "Ultimate" };
 
-/** Best-effort tier for a plan within a partner type: the highest tier any
- *  of the type's pages resolve to via planTierByPage, falling back to
- *  plan order (2nd of 3 = pro, last = ultimate, else basic) when a type
- *  hasn't set per-page tiers. */
-function tierForPlanIndex(index: number, total: number): PlanTier {
-  if (total <= 1) return "basic";
-  if (index === total - 1) return "ultimate";
-  if (index === 0) return "basic";
-  return "pro";
-}
 
 function tierFeaturesForType(type: PartnerTypeRecord, tier: PlanTier): string[] {
   const modules = type.defaultModules.length > 0 ? type.defaultModules : [];

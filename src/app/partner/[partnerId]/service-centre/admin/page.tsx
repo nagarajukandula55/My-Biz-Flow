@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/AppShell";
+import { renderTierGate } from "@/lib/pageTierGate";
 import { SuperAdminGate } from "@/components/SuperAdminGate";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
@@ -20,6 +21,9 @@ registerPage({
 });
 
 export default async function ServiceCentreAdminPage({ params }: { params: { partnerId: string } }) {
+  const tierGate = await renderTierGate(params.partnerId, "service-centre.admin", "Service Centre Admin");
+  if (tierGate) return <AppShell topbarTitle={"Service Centre · Admin"}>{tierGate}</AppShell>;
+
   const mod = await getModule("service-centre");
 
   return (

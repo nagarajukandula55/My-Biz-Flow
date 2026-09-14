@@ -41,6 +41,16 @@ export type PartnerRecord = {
   planId: string | null;
   offerId: string | null;
   createdAt: Date;
+  contactPerson: string | null;
+  pan: string | null;
+  businessCategory: string | null;
+  serviceTerms: string | null;
+  serviceHours: string | null;
+  supportHotline: string | null;
+  bankAccountName: string | null;
+  bankName: string | null;
+  bankAccountNumber: string | null;
+  bankIfsc: string | null;
 };
 
 function toRecord(row: {
@@ -66,8 +76,61 @@ function toRecord(row: {
   planId: string | null;
   offerId: string | null;
   createdAt: Date;
+  contactPerson: string | null;
+  pan: string | null;
+  businessCategory: string | null;
+  serviceTerms: string | null;
+  serviceHours: string | null;
+  supportHotline: string | null;
+  bankAccountName: string | null;
+  bankName: string | null;
+  bankAccountNumber: string | null;
+  bankIfsc: string | null;
 }): PartnerRecord {
   return { ...row, addressLine: row.addressLine ?? "" };
+}
+
+export type PartnerBusinessProfileInput = {
+  contactPerson: string;
+  pan: string;
+  businessCategory: string;
+  serviceTerms: string;
+  serviceHours: string;
+  supportHotline: string;
+  bankAccountName: string;
+  bankName: string;
+  bankAccountNumber: string;
+  bankIfsc: string;
+};
+
+/**
+ * Persists the business-profile/bank-detail fields a partner fills in from
+ * /partner/<id>/settings after signup (signup itself only collects the
+ * bare minimum). All nullable on the model — an empty string here is
+ * stored as null, not "". Nothing reads these to move money; the bank
+ * fields are display/record-keeping only, same as AN-CRM's own vendor
+ * profile page.
+ */
+export async function updatePartnerBusinessProfile(
+  partnerId: string,
+  input: PartnerBusinessProfileInput
+): Promise<void> {
+  const clean = (v: string) => v.trim() || null;
+  await prisma.partner.update({
+    where: { id: partnerId },
+    data: {
+      contactPerson: clean(input.contactPerson),
+      pan: clean(input.pan),
+      businessCategory: clean(input.businessCategory),
+      serviceTerms: clean(input.serviceTerms),
+      serviceHours: clean(input.serviceHours),
+      supportHotline: clean(input.supportHotline),
+      bankAccountName: clean(input.bankAccountName),
+      bankName: clean(input.bankName),
+      bankAccountNumber: clean(input.bankAccountNumber),
+      bankIfsc: clean(input.bankIfsc),
+    },
+  });
 }
 
 /**

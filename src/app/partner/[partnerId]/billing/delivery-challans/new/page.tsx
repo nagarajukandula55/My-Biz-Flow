@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/AppShell";
+import { renderTierGate } from "@/lib/pageTierGate";
 import { registerPage } from "@/lib/designer/registry";
 import { SalesDocumentForm } from "@/components/SalesDocumentForm";
 import { createBusinessRecordAction } from "@/lib/businessRecordActions";
@@ -21,6 +22,9 @@ registerPage({
 });
 
 export default async function NewDeliveryChallanPage({ params }: { params: { partnerId: string } }) {
+  const tierGate = await renderTierGate(params.partnerId, "billing.delivery-challans.create", "Delivery Challans");
+  if (tierGate) return <AppShell topbarTitle={"New Delivery Challan"}>{tierGate}</AppShell>;
+
   const [contacts, catalogItems] = await Promise.all([
     listBusinessRecords(params.partnerId, "billing-contacts"),
     listBusinessRecords(params.partnerId, "billing-items"),

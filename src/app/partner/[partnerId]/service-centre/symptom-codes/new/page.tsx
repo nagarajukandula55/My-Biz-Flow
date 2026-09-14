@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/AppShell";
+import { renderTierGate } from "@/lib/pageTierGate";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { scSymptomCodeFormFields } from "@/lib/sample-data/service-centre-symptom-codes";
@@ -22,6 +23,9 @@ registerPage({
 });
 
 export default async function NewScSymptomCodePage({ params }: { params: { partnerId: string } }) {
+  const tierGate = await renderTierGate(params.partnerId, "service-centre.symptom-codes.create", "Symptom Codes");
+  if (tierGate) return <AppShell topbarTitle={"New Symptom Code"}>{tierGate}</AppShell>;
+
   const fields = await applyCustomizations("service-centre.symptom-codes.create", scSymptomCodeFormFields);
 
   return (

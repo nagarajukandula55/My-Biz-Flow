@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/AppShell";
+import { renderTierGate } from "@/lib/pageTierGate";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { RecurringClientTable } from "./RecurringClientTable";
@@ -21,6 +22,9 @@ registerPage({
 export const dynamic = "force-dynamic";
 
 export default async function RecurringInvoicesPage({ params }: { params: { partnerId: string } }) {
+  const tierGate = await renderTierGate(params.partnerId, "billing.recurring.list", "Recurring Invoices");
+  if (tierGate) return <AppShell topbarTitle={"Recurring Invoices"}>{tierGate}</AppShell>;
+
   const columns = await applyCustomizations("billing.recurring.list", recurringInvoiceColumns);
   const rows = await listBusinessRecords(params.partnerId, "billing-recurring");
 

@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/AppShell";
+import { renderTierGate } from "@/lib/pageTierGate";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { scModelFormFields } from "@/lib/sample-data/service-centre-models";
@@ -22,6 +23,9 @@ registerPage({
 });
 
 export default async function NewScModelPage({ params }: { params: { partnerId: string } }) {
+  const tierGate = await renderTierGate(params.partnerId, "service-centre.models.create", "Device Models");
+  if (tierGate) return <AppShell topbarTitle={"New Model"}>{tierGate}</AppShell>;
+
   const fields = await applyCustomizations("service-centre.models.create", scModelFormFields);
 
   return (

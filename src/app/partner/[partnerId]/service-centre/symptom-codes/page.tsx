@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/AppShell";
+import { renderTierGate } from "@/lib/pageTierGate";
 import { registerPage } from "@/lib/designer/registry";
 import { ScSymptomCodeClientTable } from "./ScSymptomCodeClientTable";
 import { ScSymptomCodeNewButton } from "./ScSymptomCodeNewButton";
@@ -24,6 +25,9 @@ registerPage({
 export const dynamic = "force-dynamic";
 
 export default async function ScSymptomCodeListPage({ params }: { params: { partnerId: string } }) {
+  const tierGate = await renderTierGate(params.partnerId, "service-centre.symptom-codes.list", "Symptom Codes");
+  if (tierGate) return <AppShell topbarTitle={"Symptom Codes"}>{tierGate}</AppShell>;
+
   const columns = await applyCustomizations("service-centre.symptom-codes.list", scSymptomCodeColumns);
   const rows = await listBusinessRecords(params.partnerId, "service-centre-symptom-codes");
 
