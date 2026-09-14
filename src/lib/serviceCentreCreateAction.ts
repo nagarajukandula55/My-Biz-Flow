@@ -1,0 +1,96 @@
+"use server";
+
+import { createBusinessRecordAction } from "@/lib/businessRecordActions";
+import { getNextNumber } from "@/lib/designer/numbering";
+
+/**
+ * Service-Centre-specific create action: validates intake, assigns the Job
+ * ID and the system-set fields, then delegates to the generic
+ * createBusinessRecordAction.
+ *
+ * A wrapper rather than validation inside the generic action on purpose —
+ * createBusinessRecordAction is shared by every module, and none of the
+ * others should inherit Service Centre's required-field rules. The generic
+ * action is untouched.
+ *
+ * The rules mirror the reference app's own server-side check
+ * (api/crm/jobsheets POST): customer name, contact number, fault title and
+ * the full address block are rejected when blank, and a GSTIN, when given,
+ * must be a well-formed 15-character GSTIN. Client-side `required` is not
+ * trusted — this runs on the server regardless of what the browser sent.
+ */
+
+/** Standard GSTIN: 2-digit state code, 10-char PAN, entity digit, 'Z', checksum. */
+const GSTIN_RE = /^[0-3][0-9][A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/;
+
+const REQUIRED_FIELDS: { key: string; label: string }[] = [
+  { key: "customerPhone", label: "Contact No" },
+  { key: "customer", label: "Customer Name" },
+  { key: "faultDescription", label: "Fault in Device" },
+  { key: "customerAddress", label: "Address" },
+  { key: "customerCity", label: "City" },
+  { key: "customerState", label: "State" },
+  { key: "customerPincode", label: "Pincode" },
+];
+
+/** Validation only — exported for the action below; pure, no I/O. */
+export async function validateServiceCentreWorkorder(
+  values: Record<string, unknown>
+): Promise<string | null> {
+  const text = (key: string) => String(values[key] ?? "").trim();
+
+  const missing = REQUIRED_FIELDS.filter((f) => !text(f.key)).map((f) => f.label);
+  if (missing.length > 0) {
+    return `${missing.join(", ")} ${missing.length === 1 ? "is" : "are"} required.`;
+  }
+
+  const phone = text("customerPhone").replace(/\D/g, "");
+  if (phone.length < 10) return "Contact No must be a valid phone number (at least 10 digits).";
+
+  const pincode = text("customerPincode").replace(/\D/g, "");
+  if (pincode.length !== 6) return "Pincode must be 6 digits.";
+
+  const gstin = text("customerGstin").toUpperCase();
+  if (gstin && !GSTIN_RE.test(gstin)) {
+    return "Customer GSTIN is not a valid 15-character GSTIN (e.g. 22AAAAA0000A1Z5).";
+  }
+
+  return null;
+}
+
+/** Bind with .bind(null, partnerId) before passing as a RecordForm `action` prop. */
+export async function createServiceCentreWorkorderAction(
+  partnerId: string,
+  values: Record<string, unknown>
+): Promise<void | { error?: string }> {
+  const error = await validateServiceCentreWorkorder(values);
+  if (error) return { error };
+
+  // Job ID comes from this partner's own workorder numbering scheme — the
+  // same NumberingMainScheme/NumberingPartnerScheme/NumberingCounter
+  // mechanism invoice numbers use, configurable at
+  // /partner/<id>/settings/numbering. The operator never types one.
+  // Falls back to a WO-prefixed default scheme when nothing is configured.
+  let jobId: string;
+  try {
+    jobId = await getNextNumber("service-centre.workorder", partnerId, {
+      prefix: "WO",
+      financialYearFormat: "YY-YY",
+      sequenceDigits: 4,
+    });
+  } catch {
+    // A numbering hiccup must never block a walk-in from being booked in.
+    jobId = `WO-${Date.now().toString(36).toUpperCase()}`;
+  }
+
+  const now = new Date();
+  await createBusinessRecordAction(partnerId, "service-centre", {
+    ...values,
+    id: jobId,
+    // System-set at intake, which is why these three aren't on the form.
+    status: values["status"] || "Created",
+    stage: values["stage"] || "Created",
+    receivedDate: values["receivedDate"] || now.toISOString().slice(0, 10),
+    customerGstin: String(values["customerGstin"] ?? "").trim().toUpperCase(),
+  });
+}

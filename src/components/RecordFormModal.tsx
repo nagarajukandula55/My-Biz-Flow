@@ -20,6 +20,8 @@ export function RecordFormModal({
   submitLabel,
   action,
   lookup,
+  mode,
+  layout,
 }: {
   open: boolean;
   onClose: () => void;
@@ -27,13 +29,25 @@ export function RecordFormModal({
   fields: FormFieldDef[];
   initialValues?: Record<string, unknown>;
   submitLabel: string;
-  action?: (values: Record<string, unknown>) => Promise<void>;
+  action?: ComponentProps<typeof RecordForm>["action"];
   /** Forwarded straight to RecordForm — see its `lookup` prop. */
   lookup?: ComponentProps<typeof RecordForm>["lookup"];
+  /** Forwarded straight to RecordForm — "create" drops createHidden fields. */
+  mode?: ComponentProps<typeof RecordForm>["mode"];
+  /** Forwarded straight to RecordForm — "columns" renders sections as cards. */
+  layout?: ComponentProps<typeof RecordForm>["layout"];
 }) {
   return (
     <Modal open={open} onClose={onClose} title={title} size="lg">
-      <RecordForm fields={fields} initialValues={initialValues} submitLabel={submitLabel} action={action} lookup={lookup} />
+      <RecordForm
+        fields={fields}
+        initialValues={initialValues}
+        submitLabel={submitLabel}
+        action={action}
+        lookup={lookup}
+        mode={mode}
+        layout={layout}
+      />
     </Modal>
   );
 }

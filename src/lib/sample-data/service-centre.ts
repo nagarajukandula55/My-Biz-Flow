@@ -525,6 +525,20 @@ export const serviceCentreRows: Row[] = [
  * (api/crm/jobsheets POST): customer name, phone, address, city, state,
  * pincode and the fault description are all rejected server-side when
  * blank there, and IMEI/serial + "logged by" are enforced at intake.
+ *
+ * `createHidden` marks the fields that must NOT appear at intake, so the
+ * create form is the same 18-input screen the reference app's own intake
+ * is rather than a 42-input wall. Three reasons a field carries it:
+ *   - the system sets it at creation (Job ID from the numbering scheme,
+ *     Status = "Created", Received Date = createdAt);
+ *   - a later lifecycle stage sets it (estimate/actual cost, SLA date,
+ *     customer approval timestamp, before/after photos, notes) — these
+ *     stay on the EDIT form and on the workorder's own lifecycle panel,
+ *     nothing is dropped;
+ *   - it's dispatch/routing metadata this module captures after intake
+ *     (priority, branch, appointment/request type, pickup lat/long).
+ * Nothing is removed from the model: every one of them is still editable
+ * from the workorder's edit page, which renders the full field set.
  */
 export const serviceCentreFormFields: FormFieldDef[] = [
   // --- Customer intake block ---
@@ -532,72 +546,100 @@ export const serviceCentreFormFields: FormFieldDef[] = [
   // page (see serviceCentreCustomerLookup.ts) — the same "type a number,
   // the rest fills itself in" behaviour as the reference intake screen,
   // with every prefilled field left fully editable afterwards.
-  { section: "Customer", key: "customerPhone", label: "Contact No", type: "phone", required: true, placeholder: "Type to prefill a returning customer" },
-  { section: "Customer", key: "customer", label: "Customer Name", type: "relation", required: true, placeholder: "Fills in automatically if the number matches, or type it in" },
-  { section: "Customer", key: "customerEmail", label: "Customer Email", type: "email", required: false },
-  { section: "Customer", key: "customerCompany", label: "Company (B2B customer)", type: "text", required: false },
-  { section: "Customer", key: "customerGstin", label: "Customer GSTIN", type: "text", required: false, placeholder: "22AAAAA0000A1Z5 — leave blank for a B2C job" },
+  { section: "Customer", column: 1, key: "customerPhone", label: "Contact No", type: "phone", required: true, placeholder: "Type to prefill a returning customer" },
+  { section: "Customer", column: 1, key: "customer", label: "Customer Name", type: "relation", required: true, placeholder: "Fills in automatically if the number matches, or type it in" },
+  // Not on the reference app's intake screen at all — a returning
+  // customer's email still prefills from Contacts, and it stays editable
+  // on the workorder's edit page.
+  { section: "Customer", column: 1, key: "customerEmail", label: "Customer Email", type: "email", required: false, createHidden: true },
+  { section: "Customer", column: 1, key: "customerCompany", label: "Company (B2B customer)", type: "text", required: false },
+  { section: "Customer", column: 1, key: "customerGstin", label: "Customer GSTIN", type: "text", required: false, placeholder: "22AAAAA0000A1Z5 — leave blank for a B2C job" },
 
   // The address block is required because the printed invoice and any B2B
   // GST document are unusable without it — and because the place of supply
   // (customer state vs. the service centre's own) is what decides whether
   // the invoice splits tax as CGST+SGST or charges IGST.
-  { section: "Address", key: "customerAddress", label: "Address", type: "textarea", required: true },
-  { section: "Address", key: "customerPincode", label: "Pincode", type: "text", required: true, placeholder: "400001" },
-  { section: "Address", key: "customerState", label: "State", type: "text", required: true },
-  { section: "Address", key: "customerCity", label: "City", type: "text", required: true },
+  //
+  // Pincode/State/City are wired to the shared pincode resolution
+  // (addressRole, see RecordForm + lib/geo/pincodeClient — the same
+  // /api/pincode path the signup form uses): typing a 6-digit pincode
+  // fills State and City. State is a fixed INDIAN_STATES select either
+  // way, so the stored value is always a canonical state name — the
+  // invoice's CGST+SGST vs IGST split is decided by comparing it against
+  // the service centre's own state and can't be left to free text.
+  { section: "Address", column: 1, key: "customerAddress", label: "Address", type: "textarea", required: true },
+  { section: "Address", column: 1, key: "customerPincode", label: "Pincode", type: "text", required: true, placeholder: "400001", addressRole: "pincode" },
+  { section: "Address", column: 1, key: "customerState", label: "State", type: "text", required: true, addressRole: "state" },
+  { section: "Address", column: 1, key: "customerCity", label: "City", type: "text", required: true, addressRole: "city" },
 
   // --- Device ---
-  { section: "Device", key: "deviceCategory", label: "Device / Vehicle Type", type: "select", required: true, options: ALL_CATEGORY_OPTIONS, optionLabels: ALL_CATEGORY_LABELS, optionGroups: ALL_CATEGORY_GROUPS },
+  { section: "Device", column: 2, key: "deviceCategory", label: "Device / Vehicle Type", type: "select", required: true, options: ALL_CATEGORY_OPTIONS, optionLabels: ALL_CATEGORY_LABELS, optionGroups: ALL_CATEGORY_GROUPS },
   // Brand/Model are free text backed by this partner's own catalog as
   // suggestions, never a closed dropdown: a device that isn't catalogued
   // yet must never block a walk-in from being booked in. The create page
   // fills `suggestions` from the live Brands/Models records and the
   // "+ Add new" links point at those modules' own create pages, which is
   // this app's equivalent of the reference screen's add-and-save modal.
-  { section: "Device", key: "brandName", label: "Brand", type: "text", required: false, placeholder: "e.g. Samsung — pick a saved brand or type a new one" },
-  { section: "Device", key: "modelName", label: "Model", type: "text", required: false, placeholder: "e.g. Galaxy M14 — pick a saved model or type a new one" },
-  { section: "Device", key: "imeiOrSerialNumber", label: "IMEI / Serial Number", type: "text", required: true, placeholder: "15-digit IMEI for a phone/tablet, otherwise the manufacturer serial number" },
-  { section: "Device", key: "deviceAppearance", label: "Appearance", type: "select", required: false, options: [...DEVICE_APPEARANCE_OPTIONS], optionLabels: DEVICE_APPEARANCE_LABELS },
-  { section: "Device", key: "fileBackupDescription", label: "File Backup Done", type: "select", required: false, options: [...FILE_BACKUP_OPTIONS], optionLabels: FILE_BACKUP_LABELS },
-  { section: "Device", key: "warrantyStatus", label: "Warranty Type", type: "select", required: false, options: [...WARRANTY_STATUSES], optionLabels: WARRANTY_STATUS_LABELS, help: "In-warranty and 90-day jobs are non-chargeable — their invoice lines bill at zero." },
-  { section: "Device", key: "device", label: "Device (free text)", type: "text", required: false, placeholder: "Optional one-line description when Brand/Model don't capture it" },
-  { section: "Device", key: "standardAccessories", label: "Standard Accessories Received", type: "textarea", required: false },
+  // Model is scoped to the selected Brand (parentKey) — the create page
+  // supplies the brand -> models map, and changing Brand clears Model,
+  // matching the reference app's savedModelsByBrand behaviour.
+  { section: "Device", column: 2, key: "brandName", label: "Brand", type: "text", required: false, placeholder: "e.g. Samsung — pick a saved brand or type a new one" },
+  { section: "Device", column: 2, key: "modelName", label: "Model", type: "text", required: false, placeholder: "e.g. Galaxy M14 — pick a saved model or type a new one", parentKey: "brandName" },
+  { section: "Device", column: 2, key: "imeiOrSerialNumber", label: "IMEI / Serial Number", type: "text", required: true, placeholder: "15-digit IMEI for a phone/tablet, otherwise the manufacturer serial number" },
+  { section: "Device", column: 2, key: "deviceAppearance", label: "Appearance", type: "select", required: false, options: [...DEVICE_APPEARANCE_OPTIONS], optionLabels: DEVICE_APPEARANCE_LABELS },
+  { section: "Device", column: 2, key: "fileBackupDescription", label: "File Backup Done", type: "select", required: false, options: [...FILE_BACKUP_OPTIONS], optionLabels: FILE_BACKUP_LABELS },
+  { section: "Device", column: 2, key: "warrantyStatus", label: "Warranty Type", type: "select", required: false, options: [...WARRANTY_STATUSES], optionLabels: WARRANTY_STATUS_LABELS, help: "In-warranty and 90-day jobs are non-chargeable — their invoice lines bill at zero." },
+  // Brand + Model + IMEI already identify the unit at intake; these two are
+  // post-intake detail (the reference screen has neither).
+  { section: "Device", column: 2, key: "device", label: "Device (free text)", type: "text", required: false, placeholder: "Optional one-line description when Brand/Model don't capture it", createHidden: true },
+  { section: "Device", column: 2, key: "standardAccessories", label: "Standard Accessories Received", type: "textarea", required: false, createHidden: true },
 
   // --- Issue ---
-  { section: "Issue", key: "faultDescription", label: "Fault in Device", type: "textarea", required: true, placeholder: "What's actually wrong — this is the job's title on every list and printed document" },
-  { section: "Issue", key: "issueDescription", label: "Issue Description (customer's own words)", type: "textarea", required: false },
-  { section: "Issue", key: "remark", label: "Remark", type: "text", required: false },
+  { section: "Issue", column: 2, key: "faultDescription", label: "Fault in Device", type: "textarea", required: true, placeholder: "What's actually wrong — this is the job's title on every list and printed document" },
+  // Duplicates Fault in Device at intake; kept for the diagnosis stage.
+  { section: "Issue", column: 2, key: "issueDescription", label: "Issue Description (customer's own words)", type: "textarea", required: false, createHidden: true },
+  { section: "Issue", column: 2, key: "remark", label: "Remark", type: "text", required: false },
   // Free text, not a picker: the technician roster (PartnerStaff) is the
   // roster of people who REPAIR, while this records the front-desk person
   // who took the job in — often not on that roster at all. The reference
   // app makes the same call for its equivalent `ccoName` field, offering
   // recently-used names as suggestions rather than a fixed list.
-  { section: "Issue", key: "loggedBy", label: "Logged By (CCO Name)", type: "text", required: true, placeholder: "Select a recent name or type a new one" },
+  { section: "Issue", column: 2, key: "loggedBy", label: "Logged By (CCO Name)", type: "text", required: true, placeholder: "Select a recent name or type a new one" },
 
   // --- Job handling (this app's own operational fields) ---
-  { section: "Job handling", key: "id", label: "Job ID", type: "text", required: true },
-  { section: "Job handling", key: "priority", label: "Priority", type: "select", required: true, options: ["Low","Medium","High","Urgent"] },
-  { section: "Job handling", key: "status", label: "Status", type: "select", required: true, options: ["Diagnosed","In repair","Ready","Delivered","On hold"] },
-  { section: "Job handling", key: "receivedDate", label: "Received Date", type: "date", required: true },
-  { section: "Job handling", key: "appointmentType", label: "Appointment Type", type: "select", required: false, options: [...APPOINTMENT_TYPES], optionLabels: APPOINTMENT_TYPE_LABELS },
-  { section: "Job handling", key: "requestType", label: "Request Type", type: "select", required: false, options: [...REQUEST_TYPES], optionLabels: REQUEST_TYPE_LABELS },
-  { section: "Job handling", key: "branch", label: "Branch / Location", type: "text", required: false },
-  { section: "Job handling", key: "warrantyFlag", label: "Under Warranty", type: "boolean", required: false },
-  { section: "Job handling", key: "warrantyExpiryDate", label: "Warranty Expiry Date", type: "date", required: false },
-  { section: "Job handling", key: "slaDate", label: "Promised Delivery (SLA)", type: "date", required: false },
-  { section: "Job handling", key: "estimatedAmount", label: "Estimated Amount", type: "currency", required: false },
-  { section: "Job handling", key: "estimatedCost", label: "Estimated Cost", type: "currency", required: false },
-  { section: "Job handling", key: "actualCost", label: "Actual Cost", type: "currency", required: false },
-  { section: "Job handling", key: "latitude", label: "Pickup Latitude", type: "number", required: false },
-  { section: "Job handling", key: "longitude", label: "Pickup Longitude", type: "number", required: false },
+  // Every field below is createHidden: the system sets it at creation, or a
+  // later lifecycle stage does. They all remain on the edit form.
+  //
+  // Job ID is no longer typed by hand at all — createServiceCentreWorkorderAction
+  // pulls it from the "service-centre.workorder" numbering scheme (the same
+  // NumberingMainScheme/NumberingPartnerScheme/NumberingCounter mechanism the
+  // invoice numbers use), so it's never `required` either.
+  { section: "Job handling", column: 1, key: "id", label: "Job ID", type: "text", required: false, createHidden: true, help: "Assigned automatically from this partner's workorder numbering scheme." },
+  { section: "Job handling", column: 1, key: "priority", label: "Priority", type: "select", required: false, options: ["Low","Medium","High","Urgent"], createHidden: true },
+  // Set to "Created" server-side at intake; advanced by the lifecycle panel.
+  { section: "Job handling", column: 1, key: "status", label: "Status", type: "select", required: false, options: ["Diagnosed","In repair","Ready","Delivered","On hold"], createHidden: true },
+  // Stamped with the intake time server-side (the record's createdAt).
+  { section: "Job handling", column: 1, key: "receivedDate", label: "Received Date", type: "date", required: false, createHidden: true },
+  { section: "Job handling", column: 1, key: "appointmentType", label: "Appointment Type", type: "select", required: false, options: [...APPOINTMENT_TYPES], optionLabels: APPOINTMENT_TYPE_LABELS, createHidden: true },
+  { section: "Job handling", column: 1, key: "requestType", label: "Request Type", type: "select", required: false, options: [...REQUEST_TYPES], optionLabels: REQUEST_TYPE_LABELS, createHidden: true },
+  { section: "Job handling", column: 1, key: "branch", label: "Branch / Location", type: "text", required: false, createHidden: true },
+  { section: "Job handling", column: 1, key: "warrantyFlag", label: "Under Warranty", type: "boolean", required: false, createHidden: true },
+  { section: "Job handling", column: 1, key: "warrantyExpiryDate", label: "Warranty Expiry Date", type: "date", required: false, createHidden: true },
+  { section: "Job handling", column: 1, key: "slaDate", label: "Promised Delivery (SLA)", type: "date", required: false, createHidden: true },
+  { section: "Job handling", column: 1, key: "estimatedAmount", label: "Estimated Amount", type: "currency", required: false, createHidden: true },
+  { section: "Job handling", column: 1, key: "estimatedCost", label: "Estimated Cost", type: "currency", required: false, createHidden: true },
+  { section: "Job handling", column: 1, key: "actualCost", label: "Actual Cost", type: "currency", required: false, createHidden: true },
+  // Pickup coordinates are captured when a pickup is actually scheduled, not
+  // at counter intake (the reference job sheet has no equivalent at intake).
+  { section: "Job handling", column: 1, key: "latitude", label: "Pickup Latitude", type: "number", required: false, createHidden: true },
+  { section: "Job handling", column: 1, key: "longitude", label: "Pickup Longitude", type: "number", required: false, createHidden: true },
 
-  // --- Notes & attachments ---
-  { section: "Notes & attachments", key: "customerApprovalAt", label: "Customer Approval Timestamp", type: "text", required: false, placeholder: "Set automatically when the estimate is approved" },
-  { section: "Notes & attachments", key: "beforePhotos", label: "Before Photos (URLs, comma-separated)", type: "textarea", required: false },
-  { section: "Notes & attachments", key: "afterPhotos", label: "After Photos (URLs, comma-separated)", type: "textarea", required: false },
-  { section: "Notes & attachments", key: "internalNotes", label: "Internal Notes (staff-only)", type: "textarea", required: false },
-  { section: "Notes & attachments", key: "customerNotes", label: "Customer-visible Notes", type: "textarea", required: false },
+  // --- Notes & attachments (all post-intake) ---
+  { section: "Notes & attachments", column: 2, key: "customerApprovalAt", label: "Customer Approval Timestamp", type: "text", required: false, placeholder: "Set automatically when the estimate is approved", createHidden: true },
+  { section: "Notes & attachments", column: 2, key: "beforePhotos", label: "Before Photos (URLs, comma-separated)", type: "textarea", required: false, createHidden: true },
+  { section: "Notes & attachments", column: 2, key: "afterPhotos", label: "After Photos (URLs, comma-separated)", type: "textarea", required: false, createHidden: true },
+  { section: "Notes & attachments", column: 2, key: "internalNotes", label: "Internal Notes (staff-only)", type: "textarea", required: false, createHidden: true },
+  { section: "Notes & attachments", column: 2, key: "customerNotes", label: "Customer-visible Notes", type: "textarea", required: false, createHidden: true },
 ];
 
 export function getServiceCentreRecord(recordId: string): Row {

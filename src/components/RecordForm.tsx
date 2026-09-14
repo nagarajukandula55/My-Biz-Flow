@@ -1,6 +1,8 @@
 "use client";
 
 import { Fragment, useRef, useState, useTransition, type FormEvent } from "react";
+import { INDIAN_STATES } from "@/lib/sample-data/geo";
+import { lookupPincodeViaApi } from "@/lib/geo/pincodeClient";
 
 export type FormFieldType =
   | "text"
@@ -67,6 +69,44 @@ export type FormFieldDef = {
   addNew?: { label: string; href: string };
   /** Helper text rendered under the input. */
   help?: string;
+  /**
+   * Hide this field on a CREATE render (`<RecordForm mode="create">`), while
+   * keeping it on the edit form. For lifecycle/outcome fields that the
+   * system or a later stage sets — a workorder's Status, its SLA date, its
+   * actual cost — which have no meaning at intake and only pad the form.
+   *
+   * Additive and opt-in: a field with no `createHidden` renders everywhere,
+   * so every other module's form is unchanged.
+   */
+  createHidden?: boolean;
+  /**
+   * Which column this field's SECTION belongs in, when the form is rendered
+   * with `layout="columns"`. Ignored entirely in the default single-column
+   * layout. Set it on every field of a section (they're grouped by section,
+   * and the first field's value wins).
+   */
+  column?: 1 | 2;
+  /**
+   * Opts this field into the shared pincode -> state/city resolution (the
+   * same /api/pincode path the signup form uses, see lib/geo/pincodeClient):
+   *  - "pincode": on a complete 6-digit value, resolves and fills the
+   *    sibling state/city fields.
+   *  - "state": renders as a fixed INDIAN_STATES select, so a stored state
+   *    is always a canonical name (the CGST/SGST-vs-IGST split depends on
+   *    it) rather than free-typed "karnataka"/"KTK".
+   *  - "city": a select of the resolved districts when a lookup succeeded,
+   *    free text otherwise.
+   */
+  addressRole?: "pincode" | "state" | "city";
+  /**
+   * Makes this field's suggestions depend on another field's current value
+   * — Model suggestions scoped to the selected Brand. `parentKey` names the
+   * controlling field; `suggestionsByParent` maps that field's value to the
+   * suggestion list. Changing the parent clears this field. Purely
+   * client-side off a prop; no fetch.
+   */
+  parentKey?: string;
+  suggestionsByParent?: Record<string, string[]>;
 };
 
 type RecordFormProps = {
@@ -80,7 +120,19 @@ type RecordFormProps = {
    * receives the form's values directly. When provided, this replaces
    * the demo-stub submit entirely; onSubmitDemo is ignored.
    */
-  action?: (values: Record<string, unknown>) => Promise<void>;
+  action?: (values: Record<string, unknown>) => Promise<void | { error?: string }>;
+  /**
+   * "create" drops every field marked `createHidden`. Anything else (the
+   * default) renders the full field set, so edit pages and every other
+   * module are untouched.
+   */
+  mode?: "create" | "edit";
+  /**
+   * "columns" renders each section as a bordered card in a 2-column grid,
+   * placing a section by its fields' `column`. Default is the original
+   * single `max-w-2xl` flowing column — this is opt-in per form.
+   */
+  layout?: "single" | "columns";
   /**
    * Optional prefill-on-type hook: whenever the field named by `watchKey`
    * changes, `run` (a bound Server Action) is called with its value and
@@ -105,7 +157,10 @@ type RecordFormProps = {
  * submission falls back to the original client-side demo stub (logs the
  * values, shows "Saved (demo)") for anything not yet migrated.
  */
-export function RecordForm({ fields, initialValues, submitLabel, onSubmitDemo, action, lookup }: RecordFormProps) {
+export function RecordForm({ fields: allFields, initialValues, submitLabel, onSubmitDemo, action, lookup, mode, layout }: RecordFormProps) {
+  // A create render drops lifecycle/outcome fields; every other render (and
+  // every field with no flag) is unchanged.
+  const fields = mode === "create" ? allFields.filter((f) => !f.createHidden) : allFields;
   const [values, setValues] = useState<Record<string, unknown>>(() => {
     const base: Record<string, unknown> = {};
     for (const f of fields) {
@@ -123,10 +178,51 @@ export function RecordForm({ fields, initialValues, submitLabel, onSubmitDemo, a
   // leaves the watched value unchanged (e.g. formatting characters).
   const lastLookedUp = useRef<string | null>(null);
 
+  const [formError, setFormError] = useState<string | null>(null);
+  // Districts returned by the last successful pincode lookup, for the
+  // sibling "city" field. Empty until one succeeds -> City stays free text.
+  const [cityOptions, setCityOptions] = useState<string[]>([]);
+
+  const pincodeKey = fields.find((f) => f.addressRole === "pincode")?.key;
+  const stateKey = fields.find((f) => f.addressRole === "state")?.key;
+  const cityKey = fields.find((f) => f.addressRole === "city")?.key;
+
   function setValue(key: string, value: unknown) {
-    setValues((prev) => ({ ...prev, [key]: value }));
+    setValues((prev) => {
+      const next = { ...prev, [key]: value };
+      // Changing a controlling field (Brand) invalidates whatever was
+      // picked under the old one (Model).
+      for (const f of fields) {
+        if (f.parentKey === key && next[f.key]) next[f.key] = "";
+      }
+      return next;
+    });
     setSaved(false);
+    setFormError(null);
     if (lookup && key === lookup.watchKey) runLookup(String(value ?? ""));
+    if (pincodeKey && key === pincodeKey) runPincode(String(value ?? ""));
+  }
+
+  function runPincode(raw: string) {
+    const code = raw.replace(/\D/g, "");
+    if (code.length !== 6) {
+      setCityOptions([]);
+      return;
+    }
+    void lookupPincodeViaApi(code).then((res) => {
+      if (!res.found || !res.state) {
+        // Manual fallback: State is a fixed select regardless, City free text.
+        setCityOptions([]);
+        return;
+      }
+      setCityOptions(res.cities ?? []);
+      setValues((prev) => {
+        const next = { ...prev };
+        if (stateKey) next[stateKey] = res.state as string;
+        if (cityKey && !String(prev[cityKey] ?? "").trim()) next[cityKey] = res.cities?.[0] ?? "";
+        return next;
+      });
+    });
   }
 
   function runLookup(raw: string) {
@@ -160,8 +256,12 @@ export function RecordForm({ fields, initialValues, submitLabel, onSubmitDemo, a
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (action) {
+      setFormError(null);
       startTransition(async () => {
-        await action(values);
+        // A successful action redirects and never returns; a rejected one
+        // hands back `{ error }` for display above the submit button.
+        const result = await action(values);
+        if (result && typeof result === "object" && result.error) setFormError(result.error);
       });
       return;
     }
@@ -169,6 +269,89 @@ export function RecordForm({ fields, initialValues, submitLabel, onSubmitDemo, a
     console.log("RecordForm submit (demo, no backend):", values);
     onSubmitDemo?.(values);
     setSaved(true);
+  }
+
+  const renderField = (field: FormFieldDef) => (
+    <div key={field.key} className={field.type === "textarea" ? "sm:col-span-2" : ""}>
+      <label
+        htmlFor={field.key}
+        className="mb-1.5 flex items-baseline justify-between gap-2 text-xs font-semibold uppercase tracking-wide text-text-muted"
+      >
+        <span>
+          {field.label}
+          {field.required && <span className="ml-1 text-danger">*</span>}
+        </span>
+        {field.addNew && (
+          <a
+            href={field.addNew.href}
+            target="_blank"
+            rel="noreferrer"
+            className="font-semibold normal-case tracking-normal text-teal hover:underline"
+          >
+            + {field.addNew.label}
+          </a>
+        )}
+      </label>
+      {renderInput(field, values[field.key], setValue, {
+        parentValue: field.parentKey ? String(values[field.parentKey] ?? "") : undefined,
+        cityOptions,
+      })}
+      {field.help && <p className="mt-1 text-[11px] font-normal normal-case text-text-muted">{field.help}</p>}
+      {lookupHint && lookup?.watchKey === field.key && (
+        <p className="mt-1 text-[11px] font-normal normal-case text-teal">{lookupHint}</p>
+      )}
+    </div>
+  );
+
+  const footer = (
+    <>
+      {formError && (
+        <p className="rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-sm font-semibold text-danger">
+          {formError}
+        </p>
+      )}
+      <div className="flex items-center gap-3 pt-2">
+        <button type="submit" className="btn-accent" disabled={pending}>
+          {pending ? "Saving…" : submitLabel}
+        </button>
+        {saved && !action && (
+          <span className="text-sm font-semibold text-success">Saved (demo — no backend yet)</span>
+        )}
+      </div>
+    </>
+  );
+
+  if (layout === "columns") {
+    // Sections, in the order they first appear, split across two columns by
+    // their declared `column` — matching the reference intake screen's
+    // Customer+Address / Device+Issue arrangement.
+    const sections: { name: string; column: 1 | 2; fields: FormFieldDef[] }[] = [];
+    for (const field of fields) {
+      const name = field.section ?? "";
+      const last = sections[sections.length - 1];
+      if (last && last.name === name) last.fields.push(field);
+      else sections.push({ name, column: field.column ?? 1, fields: [field] });
+    }
+    const columnOf = (n: 1 | 2) => sections.filter((s) => s.column === n);
+    const renderColumn = (n: 1 | 2) => (
+      <div className="space-y-4">
+        {columnOf(n).map((s) => (
+          <div key={s.name} className="rounded-md border border-border bg-bg-raised p-4">
+            {s.name && <h2 className="mb-3 font-display text-sm font-bold text-text">{s.name}</h2>}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">{s.fields.map(renderField)}</div>
+          </div>
+        ))}
+      </div>
+    );
+    return (
+      <form onSubmit={handleSubmit} className="w-full space-y-5">
+        <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+          {renderColumn(1)}
+          {renderColumn(2)}
+        </div>
+        {footer}
+      </form>
+    );
   }
 
   return (
@@ -184,49 +367,12 @@ export function RecordForm({ fields, initialValues, submitLabel, onSubmitDemo, a
                   {field.section}
                 </h2>
               )}
-              <div className={field.type === "textarea" ? "sm:col-span-2" : ""}>
-                <label
-                  htmlFor={field.key}
-                  className="mb-1.5 flex items-baseline justify-between gap-2 text-xs font-semibold uppercase tracking-wide text-text-muted"
-                >
-                  <span>
-                    {field.label}
-                    {field.required && <span className="ml-1 text-danger">*</span>}
-                  </span>
-                  {field.addNew && (
-                    <a
-                      href={field.addNew.href}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="font-semibold normal-case tracking-normal text-teal hover:underline"
-                    >
-                      + {field.addNew.label}
-                    </a>
-                  )}
-                </label>
-                {renderInput(field, values[field.key], setValue)}
-                {field.help && (
-                  <p className="mt-1 text-[11px] font-normal normal-case text-text-muted">{field.help}</p>
-                )}
-                {lookupHint && lookup?.watchKey === field.key && (
-                  <p className="mt-1 text-[11px] font-normal normal-case text-teal">{lookupHint}</p>
-                )}
-              </div>
+              {renderField(field)}
             </Fragment>
           );
         })}
       </div>
-
-      <div className="flex items-center gap-3 pt-2">
-        <button type="submit" className="btn-accent" disabled={pending}>
-          {pending ? "Saving…" : submitLabel}
-        </button>
-        {saved && !action && (
-          <span className="text-sm font-semibold text-success">
-            Saved (demo — no backend yet)
-          </span>
-        )}
-      </div>
+      {footer}
     </form>
   );
 }
@@ -234,10 +380,51 @@ export function RecordForm({ fields, initialValues, submitLabel, onSubmitDemo, a
 function renderInput(
   field: FormFieldDef,
   value: unknown,
-  setValue: (key: string, value: unknown) => void
+  setValue: (key: string, value: unknown) => void,
+  ctx: { parentValue?: string; cityOptions: string[] } = { cityOptions: [] }
 ) {
   const baseClass =
     "w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text outline-none focus:border-teal";
+
+  // --- Address roles: one canonical state value, city from the resolved
+  // districts when the pincode lookup found any. Same behaviour and same
+  // fallbacks as the signup form's PincodeLookupFields.
+  if (field.addressRole === "state") {
+    return (
+      <select
+        id={field.key}
+        className={baseClass}
+        value={String(value ?? "")}
+        required={field.required}
+        onChange={(e) => setValue(field.key, e.target.value)}
+      >
+        <option value="">Select state</option>
+        {INDIAN_STATES.map((s) => (
+          <option key={s} value={s}>
+            {s}
+          </option>
+        ))}
+      </select>
+    );
+  }
+  if (field.addressRole === "city" && ctx.cityOptions.length > 0) {
+    return (
+      <select
+        id={field.key}
+        className={baseClass}
+        value={String(value ?? "")}
+        required={field.required}
+        onChange={(e) => setValue(field.key, e.target.value)}
+      >
+        <option value="">Select city</option>
+        {ctx.cityOptions.map((c) => (
+          <option key={c} value={c}>
+            {c}
+          </option>
+        ))}
+      </select>
+    );
+  }
 
   switch (field.type) {
     case "textarea":
@@ -487,7 +674,13 @@ function renderInput(
       // A `suggestions` list makes this a combobox: the existing catalog
       // entries are offered, but anything can still be typed — a device
       // brand/model that isn't in the catalog yet must never block intake.
-      const listId = field.suggestions?.length ? `${field.key}-suggestions` : undefined;
+      // When the field is scoped to a parent (Model under Brand), only the
+      // entries under the CURRENT parent value are offered — filtered
+      // in-browser from a map passed down as a prop, no fetch.
+      const suggestions = field.suggestionsByParent
+        ? (ctx.parentValue ? field.suggestionsByParent[ctx.parentValue] ?? [] : [])
+        : field.suggestions;
+      const listId = suggestions?.length ? `${field.key}-suggestions` : undefined;
       return (
         <>
           <input
@@ -496,13 +689,17 @@ function renderInput(
             list={listId}
             className={baseClass}
             value={String(value ?? "")}
-            placeholder={field.placeholder}
+            placeholder={
+              field.suggestionsByParent && !ctx.parentValue
+                ? "Pick a brand first"
+                : field.placeholder
+            }
             required={field.required}
             onChange={(e) => setValue(field.key, e.target.value)}
           />
           {listId && (
             <datalist id={listId}>
-              {field.suggestions?.map((s) => (
+              {suggestions?.map((s) => (
                 <option key={s} value={s} />
               ))}
             </datalist>

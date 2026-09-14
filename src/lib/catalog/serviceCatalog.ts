@@ -77,7 +77,12 @@ export function categoryOptionsForDomains(domains: ProductDomain[]): CategoryOpt
     };
   }
   if (!automobile) {
-    return { options: [...DEVICE_CATEGORIES], optionLabels: DEVICE_CATEGORY_LABELS };
+    // `optionGroups: undefined` is explicit, not incidental: callers SPREAD
+    // this result over a base field config that carries the combined
+    // ALL_CATEGORY_GROUPS map. Omitting the key would leave that map in
+    // place and wrongly nest a single-domain partner's flat list under an
+    // "Electronics" heading — the exact bug this line prevents.
+    return { options: [...DEVICE_CATEGORIES], optionLabels: DEVICE_CATEGORY_LABELS, optionGroups: undefined };
   }
 
   const optionGroups: Record<string, string> = {};

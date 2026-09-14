@@ -2,16 +2,9 @@ import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
-import { serviceCentreFormFields } from "@/lib/sample-data/service-centre";
-import { applyCustomizations } from "@/lib/designer/customizations";
-import { createBusinessRecordAction } from "@/lib/businessRecordActions";
+import { createServiceCentreWorkorderAction } from "@/lib/serviceCentreCreateAction";
 import { lookupServiceCentreCustomerAction } from "@/lib/serviceCentreCustomerLookup";
-import { listBusinessRecords } from "@/lib/businessRecords";
-import type { FormFieldDef } from "@/components/RecordForm";
-import { getPartner } from "@/lib/partnerData";
-import { parseProductDomains } from "@/lib/catalog/productDomains";
-import { categoryOptionsForDomains } from "@/lib/catalog/serviceCatalog";
-import { filterByDomains } from "@/lib/sample-data/service-centre-brands";
+import { buildServiceCentreCreateFields } from "@/lib/serviceCentreCreateFields";
 
 registerPage({
   id: "service-centre.create",
@@ -29,64 +22,12 @@ registerPage({
   sourceFile: "src/app/partner/[partnerId]/service-centre/new/page.tsx",
 });
 
-/**
- * Sorted, de-duplicated, non-empty values of one column across a record
- * set — used to offer real existing Brands/Models/"logged by" names as
- * datalist suggestions without ever constraining the field to them.
- */
-function distinct(rows: Record<string, unknown>[], key: string): string[] {
-  const seen = new Set<string>();
-  for (const row of rows) {
-    const value = String(row[key] ?? "").trim();
-    if (value) seen.add(value);
-  }
-  return [...seen].sort((a, b) => a.localeCompare(b));
-}
-
 export default async function NewServiceCentrePage({ params }: { params: { partnerId: string } }) {
   const mod = await getModule("service-centre");
-  const baseFields = await applyCustomizations("service-centre.create", serviceCentreFormFields);
-
-  // Brand/Model stay free text (a device that isn't catalogued yet must
-  // never block a walk-in from being booked in) but are backed by this
-  // partner's own live catalogs as suggestions, with a link straight to
-  // each catalog's own create page for anything genuinely new.
-  // Which product domain(s) this partner declared at signup (editable from
-  // Settings). Everything below is scoped to it: an electronics-only shop
-  // never sees a vehicle class or a vehicle brand, an automobile-only shop
-  // never sees a device category, and a shop doing both gets one Device
-  // Type select with domain <optgroup> headings.
-  const partner = await getPartner(params.partnerId);
-  const domains = parseProductDomains(partner?.productDomains);
-
-  const [brands, models, priorJobs] = await Promise.all([
-    listBusinessRecords(params.partnerId, "service-centre-brands"),
-    listBusinessRecords(params.partnerId, "service-centre-models"),
-    listBusinessRecords(params.partnerId, "service-centre"),
-  ]);
-  const base = `/partner/${params.partnerId}/service-centre`;
-  const suggestionsByKey: Record<string, string[]> = {
-    brandName: distinct(filterByDomains(brands, domains), "name"),
-    modelName: distinct(filterByDomains(models, domains), "name"),
-    // Real names already used on this partner's past workorders — the
-    // front-desk roster in practice, without inventing one.
-    loggedBy: distinct(priorJobs, "loggedBy"),
-  };
-  const addNewByKey: Record<string, { label: string; href: string }> = {
-    brandName: { label: "Add new brand", href: `${base}/brands/new` },
-    modelName: { label: "Add new model", href: `${base}/models/new` },
-  };
-  // Device Type is the one field whose OPTIONS (not just suggestions) vary
-  // with the domain — the electronics DEVICE_CATEGORIES list, the
-  // VEHICLE_CATEGORIES list, or both under optgroup headings. Never a
-  // merged single taxonomy; see src/lib/catalog/serviceCatalog.ts.
-  const categoryOptions = categoryOptionsForDomains(domains);
-  const fields: FormFieldDef[] = baseFields.map((f) => ({
-    ...f,
-    ...(f.key === "deviceCategory" ? categoryOptions : {}),
-    ...(suggestionsByKey[f.key]?.length ? { suggestions: suggestionsByKey[f.key] } : {}),
-    ...(addNewByKey[f.key] ? { addNew: addNewByKey[f.key] } : {}),
-  }));
+  // Shared with the list page's quick-create modal — see
+  // lib/serviceCentreCreateFields.ts. Domain-scoped Device Type,
+  // brand-scoped Model suggestions, catalog "+ Add new" links.
+  const fields = await buildServiceCentreCreateFields(params.partnerId);
 
   return (
     <AppShell topbarTitle={`New Workorder — ${mod?.label ?? "Service Centre"}`}>
@@ -97,7 +38,9 @@ export default async function NewServiceCentrePage({ params }: { params: { partn
           <RecordForm
             fields={fields}
             submitLabel="Create Workorder"
-            action={createBusinessRecordAction.bind(null, params.partnerId, "service-centre")}
+            mode="create"
+            layout="columns"
+            action={createServiceCentreWorkorderAction.bind(null, params.partnerId)}
             lookup={{
               watchKey: "customerPhone",
               run: lookupServiceCentreCustomerAction.bind(null, params.partnerId),

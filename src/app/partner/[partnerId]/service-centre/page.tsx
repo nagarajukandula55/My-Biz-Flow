@@ -4,6 +4,7 @@ import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
 import { ServiceCentreClientTable } from "./ServiceCentreClientTable";
 import { ServiceCentreNewButton } from "./ServiceCentreNewButton";
+import { buildServiceCentreCreateFields } from "@/lib/serviceCentreCreateFields";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { serviceCentreColumns } from "@/lib/sample-data/service-centre";
 import { listBusinessRecords, listBusinessRecordsPaginated } from "@/lib/businessRecords";
@@ -95,11 +96,15 @@ export default async function ServiceCentrePage({
 
   const hasActiveFilters = Boolean(q || status || priority || brandName || modelName || technicianName || from || to);
 
+  // The quick-create modal renders the same domain-aware, brand-scoped
+  // field set the full-page /new form does — one builder, no drift.
+  const createFields = await buildServiceCentreCreateFields(params.partnerId);
+
   return (
     <AppShell
       topbarTitle={mod?.label ?? "Service Centre"}
       topbarActions={
-        <ServiceCentreNewButton partnerId={params.partnerId} />
+        <ServiceCentreNewButton partnerId={params.partnerId} fields={createFields} />
       }
     >
       <div>
