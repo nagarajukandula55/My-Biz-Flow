@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useRef, useState, useTransition, type FormEvent } from "react";
+import { Fragment, useId, useRef, useState, useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { INDIAN_STATES } from "@/lib/sample-data/geo";
 import { lookupPincodeViaApi } from "@/lib/geo/pincodeClient";
@@ -209,6 +209,14 @@ export function RecordForm({ fields: allFields, initialValues, submitLabel, onSu
   // RecordForm for "quickly add a catalog entry without losing this form".
   const [addNewModalKey, setAddNewModalKey] = useState<string | null>(null);
   const router = useRouter();
+  // Stable id linking the primary submit button (rendered in a sticky bar
+  // ABOVE the form, so it stays visible without scrolling a long form) back
+  // to the actual <form> element below it — a plain `form="<id>"` attribute
+  // on a <button> outside a <form> still submits it natively, no JS wiring
+  // needed. The original bottom button (in `footer`) is kept too, as a
+  // safety net for mobile / long-form usability, so this is an addition,
+  // not a relocation.
+  const formId = useId();
 
   const pincodeKey = fields.find((f) => f.addressRole === "pincode")?.key;
   const stateKey = fields.find((f) => f.addressRole === "state")?.key;
@@ -358,6 +366,23 @@ export function RecordForm({ fields: allFields, initialValues, submitLabel, onSu
     </>
   );
 
+  // Primary submit trigger, rendered ABOVE the form content in a sticky bar
+  // so it's visible immediately — no scrolling to the bottom of a long
+  // form to find "Create Workorder"/"Save". Submits the <form> below via
+  // the `form` attribute (formId) even though it lives outside its DOM
+  // subtree. Purely a visual relocation of the trigger; handleSubmit and
+  // all field/validation logic are unchanged.
+  const topActionBar = (
+    <div className="sticky top-0 z-10 -mx-1 mb-4 flex items-center justify-end gap-3 bg-bg px-1 py-2">
+      {saved && !action && (
+        <span className="text-sm font-semibold text-success">Saved (demo — no backend yet)</span>
+      )}
+      <button type="submit" form={formId} className="btn-accent" disabled={pending}>
+        {pending ? "Saving…" : submitLabel}
+      </button>
+    </div>
+  );
+
   const activeAddNewModal = fields.find((f) => f.key === addNewModalKey)?.addNewModal;
   const addNewModalNode = activeAddNewModal && (
     <Modal open onClose={() => setAddNewModalKey(null)} title={activeAddNewModal.title} size="md">
@@ -402,7 +427,8 @@ export function RecordForm({ fields: allFields, initialValues, submitLabel, onSu
     );
     return (
       <>
-        <form onSubmit={handleSubmit} className="w-full space-y-5">
+        {topActionBar}
+        <form id={formId} onSubmit={handleSubmit} className="w-full space-y-5">
           <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
             {renderColumn(1)}
             {renderColumn(2)}
@@ -416,7 +442,8 @@ export function RecordForm({ fields: allFields, initialValues, submitLabel, onSu
 
   return (
     <>
-      <form onSubmit={handleSubmit} className="w-full max-w-2xl space-y-5">
+      {topActionBar}
+      <form id={formId} onSubmit={handleSubmit} className="w-full max-w-2xl space-y-5">
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
           {fields.map((field, i) => {
             const prevSection = i === 0 ? undefined : fields[i - 1].section;

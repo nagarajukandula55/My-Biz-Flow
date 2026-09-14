@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useId, useState, useTransition } from "react";
 import Link from "next/link";
 import { Landmark, QrCode, FileText, StickyNote, Plus, Check } from "lucide-react";
 import { LineItemsEditor, computeTotals, type ItemOption } from "./LineItemsEditor";
@@ -198,6 +198,11 @@ export function BillingInvoiceForm({
   const [items, setItems] = useState<LineItem[]>(initialValues?.items ?? [{ ...DEFAULT_ITEM }]);
   const [saved, setSaved] = useState(false);
   const [pending, startTransition] = useTransition();
+  // Same top-right sticky submit trigger as RecordForm (see RecordForm.tsx)
+  // — a button outside the <form> DOM subtree still submits it via the
+  // `form="<id>"` attribute, so "Create Invoice"/"Save" is visible right
+  // away instead of after scrolling past Line Items/Totals/Footer.
+  const formId = useId();
 
   // "On this Invoice" footer toggles — see BillingInvoiceValues' doc comment.
   // Configured-ness of Bank/UPI comes from Settings data passed in as props;
@@ -318,7 +323,16 @@ export function BillingInvoiceForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="w-full space-y-5">
+    <>
+      <div className="sticky top-0 z-10 -mx-1 mb-4 flex items-center justify-end gap-3 bg-bg px-1 py-2">
+        {saved && !action && (
+          <span className="text-sm font-semibold text-success">Saved (demo — no backend yet)</span>
+        )}
+        <button type="submit" form={formId} className="btn-accent" disabled={pending}>
+          {pending ? "Saving…" : submitLabel}
+        </button>
+      </div>
+      <form id={formId} onSubmit={handleSubmit} className="w-full space-y-5">
       <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
         <div className="rounded-md border border-border bg-bg-raised p-4">
           <h2 className="mb-3 font-display text-sm font-bold text-text">Invoice Type</h2>
@@ -707,7 +721,8 @@ export function BillingInvoiceForm({
           }}
         />
       )}
-    </form>
+      </form>
+    </>
   );
 }
 
