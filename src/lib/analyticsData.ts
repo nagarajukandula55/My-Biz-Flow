@@ -12,7 +12,13 @@ import type { BarPoint } from "@/components/charts/BarChartCard";
 import type { PieSlice } from "@/components/charts/PieChartCard";
 import { MODULE_DATA } from "@/lib/moduleData";
 import { getModule } from "@/lib/designer/moduleRegistry";
-import { WORKORDER_STAGES, type WorkorderStage, computeDisplayStatus } from "@/lib/sample-data/service-centre";
+import {
+  WORKORDER_STAGES,
+  type WorkorderStage,
+  type StageHistoryEntry,
+  computeDisplayStatus,
+  computeWorkorderTat,
+} from "@/lib/sample-data/service-centre";
 import { listBusinessRecords } from "@/lib/businessRecords";
 import type { ComboTrendPoint } from "@/components/charts/ComboTrendCard";
 
@@ -569,4 +575,64 @@ export async function getInvoiceStatusBreakdown(partnerId: string): Promise<PieS
     byStatus.set(status, (byStatus.get(status) ?? 0) + 1);
   }
   return Array.from(byStatus.entries()).map(([name, value]) => ({ name, value }));
+}
+
+/**
+ * Top device brands by workorder count (data.brandName on service-centre
+ * records — see service-centre.ts's intake form). Blank/unset brand is
+ * excluded rather than lumped into an "Unspecified" bucket — a bar chart
+ * about brand mix shouldn't be dominated by "nobody filled this in".
+ * Capped to the top 8 so the bar chart stays readable.
+ */
+export async function getTopBrandsByWorkorderCount(partnerId: string): Promise<BarPoint[]> {
+  const rows = await prisma.businessRecord.findMany({
+    where: { partnerId, moduleSlug: "service-centre" },
+    select: { data: true },
+  });
+  const byBrand = new Map<string, number>();
+  for (const r of rows) {
+    const data = r.data as Record<string, unknown>;
+    const brand = typeof data.brandName === "string" ? data.brandName.trim() : "";
+    if (!brand) continue;
+    byBrand.set(brand, (byBrand.get(brand) ?? 0) + 1);
+  }
+  return Array.from(byBrand.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8)
+    .map(([category, value]) => ({ category, value }));
+}
+
+export interface AverageTat {
+  /** Average TAT (hours) across CLOSED workorders only — an in-progress job's TAT is still running, so mixing it in would understate the real number and drift downward as new jobs get created. */
+  avgHours?: number;
+  closedCount: number;
+}
+
+/** Average turnaround time for completed jobs — reuses computeWorkorderTat(), the same single source of truth the Workorders list/detail pages use for their own per-row TAT badge. */
+export async function getAverageTat(partnerId: string): Promise<AverageTat> {
+  const rows = await prisma.businessRecord.findMany({
+    where: { partnerId, moduleSlug: "service-centre" },
+    select: { data: true, createdAt: true },
+  });
+
+  let total = 0;
+  let closedCount = 0;
+  for (const r of rows) {
+    const data = r.data as Record<string, unknown>;
+    const stageHistory = (data.stageHistory as StageHistoryEntry[] | undefined) ?? [];
+    const isClosed = stageHistory.some((h) => h.stage === "Closed");
+    if (!isClosed) continue;
+    const { hours } = computeWorkorderTat({
+      recordCreatedAt: r.createdAt.toISOString(),
+      receivedDate: typeof data.receivedDate === "string" ? data.receivedDate : undefined,
+      stageHistory,
+      cancelledAt: typeof data.cancelledAt === "string" ? data.cancelledAt : undefined,
+      terminal: true,
+    });
+    if (hours !== undefined) {
+      total += hours;
+      closedCount++;
+    }
+  }
+  return { avgHours: closedCount > 0 ? total / closedCount : undefined, closedCount };
 }
