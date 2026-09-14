@@ -12,7 +12,9 @@ import type { BarPoint } from "@/components/charts/BarChartCard";
 import type { PieSlice } from "@/components/charts/PieChartCard";
 import { MODULE_DATA } from "@/lib/moduleData";
 import { getModule } from "@/lib/designer/moduleRegistry";
-import { WORKORDER_STAGES, type WorkorderStage } from "@/lib/sample-data/service-centre";
+import { WORKORDER_STAGES, type WorkorderStage, computeDisplayStatus } from "@/lib/sample-data/service-centre";
+import { listBusinessRecords } from "@/lib/businessRecords";
+import type { ComboTrendPoint } from "@/components/charts/ComboTrendCard";
 
 export async function computeModuleStat(
   partnerId: string,
@@ -432,6 +434,126 @@ export async function getRevenueBySource(partnerId: string): Promise<PieSlice[]>
     byMode.set(mode, (byMode.get(mode) ?? 0) + amount);
   }
   return Array.from(byMode.entries()).map(([name, value]) => ({ name, value }));
+}
+
+/**
+ * Top-of-page summary numbers for the Analytics page — mirrors the
+ * reference vendor app's 6 summary cards (Total Revenue, This Month,
+ * Invoices, Total/Open/Closed Workorders). Revenue uses the same
+ * amountPaid/Paid-totalAmount "money actually collected" definition as
+ * every other revenue figure in this file. Workorder Open/Closed counts
+ * reuse computeDisplayStatus() — the SAME milestone computation the
+ * Workorders list page (service-centre/page.tsx) uses for its own Open/
+ * Closed stat cards — via listBusinessRecords (which returns the same Row
+ * shape that page reads), so these numbers can never disagree with the
+ * Workorders list's own cards. Closed excludes Cancelled, per that same
+ * page's documented rule.
+ */
+export interface AnalyticsSummary {
+  totalRevenue: number;
+  paidInvoiceCount: number;
+  thisMonthRevenue: number;
+  thisMonthInvoiceCount: number;
+  totalInvoices: number;
+  totalWorkorders: number;
+  openWorkorders: number;
+  closedWorkorders: number;
+}
+
+export async function getAnalyticsSummary(partnerId: string): Promise<AnalyticsSummary> {
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const [billingRows, workorderRows] = await Promise.all([
+    prisma.businessRecord.findMany({
+      where: { partnerId, moduleSlug: "billing" },
+      select: { data: true, createdAt: true },
+    }),
+    listBusinessRecords(partnerId, "service-centre"),
+  ]);
+
+  let totalRevenue = 0;
+  let paidInvoiceCount = 0;
+  let thisMonthRevenue = 0;
+  let thisMonthInvoiceCount = 0;
+  for (const r of billingRows) {
+    const data = r.data as Record<string, unknown>;
+    let amount = 0;
+    if (typeof data.amountPaid === "number") amount = data.amountPaid;
+    else if (data.paymentStatus === "Paid" && typeof data.totalAmount === "number") amount = data.totalAmount;
+    if (amount > 0) {
+      totalRevenue += amount;
+      paidInvoiceCount++;
+    }
+    if (r.createdAt >= startOfMonth) {
+      thisMonthInvoiceCount++;
+      if (amount > 0) thisMonthRevenue += amount;
+    }
+  }
+
+  let openWorkorders = 0;
+  let closedWorkorders = 0;
+  for (const row of workorderRows) {
+    const { milestone } = computeDisplayStatus(row);
+    if (milestone === "CLOSED") closedWorkorders++;
+  }
+  const cancelledWorkorders = workorderRows.filter((row) => computeDisplayStatus(row).milestone === "CANCELLED").length;
+  openWorkorders = workorderRows.length - closedWorkorders - cancelledWorkorders;
+
+  return {
+    totalRevenue,
+    paidInvoiceCount,
+    thisMonthRevenue,
+    thisMonthInvoiceCount,
+    totalInvoices: billingRows.length,
+    totalWorkorders: workorderRows.length,
+    openWorkorders,
+    closedWorkorders,
+  };
+}
+
+const TREND_MONTH_LABELS = (d: Date) => d.toLocaleDateString("en-IN", { month: "short", year: "numeric" });
+
+/** Combined revenue + workorder-count trend for the last 6 calendar months (this month inclusive). */
+export async function getSixMonthTrend(partnerId: string): Promise<ComboTrendPoint[]> {
+  const now = new Date();
+  const rangeStart = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+
+  const [billingRows, workorderRows] = await Promise.all([
+    prisma.businessRecord.findMany({
+      where: { partnerId, moduleSlug: "billing", createdAt: { gte: rangeStart } },
+      select: { data: true, createdAt: true },
+    }),
+    prisma.businessRecord.findMany({
+      where: { partnerId, moduleSlug: "service-centre", createdAt: { gte: rangeStart } },
+      select: { createdAt: true },
+    }),
+  ]);
+
+  const months: { key: string; label: string; revenue: number; workorders: number }[] = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push({ key: `${d.getFullYear()}-${d.getMonth()}`, label: TREND_MONTH_LABELS(d), revenue: 0, workorders: 0 });
+  }
+  const byKey = new Map(months.map((m) => [m.key, m]));
+
+  for (const r of billingRows) {
+    const key = `${r.createdAt.getFullYear()}-${r.createdAt.getMonth()}`;
+    const bucket = byKey.get(key);
+    if (!bucket) continue;
+    const data = r.data as Record<string, unknown>;
+    let amount = 0;
+    if (typeof data.amountPaid === "number") amount = data.amountPaid;
+    else if (data.paymentStatus === "Paid" && typeof data.totalAmount === "number") amount = data.totalAmount;
+    bucket.revenue += amount;
+  }
+  for (const r of workorderRows) {
+    const key = `${r.createdAt.getFullYear()}-${r.createdAt.getMonth()}`;
+    const bucket = byKey.get(key);
+    if (bucket) bucket.workorders++;
+  }
+
+  return months.map((m) => ({ x: m.label, revenue: m.revenue, workorders: m.workorders }));
 }
 
 /** Every Billing record (any status), counted by `paymentStatus` — real invoice-status composition, not scoped to paid-only. */
