@@ -78,6 +78,51 @@ function mapPaymentMode(v: unknown): string | undefined {
   return v ? map[String(v)] ?? String(v) : undefined;
 }
 
+/**
+ * AN-CRM's real CrmJobSheetStatus (CREATED/REPAIR_STARTED/REPAIR_IN_PROGRESS/
+ * PART_PENDING/REPAIR_COMPLETED/CLOSED/CANCELLED) mapped onto My-Biz-Flow's
+ * own stage ("Created"|"In Progress"|"Completed"|"Closed") + onHold side
+ * state — the SAME split mapStageToMilestone() in service-centre.ts expects,
+ * so the migrated job's real status shows correctly everywhere (list,
+ * detail badge, TAT, summary cards) instead of every job defaulting to
+ * "Created" because only a generic, unrelated legacy `status` string field
+ * was being set before.
+ */
+function mapAnCrmStatusToStage(status: string): { stage: string; onHold: boolean; holdReason?: string } {
+  switch (status) {
+    case "CREATED":
+      return { stage: "Created", onHold: false };
+    case "REPAIR_STARTED":
+    case "REPAIR_IN_PROGRESS":
+      return { stage: "In Progress", onHold: false };
+    case "PART_PENDING":
+      return { stage: "In Progress", onHold: true, holdReason: "Awaiting parts" };
+    case "REPAIR_COMPLETED":
+      return { stage: "Completed", onHold: false };
+    case "CLOSED":
+    case "CANCELLED":
+      // Cancellation is recorded via cancelledAt (below), which takes
+      // precedence over `stage` in mapStageToMilestone() regardless of
+      // this value — Closed is a reasonable default for "however far it
+      // got before being closed/cancelled".
+      return { stage: "Closed", onHold: false };
+    default:
+      return { stage: "Created", onHold: false };
+  }
+}
+
+/** Builds a stageHistory entry list from whatever real AN-CRM timestamps exist for this job, so the migrated job's TAT/timeline/milestone-stepper dates are real, not blank. */
+function buildStageHistory(d: Document): { stage: string; at: string }[] {
+  const history: { stage: string; at: string }[] = [];
+  const push = (stage: string, at: unknown) => {
+    if (at instanceof Date) history.push({ stage, at: at.toISOString() });
+  };
+  push("In Progress", pick(d, "engineerAssignedAt"));
+  push("Completed", pick(d, "completedAt"));
+  push("Closed", pick(d, "handedOverAt"));
+  return history;
+}
+
 async function main() {
   const mongo = new MongoClient(MONGODB_URI!);
   await mongo.connect();
@@ -110,6 +155,18 @@ async function main() {
     console.error('PartnerType "service-centre" not found — run scripts/seed-launch-data.ts first.');
     process.exit(1);
   }
+
+  // AN-CRM's real Terms & Conditions live on the single shared Business
+  // document (src/models/Business.ts's termsAndConditions/estimateTerms/
+  // invoiceTerms — confirmed there's only 1 Business doc total, per an
+  // earlier diagnostic run, since almost every vendor shares it), not on
+  // each VendorProfile — applied to every migrated partner as their
+  // starting Settings terms, so printed documents carry the real text
+  // instead of coming up blank.
+  const businessDoc = await db.collection("businesses").findOne({});
+  const serviceTerms = str(pick(businessDoc ?? {}, "termsAndConditions")) || null;
+  const estimateTermsAnCrm = str(pick(businessDoc ?? {}, "estimateTerms")) || null;
+  const invoiceTermsAnCrm = str(pick(businessDoc ?? {}, "invoiceTerms")) || null;
 
   const idGen = await nextPartnerId();
   const generatedPasswords: { partnerId: string; businessName: string; loginContact: string; password: string }[] = [];
@@ -146,6 +203,28 @@ async function main() {
     console.log(`--- ${businessName} (AN-CRM VendorProfile ${vendorId}) -> ${partnerId}${partnerAlreadyExists ? " (already migrated, adding missing data only)" : ""} ---`);
     console.log(`  loginContact: ${loginContact}`);
 
+    // Backfill onto an already-migrated Partner from the FIRST run of this
+    // script, before planId/terms were part of the mapping — a plain
+    // `create` skip alone would leave those partners permanently planless
+    // (see getPageTierAccess: no plan = no tier access at all) and without
+    // real Terms & Conditions text. Only ever fills a field that's
+    // currently unset — never overwrites something the partner may have
+    // since edited themselves from Settings.
+    if (confirm && partnerAlreadyExists && existingPartner) {
+      const patch: Record<string, unknown> = {};
+      if (!existingPartner.planId) {
+        patch.planId = "PLAN-ULTIMATE";
+        patch.billingCycle = "Yearly";
+      }
+      if (!existingPartner.serviceTerms && serviceTerms) patch.serviceTerms = serviceTerms;
+      if (!existingPartner.estimateTerms && estimateTermsAnCrm) patch.estimateTerms = estimateTermsAnCrm;
+      if (!existingPartner.invoiceTerms && invoiceTermsAnCrm) patch.invoiceTerms = invoiceTermsAnCrm;
+      if (Object.keys(patch).length > 0) {
+        await prisma.partner.update({ where: { id: partnerId }, data: patch });
+        console.log(`  backfilled onto existing partner: ${Object.keys(patch).join(", ")}`);
+      }
+    }
+
     if (confirm && !partnerAlreadyExists) {
       await prisma.partner.create({
         data: {
@@ -166,10 +245,21 @@ async function main() {
           mustChangePassword: true,
           status: "Active",
           subscriptionStatus: "Active",
+          // Real, already-operating businesses migrated in with their full
+          // history — given Ultimate (not left planless) so nothing they
+          // could already do in AN-CRM (or anything gated in My-Biz-Flow,
+          // like the new Customers module) is invisible to them on day one.
+          // A planless Partner resolves to no tier access at all, per
+          // getPageTierAccess() in src/lib/tenant.ts.
+          planId: "PLAN-ULTIMATE",
+          billingCycle: "Yearly",
           bankAccountName: str(pick(vendor, "bankAccountName")) || null,
           bankName: str(pick(vendor, "bankName")) || null,
           serviceHours: str(pick(vendor, "serviceCenterInfo.hours")) || null,
           supportHotline: str(pick(vendor, "serviceCenterInfo.hotline")) || null,
+          serviceTerms,
+          estimateTerms: estimateTermsAnCrm,
+          invoiceTerms: invoiceTermsAnCrm,
         },
       });
 
@@ -274,29 +364,50 @@ async function main() {
         name: "crmjobsheets",
         moduleSlug: "service-centre",
         scope: { vendorId },
-        map: (d) => ({
-          customer: str(pick(d, "customerName")),
-          customerPhone: str(pick(d, "phone")),
-          customerGstin: str(pick(d, "gstin")),
-          customerAddress: str(pick(d, "address")),
-          customerCity: str(pick(d, "city")),
-          customerState: str(pick(d, "state")),
-          customerPincode: str(pick(d, "pincode")),
-          brandName: brandNameById.get(str(pick(d, "brandId"))) ?? str(pick(d, "pendingBrandName")),
-          modelName: str(pick(d, "deviceModel")),
-          imeiOrSerialNumber: str(pick(d, "imeiOrSerialNumber")),
-          faultDescription: str(pick(d, "issueDescription")),
-          remark: str(pick(d, "remark")),
-          warrantyStatus: pick(d, "warrantyStatus") ?? undefined,
-          warrantyFlag: pick(d, "warrantyStatus") === "IW",
-          paymentMode: mapPaymentMode(pick(d, "paymentMode")),
-          collectedByName: str(pick(d, "paymentCollectedByName")),
-          brandJobNoForPartOrder: str(pick(d, "brandJobNoForPartOrder")),
-          status: str(pick(d, "status"), "Created"),
-          receivedDate: pick(d, "createdAt"),
-          recordCreatedAt: pick(d, "createdAt"),
-          _anCrmId: str(d._id),
-        }),
+        map: (d) => {
+          const anCrmStatus = str(pick(d, "status"), "CREATED");
+          const { stage, onHold, holdReason } = mapAnCrmStatusToStage(anCrmStatus);
+          const cancelledAtRaw = pick(d, "cancelledAt");
+          return {
+            // Real AN-CRM job number (e.g. "WO202609120007") preserved as
+            // this record's own id — previously left unset here, so
+            // createBusinessRecord() minted a random SER-XXXXXX key instead
+            // and the real job number was lost on migration.
+            id: str(pick(d, "jobSheetNumber")) || undefined,
+            customer: str(pick(d, "customerName")),
+            customerPhone: str(pick(d, "phone")),
+            customerGstin: str(pick(d, "gstin")),
+            customerAddress: str(pick(d, "address")),
+            customerCity: str(pick(d, "city")),
+            customerState: str(pick(d, "state")),
+            customerPincode: str(pick(d, "pincode")),
+            brandName: brandNameById.get(str(pick(d, "brandId"))) ?? str(pick(d, "pendingBrandName")),
+            modelName: str(pick(d, "deviceModel")),
+            imeiOrSerialNumber: str(pick(d, "imeiOrSerialNumber")),
+            faultDescription: str(pick(d, "issueDescription")),
+            remark: str(pick(d, "remark")),
+            warrantyStatus: pick(d, "warrantyStatus") ?? undefined,
+            warrantyFlag: pick(d, "warrantyStatus") === "IW",
+            paymentMode: mapPaymentMode(pick(d, "paymentMode")),
+            collectedByName: str(pick(d, "paymentCollectedByName")),
+            brandJobNoForPartOrder: str(pick(d, "brandJobNoForPartOrder")),
+            // Real lifecycle state (previously only a generic, unread
+            // `status` string was set — the actual stage/onHold/cancelledAt
+            // fields every real UI path reads were left unset, so every
+            // migrated job silently showed as "Created" regardless of its
+            // real AN-CRM status).
+            stage,
+            onHold,
+            holdReason,
+            cancelledAt: cancelledAtRaw instanceof Date ? cancelledAtRaw.toISOString() : undefined,
+            cancelReason: str(pick(d, "cancelReason")) || undefined,
+            stageHistory: buildStageHistory(d),
+            status: anCrmStatus,
+            receivedDate: pick(d, "createdAt"),
+            recordCreatedAt: pick(d, "createdAt"),
+            _anCrmId: str(d._id),
+          };
+        },
       },
       {
         name: "salesinvoices",
@@ -332,6 +443,34 @@ async function main() {
         },
       },
     ];
+
+    // One-time correction pass: the FIRST run of this script (before this
+    // fix) migrated crmjobsheets with a random generated id and no real
+    // stage/onHold/cancelledAt — every migrated job showed as stage
+    // "Created" regardless of its real AN-CRM status, and lost its real job
+    // number. Re-importing those specific rows requires clearing them
+    // first, since createBusinessRecord only creates, never updates. Scoped
+    // tightly to ONLY rows this same script created (matched by having
+    // `_anCrmId` at all) — never touches a workorder created normally
+    // through the live app afterward (which would have no `_anCrmId`).
+    if (confirm) {
+      const staleWorkorders = await prisma.businessRecord.findMany({
+        where: { partnerId, moduleSlug: "service-centre" },
+        select: { id: true, data: true },
+      });
+      const toDelete = staleWorkorders.filter((r) => {
+        const data = r.data as Record<string, unknown>;
+        // Only rows migrated by an earlier, pre-fix run: they have a real
+        // _anCrmId but are missing the `stage` field this fix now always
+        // sets — a workorder migrated correctly by this fixed version (or
+        // created live in the app) is left alone.
+        return typeof data?._anCrmId === "string" && data.stage === undefined;
+      });
+      if (toDelete.length > 0) {
+        await prisma.businessRecord.deleteMany({ where: { id: { in: toDelete.map((r) => r.id) } } });
+        console.log(`  cleared ${toDelete.length} previously-migrated workorder(s) with the old, incorrect mapping — will re-import with real job numbers/status below.`);
+      }
+    }
 
     for (const col of collections) {
       const docs = await db.collection(col.name).find(col.scope).toArray();
