@@ -6,6 +6,7 @@ import { formatCurrencyINR, formatDate } from "@/lib/format";
 import { getDocumentTemplate, renderTemplate } from "@/lib/designer/documentTemplates";
 import { getEffectiveScheme } from "@/lib/designer/numbering";
 import { formatNumber } from "@/lib/designer/numberingFormat";
+import { buildTrackingUrl, generateTrackingQrDataUrl } from "@/lib/trackingQr";
 
 /**
  * Renders a record as a real printable document — letterhead, fields laid
@@ -46,6 +47,7 @@ export async function DocumentView({
   signatures,
   termsText,
   contactBand,
+  trackingCode,
 }: {
   pageId: string;
   /** The numbering system's document-type id, e.g. "billing.document" — see NUMBERED_DOCUMENT_TYPES. */
@@ -94,11 +96,20 @@ export async function DocumentView({
    * the partner hasn't set either.
    */
   contactBand?: { hours?: string | null; hotline?: string | null };
+  /**
+   * The Service Centre workorder code this document belongs to — when set,
+   * a "Track your repair" QR + plain-text URL is printed near the footer so
+   * a customer never has to type anything (see src/lib/trackingQr.ts).
+   * Omitted for every non-Service-Centre document, which has no public
+   * tracker to link to.
+   */
+  trackingCode?: string;
 }) {
   const customTemplate = await getDocumentTemplate(pageId);
   const scheme = await getEffectiveScheme(documentType, partnerId);
   const documentNumber = formatNumber(scheme, scheme.sequenceStart + sequenceIndex);
   const templateRecord = { ...record, documentNumber };
+  const trackingQrDataUrl = trackingCode ? await generateTrackingQrDataUrl(partnerId, trackingCode) : null;
 
   return (
     <div className="mbf-page bg-bg-sunken">
@@ -236,9 +247,41 @@ export async function DocumentView({
               <p className="mt-1 whitespace-pre-line">{termsText.trim()}</p>
             </div>
           )}
+          {trackingQrDataUrl && trackingCode && (
+            <DocumentTrackingBlock partnerId={partnerId} code={trackingCode} qrDataUrl={trackingQrDataUrl} />
+          )}
           <DocumentContactBand hours={contactBand?.hours} hotline={contactBand?.hotline} />
         </div>
         </PrintFrame>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * "Track your repair" QR + the plain-text URL underneath it (in case
+ * someone can't scan) — shared by every Service Centre print document
+ * (Job Card/Estimate/Service Record go through DocumentView above; the
+ * Sales Invoice builds its own layout and renders this directly).
+ */
+export function DocumentTrackingBlock({
+  partnerId,
+  code,
+  qrDataUrl,
+}: {
+  partnerId: string;
+  code: string;
+  qrDataUrl: string;
+}) {
+  return (
+    <div className="mt-6 flex items-center gap-4 rounded-md border border-border p-4">
+      {/* eslint-disable-next-line @next/next/no-img-element -- a generated
+          data: URL, not a file next/image can optimise. */}
+      <img src={qrDataUrl} alt="Scan to track your repair" className="h-24 w-24 flex-shrink-0" width={96} height={96} />
+      <div className="text-xs text-text-muted">
+        <div className="font-semibold uppercase tracking-wide text-text">Track Your Repair</div>
+        <p className="mt-1">Scan this code anytime to check your repair's status — no login needed.</p>
+        <p className="mt-1 break-all font-mono text-text-muted">{buildTrackingUrl(partnerId, code)}</p>
       </div>
     </div>
   );

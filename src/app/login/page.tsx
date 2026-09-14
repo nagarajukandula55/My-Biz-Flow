@@ -80,6 +80,11 @@ export default function LoginPage({
             Register your business
           </Link>
         </p>
+        <p className="mt-2 text-center text-sm text-text-muted">
+          <Link href="/track" className="font-semibold text-teal hover:underline">
+            Track a repair without an account
+          </Link>
+        </p>
       </div>
     </div>
   );

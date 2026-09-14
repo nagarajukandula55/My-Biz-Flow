@@ -86,6 +86,7 @@ export default async function ServiceCentreEstimatePage({
         taxRate: l.gstRate,
       }))}
       totals={{ subtotal, tax, total: subtotal + tax }}
+      trackingCode={params.recordId}
       signatures={[
         "Customer Signature (approval to proceed)",
         `For ${partner?.businessName ?? "Your Business"} — Authorised Signatory`,

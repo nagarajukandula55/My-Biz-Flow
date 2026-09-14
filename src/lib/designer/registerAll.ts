@@ -222,6 +222,7 @@ import "@/app/help/page";
 import "@/app/page";
 import "@/app/login/page";
 import "@/app/forgot-password/page";
+import "@/app/track/page";
 import "@/app/signup/page";
 import "@/app/signup/pending/page";
 import "@/app/change-password/page";

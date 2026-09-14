@@ -91,6 +91,7 @@ export default async function ServiceCentreDocumentPage({
       columns={serviceCentreColumns}
       sequenceIndex={sequenceIndex}
       fieldKeys={JOB_CARD_FIELDS}
+      trackingCode={params.recordId}
       signatures={[
         "Customer Signature",
         `For ${partner?.businessName ?? "Your Business"} — Authorised Signatory`,

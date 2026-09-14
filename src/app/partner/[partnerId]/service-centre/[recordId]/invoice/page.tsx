@@ -37,6 +37,7 @@ export default async function ServiceCentreInvoicePage({
 
   return (
     <ServiceCentreInvoiceDocument
+      partnerId={params.partnerId}
       partnerName={partner?.businessName ?? "Your Business"}
       partnerGstin={partner?.gstin ?? ""}
       partnerPhone={partner?.businessContact ?? ""}
