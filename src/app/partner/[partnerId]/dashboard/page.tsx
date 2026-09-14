@@ -19,7 +19,7 @@ registerPage({
     { key: "service-centre-overview", label: "Service Centre overview strip (period/open cards)" },
   ],
   explanation:
-    "Not one hardcoded dashboard and not 21 separate per-module dashboards — this page is dynamically composed from whichever modules this partner is BOTH enabled for and holds an active access key for (getVisibleModuleSlugs, src/lib/designer/entitlements.ts), generating one DashboardWidget per module via a generic aggregation helper (computeModuleStat) rather than per-module logic repeated 21 times. A partner whose access key for a module gets revoked loses that widget immediately, independent of their plan. Partners with the service-centre module also get a real workorder overview strip (Today/Week/Month/Year volume, Open/Closed-this-month, revenue-this-month from billing) computed from the same BusinessRecord store — see getServiceCentreOverview in src/lib/analyticsData.ts. There is no technician/assignment concept in this app (by explicit design), so no per-technician breakdown.",
+    "Not one hardcoded dashboard and not 21 separate per-module dashboards — this page is dynamically composed from whichever modules this partner is BOTH enabled for and holds an active access key for (getVisibleModuleSlugs, src/lib/designer/entitlements.ts), generating one DashboardWidget per module via a generic aggregation helper (computeModuleStat) rather than per-module logic repeated 21 times. A partner whose access key for a module gets revoked loses that widget immediately, independent of their plan. Partners with the service-centre module also get a real workorder overview strip — Today/Week/Month/Year volume, Open, Overdue (open + past its own slaDate 'Promised Delivery' field), Part Pending (In Progress + onHold), Repair Completed, Closed This Month, Cancelled, and revenue-this-month from billing — computed from the same BusinessRecord store — see getServiceCentreOverview in src/lib/analyticsData.ts. There is no technician/assignment concept in this app (by explicit design), so no per-technician breakdown.",
   sourceFile: "src/app/partner/[partnerId]/dashboard/page.tsx",
 });
 
@@ -66,7 +66,19 @@ export default async function PartnerDashboardPage({ params }: { params: { partn
                 <DashboardWidget label="Open Workorders" value={String(scOverview.openWorkorders)} />
               </Link>
               <Link href={`/partner/${params.partnerId}/service-centre`}>
+                <DashboardWidget label="Overdue" value={String(scOverview.overdueWorkorders)} />
+              </Link>
+              <Link href={`/partner/${params.partnerId}/service-centre`}>
+                <DashboardWidget label="Part Pending" value={String(scOverview.partPendingWorkorders)} />
+              </Link>
+              <Link href={`/partner/${params.partnerId}/service-centre`}>
+                <DashboardWidget label="Repair Completed" value={String(scOverview.repairCompletedWorkorders)} />
+              </Link>
+              <Link href={`/partner/${params.partnerId}/service-centre`}>
                 <DashboardWidget label="Closed This Month" value={String(scOverview.closedThisMonth)} />
+              </Link>
+              <Link href={`/partner/${params.partnerId}/service-centre`}>
+                <DashboardWidget label="Cancelled" value={String(scOverview.cancelledWorkorders)} />
               </Link>
               <Link href={`/partner/${params.partnerId}/billing`}>
                 <DashboardWidget label="Revenue This Month" value={formatCurrencyINR(scOverview.revenueThisMonth)} neon />

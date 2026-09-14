@@ -104,6 +104,20 @@ export interface ServiceCentreOverview {
   workordersThisMonth: number;
   workordersThisYear: number;
   openWorkorders: number;
+  /**
+   * Open (not Closed, not cancelled) AND past its own `slaDate` (the
+   * "Promised Delivery" date captured on the intake/edit form — see
+   * service-centre.ts's FormFieldDef list). Jobs with no slaDate set never
+   * count as overdue — there's nothing to be overdue against — rather than
+   * falling back to a fabricated age heuristic.
+   */
+  overdueWorkorders: number;
+  /** stage === "In Progress" && onHold, mirroring mapStageToMilestone()'s PART_PENDING derivation — distinct from the generic openWorkorders count above. */
+  partPendingWorkorders: number;
+  /** stage === "Completed" (repair done, not yet Closed/handed over) and not cancelled. */
+  repairCompletedWorkorders: number;
+  /** All-time cancelledAt-set count (terminal side-branch, see mapStageToMilestone). */
+  cancelledWorkorders: number;
   closedThisMonth: number;
   revenueThisMonth: number;
 }
@@ -132,6 +146,10 @@ export async function getServiceCentreOverview(partnerId: string): Promise<Servi
   let workordersThisMonth = 0;
   let workordersThisYear = 0;
   let openWorkorders = 0;
+  let overdueWorkorders = 0;
+  let partPendingWorkorders = 0;
+  let repairCompletedWorkorders = 0;
+  let cancelledWorkorders = 0;
   let closedThisMonth = 0;
 
   for (const r of workorders) {
@@ -143,9 +161,16 @@ export async function getServiceCentreOverview(partnerId: string): Promise<Servi
     if (r.createdAt >= startOfYear) workordersThisYear++;
     // A cancelled job is terminal (see cancelWorkorderAction) — it is not open work.
     const cancelled = Boolean(data.cancelledAt);
-    if (stage !== "Closed" && !cancelled) {
+    if (cancelled) cancelledWorkorders++;
+    const isOpen = stage !== "Closed" && !cancelled;
+    if (isOpen) {
       openWorkorders++;
+      const slaDate = typeof data.slaDate === "string" ? new Date(data.slaDate) : null;
+      if (slaDate && !Number.isNaN(slaDate.getTime()) && slaDate < now) overdueWorkorders++;
     }
+    const onHold = Boolean(data.onHold);
+    if (stage === "In Progress" && onHold && !cancelled) partPendingWorkorders++;
+    if (stage === "Completed" && !cancelled) repairCompletedWorkorders++;
     if (stage === "Closed" && r.createdAt >= startOfMonth) closedThisMonth++;
   }
 
@@ -170,6 +195,10 @@ export async function getServiceCentreOverview(partnerId: string): Promise<Servi
     workordersThisMonth,
     workordersThisYear,
     openWorkorders,
+    overdueWorkorders,
+    partPendingWorkorders,
+    repairCompletedWorkorders,
+    cancelledWorkorders,
     closedThisMonth,
     revenueThisMonth,
   };
@@ -210,4 +239,212 @@ export async function getRecentActivity(partnerId: string, moduleSlugs: string[]
       timestamp: r.createdAt.toISOString().slice(0, 10),
     };
   });
+}
+
+/**
+ * Daily/Weekly/Monthly/Yearly year-on-date comparison (this period vs. the
+ * same period exactly one calendar year earlier) — mirrors the reference
+ * vendor Analytics page's comparison view (api/analytics/trend there),
+ * reimplemented against this app's own BusinessRecord store rather than
+ * ported. Bucket counts/units match that reference exactly (30 days / 12
+ * weeks / 12 months / 5 years) so the comparison window is a deliberate,
+ * documented choice, not arbitrary:
+ *   - Revenue = Billing revenue actually collected (same `amountPaid`
+ *     definition getServiceCentreOverview's revenueThisMonth uses).
+ *   - Workorders = every service-centre record created in the bucket,
+ *     regardless of status (matches getServiceCentreOverview's period
+ *     cards, which also count all statuses).
+ * The prior-year range is the current range shifted back by exactly one
+ * calendar year (via setFullYear), not a fixed 365-day offset, so bucket
+ * boundaries still line up across a leap year.
+ */
+export type PeriodGranularity = "DAY" | "WEEK" | "MONTH" | "YEAR";
+
+export interface PeriodBucket {
+  label: string;
+  revenue: number;
+  workorders: number;
+  priorYearRevenue: number;
+  priorYearWorkorders: number;
+}
+
+export interface PeriodComparison {
+  daily: PeriodBucket[];
+  weekly: PeriodBucket[];
+  monthly: PeriodBucket[];
+  yearly: PeriodBucket[];
+}
+
+const BUCKET_COUNT: Record<PeriodGranularity, number> = { DAY: 30, WEEK: 12, MONTH: 12, YEAR: 5 };
+
+function alignToMonday(d: Date): Date {
+  const copy = new Date(d);
+  const day = copy.getDay(); // Sun=0..Sat=6
+  const diff = (day + 6) % 7;
+  copy.setDate(copy.getDate() - diff);
+  copy.setHours(0, 0, 0, 0);
+  return copy;
+}
+
+function startOfBucketRange(granularity: PeriodGranularity, now: Date): Date {
+  const count = BUCKET_COUNT[granularity];
+  const start = new Date(now);
+  if (granularity === "DAY") start.setDate(start.getDate() - (count - 1));
+  else if (granularity === "WEEK") start.setDate(start.getDate() - (count - 1) * 7);
+  else if (granularity === "MONTH") start.setMonth(start.getMonth() - (count - 1), 1);
+  else start.setFullYear(start.getFullYear() - (count - 1), 0, 1);
+  start.setHours(0, 0, 0, 0);
+  return granularity === "WEEK" ? alignToMonday(start) : start;
+}
+
+function bucketLabel(granularity: PeriodGranularity, d: Date): string {
+  if (granularity === "DAY") return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
+  if (granularity === "WEEK") return `Wk of ${d.toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}`;
+  if (granularity === "MONTH") return d.toLocaleDateString("en-IN", { month: "short", year: "numeric" });
+  return String(d.getFullYear());
+}
+
+function bucketKey(granularity: PeriodGranularity, d: Date): string {
+  if (granularity === "YEAR") return String(d.getFullYear());
+  if (granularity === "MONTH") return `${d.getFullYear()}-${d.getMonth()}`;
+  return alignToBucketStart(granularity, d).toISOString().slice(0, 10);
+}
+
+function alignToBucketStart(granularity: PeriodGranularity, d: Date): Date {
+  if (granularity === "WEEK") return alignToMonday(d);
+  const copy = new Date(d);
+  copy.setHours(0, 0, 0, 0);
+  return copy;
+}
+
+function shiftYears(d: Date, years: number): Date {
+  const copy = new Date(d);
+  copy.setFullYear(copy.getFullYear() + years);
+  return copy;
+}
+
+async function fetchPeriodSeries(
+  partnerId: string,
+  granularity: PeriodGranularity,
+  rangeStart: Date,
+  rangeEnd: Date
+): Promise<{ revenueByKey: Map<string, number>; workordersByKey: Map<string, number> }> {
+  const [billingRows, workorderRows] = await Promise.all([
+    prisma.businessRecord.findMany({
+      where: { partnerId, moduleSlug: "billing", createdAt: { gte: rangeStart, lte: rangeEnd } },
+      select: { data: true, createdAt: true },
+    }),
+    prisma.businessRecord.findMany({
+      where: { partnerId, moduleSlug: "service-centre", createdAt: { gte: rangeStart, lte: rangeEnd } },
+      select: { createdAt: true },
+    }),
+  ]);
+
+  const revenueByKey = new Map<string, number>();
+  for (const r of billingRows) {
+    const data = r.data as Record<string, unknown>;
+    let amount = 0;
+    if (typeof data.amountPaid === "number") amount = data.amountPaid;
+    else if (data.paymentStatus === "Paid" && typeof data.totalAmount === "number") amount = data.totalAmount;
+    if (amount === 0) continue;
+    const key = bucketKey(granularity, alignToBucketStart(granularity, r.createdAt));
+    revenueByKey.set(key, (revenueByKey.get(key) ?? 0) + amount);
+  }
+
+  const workordersByKey = new Map<string, number>();
+  for (const r of workorderRows) {
+    const key = bucketKey(granularity, alignToBucketStart(granularity, r.createdAt));
+    workordersByKey.set(key, (workordersByKey.get(key) ?? 0) + 1);
+  }
+
+  return { revenueByKey, workordersByKey };
+}
+
+async function getPeriodBuckets(partnerId: string, granularity: PeriodGranularity, now: Date): Promise<PeriodBucket[]> {
+  const currentStart = startOfBucketRange(granularity, now);
+  const priorStart = shiftYears(currentStart, -1);
+  const priorEnd = shiftYears(now, -1);
+
+  const [current, prior] = await Promise.all([
+    fetchPeriodSeries(partnerId, granularity, currentStart, now),
+    fetchPeriodSeries(partnerId, granularity, priorStart, priorEnd),
+  ]);
+
+  const count = BUCKET_COUNT[granularity];
+  const buckets: PeriodBucket[] = [];
+  for (let i = 0; i < count; i++) {
+    const d = new Date(currentStart);
+    if (granularity === "DAY") d.setDate(d.getDate() + i);
+    else if (granularity === "WEEK") d.setDate(d.getDate() + i * 7);
+    else if (granularity === "MONTH") d.setMonth(d.getMonth() + i, 1);
+    else d.setFullYear(d.getFullYear() + i, 0, 1);
+
+    const key = bucketKey(granularity, d);
+    const priorD = shiftYears(d, -1);
+    const priorKey = bucketKey(granularity, priorD);
+
+    buckets.push({
+      label: bucketLabel(granularity, d),
+      revenue: current.revenueByKey.get(key) ?? 0,
+      workorders: current.workordersByKey.get(key) ?? 0,
+      priorYearRevenue: prior.revenueByKey.get(priorKey) ?? 0,
+      priorYearWorkorders: prior.workordersByKey.get(priorKey) ?? 0,
+    });
+  }
+  return buckets;
+}
+
+export async function getPeriodComparison(partnerId: string): Promise<PeriodComparison> {
+  const now = new Date();
+  const [daily, weekly, monthly, yearly] = await Promise.all([
+    getPeriodBuckets(partnerId, "DAY", now),
+    getPeriodBuckets(partnerId, "WEEK", now),
+    getPeriodBuckets(partnerId, "MONTH", now),
+    getPeriodBuckets(partnerId, "YEAR", now),
+  ]);
+  return { daily, weekly, monthly, yearly };
+}
+
+/**
+ * Revenue by Source. This app has no cross-module invoice-origin field
+ * (unlike the reference vendor app's `sourceOrderId`, which tags an
+ * invoice as POS- or CRM-issued), so "source" here means the one real,
+ * always-populated field every Billing record actually carries that
+ * plausibly answers "where did this money come in through": `paymentMode`
+ * (Cash/UPI/Bank Transfer/Cheque, see billing.ts). Documented choice, not
+ * a fabricated dimension — every value plotted is real revenue actually
+ * collected (same amountPaid/Paid-totalAmount definition used elsewhere
+ * in this file), grouped by a field that already exists on every record.
+ */
+export async function getRevenueBySource(partnerId: string): Promise<PieSlice[]> {
+  const rows = await prisma.businessRecord.findMany({
+    where: { partnerId, moduleSlug: "billing" },
+    select: { data: true },
+  });
+  const byMode = new Map<string, number>();
+  for (const r of rows) {
+    const data = r.data as Record<string, unknown>;
+    let amount = 0;
+    if (typeof data.amountPaid === "number") amount = data.amountPaid;
+    else if (data.paymentStatus === "Paid" && typeof data.totalAmount === "number") amount = data.totalAmount;
+    if (amount === 0) continue;
+    const mode = typeof data.paymentMode === "string" && data.paymentMode ? data.paymentMode : "Unspecified";
+    byMode.set(mode, (byMode.get(mode) ?? 0) + amount);
+  }
+  return Array.from(byMode.entries()).map(([name, value]) => ({ name, value }));
+}
+
+/** Every Billing record (any status), counted by `paymentStatus` — real invoice-status composition, not scoped to paid-only. */
+export async function getInvoiceStatusBreakdown(partnerId: string): Promise<PieSlice[]> {
+  const rows = await prisma.businessRecord.findMany({
+    where: { partnerId, moduleSlug: "billing" },
+    select: { data: true },
+  });
+  const byStatus = new Map<string, number>();
+  for (const r of rows) {
+    const data = r.data as Record<string, unknown>;
+    const status = typeof data.paymentStatus === "string" && data.paymentStatus ? data.paymentStatus : "Draft";
+    byStatus.set(status, (byStatus.get(status) ?? 0) + 1);
+  }
+  return Array.from(byStatus.entries()).map(([name, value]) => ({ name, value }));
 }
