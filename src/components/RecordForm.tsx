@@ -38,6 +38,17 @@ export type FormFieldDef = {
   options?: string[];
   /** value -> human label, for options whose stored code isn't readable ("OOW" -> "Out of Warranty (OOW)"). */
   optionLabels?: Record<string, string>;
+  /**
+   * value -> <optgroup> heading, for a select whose options span more than
+   * one meaningful set — e.g. the workorder's Device Type when a partner
+   * deals in both Electronics and Automobiles, where a flat 60-entry list
+   * would be unreadable. Groups render in first-appearance order of
+   * `options`; any option with no entry here renders ungrouped, before the
+   * groups. Kept as a value->heading map (rather than nesting `options`)
+   * for the same reason as optionLabels: the Designer's option-override
+   * merge types `options` as a plain string[].
+   */
+  optionGroups?: Record<string, string>;
   placeholder?: string;
   /**
    * Section heading this field belongs under. Fields are rendered in the
@@ -253,7 +264,24 @@ function renderInput(
           {value ? "Yes" : "No"}
         </label>
       );
-    case "select":
+    case "select": {
+      const opts = field.options ?? [];
+      const groups = field.optionGroups;
+      // Ungrouped options first, then each group in the order its first
+      // member appears in `options`.
+      const ungrouped = groups ? opts.filter((o) => !groups[o]) : opts;
+      const groupOrder: string[] = [];
+      if (groups) {
+        for (const o of opts) {
+          const g = groups[o];
+          if (g && !groupOrder.includes(g)) groupOrder.push(g);
+        }
+      }
+      const renderOption = (opt: string) => (
+        <option key={opt} value={opt}>
+          {field.optionLabels?.[opt] ?? opt}
+        </option>
+      );
       return (
         <select
           id={field.key}
@@ -265,13 +293,15 @@ function renderInput(
           <option value="" disabled>
             Select {field.label.toLowerCase()}
           </option>
-          {field.options?.map((opt) => (
-            <option key={opt} value={opt}>
-              {field.optionLabels?.[opt] ?? opt}
-            </option>
+          {ungrouped.map(renderOption)}
+          {groupOrder.map((g) => (
+            <optgroup key={g} label={g}>
+              {opts.filter((o) => groups?.[o] === g).map(renderOption)}
+            </optgroup>
           ))}
         </select>
       );
+    }
     case "multi-select": {
       const selected = Array.isArray(value) ? (value as string[]) : [];
       return (

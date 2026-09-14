@@ -2,12 +2,26 @@ import type { Column, Row } from "@/components/DataTable";
 import type { RecordField, TimelineEntry, RelatedRecord } from "@/components/RecordDetail";
 import type { StatusVariant } from "@/components/StatusChip";
 import type { FormFieldDef } from "@/components/RecordForm";
+import {
+  VEHICLE_CATEGORIES,
+  VEHICLE_CATEGORY_GROUPS,
+  VEHICLE_CATEGORY_LABELS,
+} from "@/lib/catalog/vehicleCategory";
+import { PRODUCT_DOMAIN_LABELS } from "@/lib/catalog/productDomains";
 
 // Workorder (JobSheet) sample data for the service-centre module — realistic
 // field modeling, no backend wired up in this pass beyond the BusinessRecord
 // store (see CLAUDE.md).
 //
-// DOMAIN: electronics and appliance repair, never vehicle service. The
+// DOMAIN: DEVICE_CATEGORIES below is ELECTRONICS-ONLY and stays that way.
+// A partner who also services vehicles declares that separately
+// (Partner.productDomains) and gets the parallel VEHICLE_CATEGORIES list
+// from src/lib/catalog/vehicleCategory.ts alongside — the two taxonomies
+// are only ever concatenated with domain <optgroup> headings at render
+// time (src/lib/catalog/serviceCatalog.ts), never merged. Nothing below
+// this line may gain a vehicle entry.
+//
+// Electronics and appliance repair, never vehicle service. The
 // reference app this module is ported from types its job sheet's device
 // against a fixed 45-category taxonomy (DEVICE_CATEGORIES below) that
 // contains no vehicle category at all, and its CrmJobSheet model has no
@@ -190,6 +204,31 @@ export const DEVICE_CATEGORY_LABELS: Record<string, string> = {
   CALCULATOR: "Calculators",
   VR_HEADSET: "VR Headsets",
   E_READER: "E-Readers",
+};
+
+/**
+ * The full option universe for the workorder's "Device Type" — every
+ * electronics category plus every vehicle class, each under its own domain
+ * heading. This is the BASE field definition, used by the Designer's field
+ * schema and by the edit form (so a vehicle job stays editable no matter
+ * what the partner's domains say today). The CREATE form narrows it to the
+ * partner's own declared domain(s) via categoryOptionsForDomains().
+ *
+ * Concatenated, never merged: DEVICE_CATEGORIES itself is untouched and
+ * still electronics-only.
+ */
+const ALL_CATEGORY_OPTIONS: string[] = [...DEVICE_CATEGORIES, ...VEHICLE_CATEGORIES];
+
+const ALL_CATEGORY_LABELS: Record<string, string> = {
+  ...DEVICE_CATEGORY_LABELS,
+  ...VEHICLE_CATEGORY_LABELS,
+};
+
+const ALL_CATEGORY_GROUPS: Record<string, string> = {
+  ...Object.fromEntries(DEVICE_CATEGORIES.map((c) => [c, PRODUCT_DOMAIN_LABELS.ELECTRONICS])),
+  ...Object.fromEntries(
+    VEHICLE_CATEGORIES.map((c) => [c, `Automobiles — ${VEHICLE_CATEGORY_GROUPS[c] ?? "Other"}`])
+  ),
 };
 
 export const PAYMENT_MODES = ["Cash", "UPI", "Card", "Bank Transfer", "Credit", "Other"] as const;
@@ -509,7 +548,7 @@ export const serviceCentreFormFields: FormFieldDef[] = [
   { section: "Address", key: "customerCity", label: "City", type: "text", required: true },
 
   // --- Device ---
-  { section: "Device", key: "deviceCategory", label: "Device Type", type: "select", required: true, options: [...DEVICE_CATEGORIES], optionLabels: DEVICE_CATEGORY_LABELS },
+  { section: "Device", key: "deviceCategory", label: "Device / Vehicle Type", type: "select", required: true, options: ALL_CATEGORY_OPTIONS, optionLabels: ALL_CATEGORY_LABELS, optionGroups: ALL_CATEGORY_GROUPS },
   // Brand/Model are free text backed by this partner's own catalog as
   // suggestions, never a closed dropdown: a device that isn't catalogued
   // yet must never block a walk-in from being booked in. The create page
@@ -579,7 +618,8 @@ export function getServiceCentreDetailFields(record: Row): RecordField[] {
     { label: "State", value: r["customerState"], type: "text" },
     { label: "Pincode", value: r["customerPincode"], type: "text" },
     { label: "Logged By", value: r["loggedBy"], type: "text" },
-    { label: "Device Type", value: DEVICE_CATEGORY_LABELS[String(r["deviceCategory"])] ?? r["deviceCategory"], type: "text" },
+    // Both taxonomies, so a vehicle job's class renders as a label too.
+    { label: "Device / Vehicle Type", value: ALL_CATEGORY_LABELS[String(r["deviceCategory"])] ?? r["deviceCategory"], type: "text" },
     { label: "Device", value: r["device"], type: "text" },
     { label: "Brand", value: r["brandName"], type: "text" },
     { label: "Model", value: r["modelName"], type: "text" },

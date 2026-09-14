@@ -12,6 +12,9 @@ export async function saveBusinessProfileAction(partnerId: string, formData: For
     contactPerson: String(formData.get("contactPerson") ?? ""),
     pan: String(formData.get("pan") ?? ""),
     businessCategory: String(formData.get("businessCategory") ?? ""),
+    // Checkbox group — unticking everything falls back to ELECTRONICS
+    // rather than leaving a partner with no catalog at all.
+    productDomains: formData.getAll("productDomains").map((v) => String(v)),
     serviceTerms: String(formData.get("serviceTerms") ?? ""),
     serviceHours: String(formData.get("serviceHours") ?? ""),
     supportHotline: String(formData.get("supportHotline") ?? ""),

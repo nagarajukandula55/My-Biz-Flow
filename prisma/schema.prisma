@@ -201,6 +201,16 @@ model Partner {
   contactPerson      String?
   pan                String?
   businessCategory   String?
+  /// Which product domain(s) this partner deals in — a JSON string array of
+  /// ProductDomain codes, e.g. ["ELECTRONICS"] or ["ELECTRONICS","AUTOMOBILE"]
+  /// (src/lib/catalog/productDomains.ts, which also carries the reasoning
+  /// for why this is a Partner-level field rather than a second
+  /// PartnerType). Chosen at signup, editable afterwards from
+  /// /partner/<id>/settings. Drives which Device Type categories and which
+  /// Brand/Model catalog rows the Service Centre module offers. Empty for
+  /// every row that predates the column, which reads as ELECTRONICS-only —
+  /// what the module has always been.
+  productDomains     Json    @default("[]")
   /// Free-text terms printed on the partner's own quotes/invoices.
   serviceTerms       String? @db.Text
   /// e.g. "Mon-Sat, 9:30am - 7:00pm"
@@ -347,6 +357,11 @@ model PartnerSignupRequest {
   businessContact String
   loginContact    String
   passwordHash    String
+  /// Carried through from the signup form so an approval-gated signup
+  /// doesn't silently lose the domains the applicant picked — copied onto
+  /// the Partner row by createPartnerFromRequest(). Same shape as
+  /// Partner.productDomains.
+  productDomains  Json     @default("[]")
   status          String   @default("Pending")
   createdAt       DateTime @default(now())
 

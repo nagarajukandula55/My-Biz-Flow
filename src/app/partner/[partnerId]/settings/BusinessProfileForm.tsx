@@ -1,5 +1,10 @@
 import type { PartnerRecord } from "@/lib/partnerData";
 import { saveBusinessProfileAction } from "./actions";
+import {
+  PRODUCT_DOMAINS,
+  PRODUCT_DOMAIN_DESCRIPTIONS,
+  PRODUCT_DOMAIN_LABELS,
+} from "@/lib/catalog/productDomains";
 
 /**
  * Real, persisted business-profile + bank-details editor — distinct from
@@ -67,6 +72,38 @@ export function BusinessProfileForm({ partnerId, partner }: { partnerId: string;
             className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm normal-case text-text outline-none focus:border-accent"
           />
         </label>
+        <div className="sm:col-span-2">
+          <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">What you deal in</div>
+          <p className="mt-1 text-xs normal-case text-text-muted">
+            Decides which Device Types, Brands and Models the workorder intake form offers you. Tick both if
+            you service both.
+          </p>
+          <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {PRODUCT_DOMAINS.map((domain) => (
+              <label
+                key={domain}
+                className="flex cursor-pointer gap-3 rounded-md border border-border bg-bg-raised p-3"
+              >
+                <input
+                  type="checkbox"
+                  name="productDomains"
+                  value={domain}
+                  defaultChecked={partner.productDomains.includes(domain)}
+                  className="mt-0.5 h-4 w-4 flex-shrink-0 rounded border-border accent-current text-accent"
+                />
+                <span>
+                  <span className="block text-sm font-semibold normal-case text-text">
+                    {PRODUCT_DOMAIN_LABELS[domain]}
+                  </span>
+                  <span className="mt-0.5 block text-xs font-normal normal-case text-text-muted">
+                    {PRODUCT_DOMAIN_DESCRIPTIONS[domain]}
+                  </span>
+                </span>
+              </label>
+            ))}
+          </div>
+        </div>
+
         <label className="sm:col-span-2 text-xs font-semibold uppercase tracking-wide text-text-muted">
           Service Terms (printed on quotes/invoices)
           <textarea

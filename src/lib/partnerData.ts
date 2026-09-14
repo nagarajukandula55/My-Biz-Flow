@@ -15,6 +15,7 @@ import { hashPassword, verifyPassword, generatePassword } from "@/lib/passwords"
 import { createBusinessRecord } from "@/lib/businessRecords";
 import { getPartnerType } from "@/lib/designer/partnerTypesData";
 import { issueAccessKey } from "@/lib/designer/accessKeys";
+import { parseProductDomains, type ProductDomain } from "@/lib/catalog/productDomains";
 
 const BUSINESS_ID = "BIZ002";
 
@@ -44,6 +45,12 @@ export type PartnerRecord = {
   contactPerson: string | null;
   pan: string | null;
   businessCategory: string | null;
+  /**
+   * Always normalised (never raw JSON, never empty) — see
+   * parseProductDomains(). A partner who has never chosen reads as
+   * ["ELECTRONICS"].
+   */
+  productDomains: ProductDomain[];
   serviceTerms: string | null;
   serviceHours: string | null;
   supportHotline: string | null;
@@ -79,6 +86,7 @@ function toRecord(row: {
   contactPerson: string | null;
   pan: string | null;
   businessCategory: string | null;
+  productDomains: unknown;
   serviceTerms: string | null;
   serviceHours: string | null;
   supportHotline: string | null;
@@ -87,13 +95,19 @@ function toRecord(row: {
   bankAccountNumber: string | null;
   bankIfsc: string | null;
 }): PartnerRecord {
-  return { ...row, addressLine: row.addressLine ?? "" };
+  return {
+    ...row,
+    addressLine: row.addressLine ?? "",
+    productDomains: parseProductDomains(row.productDomains),
+  };
 }
 
 export type PartnerBusinessProfileInput = {
   contactPerson: string;
   pan: string;
   businessCategory: string;
+  /** Raw checkbox values from the Settings form; normalised before storing. */
+  productDomains: string[];
   serviceTerms: string;
   serviceHours: string;
   supportHotline: string;
@@ -122,6 +136,10 @@ export async function updatePartnerBusinessProfile(
       contactPerson: clean(input.contactPerson),
       pan: clean(input.pan),
       businessCategory: clean(input.businessCategory),
+      // Normalised (unknown codes dropped, empty falls back to
+      // ELECTRONICS) so nothing downstream has to defend against a
+      // hand-posted value.
+      productDomains: parseProductDomains(input.productDomains),
       serviceTerms: clean(input.serviceTerms),
       serviceHours: clean(input.serviceHours),
       supportHotline: clean(input.supportHotline),
@@ -204,6 +222,8 @@ export type PartnerSignupInput = {
   businessEmail: string;
   businessContact: string;
   loginContact: string;
+  /** Product domain codes ticked on the signup form. */
+  productDomains?: string[];
   referredByPartnerId?: string;
 };
 
@@ -237,6 +257,7 @@ export async function createPartner(input: PartnerSignupInput): Promise<{ partne
         businessEmail: input.businessEmail,
         businessContact: input.businessContact,
         loginContact: input.loginContact,
+        productDomains: parseProductDomains(input.productDomains),
         referredByPartnerId: input.referredByPartnerId || null,
         passwordHash,
         ...trialDates(),
@@ -263,6 +284,7 @@ export async function createPartnerFromRequest(request: {
   businessContact: string;
   loginContact: string;
   passwordHash: string;
+  productDomains: unknown;
 }): Promise<PartnerRecord> {
   const partner = await prisma.$transaction(async (tx) => {
     const id = await nextPartnerId(tx, request.partnerTypeId);
@@ -283,6 +305,9 @@ export async function createPartnerFromRequest(request: {
         businessContact: request.businessContact,
         loginContact: request.loginContact,
         passwordHash: request.passwordHash,
+        // Preserved from the application rather than reset — the applicant
+        // already told us what they deal in when they applied.
+        productDomains: parseProductDomains(request.productDomains),
         ...trialDates(),
       },
     });

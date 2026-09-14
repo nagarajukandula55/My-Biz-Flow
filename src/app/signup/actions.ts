@@ -34,6 +34,11 @@ export async function registerBusiness(formData: FormData) {
   const businessContact = String(formData.get("businessContact") ?? "").trim();
   const loginContact = String(formData.get("loginContact") ?? "").trim();
   const referralCode = String(formData.get("referralCode") ?? "").trim();
+  // Multi-select checkboxes — every ticked box posts under the same name.
+  // Left unvalidated here on purpose: parseProductDomains() (partnerData)
+  // drops anything unknown and falls back to ELECTRONICS if nothing was
+  // ticked, so the signup can never be blocked on it.
+  const productDomains = formData.getAll("productDomains").map((v) => String(v));
 
   if (!partnerTypeId || !businessName || !city || !state || !pincode || !businessEmail || !businessContact || !loginContact) {
     throw new Error("Missing required signup fields");
@@ -54,6 +59,7 @@ export async function registerBusiness(formData: FormData) {
     businessEmail,
     businessContact,
     loginContact,
+    productDomains,
     referredByPartnerId,
   };
 

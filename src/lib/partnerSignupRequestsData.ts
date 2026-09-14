@@ -8,6 +8,7 @@
 import { prisma } from "@/lib/prisma";
 import { hashPassword, generatePassword } from "@/lib/passwords";
 import { createPartnerFromRequest, type PartnerRecord } from "@/lib/partnerData";
+import { parseProductDomains } from "@/lib/catalog/productDomains";
 
 export type SignupRequestRecord = {
   id: string;
@@ -54,6 +55,8 @@ export type SignupRequestInput = {
   businessEmail: string;
   businessContact: string;
   loginContact: string;
+  /** Product domain codes ticked on the signup form; held until approval. */
+  productDomains?: string[];
 };
 
 /** Creates a pending signup request with a freshly generated password (hashed immediately, same as a direct Partner signup). */
@@ -71,6 +74,7 @@ export async function createSignupRequest(input: SignupRequestInput): Promise<{ 
       businessEmail: input.businessEmail,
       businessContact: input.businessContact,
       loginContact: input.loginContact,
+      productDomains: parseProductDomains(input.productDomains),
       passwordHash: hashPassword(password),
     },
   });
@@ -102,6 +106,7 @@ export async function approveSignupRequest(requestId: string): Promise<PartnerRe
     businessContact: request.businessContact,
     loginContact: request.loginContact,
     passwordHash: request.passwordHash,
+    productDomains: request.productDomains,
   });
 
   await prisma.partnerSignupRequest.update({ where: { id: requestId }, data: { status: "Approved" } });
