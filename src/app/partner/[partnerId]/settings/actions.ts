@@ -3,8 +3,57 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
-import { updatePartnerBusinessProfile, updatePartnerConfig } from "@/lib/partnerData";
+import {
+  updatePartnerBusinessProfile,
+  updatePartnerConfig,
+  updatePartnerBusinessDetails,
+  updatePartnerLogo,
+} from "@/lib/partnerData";
 import { requestAccessKey } from "@/lib/designer/accessKeys";
+
+/**
+ * Settings' top "Business Details" block (Business Name/Address/GSTIN/
+ * Timezone/Currency) — used to be a non-persisting demo stub; this is its
+ * real Server Action, wired through RecordForm's `action` prop (which calls
+ * it with a plain values object, not FormData — see RecordForm.tsx).
+ */
+export async function saveBusinessDetailsAction(
+  partnerId: string,
+  values: Record<string, unknown>
+): Promise<void | { error?: string }> {
+  await requireSessionPartnerId(partnerId);
+
+  const businessName = String(values.businessName ?? "").trim();
+  if (!businessName) return { error: "Business Name is required" };
+
+  await updatePartnerBusinessDetails(partnerId, {
+    businessName,
+    address: String(values.address ?? ""),
+    gstin: String(values.gstin ?? ""),
+    timezone: String(values.timezone ?? "Asia/Kolkata"),
+    currency: String(values.currency ?? "INR"),
+  });
+
+  revalidatePath(`/partner/${partnerId}/settings`);
+  redirect(`/partner/${partnerId}/settings?saved=1`);
+}
+
+/**
+ * Logo upload — called directly from the client component (not through a
+ * <form action>, since the data: URL is produced client-side via
+ * FileReader) with the already-encoded data: URL string. See
+ * updatePartnerLogo() for the size/format guardrails.
+ */
+export async function saveLogoAction(partnerId: string, dataUrl: string | null): Promise<{ error?: string } | void> {
+  await requireSessionPartnerId(partnerId);
+  try {
+    await updatePartnerLogo(partnerId, dataUrl);
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Could not save logo" };
+  }
+  revalidatePath(`/partner/${partnerId}/settings`);
+  revalidatePath(`/partner/${partnerId}`, "layout");
+}
 
 /** Real, persisted save — distinct from SettingsPageClient's demo-stub form above it on the same page. */
 export async function saveBusinessProfileAction(partnerId: string, formData: FormData): Promise<void> {

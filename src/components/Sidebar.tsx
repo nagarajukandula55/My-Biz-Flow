@@ -70,11 +70,19 @@ export function Sidebar({
   partnerId,
   navGroups,
   alerts,
+  logoDataUrl,
 }: {
   partnerId: string;
   navGroups: NavGroup[];
   /** Server-computed in the partner layout (computeAlerts) — see AlertsBell. */
   alerts: Alert[];
+  /**
+   * This partner's own uploaded logo (Settings > Business Details, stored
+   * as a `data:` URL — see src/lib/partnerData.ts's updatePartnerLogo).
+   * Null renders the app's own BrandLogo, same as before any partner has
+   * uploaded one.
+   */
+  logoDataUrl?: string | null;
 }) {
   const pathname = usePathname();
 
@@ -110,7 +118,12 @@ export function Sidebar({
   return (
     <aside className="sticky top-0 flex h-screen w-64 flex-shrink-0 flex-col bg-sidebar-bg print:hidden">
       <div className="flex items-center justify-between gap-2 px-4 py-4">
-        <BrandLogo height={24} />
+        {logoDataUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element -- a data: URL, not a file next/image can optimise.
+          <img src={logoDataUrl} alt="Business logo" className="h-6 max-w-[9.5rem] rounded bg-white object-contain p-0.5" />
+        ) : (
+          <BrandLogo height={24} />
+        )}
         <AlertsBell partnerId={partnerId} alerts={alerts} />
       </div>
 

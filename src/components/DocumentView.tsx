@@ -7,6 +7,7 @@ import { getDocumentTemplate, renderTemplate } from "@/lib/designer/documentTemp
 import { getEffectiveScheme } from "@/lib/designer/numbering";
 import { formatNumber } from "@/lib/designer/numberingFormat";
 import { buildTrackingUrl, generateTrackingQrDataUrl } from "@/lib/trackingQr";
+import { generateUpiQrDataUrl } from "@/lib/upiQr";
 
 /**
  * Renders a record as a real printable document — letterhead, fields laid
@@ -48,6 +49,7 @@ export async function DocumentView({
   termsText,
   contactBand,
   trackingCode,
+  upiPayment,
 }: {
   pageId: string;
   /** The numbering system's document-type id, e.g. "billing.document" — see NUMBERED_DOCUMENT_TYPES. */
@@ -104,12 +106,30 @@ export async function DocumentView({
    * tracker to link to.
    */
   trackingCode?: string;
+  /**
+   * This partner's UPI VPA + the amount due — when set, a scannable UPI
+   * payment QR (src/lib/upiQr.ts) is printed near the footer, same as
+   * Service Centre's Sales Invoice already does. Callers pass this only for
+   * document types that are actually payable (an issued invoice), not for
+   * quotations/challans/credit notes. generateUpiQrDataUrl() itself returns
+   * null (rendering nothing) when the partner has no/an invalid VPA
+   * configured or the amount is zero.
+   */
+  upiPayment?: { vpa: string | null | undefined; payeeName: string; amount: number } | null;
 }) {
   const customTemplate = await getDocumentTemplate(pageId);
   const scheme = await getEffectiveScheme(documentType, partnerId);
   const documentNumber = formatNumber(scheme, scheme.sequenceStart + sequenceIndex);
   const templateRecord = { ...record, documentNumber };
   const trackingQrDataUrl = trackingCode ? await generateTrackingQrDataUrl(partnerId, trackingCode) : null;
+  const upiQrDataUrl = upiPayment?.vpa
+    ? await generateUpiQrDataUrl({
+        vpa: upiPayment.vpa,
+        payeeName: upiPayment.payeeName,
+        amount: upiPayment.amount,
+        invoiceNumber: documentNumber,
+      })
+    : null;
 
   return (
     <div className="mbf-page bg-bg-sunken">
@@ -247,6 +267,7 @@ export async function DocumentView({
               <p className="mt-1 whitespace-pre-line">{termsText.trim()}</p>
             </div>
           )}
+          {upiQrDataUrl && <DocumentUpiBlock qrDataUrl={upiQrDataUrl} />}
           {trackingQrDataUrl && trackingCode && (
             <DocumentTrackingBlock partnerId={partnerId} code={trackingCode} qrDataUrl={trackingQrDataUrl} />
           )}
@@ -282,6 +303,27 @@ export function DocumentTrackingBlock({
         <div className="font-semibold uppercase tracking-wide text-text">Track Your Repair</div>
         <p className="mt-1">Scan this code anytime to check your repair's status — no login needed.</p>
         <p className="mt-1 break-all font-mono text-text-muted">{buildTrackingUrl(partnerId, code)}</p>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Scannable UPI payment QR block — printed on an invoice when the partner
+ * has a valid UPI VPA configured (Settings > Config, see
+ * src/lib/upiQr.ts). There is no gateway/webhook behind this: the customer
+ * scans and pays the partner's UPI VPA directly, and matching the payment
+ * against the invoice stays a manual step.
+ */
+export function DocumentUpiBlock({ qrDataUrl }: { qrDataUrl: string }) {
+  return (
+    <div className="mt-6 flex items-center gap-4 rounded-md border border-border p-4">
+      {/* eslint-disable-next-line @next/next/no-img-element -- a generated
+          data: URL, not a file next/image can optimise. */}
+      <img src={qrDataUrl} alt="Scan to pay via UPI" className="h-24 w-24 flex-shrink-0" width={96} height={96} />
+      <div className="text-xs text-text-muted">
+        <div className="font-semibold uppercase tracking-wide text-text">Pay via UPI</div>
+        <p className="mt-1">Scan with any UPI app (GPay, PhonePe, Paytm, BHIM) to pay this invoice directly.</p>
       </div>
     </div>
   );

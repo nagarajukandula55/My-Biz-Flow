@@ -42,6 +42,11 @@ export default async function BillingDocumentPage({
       sequenceIndex={sequenceIndex}
       lineItems={record["items"] as LineItem[] | undefined}
       termsText={resolveDocumentTerms(partner, "invoice")}
+      upiPayment={{
+        vpa: partner?.upiId,
+        payeeName: partner?.businessName ?? "Your Business",
+        amount: Number(record["totalAmount"]) || 0,
+      }}
     />
   );
 }

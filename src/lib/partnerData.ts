@@ -30,6 +30,9 @@ export type PartnerRecord = {
   state: string;
   pincode: string;
   gstin: string | null;
+  timezone: string;
+  currency: string;
+  logoDataUrl: string | null;
   businessEmail: string;
   businessContact: string;
   loginContact: string;
@@ -79,6 +82,9 @@ function toRecord(row: {
   state: string;
   pincode: string;
   gstin: string | null;
+  timezone: string;
+  currency: string;
+  logoDataUrl: string | null;
   businessEmail: string;
   businessContact: string;
   loginContact: string;
@@ -150,6 +156,64 @@ export type PartnerConfigInput = {
   invoiceTerms: string;
   serviceRecordTerms: string;
 };
+
+export type PartnerBusinessDetailsInput = {
+  businessName: string;
+  address: string;
+  gstin: string;
+  timezone: string;
+  currency: string;
+};
+
+/**
+ * Persists Settings' top "Business Details" block — businessName/gstin were
+ * already real Partner columns (used elsewhere, e.g. printed documents) but
+ * this form used to be a non-persisting demo stub that never read or wrote
+ * them; timezone/currency are new columns added for this same block. Kept
+ * as its own action/column-set, separate from updatePartnerBusinessProfile
+ * (Contact Person/PAN/etc.) and updatePartnerConfig, so saving one form
+ * never blanks another's fields. `address` maps to the existing addressLine
+ * column only — city/state/pincode stay as set at signup, there is no
+ * second place in this app that edits those today.
+ */
+export async function updatePartnerBusinessDetails(
+  partnerId: string,
+  input: PartnerBusinessDetailsInput
+): Promise<void> {
+  await prisma.partner.update({
+    where: { id: partnerId },
+    data: {
+      businessName: input.businessName.trim() || undefined,
+      addressLine: input.address.trim(),
+      gstin: input.gstin.trim() || null,
+      timezone: input.timezone.trim() || "Asia/Kolkata",
+      currency: input.currency.trim() || "INR",
+    },
+  });
+}
+
+/**
+ * Persists Settings' Logo upload. Stored as a `data:` URL directly on the
+ * Partner row — there is no S3/file-storage pipeline anywhere in this app,
+ * so this is the minimal real option rather than inventing one. Capped at
+ * ~1.5MB of base64 (roughly a 1MB source image) so a partner can't bloat
+ * the row indefinitely; callers should downsize/compress client-side before
+ * calling this, but this is the hard backstop.
+ */
+const MAX_LOGO_DATA_URL_LENGTH = 1_500_000;
+
+export async function updatePartnerLogo(partnerId: string, dataUrl: string | null): Promise<void> {
+  if (dataUrl && dataUrl.length > MAX_LOGO_DATA_URL_LENGTH) {
+    throw new Error("Logo image is too large — please use a smaller file (under ~1MB).");
+  }
+  if (dataUrl && !/^data:image\/(png|jpe?g|webp|svg\+xml|gif);base64,/.test(dataUrl)) {
+    throw new Error("Unsupported image format.");
+  }
+  await prisma.partner.update({
+    where: { id: partnerId },
+    data: { logoDataUrl: dataUrl },
+  });
+}
 
 /**
  * Persists the business-profile/bank-detail fields a partner fills in from

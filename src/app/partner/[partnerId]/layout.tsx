@@ -4,6 +4,7 @@ import { Sidebar } from "@/components/Sidebar";
 import { buildPartnerAdminNavGroups } from "@/lib/designer/partnerAdminNav";
 import { requirePartnerSessionForPage } from "@/lib/requirePartnerSession";
 import { computeAlerts } from "@/lib/alerts";
+import { getPartner } from "@/lib/partnerData";
 
 /**
  * Print-style document routes — the printable Job Card/Estimate/Service
@@ -57,14 +58,22 @@ export default async function PartnerLayout({
     return <>{children}</>;
   }
 
-  const navGroups = await buildPartnerAdminNavGroups(params.partnerId);
-  // Alerts are computed here rather than in each page so the bell's count is
-  // correct on every partner screen, and recomputed on each server render
-  // rather than cached — see src/lib/alerts.ts for why nothing is stored.
-  const alerts = await computeAlerts(params.partnerId);
+  const [navGroups, alerts, partner] = await Promise.all([
+    buildPartnerAdminNavGroups(params.partnerId),
+    // Alerts are computed here rather than in each page so the bell's count is
+    // correct on every partner screen, and recomputed on each server render
+    // rather than cached — see src/lib/alerts.ts for why nothing is stored.
+    computeAlerts(params.partnerId),
+    getPartner(params.partnerId),
+  ]);
   return (
     <div className="flex min-h-screen w-full">
-      <Sidebar partnerId={params.partnerId} navGroups={navGroups} alerts={alerts} />
+      <Sidebar
+        partnerId={params.partnerId}
+        navGroups={navGroups}
+        alerts={alerts}
+        logoDataUrl={partner?.logoDataUrl ?? null}
+      />
       {children}
     </div>
   );

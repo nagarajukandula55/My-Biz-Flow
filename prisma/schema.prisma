@@ -181,6 +181,20 @@ model Partner {
   state              String
   pincode            String
   gstin              String?
+  /// IANA timezone, e.g. "Asia/Kolkata" — editable from Settings' Business
+  /// Details block. Purely a label today (no scheduling/report logic reads
+  /// it yet), same status as `currency` below.
+  timezone           String  @default("Asia/Kolkata")
+  /// Display currency code shown on Settings; actual money formatting
+  /// elsewhere in the app is hardcoded to INR (see formatCurrencyINR) —
+  /// this does not yet drive that, same caveat as `timezone`.
+  currency           String  @default("INR")
+  /// Partner-uploaded logo, stored as a `data:` URL. There is no
+  /// file-storage/S3 pipeline anywhere in this app yet, so this is the
+  /// minimal real option rather than inventing one — see Settings'
+  /// Business Details block. Shown in the partner's own sidebar header
+  /// and printed documents when set; null renders the app's own logo.
+  logoDataUrl        String? @db.Text
   businessEmail      String
   businessContact    String
   loginContact       String  @unique
