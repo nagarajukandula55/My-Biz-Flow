@@ -90,6 +90,7 @@ export default async function BillingDocumentPage({
       showUpiQr={record["showUpiQr"] === undefined ? true : Boolean(record["showUpiQr"])}
       showTerms={record["showTerms"] === undefined ? true : Boolean(record["showTerms"])}
       showNotes={record["showNotes"] === undefined ? true : Boolean(record["showNotes"])}
+      logoDataUrl={partner?.logoDataUrl}
     />
   );
 }

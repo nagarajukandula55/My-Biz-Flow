@@ -216,6 +216,7 @@ import "@/app/partner/[partnerId]/settings/page";
 import "@/app/partner/[partnerId]/admin/subscription/page";
 import "@/app/partner/[partnerId]/dashboard/page";
 import "@/app/partner/[partnerId]/analytics/page";
+import "@/app/partner/[partnerId]/help/page";
 
 import "@/app/help/page";
 import "@/app/page";
@@ -253,6 +254,7 @@ import "@/app/contact/page";
 import "@/app/admin/(protected)/settings/page";
 
 import "@/app/admin/(protected)/access-keys/page";
+import "@/app/admin/(protected)/support-tickets/page";
 import "@/app/admin/(protected)/modules/page";
 import "@/app/help/modules/page";
 import "@/app/help/modules/[slug]/page";

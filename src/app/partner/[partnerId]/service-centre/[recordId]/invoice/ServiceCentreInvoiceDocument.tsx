@@ -1,5 +1,6 @@
 import { PrintButton } from "@/components/PrintButton";
 import { PrintFrame } from "@/components/PrintFrame";
+import { LogoMark } from "@/components/LogoMark";
 import { formatCurrencyINR, formatDate } from "@/lib/format";
 import { renderTemplate } from "@/lib/designer/documentTemplates";
 import { DocumentContactBand } from "@/components/DocumentView";
@@ -65,6 +66,7 @@ export async function ServiceCentreInvoiceDocument({
   serviceHours,
   supportHotline,
   upiId,
+  logoDataUrl,
 }: {
   /** Needed (alongside the workorder number) to build the public tracking QR/URL. */
   partnerId: string;
@@ -104,6 +106,8 @@ export async function ServiceCentreInvoiceDocument({
   supportHotline?: string | null;
   /** The partner's own UPI VPA. When set (and the invoice is non-zero) a scannable payment QR is printed. */
   upiId?: string | null;
+  /** This partner's own uploaded logo (Settings > Business Details) — see DocumentView.tsx's identical fallback pattern. */
+  logoDataUrl?: string | null;
 }) {
   // Place of supply decides the split: a customer in the service centre's
   // own state is an intra-state supply taxed as CGST + SGST at half the
@@ -225,7 +229,15 @@ export async function ServiceCentreInvoiceDocument({
 
             <div className="mt-6 flex items-start justify-between gap-6">
               <div className="rounded-md bg-bg-sunken px-4 py-3">
-                <div className="font-display text-base font-bold text-text">{partnerName}</div>
+                <div className="flex items-center gap-2">
+                  {logoDataUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- a data: URL, not a file next/image can optimise.
+                    <img src={logoDataUrl} alt={`${partnerName} logo`} className="h-6 max-w-[6rem] rounded bg-white object-contain p-0.5" />
+                  ) : (
+                    <LogoMark size={22} />
+                  )}
+                  <div className="font-display text-base font-bold text-text">{partnerName}</div>
+                </div>
                 {partnerAddress && <div className="mt-1 whitespace-pre-line text-xs text-text-muted">{partnerAddress}</div>}
                 {(partnerCity || partnerState || partnerPincode) && (
                   <div className="text-xs text-text-muted">

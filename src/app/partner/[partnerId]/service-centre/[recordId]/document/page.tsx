@@ -99,6 +99,7 @@ export default async function ServiceCentreDocumentPage({
       termsText={resolveDocumentTerms(partner, "workorder")}
       contactBand={{ hours: partner?.serviceHours, hotline: partner?.supportHotline }}
       footerNote={JOB_CARD_DECLARATION}
+      logoDataUrl={partner?.logoDataUrl}
     />
   );
 }

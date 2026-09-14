@@ -50,6 +50,7 @@ export async function DocumentView({
   contactBand,
   trackingCode,
   upiPayment,
+  logoDataUrl,
 }: {
   pageId: string;
   /** The numbering system's document-type id, e.g. "billing.document" — see NUMBERED_DOCUMENT_TYPES. */
@@ -116,6 +117,13 @@ export async function DocumentView({
    * configured or the amount is zero.
    */
   upiPayment?: { vpa: string | null | undefined; payeeName: string; amount: number } | null;
+  /**
+   * This partner's own uploaded logo (Settings > Business Details, stored
+   * as a `data:` URL — see src/lib/partnerData.ts's updatePartnerLogo, and
+   * Sidebar.tsx for the same fallback pattern). Null/unset renders the
+   * generic LogoMark, same as before any partner had uploaded one.
+   */
+  logoDataUrl?: string | null;
 }) {
   const customTemplate = await getDocumentTemplate(pageId);
   const scheme = await getEffectiveScheme(documentType, partnerId);
@@ -142,7 +150,12 @@ export async function DocumentView({
         <div className="rounded-lg border border-border bg-bg-raised p-10 shadow-sm print:rounded-none print:border-0 print:shadow-none">
           <div className="flex items-center justify-between border-b border-border pb-6">
             <div className="flex items-center gap-2.5">
-              <LogoMark size={28} />
+              {logoDataUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element -- a data: URL, not a file next/image can optimise.
+                <img src={logoDataUrl} alt={`${partnerName} logo`} className="h-7 max-w-[7rem] rounded bg-white object-contain p-0.5" />
+              ) : (
+                <LogoMark size={28} />
+              )}
               <span className="font-display text-lg font-extrabold text-text">{partnerName}</span>
             </div>
             <div className="text-right">

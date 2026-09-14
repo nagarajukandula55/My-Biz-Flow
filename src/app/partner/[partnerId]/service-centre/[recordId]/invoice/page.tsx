@@ -88,6 +88,7 @@ export default async function ServiceCentreInvoicePage({
       serviceHours={partner?.serviceHours}
       supportHotline={partner?.supportHotline}
       upiId={partner?.upiId}
+      logoDataUrl={partner?.logoDataUrl}
     />
   );
 }

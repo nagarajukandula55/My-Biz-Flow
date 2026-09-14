@@ -92,6 +92,7 @@ export default async function ServiceCentreServiceRecordPage({
       termsText={resolveDocumentTerms(partner, "serviceRecord")}
       contactBand={{ hours: partner?.serviceHours, hotline: partner?.supportHotline }}
       footerNote={SERVICE_RECORD_DECLARATION}
+      logoDataUrl={partner?.logoDataUrl}
       printSizes={["a4", "a5"]}
     />
   );

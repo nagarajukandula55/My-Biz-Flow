@@ -39,6 +39,7 @@ export async function buildPartnerAdminNavGroups(partnerId: string): Promise<Par
     items: [
       { key: "settings", label: "Settings", dot: "amber", href: "settings" },
       { key: "billing", label: "Subscription", dot: "amber", href: "admin/subscription" },
+      { key: "help", label: "Help & Tutorials", dot: "amber", href: "help" },
     ],
   };
   const visibleSlugs = await getVisibleModuleSlugs(partnerId);

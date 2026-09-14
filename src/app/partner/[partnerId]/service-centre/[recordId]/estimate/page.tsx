@@ -93,6 +93,7 @@ export default async function ServiceCentreEstimatePage({
       termsText={resolveDocumentTerms(partner, "estimate")}
       contactBand={{ hours: partner?.serviceHours, hotline: partner?.supportHotline }}
       footerNote={ESTIMATE_DECLARATION}
+      logoDataUrl={partner?.logoDataUrl}
       printSizes={["a4", "a5"]}
     />
   );
