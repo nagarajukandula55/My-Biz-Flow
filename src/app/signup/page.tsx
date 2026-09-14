@@ -23,7 +23,7 @@ registerPage({
 export default async function SignupPage({
   searchParams,
 }: {
-  searchParams: { type?: string; error?: string };
+  searchParams: { type?: string; error?: string; ref?: string };
 }) {
   const partnerTypes = await listActivePartnerTypes();
   const selected = partnerTypes.find((t) => t.id === searchParams.type) ?? partnerTypes[0];
@@ -155,6 +155,19 @@ export default async function SignupPage({
                     />
                   </label>
                 </div>
+              </div>
+
+              <div className="max-w-sm">
+                <label className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+                  Referral code (optional)
+                  <input
+                    type="text"
+                    name="referralCode"
+                    defaultValue={searchParams.ref ?? ""}
+                    placeholder="REF-SC0001"
+                    className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm normal-case text-text outline-none focus:border-teal"
+                  />
+                </label>
               </div>
 
               <button type="submit" className="btn-accent w-full sm:w-auto">

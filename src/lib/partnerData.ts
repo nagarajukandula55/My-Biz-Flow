@@ -141,6 +141,7 @@ export type PartnerSignupInput = {
   businessEmail: string;
   businessContact: string;
   loginContact: string;
+  referredByPartnerId?: string;
 };
 
 /**
@@ -173,6 +174,7 @@ export async function createPartner(input: PartnerSignupInput): Promise<{ partne
         businessEmail: input.businessEmail,
         businessContact: input.businessContact,
         loginContact: input.loginContact,
+        referredByPartnerId: input.referredByPartnerId || null,
         passwordHash,
         ...trialDates(),
       },

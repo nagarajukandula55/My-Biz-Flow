@@ -95,4 +95,9 @@ export const env = {
   whatsappBusinessPhoneNumberId: () => process.env.WHATSAPP_BUSINESS_PHONE_NUMBER_ID,
   whatsappAccessToken: () => process.env.WHATSAPP_ACCESS_TOKEN,
   whatsappVerifyToken: () => process.env.WHATSAPP_VERIFY_TOKEN,
+  /** Telegram bot token (see src/lib/telegram.ts) — per-partner chatId/alert-type settings
+   * are real and persisted (TelegramSettings), but actual delivery needs a real bot token,
+   * which isn't set up here yet; unset means sendPartnerTelegramAlert() logs instead of
+   * sending, same graceful-degradation posture as sms.ts. From @BotFather on Telegram. */
+  telegramBotToken: () => process.env.TELEGRAM_BOT_TOKEN,
 };
