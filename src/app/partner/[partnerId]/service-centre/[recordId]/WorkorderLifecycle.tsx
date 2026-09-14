@@ -14,6 +14,8 @@ import {
   MILESTONE_STATUSES,
   PAYMENT_MODES,
   mapStageToMilestone,
+  computeWorkorderTat,
+  formatTatHours,
   type WorkorderStage,
   type MilestoneStatus,
   type PartLine,
@@ -88,11 +90,6 @@ function stepDateFor(milestone: MilestoneStatus, history: StageHistoryEntry[], c
   const wantedStage = stageForMilestone[milestone];
   const hit = history.find((h) => h.stage === wantedStage);
   return hit?.at;
-}
-
-/** Elapsed hours between intake and now (or the Closed timestamp once closed), matching AN-CRM's running "TAT: Xh" badge. */
-function formatTat(hours: number): string {
-  return `${hours.toFixed(1)}h`;
 }
 
 export function WorkorderLifecycle({
@@ -453,24 +450,17 @@ export function WorkorderLifecycle({
 
   // TAT — elapsed time since intake, running until Closed/Cancelled (then
   // frozen at the terminal timestamp), mirroring AN-CRM's "TAT: 47.7h
-  // (running)" badge next to the stepper.
-  const closedHistoryEntry = (stageHistory ?? []).find((h) => h.stage === "Closed");
-  const tatEndIso = cancelledAt ?? closedHistoryEntry?.at;
-  // Start from the record's real, full-precision createdAt rather than the
-  // date-only `receivedDate` field — the latter has no time-of-day
-  // component at all, so it was silently rounding every TAT down to
-  // midnight (mirrors AN-CRM's own TAT, which runs from createdAt too).
-  const tatStartMs = recordCreatedAt
-    ? new Date(recordCreatedAt).getTime()
-    : receivedDate
-      ? new Date(receivedDate).getTime()
-      : undefined;
-  const tatEndMs = tatEndIso ? new Date(tatEndIso).getTime() : nowTick;
-  const tatHours =
-    tatStartMs !== undefined && !Number.isNaN(tatStartMs) && !Number.isNaN(tatEndMs)
-      ? Math.max(0, (tatEndMs - tatStartMs) / 3_600_000)
-      : undefined;
-  const tatRunning = !terminal;
+  // (running)" badge next to the stepper. Shared with the Workorders list
+  // page (which computes the same thing per row at render time) via
+  // computeWorkorderTat() — see src/lib/sample-data/service-centre.ts.
+  const { hours: tatHours, running: tatRunning } = computeWorkorderTat({
+    recordCreatedAt,
+    receivedDate,
+    stageHistory,
+    cancelledAt,
+    terminal,
+    nowMs: nowTick,
+  });
 
   /**
    * "+ Add Line" — used to open a SearchSelectModal picker over the BOM
@@ -1183,7 +1173,7 @@ export function WorkorderLifecycle({
         />
         {tatHours !== undefined && (
           <StatusChip
-            label={`TAT: ${formatTat(tatHours)}${tatRunning ? " (running)" : ""}`}
+            label={`TAT: ${formatTatHours(tatHours)}${tatRunning ? " (running)" : ""}`}
             variant={tatRunning ? "amber" : "neutral"}
           />
         )}

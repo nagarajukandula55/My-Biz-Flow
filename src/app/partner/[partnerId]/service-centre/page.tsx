@@ -6,7 +6,13 @@ import { ServiceCentreClientTable } from "./ServiceCentreClientTable";
 import { ServiceCentreNewButton } from "./ServiceCentreNewButton";
 import { buildServiceCentreCreateFields } from "@/lib/serviceCentreCreateFields";
 import { applyCustomizations } from "@/lib/designer/customizations";
-import { serviceCentreColumns, isUnderWarranty } from "@/lib/sample-data/service-centre";
+import {
+  serviceCentreListColumns,
+  isUnderWarranty,
+  computeWorkorderTat,
+  formatTatHours,
+} from "@/lib/sample-data/service-centre";
+import type { Column } from "@/components/DataTable";
 import { listBusinessRecords, listBusinessRecordsPaginated } from "@/lib/businessRecords";
 
 registerPage({
@@ -69,7 +75,17 @@ export default async function ServiceCentrePage({
   searchParams: SearchParams;
 }) {
   const mod = await getModule("service-centre");
-  const columns = await applyCustomizations("service-centre.list", serviceCentreColumns);
+  // Narrowed to exactly the 12 columns requested for this list (see
+  // serviceCentreListColumns) — the full ~39-field serviceCentreColumns set
+  // still backs the report builder, Designer column customization and the
+  // printed job-card document elsewhere. TAT (below) is appended after
+  // customization runs, as a plain computed text column, and the
+  // interactive Actions column is appended client-side by
+  // ServiceCentreClientTable (a render function can't cross the
+  // Server->Client prop boundary) — neither is part of the Designer's
+  // customizable "columns" region.
+  const baseColumns = await applyCustomizations("service-centre.list", serviceCentreListColumns);
+  const columns: Column[] = [...baseColumns, { key: "tat", label: "TAT", type: "text" }];
 
   const { status, priority, brandName, modelName, engineerName, from, to, q } = searchParams;
 
@@ -92,7 +108,22 @@ export default async function ServiceCentrePage({
   // it with isUnderWarranty() (the same function the detail page's badge
   // and the invoice/estimate chargeable-amount calc use) keeps this list in
   // sync with the one real source of truth instead of drifting on its own.
-  const displayRows = rows.map((row) => ({ ...row, warrantyFlag: isUnderWarranty(row) }));
+  const displayRows = rows.map((row) => {
+    const stage = row["stage"] as string | undefined;
+    const cancelledAt = row["cancelledAt"] as string | undefined;
+    const { hours } = computeWorkorderTat({
+      recordCreatedAt: row["recordCreatedAt"] as string | undefined,
+      receivedDate: row["receivedDate"] as string | undefined,
+      stageHistory: row["stageHistory"] as { at: string; stage: string }[] | undefined,
+      cancelledAt,
+      terminal: stage === "Closed" || Boolean(cancelledAt),
+    });
+    return {
+      ...row,
+      warrantyFlag: isUnderWarranty(row),
+      tat: formatTatHours(hours),
+    };
+  });
 
   const rangeStart = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const rangeEnd = Math.min(total, page * pageSize);

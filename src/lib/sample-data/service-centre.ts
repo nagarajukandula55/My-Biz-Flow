@@ -148,6 +148,50 @@ export function isUnderWarranty(record: Record<string, unknown>): boolean {
   return Boolean(record["warrantyFlag"]);
 }
 
+/**
+ * Single source of truth for TAT (turnaround time) — elapsed hours between
+ * intake and now, or the Closed timestamp once closed/cancelled. Previously
+ * lived only inline in WorkorderLifecycle.tsx (the detail page's header
+ * badge); extracted here so the Workorders list can show the same number
+ * per row without re-deriving separate logic, matching how isUnderWarranty()
+ * above was already extracted for the same reason.
+ *
+ * Starts from the record's real, full-precision `recordCreatedAt` (DB
+ * createdAt) rather than the date-only `receivedDate`, which has no
+ * time-of-day component. Ends at the stageHistory's "Closed" entry's `at`,
+ * or `cancelledAt`, once the job is terminal — otherwise runs to `nowMs`
+ * (defaults to Date.now()).
+ */
+export function computeWorkorderTat(input: {
+  recordCreatedAt?: string;
+  receivedDate?: string;
+  stageHistory?: StageHistoryEntry[];
+  cancelledAt?: string;
+  /** Whether the job is in a terminal state (Closed or Cancelled) — TAT freezes at tatEndIso once true. */
+  terminal: boolean;
+  nowMs?: number;
+}): { hours?: number; running: boolean } {
+  const closedHistoryEntry = (input.stageHistory ?? []).find((h) => h.stage === "Closed");
+  const tatEndIso = input.cancelledAt ?? closedHistoryEntry?.at;
+  const tatStartMs = input.recordCreatedAt
+    ? new Date(input.recordCreatedAt).getTime()
+    : input.receivedDate
+      ? new Date(input.receivedDate).getTime()
+      : undefined;
+  const now = input.nowMs ?? Date.now();
+  const tatEndMs = tatEndIso ? new Date(tatEndIso).getTime() : now;
+  const hours =
+    tatStartMs !== undefined && !Number.isNaN(tatStartMs) && !Number.isNaN(tatEndMs)
+      ? Math.max(0, (tatEndMs - tatStartMs) / 3_600_000)
+      : undefined;
+  return { hours, running: !input.terminal };
+}
+
+/** Formats a TAT hours value as AN-CRM's own "Xh" badge text, e.g. "47.7h". Returns "—" for an unavailable value. */
+export function formatTatHours(hours: number | undefined): string {
+  return hours === undefined ? "—" : `${hours.toFixed(1)}h`;
+}
+
 /** CrmJobSheet.appointmentType — the reference app's APPOINTMENT_TYPE option list is exactly these two. */
 export const APPOINTMENT_TYPES = ["ONSITE", "WALKIN"] as const;
 export const APPOINTMENT_TYPE_LABELS: Record<string, string> = {
@@ -513,6 +557,38 @@ export const serviceCentreColumns: Column[] = [
   { key: "estimatedCost", label: "Estimated Cost", type: "currency" },
   { key: "actualCost", label: "Actual Cost", type: "currency" },
 ];
+
+/**
+ * The exact 12 columns the Workorders LIST page shows — a deliberate
+ * narrowing of `serviceCentreColumns` above (still the full ~39-field set
+ * read by the report builder, the Designer's column customization, and the
+ * printed job-card document via DocumentView), not a second, separate
+ * column list that bypasses those consumers: it's derived FROM
+ * serviceCentreColumns by key, in this order, so a label/type/chipVariantMap
+ * edit made to the base list is picked up here too. TAT and Actions are
+ * NOT part of this list — they're appended by the list page itself (TAT is
+ * computed per-row via computeWorkorderTat(); Actions is a caller-rendered
+ * column, never a stored/customizable field), after Designer customization
+ * (applyCustomizations) has already run over this narrowed base.
+ */
+const SERVICE_CENTRE_LIST_COLUMN_KEYS = [
+  "id",
+  "customer",
+  "customerPhone",
+  "loggedBy",
+  "brandName",
+  "modelName",
+  "status",
+  "receivedDate",
+  "imeiOrSerialNumber",
+  "faultDescription",
+  "remark",
+  "deviceAppearance",
+];
+
+export const serviceCentreListColumns: Column[] = SERVICE_CENTRE_LIST_COLUMN_KEYS.map(
+  (key) => serviceCentreColumns.find((c) => c.key === key)!
+).filter(Boolean);
 
 export const serviceCentreRows: Row[] = [
   {

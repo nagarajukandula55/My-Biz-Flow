@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Eye } from "lucide-react";
 import { StatusChip, type StatusVariant } from "./StatusChip";
 import { formatCurrencyINR, formatDate } from "@/lib/format";
@@ -23,7 +23,8 @@ export type ColumnType =
   | "time"
   | "datetime"
   | "file"
-  | "password";
+  | "password"
+  | "actions";
 
 export type Column = {
   key: string;
@@ -35,6 +36,18 @@ export type Column = {
    * server→client boundary as data, so it must stay JSON-serializable.
    */
   chipVariantMap?: Record<string, StatusVariant>;
+  /**
+   * For `type: "actions"` columns only: a caller-supplied render function
+   * producing arbitrary interactive content (buttons, etc.) for a row. This
+   * only works when Column travels through a Client Component that builds
+   * it directly (e.g. ServiceCentreClientTable) rather than crossing a
+   * Server->Client boundary as plain serialized data, since functions can't
+   * cross that boundary — every other column type stays plain data. Any
+   * click handler inside the rendered node MUST call
+   * `event.stopPropagation()` if the table also has `onRowClick`, so a
+   * button click doesn't also trigger row navigation.
+   */
+  render?: (row: Row) => ReactNode;
 };
 
 export type Row = Record<string, unknown>;
@@ -133,6 +146,8 @@ export function renderCell(column: Column, row: Row) {
       return <span className="font-mono text-text-muted">••••••••</span>;
     case "file":
       return <span className="text-text-muted">{value ? String(value) : "—"}</span>;
+    case "actions":
+      return column.render ? column.render(row) : null;
     case "text":
     default:
       return <span>{String(value ?? "")}</span>;
