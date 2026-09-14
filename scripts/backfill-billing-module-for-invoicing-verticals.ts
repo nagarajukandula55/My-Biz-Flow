@@ -70,28 +70,38 @@ function generateKey(moduleSlug: string): string {
 
 async function main() {
   const partnerTypes = await prisma.partnerType.findMany();
-  const affectedTypeIds: string[] = [];
+  // Every type that depends on billing (whether its defaultModules already
+  // included "billing" from an earlier run/fix, or needs fixing now) — NOT
+  // just the ones fixed in THIS run. A partner signed up before defaultModules
+  // was corrected still needs the key issued even though the type itself no
+  // longer needs updating; the previous version of this script only looked
+  // at types it fixed just now, so a type fixed by an earlier/separate script
+  // run (e.g. the Plan-price backfill also upserts PartnerType.defaultModules)
+  // silently skipped issuing keys to that type's already-existing partners.
+  const dependentTypeIds: string[] = [];
 
   for (const pt of partnerTypes) {
     const modules = (pt.defaultModules as string[] | null) ?? [];
     const dependsOnBilling = modules.some((m) => VERTICALS_THAT_CREATE_BILLING_RECORDS.includes(m));
-    if (!dependsOnBilling || modules.includes("billing")) continue;
+    if (!dependsOnBilling) continue;
 
-    affectedTypeIds.push(pt.id);
-    const updatedModules = [...modules, "billing"];
-    await prisma.partnerType.update({
-      where: { id: pt.id },
-      data: { defaultModules: updatedModules },
-    });
-    console.log(`PartnerType "${pt.id}": added "billing" to defaultModules -> ${JSON.stringify(updatedModules)}`);
+    if (!modules.includes("billing")) {
+      const updatedModules = [...modules, "billing"];
+      await prisma.partnerType.update({
+        where: { id: pt.id },
+        data: { defaultModules: updatedModules },
+      });
+      console.log(`PartnerType "${pt.id}": added "billing" to defaultModules -> ${JSON.stringify(updatedModules)}`);
+    }
+    dependentTypeIds.push(pt.id);
   }
 
-  if (affectedTypeIds.length === 0) {
-    console.log('No PartnerType found missing "billing" despite depending on it. Nothing to backfill.');
+  if (dependentTypeIds.length === 0) {
+    console.log('No PartnerType depends on billing via a vertical module. Nothing to backfill.');
     return;
   }
 
-  const partners = await prisma.partner.findMany({ where: { partnerTypeId: { in: affectedTypeIds } } });
+  const partners = await prisma.partner.findMany({ where: { partnerTypeId: { in: dependentTypeIds } } });
   let issued = 0;
 
   for (const partner of partners) {
@@ -120,7 +130,7 @@ async function main() {
   }
 
   console.log(
-    `\nDone. PartnerType(s) fixed: ${affectedTypeIds.join(", ")}. ${issued} ModuleAccessKey("billing") issued/reactivated across ${partners.length} partner(s) of those type(s).`,
+    `\nDone. PartnerType(s) depending on billing: ${dependentTypeIds.join(", ")}. ${issued} ModuleAccessKey("billing") issued/reactivated across ${partners.length} partner(s) of those type(s).`,
   );
 }
 
