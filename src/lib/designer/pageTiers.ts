@@ -89,6 +89,12 @@ export const DEFAULT_PAGE_TIERS: Record<string, PlanTier> = {
   "billing.recurring.create": "pro",
   "billing.expenses.list": "ultimate",
   "billing.expenses.create": "ultimate",
+
+  // --- Inventory ---
+  // BOM/material-catalog authoring (not the workorder's own free-text
+  // material entry, which stays basic) is the same "build your own
+  // catalog" capability Brands/Models already gate pro+.
+  "inventory.bom.create": "pro",
   "billing.reports.profit-loss": "ultimate",
 };
 

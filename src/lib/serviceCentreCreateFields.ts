@@ -7,7 +7,8 @@ import { categoryOptionsForDomains } from "@/lib/catalog/serviceCatalog";
 import { filterByDomains, scBrandFormFields } from "@/lib/sample-data/service-centre-brands";
 import { scModelFormFields } from "@/lib/sample-data/service-centre-models";
 import { activeStaffNames } from "@/lib/sample-data/service-centre-staff-names";
-import { createBusinessRecordAction } from "@/lib/businessRecordActions";
+import { createServiceCentreBrandAction, createServiceCentreModelAction } from "@/lib/serviceCentreCatalogActions";
+import { getPageTierAccess } from "@/lib/tenant";
 import type { FormFieldDef, RecordFormAction } from "@/components/RecordForm";
 
 /**
@@ -87,21 +88,42 @@ export async function buildServiceCentreCreateFields(partnerId: string): Promise
   const addNewByKey: Record<string, { label: string; href: string }> = {
     ...(staffNames.length ? { loggedBy: { label: "Manage staff names", href: `${base}/staff-names` } } : {}),
   };
+  // Starter has no catalog at all (Brands/Models pages are pro+, per
+  // DEFAULT_PAGE_TIERS) — the inline "+ Add new" affordance must not exist
+  // on Starter either, not just the standalone pages. Checked here (not
+  // just hidden in CSS) so a Starter partner never even sees the button;
+  // the server-side action itself is ALSO tier-gated (see
+  // service-centre-brands.ts's createServiceCentreBrandAction /
+  // service-centre-models.ts's createServiceCentreModelAction) so this
+  // isn't security-through-hidden-UI — the same enforcement runs even if
+  // someone crafts a request directly.
+  const [brandsTier, modelsTier] = await Promise.all([
+    getPageTierAccess(partnerId, "service-centre.brands.create"),
+    getPageTierAccess(partnerId, "service-centre.models.create"),
+  ]);
   const addNewModalByKey: Record<string, FormFieldDef["addNewModal"]> = {
-    brandName: {
-      label: "Add new brand",
-      title: "New Brand",
-      submitLabel: "Create Brand",
-      fields: scBrandFormFields,
-      action: createBusinessRecordAction.bind(null, partnerId, "service-centre-brands") as RecordFormAction,
-    },
-    modelName: {
-      label: "Add new model",
-      title: "New Model",
-      submitLabel: "Create Model",
-      fields: scModelFormFields,
-      action: createBusinessRecordAction.bind(null, partnerId, "service-centre-models") as RecordFormAction,
-    },
+    ...(brandsTier.allowed
+      ? {
+          brandName: {
+            label: "Add new brand",
+            title: "New Brand",
+            submitLabel: "Create Brand",
+            fields: scBrandFormFields,
+            action: createServiceCentreBrandAction.bind(null, partnerId) as RecordFormAction,
+          },
+        }
+      : {}),
+    ...(modelsTier.allowed
+      ? {
+          modelName: {
+            label: "Add new model",
+            title: "New Model",
+            submitLabel: "Create Model",
+            fields: scModelFormFields,
+            action: createServiceCentreModelAction.bind(null, partnerId) as RecordFormAction,
+          },
+        }
+      : {}),
   };
 
   const categoryOptions = categoryOptionsForDomains(domains);

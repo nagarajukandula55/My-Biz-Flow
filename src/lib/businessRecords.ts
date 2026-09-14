@@ -138,15 +138,43 @@ export async function getBusinessRecordsByKeys(
   return new Map(rows.map((row) => [row.recordKey, toRow(row)]));
 }
 
-/** Creates a record. If values.id is unset, generates one from the module slug + a short random suffix. */
+/**
+ * Modules whose "auto-generated if left empty" id should be a real,
+ * sequential, per-partner number (via the same NumberingCounter scheme
+ * Workorders/Invoices use — src/lib/designer/numbering.ts) instead of a
+ * random suffix. Random ids were fine as an opaque key, but the catalogs
+ * below are shown to and referenced by the partner (a Brand Code, Model
+ * Code, or Material Code on a printed document/report), so they should
+ * read as a real, incrementing sequence — never colliding with another
+ * partner's catalog since the counter is scoped by partnerId, and never
+ * reusing a number within one partner's own catalog either.
+ */
+const NUMBERED_MODULE_SLUGS: Record<string, string> = {
+  "service-centre-brands": "service-centre.brand",
+  "service-centre-models": "service-centre.model",
+  "inventory-bom": "inventory.bom-material",
+};
+
+/** Creates a record. If values.id is unset, generates one — a real per-partner sequence for catalog modules (see NUMBERED_MODULE_SLUGS), a short random suffix for everything else. */
 export async function createBusinessRecord(
   partnerId: string,
   moduleSlug: string,
   values: Record<string, unknown>
 ): Promise<Row> {
-  const recordKey =
-    (values.id as string | undefined)?.trim() ||
-    `${moduleSlug.toUpperCase().slice(0, 3)}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+  let recordKey = (values.id as string | undefined)?.trim();
+  if (!recordKey) {
+    const documentType = NUMBERED_MODULE_SLUGS[moduleSlug];
+    if (documentType) {
+      const { getNextNumber } = await import("@/lib/designer/numbering");
+      recordKey = await getNextNumber(documentType, partnerId, {
+        prefix: moduleSlug === "inventory-bom" ? "MAT" : moduleSlug === "service-centre-brands" ? "BRD" : "MDL",
+        sequenceDigits: 4,
+        financialYearFormat: "none",
+      });
+    } else {
+      recordKey = `${moduleSlug.toUpperCase().slice(0, 3)}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+    }
+  }
   const data = { ...values, id: recordKey };
   const row = await prisma.businessRecord.create({
     data: { partnerId, moduleSlug, recordKey, data },

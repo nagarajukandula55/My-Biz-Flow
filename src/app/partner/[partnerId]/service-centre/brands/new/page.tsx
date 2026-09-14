@@ -4,7 +4,7 @@ import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { scBrandFormFields } from "@/lib/sample-data/service-centre-brands";
 import { applyCustomizations } from "@/lib/designer/customizations";
-import { createBusinessRecordAction } from "@/lib/businessRecordActions";
+import { createServiceCentreBrandAction } from "@/lib/serviceCentreCatalogActions";
 
 registerPage({
   id: "service-centre.brands.create",
@@ -37,7 +37,7 @@ export default async function NewScBrandPage({ params }: { params: { partnerId: 
           <RecordForm
             fields={fields}
             submitLabel="Create Brand"
-            action={createBusinessRecordAction.bind(null, params.partnerId, "service-centre-brands")}
+            action={createServiceCentreBrandAction.bind(null, params.partnerId)}
           />
         </div>
       </div>

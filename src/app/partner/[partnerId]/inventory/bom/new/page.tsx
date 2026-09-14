@@ -1,9 +1,10 @@
 import { AppShell } from "@/components/AppShell";
+import { renderTierGate } from "@/lib/pageTierGate";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { bomFormFields } from "@/lib/sample-data/bom";
 import { applyCustomizations } from "@/lib/designer/customizations";
-import { createBusinessRecordAction } from "@/lib/businessRecordActions";
+import { createServiceCentreBomMaterialAction } from "@/lib/serviceCentreCatalogActions";
 
 registerPage({
   id: "inventory.bom.create",
@@ -22,6 +23,9 @@ registerPage({
 });
 
 export default async function NewBomPage({ params }: { params: { partnerId: string } }) {
+  const tierGate = await renderTierGate(params.partnerId, "inventory.bom.create", "Material Catalog (BOM)");
+  if (tierGate) return <AppShell topbarTitle={"New Material"}>{tierGate}</AppShell>;
+
   const fields = await applyCustomizations("inventory.bom.create", bomFormFields);
 
   return (
@@ -33,7 +37,7 @@ export default async function NewBomPage({ params }: { params: { partnerId: stri
           <RecordForm
             fields={fields}
             submitLabel="Create Material"
-            action={createBusinessRecordAction.bind(null, params.partnerId, "inventory-bom")}
+            action={createServiceCentreBomMaterialAction.bind(null, params.partnerId)}
           />
         </div>
       </div>
