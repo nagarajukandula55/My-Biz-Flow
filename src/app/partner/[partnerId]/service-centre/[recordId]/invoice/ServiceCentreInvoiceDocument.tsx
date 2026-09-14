@@ -2,9 +2,8 @@ import { PrintButton } from "@/components/PrintButton";
 import { PrintFrame } from "@/components/PrintFrame";
 import { formatCurrencyINR, formatDate } from "@/lib/format";
 import { renderTemplate } from "@/lib/designer/documentTemplates";
-import { DocumentContactBand, DocumentTrackingBlock } from "@/components/DocumentView";
+import { DocumentContactBand } from "@/components/DocumentView";
 import { generateUpiQrDataUrl } from "@/lib/upiQr";
-import { generateTrackingQrDataUrl } from "@/lib/trackingQr";
 
 export type InvoiceLine = {
   description: string;
@@ -155,9 +154,6 @@ export async function ServiceCentreInvoiceDocument({
     amount: grandTotal,
     invoiceNumber,
   });
-  // Same guarded pattern as the UPI QR above — null when the workorder
-  // number is somehow blank, and the block below is simply skipped.
-  const trackingQrDataUrl = workorderNumber ? await generateTrackingQrDataUrl(partnerId, workorderNumber) : null;
   // A B2C document carrying no tax at all (e.g. an entirely non-chargeable
   // warranty job) is a plain Bill, not a Tax Invoice — calling it one would
   // be a false statement on the document.
@@ -487,10 +483,6 @@ export async function ServiceCentreInvoiceDocument({
                 <div className="font-semibold uppercase tracking-wide">Terms &amp; Conditions</div>
                 <p className="mt-1 whitespace-pre-line">{termsText.trim()}</p>
               </div>
-            )}
-
-            {trackingQrDataUrl && workorderNumber && (
-              <DocumentTrackingBlock partnerId={partnerId} code={workorderNumber} qrDataUrl={trackingQrDataUrl} />
             )}
 
             <DocumentContactBand hours={serviceHours} hotline={supportHotline} />

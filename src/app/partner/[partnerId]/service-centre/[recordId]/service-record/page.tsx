@@ -85,7 +85,6 @@ export default async function ServiceCentreServiceRecordPage({
         taxRate: l.gstRate,
       }))}
       totals={{ subtotal, tax, total: subtotal + tax }}
-      trackingCode={params.recordId}
       signatures={[
         "Customer Signature (device received back in working condition)",
         `For ${partner?.businessName ?? "Your Business"} — Authorised Signatory`,
