@@ -30,8 +30,10 @@ export const dynamic = "force-dynamic";
 
 export default async function RentalsDetailPage({
   params,
+  searchParams,
 }: {
   params: { partnerId: string; recordId: string };
+  searchParams?: { created?: string; updated?: string };
 }) {
   const mod = await getModule("rentals");
   const record = await getBusinessRecord(params.partnerId, "rentals", params.recordId);
@@ -58,6 +60,8 @@ export default async function RentalsDetailPage({
         <div className="mt-8">
         <RecordDetail
           fields={fields}
+          recordLabel={recordLabel}
+          searchParams={searchParams}
           timeline={timeline}
           related={rentalsRelated}
           headerSlot={

@@ -166,6 +166,12 @@ export function WorkorderLifecycle({
   const [paymentMode, setPaymentMode] = useState<string>(PAYMENT_MODES[0]);
   const [paymentAmount, setPaymentAmount] = useState<string>("");
   const [actionError, setActionError] = useState<string | null>(null);
+  // Every stage transition here is a client-side startTransition + patch —
+  // there's no redirect to land a ?created=1-style banner on, so a real
+  // "Marked In Progress" / "Closed" / "Cancelled" acknowledgment has to be
+  // inline state instead, set on success and auto-cleared like actionError
+  // already is on failure.
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [, startPersist] = useTransition();
 
   /**
@@ -185,8 +191,17 @@ export function WorkorderLifecycle({
     });
   }
 
-  function persist(patch: Record<string, unknown>) {
-    run(() => patchServiceCentreWorkorderAction(partnerId, workorderId, patch));
+  function persist(patch: Record<string, unknown>, successLabel?: string) {
+    run(
+      () => patchServiceCentreWorkorderAction(partnerId, workorderId, patch),
+      successLabel ? () => announceSuccess(successLabel) : undefined
+    );
+  }
+
+  /** Shows a dismissible success banner for ~4s, matching SuccessBanner's own auto-fade. */
+  function announceSuccess(label: string) {
+    setSuccessMessage(label);
+    setTimeout(() => setSuccessMessage((current) => (current === label ? null : current)), 4000);
   }
 
   const bomOptions: SearchSelectOption[] = bomMaterials.map((m) => ({ value: m.id, label: m.label }));
@@ -329,13 +344,14 @@ export function WorkorderLifecycle({
         setHold(true);
         setBrandJobNo(ref);
         setHoldModalOpen(false);
+        announceSuccess("Marked Part Pending.");
       }
     );
   }
 
   function resumeFromHold() {
     setHold(false);
-    run(() => setWorkorderHoldAction(partnerId, workorderId, false));
+    run(() => setWorkorderHoldAction(partnerId, workorderId, false), () => announceSuccess("Repair resumed."));
   }
 
   function createInvoice() {
@@ -350,6 +366,7 @@ export function WorkorderLifecycle({
       () => {
         setInvoiceModalOpen(false);
         setInvoice("pending"); // optimistic; page revalidation fills in the real id on next load
+        announceSuccess("Invoice created.");
       }
     );
   }
@@ -366,6 +383,7 @@ export function WorkorderLifecycle({
         setCancelled(true);
         setHold(false);
         setCancelModalOpen(false);
+        announceSuccess("Workorder Cancelled.");
       }
     );
   }
@@ -406,7 +424,7 @@ export function WorkorderLifecycle({
       return;
     }
     setStage(next);
-    persist({ stage: next });
+    persist({ stage: next }, `Marked ${next}.`);
     if (next === "Completed") {
       // Side effect, mirrors POS checkout: deduct consumed parts from live Inventory stock once the repair is done.
       startPersist(async () => {
@@ -432,13 +450,16 @@ export function WorkorderLifecycle({
     }
     setStage("Closed");
     setConfirmCloseOpen(false);
-    persist({
-      stage: "Closed",
-      handoverNotes,
-      engineerName: engineer.trim(),
-      collectedByName: collectedBy.trim(),
-      handedOverAt: new Date().toISOString(),
-    });
+    persist(
+      {
+        stage: "Closed",
+        handoverNotes,
+        engineerName: engineer.trim(),
+        collectedByName: collectedBy.trim(),
+        handedOverAt: new Date().toISOString(),
+      },
+      "Workorder Closed."
+    );
   }
 
   function persistHandoverNotes() {
@@ -502,6 +523,20 @@ export function WorkorderLifecycle({
       {(closeBlockedMessage || actionError) && (
         <div className="mt-4 rounded-md border border-danger bg-danger-soft px-3 py-2 text-sm text-danger">
           {closeBlockedMessage ?? actionError}
+        </div>
+      )}
+
+      {successMessage && (
+        <div className="mt-4 flex items-center justify-between gap-3 rounded-md border border-success-soft bg-success-soft px-3 py-2 text-sm font-semibold text-success">
+          <span>{successMessage}</span>
+          <button
+            type="button"
+            onClick={() => setSuccessMessage(null)}
+            aria-label="Dismiss"
+            className="text-success/70 hover:text-success"
+          >
+            &times;
+          </button>
         </div>
       )}
 

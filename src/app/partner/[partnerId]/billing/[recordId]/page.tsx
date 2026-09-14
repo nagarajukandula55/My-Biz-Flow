@@ -31,8 +31,10 @@ registerPage({
 
 export default async function BillingDetailPage({
   params,
+  searchParams,
 }: {
   params: { partnerId: string; recordId: string };
+  searchParams?: { created?: string; updated?: string };
 }) {
   const mod = await getModule("billing");
   const record = await getBusinessRecord(params.partnerId, "billing", params.recordId);
@@ -53,6 +55,8 @@ export default async function BillingDetailPage({
 
         <RecordDetail
           fields={fields}
+          recordLabel={recordLabel}
+          searchParams={searchParams}
           timeline={timeline}
           related={billingRelated}
           headerSlot={

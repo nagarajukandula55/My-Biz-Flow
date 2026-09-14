@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import { updatePartnerBusinessProfile, updatePartnerConfig } from "@/lib/partnerData";
 
@@ -24,6 +25,9 @@ export async function saveBusinessProfileAction(partnerId: string, formData: For
   });
 
   revalidatePath(`/partner/${partnerId}/settings`);
+  // ?saved=1 — GlobalActionBanner (rendered from AppShell) turns this into a
+  // real "Saved." acknowledgment instead of a silent inline re-render.
+  redirect(`/partner/${partnerId}/settings?saved=1`);
 }
 
 /**
@@ -47,4 +51,5 @@ export async function savePartnerConfigAction(partnerId: string, formData: FormD
   });
 
   revalidatePath(`/partner/${partnerId}/settings`);
+  redirect(`/partner/${partnerId}/settings?saved=1`);
 }

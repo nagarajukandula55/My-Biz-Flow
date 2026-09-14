@@ -39,7 +39,10 @@ export async function createBusinessRecordAction(
   }
 
   revalidatePath(`/partner/${partnerId}/${moduleSlug}`);
-  redirect(`/partner/${partnerId}/${moduleSlug}/${record.id}`);
+  // ?created=1 is read by RecordDetail (via each detail page's own
+  // searchParams prop) to render a real "<record> created" acknowledgment
+  // on arrival, instead of a silent redirect to the new record.
+  redirect(`/partner/${partnerId}/${moduleSlug}/${record.id}?created=1`);
 }
 
 /** Bind with .bind(null, partnerId, moduleSlug, recordKey) before passing as a RecordForm `action` prop. */
@@ -52,14 +55,18 @@ export async function updateBusinessRecordAction(
   await updateBusinessRecord(partnerId, moduleSlug, recordKey, values);
   revalidatePath(`/partner/${partnerId}/${moduleSlug}`);
   revalidatePath(`/partner/${partnerId}/${moduleSlug}/${recordKey}`);
-  redirect(`/partner/${partnerId}/${moduleSlug}/${recordKey}`);
+  // ?updated=1 — same acknowledgment mechanism as the create action above.
+  redirect(`/partner/${partnerId}/${moduleSlug}/${recordKey}?updated=1`);
 }
 
 /** Bind with .bind(null, partnerId, moduleSlug, recordKey) before calling from a delete confirm handler. */
 export async function deleteBusinessRecordAction(partnerId: string, moduleSlug: string, recordKey: string) {
   await deleteBusinessRecord(partnerId, moduleSlug, recordKey);
   revalidatePath(`/partner/${partnerId}/${moduleSlug}`);
-  redirect(`/partner/${partnerId}/${moduleSlug}`);
+  // ?deleted=1 — picked up by GlobalActionBanner (rendered from AppShell on
+  // every partner page), so the list page shows a real "Record deleted"
+  // acknowledgment instead of a silent redirect.
+  redirect(`/partner/${partnerId}/${moduleSlug}?deleted=1`);
 }
 
 /**

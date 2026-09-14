@@ -26,8 +26,10 @@ export const dynamic = "force-dynamic";
 
 export default async function StockDetailPage({
   params,
+  searchParams,
 }: {
   params: { partnerId: string; recordId: string };
+  searchParams?: { created?: string; updated?: string };
 }) {
   const record = await getBusinessRecord(params.partnerId, "inventory-stock", params.recordId);
   if (!record) notFound();
@@ -40,6 +42,8 @@ export default async function StockDetailPage({
       <div>
         <RecordDetail
           fields={fields}
+          recordLabel={recordLabel}
+          searchParams={searchParams}
           timeline={timeline}
           related={stockRelated}
           headerSlot={

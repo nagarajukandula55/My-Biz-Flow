@@ -30,8 +30,10 @@ export const dynamic = "force-dynamic";
 
 export default async function WholesaleB2bDetailPage({
   params,
+  searchParams,
 }: {
   params: { partnerId: string; recordId: string };
+  searchParams?: { created?: string; updated?: string };
 }) {
   const mod = await getModule("wholesale-b2b");
   const record = await getBusinessRecord(params.partnerId, "wholesale-b2b", params.recordId);
@@ -65,6 +67,8 @@ export default async function WholesaleB2bDetailPage({
         <div className="mt-8">
         <RecordDetail
           fields={fields}
+          recordLabel={recordLabel}
+          searchParams={searchParams}
           timeline={timeline}
           related={wholesaleB2bRelated}
           headerSlot={

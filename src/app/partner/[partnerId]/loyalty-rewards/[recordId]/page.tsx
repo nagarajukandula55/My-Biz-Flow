@@ -30,8 +30,10 @@ export const dynamic = "force-dynamic";
 
 export default async function LoyaltyRewardsDetailPage({
   params,
+  searchParams,
 }: {
   params: { partnerId: string; recordId: string };
+  searchParams?: { created?: string; updated?: string };
 }) {
   const mod = await getModule("loyalty-rewards");
   const record = await getBusinessRecord(params.partnerId, "loyalty-rewards", params.recordId);
@@ -55,6 +57,8 @@ export default async function LoyaltyRewardsDetailPage({
         <div className="mt-8">
         <RecordDetail
           fields={fields}
+          recordLabel={recordLabel}
+          searchParams={searchParams}
           timeline={timeline}
           related={loyaltyRewardsRelated}
           headerSlot={

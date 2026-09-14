@@ -30,8 +30,10 @@ registerPage({
 
 export default async function PosDetailPage({
   params,
+  searchParams,
 }: {
   params: { partnerId: string; recordId: string };
+  searchParams?: { created?: string; updated?: string };
 }) {
   const mod = await getModule("pos");
   const record = await getBusinessRecord(params.partnerId, "pos", params.recordId);
@@ -49,6 +51,8 @@ export default async function PosDetailPage({
         <div className="mt-8">
         <RecordDetail
           fields={fields}
+          recordLabel={recordLabel}
+          searchParams={searchParams}
           timeline={timeline}
           related={posRelated}
           headerSlot={

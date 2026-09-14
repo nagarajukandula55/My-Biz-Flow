@@ -31,8 +31,10 @@ export const dynamic = "force-dynamic";
 
 export default async function ClinicDetailPage({
   params,
+  searchParams,
 }: {
   params: { partnerId: string; recordId: string };
+  searchParams?: { created?: string; updated?: string };
 }) {
   const mod = await getModule("clinic");
   const record = await getBusinessRecord(params.partnerId, "clinic", params.recordId);
@@ -67,6 +69,8 @@ export default async function ClinicDetailPage({
         <div className="mt-6">
         <RecordDetail
           fields={fields}
+          recordLabel={recordLabel}
+          searchParams={searchParams}
           timeline={timeline}
           related={patientHistory}
           headerSlot={

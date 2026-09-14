@@ -32,8 +32,10 @@ export const dynamic = "force-dynamic";
 
 export default async function ExpenseDetailPage({
   params,
+  searchParams,
 }: {
   params: { partnerId: string; recordId: string };
+  searchParams?: { created?: string; updated?: string };
 }) {
   const record = await getBusinessRecord(params.partnerId, "billing-expenses", params.recordId);
   if (!record) notFound();
@@ -50,6 +52,8 @@ export default async function ExpenseDetailPage({
       <div>
         <RecordDetail
           fields={fields}
+          recordLabel={recordLabel}
+          searchParams={searchParams}
           timeline={timeline}
           related={expenseRelated}
           headerSlot={

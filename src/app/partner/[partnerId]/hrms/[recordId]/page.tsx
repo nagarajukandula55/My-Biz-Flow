@@ -30,8 +30,10 @@ export const dynamic = "force-dynamic";
 
 export default async function HrmsDetailPage({
   params,
+  searchParams,
 }: {
   params: { partnerId: string; recordId: string };
+  searchParams?: { created?: string; updated?: string };
 }) {
   const mod = await getModule("hrms");
   const record = await getBusinessRecord(params.partnerId, "hrms", params.recordId);
@@ -57,6 +59,8 @@ export default async function HrmsDetailPage({
         <div className="mt-8">
         <RecordDetail
           fields={fields}
+          recordLabel={recordLabel}
+          searchParams={searchParams}
           timeline={timeline}
           related={hrmsRelated}
           headerSlot={
