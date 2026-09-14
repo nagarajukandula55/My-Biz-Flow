@@ -95,6 +95,47 @@ export const MILESTONE_STATUSES: MilestoneStatus[] = [
   "CANCELLED",
 ];
 
+/** Human label for each MilestoneStatus — used to render the list's computed Status column and the summary cards, so both agree with the detail page's own milestone-based badge. */
+export const MILESTONE_LABEL: Record<MilestoneStatus, string> = {
+  CREATED: "Created",
+  REPAIR_STARTED: "In Progress",
+  REPAIR_IN_PROGRESS: "In Progress",
+  PART_PENDING: "Part Pending",
+  REPAIR_COMPLETED: "Completed",
+  CLOSED: "Closed",
+  CANCELLED: "Cancelled",
+};
+
+/** Chip tone per MilestoneStatus — Cancelled reads as danger, distinct from Closed's success, per explicit product feedback that the two must never look the same. */
+export const MILESTONE_STATUS_VARIANT: Record<MilestoneStatus, StatusVariant> = {
+  CREATED: "neutral",
+  REPAIR_STARTED: "teal",
+  REPAIR_IN_PROGRESS: "teal",
+  PART_PENDING: "danger",
+  REPAIR_COMPLETED: "amber",
+  CLOSED: "success",
+  CANCELLED: "danger",
+};
+
+/**
+ * The list's Status column previously read the legacy free-text `status`
+ * field, which is only ever set once at intake (plus the one Part Pending
+ * sync in setWorkorderHoldAction) and drifts stale for every other real
+ * stage transition (In Progress/Completed/Closed/Cancelled). This computes
+ * the REAL status the same way the detail page's badge does — via
+ * extractLifecycleFromRecord + mapStageToMilestone — so the list and detail
+ * page always agree.
+ */
+export const DISPLAY_STATUS_VARIANT: Record<string, StatusVariant> = Object.fromEntries(
+  MILESTONE_STATUSES.map((m) => [MILESTONE_LABEL[m], MILESTONE_STATUS_VARIANT[m]]),
+);
+
+export function computeDisplayStatus(record: Row): { milestone: MilestoneStatus; label: string } {
+  const { stage, onHold, cancelled } = extractLifecycleFromRecord(record);
+  const milestone = mapStageToMilestone(stage, onHold, cancelled);
+  return { milestone, label: MILESTONE_LABEL[milestone] };
+}
+
 export function mapStageToMilestone(stage: WorkorderStage, onHold?: boolean, cancelled?: boolean): MilestoneStatus {
   // Cancellation is a terminal side-branch recorded as `cancelledAt` on the
   // record rather than a WorkorderStage value (the four stages are the
@@ -529,7 +570,11 @@ export const serviceCentreColumns: Column[] = [
   { key: "engineerName", label: "Engineer / Serviced By", type: "text" },
   { key: "collectedByName", label: "Collected By", type: "text" },
   { key: "priority", label: "Priority", type: "select-chip" },
-  { key: "status", label: "Status", type: "select-chip", chipVariantMap: STATUS_VARIANT },
+  // chipVariantMap keys on the computed display labels (Created/In Progress/
+  // Part Pending/Completed/Closed/Cancelled) written into `status` by the
+  // list page's displayRows override — see computeDisplayStatus(). Cancelled
+  // and Closed are deliberately different tones (danger vs success).
+  { key: "status", label: "Status", type: "select-chip", chipVariantMap: DISPLAY_STATUS_VARIANT },
   { key: "receivedDate", label: "Received Date", type: "date" },
   { key: "estimatedAmount", label: "Estimated Amount", type: "currency" },
   { key: "warrantyFlag", label: "Under Warranty", type: "text" },

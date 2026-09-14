@@ -11,6 +11,7 @@ import {
   isUnderWarranty,
   computeWorkorderTat,
   formatTatHours,
+  computeDisplayStatus,
 } from "@/lib/sample-data/service-centre";
 import type { Column } from "@/components/DataTable";
 import { listBusinessRecords, listBusinessRecordsPaginated } from "@/lib/businessRecords";
@@ -50,6 +51,7 @@ type SearchParams = {
   brandName?: string;
   modelName?: string;
   engineerName?: string;
+  paymentMode?: string;
   from?: string;
   to?: string;
   q?: string;
@@ -87,13 +89,13 @@ export default async function ServiceCentrePage({
   const baseColumns = await applyCustomizations("service-centre.list", serviceCentreListColumns);
   const columns: Column[] = [...baseColumns, { key: "tat", label: "TAT", type: "text" }];
 
-  const { status, priority, brandName, modelName, engineerName, from, to, q } = searchParams;
+  const { status, priority, brandName, modelName, engineerName, paymentMode, from, to, q } = searchParams;
 
   const page = Math.max(1, Number(searchParams.page) || 1);
   const [{ rows, total, totalPages, pageSize }, allRows] = await Promise.all([
     listBusinessRecordsPaginated(params.partnerId, "service-centre", {
       page,
-      filters: { status, priority, brandName, modelName, engineerName },
+      filters: { status, priority, brandName, modelName, engineerName, paymentMode },
       dateRange: { field: "receivedDate", from, to },
       search: q ? { query: q, fields: SEARCH_FIELDS } : undefined,
     }),
@@ -122,8 +124,27 @@ export default async function ServiceCentrePage({
       ...row,
       warrantyFlag: isUnderWarranty(row),
       tat: formatTatHours(hours),
+      status: computeDisplayStatus(row).label,
     };
   });
+
+  // Summary cards + the Status filter's real option list are computed from
+  // the SAME milestone logic as the Status column above (computeDisplayStatus
+  // -> extractLifecycleFromRecord + mapStageToMilestone) so the cards, the
+  // column and the filter dropdown never disagree on what counts as
+  // Open/Closed/Cancelled/Part Pending. Cancelled is its own milestone,
+  // distinct from Closed, per explicit feedback that the two must not be
+  // conflated. Counts are taken from `allRows` (the full unfiltered set)
+  // rather than the current page's `rows`.
+  const milestoneCounts = allRows.reduce<Record<string, number>>((acc, row) => {
+    const { milestone } = computeDisplayStatus(row);
+    acc[milestone] = (acc[milestone] ?? 0) + 1;
+    return acc;
+  }, {});
+  const closedCount = milestoneCounts["CLOSED"] ?? 0;
+  const cancelledCount = milestoneCounts["CANCELLED"] ?? 0;
+  const partPendingCount = milestoneCounts["PART_PENDING"] ?? 0;
+  const openCount = allRows.length - closedCount - cancelledCount;
 
   const rangeStart = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const rangeEnd = Math.min(total, page * pageSize);
@@ -134,8 +155,11 @@ export default async function ServiceCentrePage({
   const brandOptions = distinct("brandName");
   const modelOptions = distinct("modelName");
   const engineerOptions = distinct("engineerName");
+  const paymentModeOptions = distinct("paymentMode");
 
-  const hasActiveFilters = Boolean(q || status || priority || brandName || modelName || engineerName || from || to);
+  const hasActiveFilters = Boolean(
+    q || status || priority || brandName || modelName || engineerName || paymentMode || from || to
+  );
 
   // The quick-create modal renders the same domain-aware, brand-scoped
   // field set the full-page /new form does — one builder, no drift.
@@ -150,6 +174,23 @@ export default async function ServiceCentrePage({
     >
       <div>
         <p className="text-sm text-text-muted">{mod?.description}</p>
+
+        {/*
+          Open/Closed/Cancelled/Part Pending counts, computed from the same
+          milestone logic as the Status column (computeDisplayStatus) so
+          these numbers never disagree with what the column/filter show.
+          Closed deliberately excludes Cancelled — they're separate
+          milestones, per explicit feedback that the two must not be
+          conflated. Reuses the small stat-card pattern from the
+          Accounting/GST dashboard (StatCard below) rather than inventing
+          new markup.
+        */}
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <StatCard label="Open" value={String(openCount)} />
+          <StatCard label="Closed" value={String(closedCount)} />
+          <StatCard label="Cancelled" value={String(cancelledCount)} />
+          <StatCard label="Part Pending" value={String(partPendingCount)} />
+        </div>
 
         <form className="mt-4 flex flex-wrap items-end gap-3 rounded-md border border-border bg-bg-raised p-3" method="get">
           <div>
@@ -167,6 +208,7 @@ export default async function ServiceCentrePage({
           <FilterSelect label="Brand" name="brandName" value={brandName} options={brandOptions} />
           <FilterSelect label="Model" name="modelName" value={modelName} options={modelOptions} />
           <FilterSelect label="Engineer / Serviced By" name="engineerName" value={engineerName} options={engineerOptions} />
+          <FilterSelect label="Payment Mode" name="paymentMode" value={paymentMode} options={paymentModeOptions} />
           <div>
             <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-text-muted">From</label>
             <input type="date" name="from" defaultValue={from ?? ""} className="rounded-md border border-border bg-bg px-3 py-1.5 text-sm text-text" />
@@ -217,6 +259,15 @@ export default async function ServiceCentrePage({
         </div>
       </div>
     </AppShell>
+  );
+}
+
+function StatCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-border bg-bg-raised p-4">
+      <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">{label}</div>
+      <div className="mt-1 font-mono text-xl font-bold text-text">{value}</div>
+    </div>
   );
 }
 
