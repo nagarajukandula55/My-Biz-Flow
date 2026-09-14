@@ -103,6 +103,8 @@ export function WorkorderLifecycle({
   imeiOrSerialNumber,
   faultDescription,
   loggedBy,
+  remark,
+  engineerRemark,
   initialStage,
   initialPartLines,
   initialServiceLines,
@@ -141,6 +143,18 @@ export function WorkorderLifecycle({
   imeiOrSerialNumber?: string;
   faultDescription?: string;
   loggedBy?: string;
+  /** Free-text "Remark" already carried on the workorder record (serviceCentreColumns' `remark`) — previously only shown, read-only, in the generic "More details" field grid. Now surfaced (and editable) on the Engineer Remark & Solution card, matching AN-CRM's own job-sheet layout. */
+  remark?: string;
+  /**
+   * Distinct from `remark` above — AN-CRM's job-sheet has both an
+   * "Engineer Remark" field and a separate "Remark" field on the same
+   * card. No existing column/lifecycle slot carried this, so it's a new
+   * top-level record field (`engineerRemark`), persisted the same generic
+   * way `remark`/`handoverNotes` already are via patchServiceCentreWorkorderAction
+   * — BusinessRecord's data is an untyped JSON blob, so this needs no
+   * schema/model change, just a prop threaded through from the record.
+   */
+  engineerRemark?: string;
   initialStage: WorkorderStage;
   initialPartLines: PartLine[];
   initialServiceLines: ServiceLine[];
@@ -225,6 +239,18 @@ export function WorkorderLifecycle({
   const [closeBlockedMessage, setCloseBlockedMessage] = useState<string | null>(null);
   const [confirmCloseOpen, setConfirmCloseOpen] = useState(false);
   const [handoverNotes, setHandoverNotes] = useState(initialHandoverNotes ?? "");
+  const [remarkText, setRemarkText] = useState(remark ?? "");
+  const [engineerRemarkText, setEngineerRemarkText] = useState(engineerRemark ?? "");
+  // Which Solution the "Solution" dropdown on the Engineer Remark & Solution
+  // card currently has picked — separate from the modal-driven "+ Add
+  // Service/Labour Charge" picker above, but both ultimately call the same
+  // addSolution() mutation below.
+  const [solutionSelectValue, setSolutionSelectValue] = useState("");
+  // Tax Apply — on by default (matching AN-CRM), forced off for an
+  // in-warranty job (already non-chargeable throughout), otherwise a plain
+  // UI toggle over the same live tax preview the totals footer already
+  // computed from partLines/serviceLines.
+  const [taxApply, setTaxApply] = useState(!underWarranty);
   const [brand, setBrand] = useState({ id: brandId, name: brandName });
   const [model, setModel] = useState({ id: modelId, name: modelName });
   // Both start from whatever is already stored and are otherwise BLANK —
@@ -319,7 +345,7 @@ export function WorkorderLifecycle({
     (sum, p) => (p.pending ? sum : sum + (p.unitPrice || 0) * (p.qty || 1) * ((p.taxRate ?? 18) / 100)),
     0
   );
-  const taxTotal = underWarranty ? 0 : laborTax + partsTax;
+  const taxTotal = underWarranty || !taxApply ? 0 : laborTax + partsTax;
   const chargeableSubtotal = underWarranty ? 0 : estimateTotal;
   const inr = (value: number) =>
     value.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -610,6 +636,30 @@ export function WorkorderLifecycle({
     persist({ handoverNotes });
   }
 
+  function persistRemark() {
+    persist({ remark: remarkText });
+  }
+
+  function persistEngineerRemark() {
+    persist({ engineerRemark: engineerRemarkText });
+  }
+
+  function persistEngineerName() {
+    persist({ engineerName: engineer.trim() || undefined });
+  }
+
+  /** "Solution" dropdown + "+ Add Solution" button on the Engineer Remark &
+   * Solution card — a second entry point to the exact same addSolution()
+   * mutation the modal-driven "+ Add Service/Labour Charge" button above
+   * already uses, just picked from an inline <select> instead of the
+   * search modal, matching AN-CRM's own layout for this card. */
+  function addSelectedSolution() {
+    const option = solutionOptions.find((o) => o.value === solutionSelectValue);
+    if (!option) return;
+    addSolution(option);
+    setSolutionSelectValue("");
+  }
+
   // Primary stage-progress action's label — same rule advanceStage() itself
   // gates against (estimate approval / non-empty lines / unresolved
   // serials), just surfaced up in the unified header too, alongside the
@@ -670,9 +720,15 @@ export function WorkorderLifecycle({
           <PrintPopupLink href={`/partner/${partnerId}/service-centre/${workorderId}/service-record`} className="btn-outline">
             Service record
           </PrintPopupLink>
-          <Link href={`/partner/${partnerId}/service-centre/${workorderId}/edit`} className="btn-outline">
-            Edit
-          </Link>
+          {/* No generic "Edit" action on this page, deliberately — once a
+              workorder is created it is never edited wholesale. Every field
+              that can legitimately change afterwards (brand/model, parts &
+              service lines, engineer/remark, hold, stage, etc.) has its own
+              lifecycle-specific control right on this page instead, exactly
+              like AN-CRM's real job-sheet detail view. This removes the last
+              link to the /edit route from this page — that route file still
+              exists (other modules' own edit routes are unaffected) but is
+              now unreachable from here. */}
           <DeleteBusinessRecordButton
             partnerId={partnerId}
             moduleSlug="service-centre"
@@ -822,67 +878,54 @@ export function WorkorderLifecycle({
         </div>
       )}
 
-      {/* Estimate approval — gates entry into In Progress unless under warranty */}
-      {stage === "Created" && !underWarranty && !cancelled && (
-        <div className="mt-4 rounded-md border border-border bg-bg-raised p-4">
-          <h2 className="font-display text-base font-bold text-text">Estimate</h2>
-          <p className="mt-1 text-sm text-text-muted">
-            Current estimate: <span className="font-semibold text-text">₹{estimateTotal}</span> — ₹{laborTotal} labor
-            across {serviceLines.length} service line(s) plus ₹{partsTotal} in parts, priced from the Material Catalog.
-          </p>
-          {approved ? (
-            <StatusChip label="Approved by customer" variant="success" className="mt-2" />
-          ) : (
-            <button type="button" className="btn-accent mt-2" onClick={approveEstimate}>
-              Mark Estimate Approved
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Hold (Parts Pending) — a side-state, not a stage; pauses editing without cancelling the job */}
-      {stage === "In Progress" && !cancelled && (
-        <div className="mt-4 flex flex-wrap items-center gap-3">
-          {hold ? (
-            <button type="button" className="btn-outline text-xs" onClick={resumeFromHold}>
-              Resume Repair
-            </button>
-          ) : (
-            <button
-              type="button"
-              className="btn-outline text-xs"
-              onClick={() => {
-                setHoldReasonDraft(holdReason ?? "");
-                setBrandJobNoDraft(brandJobNo);
-                setActionError(null);
-                setHoldModalOpen(true);
-              }}
-            >
-              Mark Part Pending
-            </button>
-          )}
-          {brandJobNo && <span className="text-xs text-text-muted">Brand Job No.: {brandJobNo}</span>}
-        </div>
-      )}
-
-      {/* Parts & Service Lines */}
+      {/* Parts & Service Lines — directly below Customer & Device, matching
+          AN-CRM's own job-sheet card order (Tax Apply checkbox + the three
+          add-line buttons in the header row, a BOM-empty warning banner,
+          the lines themselves, then the Subtotal/CGST/SGST/Total footer). */}
       <div className="mt-6 rounded-md border border-border bg-bg-raised p-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="font-display text-base font-bold text-text">Parts & Service Lines</h2>
-          {editable && (
-            <div className="flex items-center gap-2">
-              <button type="button" className="btn-outline" onClick={() => setSolutionPickerOpen(true)}>
-                + Add Solution
-              </button>
-              <button type="button" className="btn-outline" onClick={() => setPartPickerOpen(true)}>
-                + Add Part
-              </button>
-            </div>
-          )}
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="flex items-center gap-1.5 text-xs text-text-muted">
+              <input
+                type="checkbox"
+                checked={taxApply}
+                disabled={underWarranty}
+                onChange={(e) => setTaxApply(e.target.checked)}
+                className="h-4 w-4 rounded border-border"
+              />
+              Tax Apply
+            </label>
+            {editable && (
+              <div className="flex flex-wrap items-center gap-2">
+                <button type="button" className="btn-outline" onClick={() => setSolutionPickerOpen(true)}>
+                  + Add Service/Labour Charge
+                </button>
+                <button type="button" className="btn-outline" onClick={() => setPartPickerOpen(true)}>
+                  + Add Line
+                </button>
+                {/* Adds a genuinely new material to this partner's own BOM
+                    catalog (Inventory > Material Catalog) — distinct from
+                    "+ Add Line" above, which only picks an EXISTING BOM
+                    material onto this job. Same create route the Material
+                    Catalog's own "New" button already uses. */}
+                <Link href={`/partner/${partnerId}/inventory/bom/new`} className="btn-outline">
+                  + Add New Part to BOM
+                </Link>
+              </div>
+            )}
+          </div>
         </div>
+
+        {editable && bomMaterials.length === 0 && (
+          <div className="mt-3 rounded-md border border-warning bg-warning-soft px-3 py-2 text-sm text-warning">
+            No materials found in your BOM yet — add parts under Material Catalog to have them listed here for quick
+            selection.
+          </div>
+        )}
 
         {serviceLines.length === 0 && partLines.length === 0 ? (
-          <p className="mt-3 text-sm text-text-muted">No parts or service lines added yet.</p>
+          <p className="mt-3 text-sm text-text-muted">No lines yet — add a part or service charge.</p>
         ) : (
           <div className="mt-3 space-y-2">
             {serviceLines.map((line) => (
@@ -964,7 +1007,7 @@ export function WorkorderLifecycle({
               <span>Subtotal</span>
               <span className="tabular-nums">₹{inr(chargeableSubtotal)}</span>
             </div>
-            {!underWarranty && (
+            {!underWarranty && taxApply && (
               <>
                 <div className="flex items-center justify-between text-xs text-text-muted">
                   <span>CGST</span>
@@ -977,7 +1020,7 @@ export function WorkorderLifecycle({
               </>
             )}
             <div className="flex items-center justify-between border-t border-border pt-1.5 text-sm font-semibold text-text">
-              <span>{underWarranty ? "Payable" : "Total"}</span>
+              <span>Total</span>
               <span className="tabular-nums">₹{inr(chargeableSubtotal + taxTotal)}</span>
             </div>
             {underWarranty && (
@@ -989,6 +1032,123 @@ export function WorkorderLifecycle({
           </div>
         )}
       </div>
+
+      {/* Engineer Remark & Solution — second card, directly below Parts &
+          Service Lines, matching AN-CRM's job-sheet layout exactly: a
+          plain Engineer Remark field, a Solution dropdown + Add button
+          (same addSolution() mutation as the modal above), a separate
+          Remark field, and Engineer Name with its own close-time helper
+          text — editable here too, not only inside the Close Workorder
+          modal further down. */}
+      <div className="mt-6 rounded-md border border-border bg-bg-raised p-4">
+        <h2 className="font-display text-base font-bold text-text">Engineer Remark &amp; Solution</h2>
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <label className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+            Engineer Remark
+            <input
+              type="text"
+              value={engineerRemarkText}
+              disabled={!editable}
+              onChange={(e) => setEngineerRemarkText(e.target.value)}
+              onBlur={persistEngineerRemark}
+              className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm font-normal normal-case tracking-normal text-text disabled:opacity-60"
+            />
+          </label>
+          <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+            Solution
+            <div className="mt-1 flex items-center gap-2">
+              <select
+                value={solutionSelectValue}
+                disabled={!editable}
+                onChange={(e) => setSolutionSelectValue(e.target.value)}
+                className="w-full rounded-md border border-border bg-bg px-2 py-2 text-sm font-normal normal-case tracking-normal text-text disabled:opacity-60"
+              >
+                <option value="">Select a Solution…</option>
+                {solutionOptions.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className="btn-outline shrink-0"
+                disabled={!editable || !solutionSelectValue}
+                onClick={addSelectedSolution}
+              >
+                + Add Solution
+              </button>
+            </div>
+          </div>
+          <label className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+            Remark
+            <input
+              type="text"
+              value={remarkText}
+              disabled={!editable}
+              onChange={(e) => setRemarkText(e.target.value)}
+              onBlur={persistRemark}
+              className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm font-normal normal-case tracking-normal text-text disabled:opacity-60"
+            />
+          </label>
+          <label className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+            Engineer Name <span className="font-normal normal-case text-text-muted">(prints on the closed job sheet)</span>
+            <input
+              type="text"
+              list="wo-staff-names"
+              value={engineer}
+              disabled={!editable}
+              onChange={(e) => setEngineer(e.target.value)}
+              onBlur={persistEngineerName}
+              placeholder="Who repaired this device"
+              className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm font-normal normal-case tracking-normal text-text disabled:opacity-60"
+            />
+          </label>
+        </div>
+      </div>
+
+      {/* Estimate approval — gates entry into In Progress unless under warranty */}
+      {stage === "Created" && !underWarranty && !cancelled && (
+        <div className="mt-6 rounded-md border border-border bg-bg-raised p-4">
+          <h2 className="font-display text-base font-bold text-text">Estimate</h2>
+          <p className="mt-1 text-sm text-text-muted">
+            Current estimate: <span className="font-semibold text-text">₹{estimateTotal}</span> — ₹{laborTotal} labor
+            across {serviceLines.length} service line(s) plus ₹{partsTotal} in parts, priced from the Material Catalog.
+          </p>
+          {approved ? (
+            <StatusChip label="Approved by customer" variant="success" className="mt-2" />
+          ) : (
+            <button type="button" className="btn-accent mt-2" onClick={approveEstimate}>
+              Mark Estimate Approved
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Hold (Parts Pending) — a side-state, not a stage; pauses editing without cancelling the job */}
+      {stage === "In Progress" && !cancelled && (
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          {hold ? (
+            <button type="button" className="btn-outline text-xs" onClick={resumeFromHold}>
+              Resume Repair
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="btn-outline text-xs"
+              onClick={() => {
+                setHoldReasonDraft(holdReason ?? "");
+                setBrandJobNoDraft(brandJobNo);
+                setActionError(null);
+                setHoldModalOpen(true);
+              }}
+            >
+              Mark Part Pending
+            </button>
+          )}
+          {brandJobNo && <span className="text-xs text-text-muted">Brand Job No.: {brandJobNo}</span>}
+        </div>
+      )}
 
       {/* Handover & Close, only surfaces after Completed */}
       {stage === "Completed" && !cancelled && (

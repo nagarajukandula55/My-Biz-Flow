@@ -128,6 +128,8 @@ export default async function ServiceCentreDetailPage({
           imeiOrSerialNumber={typeof record["imeiOrSerialNumber"] === "string" ? (record["imeiOrSerialNumber"] as string) : undefined}
           faultDescription={typeof record["faultDescription"] === "string" ? (record["faultDescription"] as string) : undefined}
           loggedBy={typeof record["loggedBy"] === "string" ? (record["loggedBy"] as string) : undefined}
+          remark={typeof record["remark"] === "string" ? (record["remark"] as string) : undefined}
+          engineerRemark={typeof record["engineerRemark"] === "string" ? (record["engineerRemark"] as string) : undefined}
           initialStage={lifecycle.stage}
           initialPartLines={lifecycle.partLines}
           initialServiceLines={lifecycle.serviceLines}

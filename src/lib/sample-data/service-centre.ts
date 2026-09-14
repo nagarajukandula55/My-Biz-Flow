@@ -661,12 +661,24 @@ export function getServiceCentreRecord(recordId: string): Row {
   return serviceCentreRows.find((r) => String(r["id"]) === recordId) ?? serviceCentreRows[0];
 }
 
+/**
+ * Trimmed to exactly what AN-CRM's real job-sheet page does NOT already
+ * show in its own "Customer & Device" card or the Parts & Service Lines /
+ * Engineer Remark & Solution cards above (WorkorderLifecycle.tsx): Job ID,
+ * Customer, Customer Phone, Device, Brand, Model, Engineer / Serviced By,
+ * Collected By, IMEI/Serial, Fault in Device, Logged By and Remark are all
+ * now shown (several of them editable) further up the page, so repeating
+ * them here read-only was pure duplication — worse, a stale second copy
+ * once the card above is edited. Billing/GST-relevant fields (GSTIN,
+ * address/city/state/pincode) and other operational metadata that has no
+ * other home on this page (priority, dates, cost tracking, notes) stay
+ * here, since nothing in AN-CRM's screenshot rules those out and there is
+ * no browser available in this pass to confirm the reference app truly
+ * shows nothing like them further down its own job-sheet view.
+ */
 export function getServiceCentreDetailFields(record: Row): RecordField[] {
   const r = record;
   return [
-    { label: "Job ID", value: r["id"], type: "text" },
-    { label: "Customer", value: r["customer"], type: "relation" },
-    { label: "Customer Phone", value: r["customerPhone"], type: "phone" },
     { label: "Customer Email", value: r["customerEmail"], type: "text" },
     { label: "Company", value: r["customerCompany"], type: "text" },
     { label: "Customer GSTIN", value: r["customerGstin"], type: "text" },
@@ -674,14 +686,8 @@ export function getServiceCentreDetailFields(record: Row): RecordField[] {
     { label: "City", value: r["customerCity"], type: "text" },
     { label: "State", value: r["customerState"], type: "text" },
     { label: "Pincode", value: r["customerPincode"], type: "text" },
-    { label: "Logged By", value: r["loggedBy"], type: "text" },
     // Both taxonomies, so a vehicle job's class renders as a label too.
     { label: "Device / Vehicle Type", value: ALL_CATEGORY_LABELS[String(r["deviceCategory"])] ?? r["deviceCategory"], type: "text" },
-    { label: "Device", value: r["device"], type: "text" },
-    { label: "Brand", value: r["brandName"], type: "text" },
-    { label: "Model", value: r["modelName"], type: "text" },
-    { label: "Engineer / Serviced By", value: r["engineerName"], type: "text" },
-    { label: "Collected By", value: r["collectedByName"], type: "text" },
     { label: "Priority", value: r["priority"], type: "select", chipVariant: STATUS_VARIANT[String(r["priority"])] ?? "neutral" },
     { label: "Status", value: r["status"], type: "select", chipVariant: STATUS_VARIANT[String(r["status"])] ?? "neutral" },
     { label: "Received Date", value: r["receivedDate"], type: "date" },
@@ -690,7 +696,6 @@ export function getServiceCentreDetailFields(record: Row): RecordField[] {
     { label: "Branch / Location", value: r["branch"], type: "text" },
     { label: "Pickup Latitude", value: r["latitude"], type: "text" },
     { label: "Pickup Longitude", value: r["longitude"], type: "text" },
-    { label: "IMEI / Serial Number", value: r["imeiOrSerialNumber"], type: "text" },
     { label: "Appointment Type", value: APPOINTMENT_TYPE_LABELS[String(r["appointmentType"])] ?? r["appointmentType"], type: "text" },
     { label: "Request Type", value: REQUEST_TYPE_LABELS[String(r["requestType"])] ?? r["requestType"], type: "text" },
     { label: "Appearance", value: DEVICE_APPEARANCE_LABELS[String(r["deviceAppearance"])] ?? r["deviceAppearance"], type: "text" },
@@ -700,9 +705,7 @@ export function getServiceCentreDetailFields(record: Row): RecordField[] {
     { label: "Promised Delivery (SLA)", value: r["slaDate"], type: "date" },
     { label: "Estimated Cost", value: r["estimatedCost"], type: "currency" },
     { label: "Actual Cost", value: r["actualCost"], type: "currency" },
-    { label: "Fault in Device", value: r["faultDescription"], type: "text" },
     { label: "Issue Description", value: r["issueDescription"], type: "text" },
-    { label: "Remark", value: r["remark"], type: "text" },
     { label: "Standard Accessories Received", value: r["standardAccessories"], type: "text" },
     { label: "Internal Notes", value: r["internalNotes"], type: "text" },
     { label: "Customer-visible Notes", value: r["customerNotes"], type: "text" },
