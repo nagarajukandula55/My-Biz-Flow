@@ -47,11 +47,10 @@ export const dynamic = "force-dynamic";
 type SearchParams = {
   page?: string;
   status?: string;
-  priority?: string;
   brandName?: string;
-  modelName?: string;
   engineerName?: string;
   paymentMode?: string;
+  warrantyStatus?: string;
   from?: string;
   to?: string;
   q?: string;
@@ -89,13 +88,13 @@ export default async function ServiceCentrePage({
   const baseColumns = await applyCustomizations("service-centre.list", serviceCentreListColumns);
   const columns: Column[] = [...baseColumns, { key: "tat", label: "TAT", type: "text" }];
 
-  const { status, priority, brandName, modelName, engineerName, paymentMode, from, to, q } = searchParams;
+  const { status, brandName, engineerName, paymentMode, warrantyStatus, from, to, q } = searchParams;
 
   const page = Math.max(1, Number(searchParams.page) || 1);
   const [{ rows, total, totalPages, pageSize }, allRows] = await Promise.all([
     listBusinessRecordsPaginated(params.partnerId, "service-centre", {
       page,
-      filters: { status, priority, brandName, modelName, engineerName, paymentMode },
+      filters: { status, brandName, engineerName, paymentMode, warrantyStatus },
       dateRange: { field: "receivedDate", from, to },
       search: q ? { query: q, fields: SEARCH_FIELDS } : undefined,
     }),
@@ -151,14 +150,13 @@ export default async function ServiceCentrePage({
 
   const distinct = (key: string) => Array.from(new Set(allRows.map((r) => String(r[key] ?? "")).filter(Boolean)));
   const statusOptions = distinct("status");
-  const priorityOptions = distinct("priority");
   const brandOptions = distinct("brandName");
-  const modelOptions = distinct("modelName");
   const engineerOptions = distinct("engineerName");
   const paymentModeOptions = distinct("paymentMode");
+  const warrantyStatusOptions = distinct("warrantyStatus");
 
   const hasActiveFilters = Boolean(
-    q || status || priority || brandName || modelName || engineerName || paymentMode || from || to
+    q || status || brandName || engineerName || paymentMode || warrantyStatus || from || to
   );
 
   // The quick-create modal renders the same domain-aware, brand-scoped
@@ -204,11 +202,10 @@ export default async function ServiceCentrePage({
             />
           </div>
           <FilterSelect label="Status" name="status" value={status} options={statusOptions} />
-          <FilterSelect label="Priority" name="priority" value={priority} options={priorityOptions} />
           <FilterSelect label="Brand" name="brandName" value={brandName} options={brandOptions} />
-          <FilterSelect label="Model" name="modelName" value={modelName} options={modelOptions} />
           <FilterSelect label="Engineer / Serviced By" name="engineerName" value={engineerName} options={engineerOptions} />
           <FilterSelect label="Payment Mode" name="paymentMode" value={paymentMode} options={paymentModeOptions} />
+          <FilterSelect label="Warranty Status" name="warrantyStatus" value={warrantyStatus} options={warrantyStatusOptions} />
           <div>
             <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-text-muted">From</label>
             <input type="date" name="from" defaultValue={from ?? ""} className="rounded-md border border-border bg-bg px-3 py-1.5 text-sm text-text" />
