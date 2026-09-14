@@ -28,12 +28,17 @@ export async function buildPartnerAdminNavGroups(partnerId: string): Promise<Par
   // Numbering folded into Settings as a tab (Business Profile / Bank
   // Details / Config / Numbering) rather than its own nav-reachable page —
   // see settings/page.tsx.
+  // No "Users" nav entry -- this app has only single-login-per-partner (no
+  // multi-account/per-staff login), so a Users management page contradicts
+  // the model. Removed per explicit direction; the underlying "users"
+  // BusinessRecord (the auto-created "Owner" row) stays, since a few
+  // assignment pickers elsewhere (Brand/logistics-fleet/AMC-field-service)
+  // still read it.
   const partnerAdminGroup: PartnerNavGroup = {
     title: "Partner Admin",
     items: [
       { key: "settings", label: "Settings", dot: "amber", href: "settings" },
       { key: "billing", label: "Subscription", dot: "amber", href: "admin/subscription" },
-      { key: "users", label: "Users", dot: "amber", href: "admin/users" },
     ],
   };
   const visibleSlugs = await getVisibleModuleSlugs(partnerId);

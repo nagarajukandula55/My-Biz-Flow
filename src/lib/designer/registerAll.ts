@@ -210,10 +210,8 @@ import "@/app/admin/(protected)/partner-types/new/page";
 import "@/app/admin/(protected)/partner-types/[recordId]/page";
 import "@/app/admin/(protected)/partner-types/[recordId]/edit/page";
 import "@/app/admin/(protected)/partner-signups/page";
-import "@/app/partner/[partnerId]/admin/users/page";
-import "@/app/partner/[partnerId]/admin/users/new/page";
-import "@/app/partner/[partnerId]/admin/users/[recordId]/page";
-import "@/app/partner/[partnerId]/admin/users/[recordId]/edit/page";
+// No Users management page -- removed per explicit direction (this app has
+// only single-login-per-partner). See partnerAdminNav.ts's comment.
 import "@/app/partner/[partnerId]/settings/page";
 import "@/app/partner/[partnerId]/admin/subscription/page";
 import "@/app/partner/[partnerId]/dashboard/page";

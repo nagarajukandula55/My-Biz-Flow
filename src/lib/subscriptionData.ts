@@ -15,15 +15,37 @@ import { prisma } from "@/lib/prisma";
 import type { PartnerRecord } from "@/lib/partnerData";
 import { getPlan } from "@/lib/plansData";
 
-export type BillingCycle = "Monthly" | "Quarterly" | "HalfYearly" | "Yearly";
-export const BILLING_CYCLES: BillingCycle[] = ["Monthly", "Quarterly", "HalfYearly", "Yearly"];
+// Only Yearly and 2-Yearly are offered -- per explicit direction ("we
+// shoudl offer yearly and 2 yearly only nothing else"). Monthly/Quarterly/
+// HalfYearly removed entirely (not just hidden): there is no self-serve UI
+// or server-side path that can still accept them -- chooseSubscriptionAction
+// below validates against this exact list, so a request can't smuggle in a
+// removed cycle either.
+export type BillingCycle = "Yearly" | "TwoYearly";
+export const BILLING_CYCLES: BillingCycle[] = ["Yearly", "TwoYearly"];
 
-/** Months per cycle, and a discount off straight monthly*months for committing longer. */
-const CYCLE_MONTHS: Record<BillingCycle, number> = { Monthly: 1, Quarterly: 3, HalfYearly: 6, Yearly: 12 };
-const CYCLE_DISCOUNT: Record<BillingCycle, number> = { Monthly: 0, Quarterly: 0.05, HalfYearly: 0.1, Yearly: 0.2 };
+/**
+ * Months per cycle, and a discount off straight monthly*months for
+ * committing longer. Both the cycle set and these discount percentages are
+ * AN-CRM's real, currently-live values (see AN-CRM's
+ * src/core/pricing/plans.ts BILLING_PERIODS: YEARLY 35%, TWO_YEARLY 55% --
+ * a genuine sourced 2-yearly rate, not an estimate) -- not invented here.
+ */
+const CYCLE_MONTHS: Record<BillingCycle, number> = { Yearly: 12, TwoYearly: 24 };
+const CYCLE_DISCOUNT: Record<BillingCycle, number> = { Yearly: 0.35, TwoYearly: 0.55 };
 
-export function cycleLabel(cycle: BillingCycle): string {
-  return { Monthly: "Monthly", Quarterly: "Quarterly", HalfYearly: "Half-Yearly", Yearly: "Yearly" }[cycle];
+// Accepts `string` (not just BillingCycle) on purpose: a Partner row created
+// before this change may still carry a legacy cycle ("Monthly"/"Quarterly"/
+// "HalfYearly") that Super Admin hasn't corrected yet. Showing that raw
+// value is accurate; silently rendering "undefined" for it (what a strict
+// Record lookup would do) is not.
+export function cycleLabel(cycle: string): string {
+  return ({ Yearly: "Yearly", TwoYearly: "2 Years" } as Record<string, string>)[cycle] ?? cycle;
+}
+
+/** True only for a cycle this app currently offers/prices (Yearly, TwoYearly) — false for a legacy value like "Monthly" left over on an older Partner row. */
+export function isPriceableCycle(cycle: string): cycle is BillingCycle {
+  return (BILLING_CYCLES as string[]).includes(cycle);
 }
 
 /** A Plan's price for one billing cycle, before any Offer discount. */
@@ -134,9 +156,14 @@ export function applyOfferDiscount(cyclePrice: number, offer: OfferRecord | unde
 /** The rupee amount due for a partner's currently chosen plan+cycle+offer — used to create the Razorpay order. */
 export async function computePartnerDueAmount(partner: PartnerRecord): Promise<{ amount: number; planName: string } | undefined> {
   if (!partner.planId || !partner.billingCycle) return undefined;
+  // A legacy cycle (Monthly/Quarterly/HalfYearly) left on an older Partner
+  // row from before Yearly/TwoYearly-only isn't priceable any more — return
+  // undefined rather than silently computing against a stale/undefined
+  // discount and showing a wrong (or NaN) amount due.
+  if (!isPriceableCycle(partner.billingCycle)) return undefined;
   const plan = await getPlan(partner.planId);
   if (!plan) return undefined;
-  const cycle = partner.billingCycle as BillingCycle;
+  const cycle = partner.billingCycle;
   const cyclePrice = computeCyclePrice(plan.price, cycle);
   const offer = partner.offerId ? await getOffer(partner.offerId) : undefined;
   const amount = applyOfferDiscount(cyclePrice, offer, plan.id, cycle);

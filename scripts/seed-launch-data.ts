@@ -45,10 +45,19 @@ async function main() {
   // keep its own "BASIC" internal key while renaming the displayed plan
   // to "Pro": avoids a data migration on any PartnerType/subscription row
   // already referencing this id.
+  // Plan.price is plain RUPEES, not paise — every consumer treats it that
+  // way directly (no /100 anywhere): /pricing and /subscribe render
+  // `₹${plan.price}`, and computePartnerDueAmount's result is only
+  // multiplied by 100 once, at the very end, when handing it to Razorpay
+  // (see api/razorpay/create-order/route.ts's `due.amount * 100`). An
+  // earlier version of this seed stored these ×100 (79900/119900/249900),
+  // which rendered as ₹79,900/₹1,19,900/₹2,49,900 on every plan-priced page
+  // and would have charged 100x too much through Razorpay — fixed to the
+  // real rupee values.
   const plans = [
-    { id: "PLAN-BASIC", name: "Starter", price: 79900, billingCycle: "monthly", includedModuleSlugs: ["service-centre"], maxUsers: 1, maxLocations: 1, isPublic: true },
-    { id: "PLAN-PRO", name: "Pro", price: 119900, billingCycle: "monthly", includedModuleSlugs: ["service-centre", "inventory", "billing"], maxUsers: 5, maxLocations: 1, isPublic: true },
-    { id: "PLAN-ULTIMATE", name: "Ultimate", price: 249900, billingCycle: "monthly", includedModuleSlugs: ["service-centre", "inventory", "billing", "accounting-gst"], maxUsers: 9999, maxLocations: 9999, isPublic: true },
+    { id: "PLAN-BASIC", name: "Starter", price: 799, billingCycle: "monthly", includedModuleSlugs: ["service-centre"], maxUsers: 1, maxLocations: 1, isPublic: true },
+    { id: "PLAN-PRO", name: "Pro", price: 1199, billingCycle: "monthly", includedModuleSlugs: ["service-centre", "inventory", "billing"], maxUsers: 5, maxLocations: 1, isPublic: true },
+    { id: "PLAN-ULTIMATE", name: "Ultimate", price: 2499, billingCycle: "monthly", includedModuleSlugs: ["service-centre", "inventory", "billing", "accounting-gst"], maxUsers: 9999, maxLocations: 9999, isPublic: true },
   ];
 
   for (const plan of plans) {
@@ -57,7 +66,7 @@ async function main() {
       create: plan,
       update: plan,
     });
-    console.log(`Plan upserted: ${plan.id} (${plan.name}, ₹${plan.price / 100}/mo)`);
+    console.log(`Plan upserted: ${plan.id} (${plan.name}, ₹${plan.price}/mo)`);
   }
 
   await prisma.partnerType.upsert({

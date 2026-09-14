@@ -262,8 +262,9 @@ model Partner {
   subscriptionStatus String    @default("Trial")
   trialStartAt       DateTime?
   trialEndAt         DateTime?
-  /// "Monthly" | "Quarterly" | "HalfYearly" | "Yearly" — chosen when the
-  /// partner converts off trial; null while still on trial.
+  /// "Yearly" | "TwoYearly" — chosen when the partner converts off trial;
+  /// null while still on trial. Only these two cycles are offered (see
+  /// BILLING_CYCLES in src/lib/subscriptionData.ts).
   billingCycle       String?
   planId             String?
   offerId            String?

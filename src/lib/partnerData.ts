@@ -292,7 +292,10 @@ async function nextPartnerId(tx: Prisma.TransactionClient, partnerTypeId: string
   return `${prefix}${String(count + 1).padStart(4, "0")}`;
 }
 
-const TRIAL_DAYS = 7;
+// 15 days for every new signup, uniformly — matches AN-CRM's real, currently
+// live free-trial length (see AN-CRM's src/core/pricing/plans.ts,
+// freeTrialDays: 15 on every SC plan).
+const TRIAL_DAYS = 15;
 
 function trialDates(): { trialStartAt: Date; trialEndAt: Date } {
   const trialStartAt = new Date();

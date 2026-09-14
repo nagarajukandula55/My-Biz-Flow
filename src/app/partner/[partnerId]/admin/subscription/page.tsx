@@ -12,7 +12,6 @@ import {
   computePartnerDueAmount,
   BILLING_CYCLES,
   cycleLabel,
-  type BillingCycle,
 } from "@/lib/subscriptionData";
 import { chooseSubscriptionAction } from "./actions";
 import { RazorpayCheckoutButton } from "@/components/RazorpayCheckoutButton";
@@ -100,7 +99,7 @@ export default async function PartnerSubscriptionPage({ params }: { params: { pa
             <h2 className="font-display text-base font-bold text-text">Your active plan</h2>
             <p className="mt-2 text-sm text-text">
               {allPlans.find((p) => p.id === partner.planId)?.name ?? partner.planId} —{" "}
-              {cycleLabel(partner.billingCycle as BillingCycle)}
+              {cycleLabel(partner.billingCycle)}
             </p>
           </div>
         )}
@@ -111,7 +110,8 @@ export default async function PartnerSubscriptionPage({ params }: { params: { pa
             <h2 className="font-display text-base font-bold text-text">Payment pending</h2>
             <p className="mt-2 text-sm text-text-muted">
               You&apos;ve chosen {allPlans.find((p) => p.id === partner.planId)?.name ?? partner.planId} (
-              {cycleLabel((partner.billingCycle as BillingCycle) ?? "Monthly")}).
+              {cycleLabel(partner.billingCycle ?? "")}
+              ).
               {offer ? ` Offer "${offer.name}" applied.` : ""}
             </p>
             <div className="mt-4">
@@ -161,7 +161,7 @@ export default async function PartnerSubscriptionPage({ params }: { params: { pa
                     </label>
                   ))}
                 </div>
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div className="grid grid-cols-2 gap-3">
                   {BILLING_CYCLES.map((c) => (
                     <label
                       key={c}
@@ -173,8 +173,8 @@ export default async function PartnerSubscriptionPage({ params }: { params: { pa
                   ))}
                 </div>
                 <p className="text-xs text-text-muted">
-                  Pricing shown is monthly base — quarterly/half-yearly/yearly cycles carry a built-in discount for
-                  committing longer, applied at checkout
+                  Pricing shown is monthly base — Yearly and 2-Year cycles carry a built-in discount for committing
+                  longer, applied at checkout
                   {offer ? `, plus your active offer "${offer.name}"` : ""}.
                 </p>
                 <button type="submit" className="btn-accent">
