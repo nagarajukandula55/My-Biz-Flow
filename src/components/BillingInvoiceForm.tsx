@@ -1,11 +1,31 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
+import { Landmark, QrCode, FileText, StickyNote, Plus, Check } from "lucide-react";
 import { LineItemsEditor, computeTotals, type ItemOption } from "./LineItemsEditor";
 import type { LineItem } from "@/lib/sample-data/billing";
 import { formatCurrencyINR } from "@/lib/format";
 import { INDIAN_STATES } from "@/lib/sample-data/geo";
 import { SearchSelectModal, type SearchSelectOption } from "./SearchSelectModal";
+
+/** This partner's own Bank Details (Partner.bankAccountName/bankName/bankAccountNumber/bankIfsc,
+ * set from Settings → Bank Details) — passed in so the "On this Invoice" footer preview
+ * below can show a real snippet instead of a blind toggle. */
+export type PartnerBankDetails = {
+  accountName?: string | null;
+  bankName?: string | null;
+  accountNumber?: string | null;
+  ifsc?: string | null;
+};
+
+/** Masks all but the last 4 digits of a bank account number for the footer preview tile — never print/preview the full number outside the actual document. */
+function maskAccountNumber(num?: string | null): string {
+  const v = (num ?? "").trim();
+  if (!v) return "";
+  if (v.length <= 4) return v;
+  return `•••• ${v.slice(-4)}`;
+}
 
 export type ContactOption = {
   id: string;
@@ -58,6 +78,15 @@ export type BillingInvoiceValues = {
   paymentStatus: string;
   paymentMode: string;
   items: LineItem[];
+  /** "On this Invoice" footer toggles — each defaults to true when the underlying
+   * data exists (see BillingInvoiceForm's footer section) and is respected by
+   * BillingInvoiceDocument.tsx: a block only prints when BOTH the toggle is on
+   * AND the data actually exists, so a stale "on" from before data was cleared
+   * never prints an empty/broken block. */
+  showBankDetails?: boolean;
+  showUpiQr?: boolean;
+  showTerms?: boolean;
+  showNotes?: boolean;
 };
 
 const DEFAULT_ITEM: LineItem = { description: "", quantity: 1, unit: "pcs", unitPrice: 0, taxRate: 18, hsnCode: "" };
@@ -107,6 +136,9 @@ export function BillingInvoiceForm({
   customerOptions,
   itemOptions,
   partnerState,
+  partnerId,
+  partnerBankDetails,
+  partnerUpiId,
 }: {
   initialValues?: Partial<BillingInvoiceValues>;
   submitLabel: string;
@@ -124,6 +156,13 @@ export function BillingInvoiceForm({
    * intra-state), same default ServiceCentreInvoiceDocument.tsx uses when
    * a state is missing. */
   partnerState?: string | null;
+  /** This partner's id — used only to build the "On this Invoice" footer's
+   * jump-to-Settings link for a placeholder (not-yet-configured) tile. */
+  partnerId?: string;
+  /** This partner's own Bank Details (Settings → Bank Details) — drives the footer's Bank Details tile preview/placeholder. */
+  partnerBankDetails?: PartnerBankDetails;
+  /** This partner's own UPI VPA (Settings → Bank Details) — drives the footer's UPI Payment QR tile preview/placeholder. */
+  partnerUpiId?: string | null;
 }) {
   const [customer, setCustomer] = useState(initialValues?.customer ?? "");
   const [customerContactId, setCustomerContactId] = useState<string | null>(
@@ -159,6 +198,20 @@ export function BillingInvoiceForm({
   const [items, setItems] = useState<LineItem[]>(initialValues?.items ?? [{ ...DEFAULT_ITEM }]);
   const [saved, setSaved] = useState(false);
   const [pending, startTransition] = useTransition();
+
+  // "On this Invoice" footer toggles — see BillingInvoiceValues' doc comment.
+  // Configured-ness of Bank/UPI comes from Settings data passed in as props;
+  // Terms/Notes are edited right here in this form, so their "configured"
+  // check is just against the live textarea state below (declared after
+  // notes/terms, see the memo-free booleans further down).
+  const bankConfigured = Boolean(
+    partnerBankDetails?.accountName || partnerBankDetails?.bankName || partnerBankDetails?.accountNumber || partnerBankDetails?.ifsc
+  );
+  const upiConfigured = Boolean(partnerUpiId?.trim());
+  const [showBankDetails, setShowBankDetails] = useState(initialValues?.showBankDetails ?? bankConfigured);
+  const [showUpiQr, setShowUpiQr] = useState(initialValues?.showUpiQr ?? upiConfigured);
+  const [showTerms, setShowTerms] = useState(initialValues?.showTerms ?? true);
+  const [showNotes, setShowNotes] = useState(initialValues?.showNotes ?? true);
 
   const showTax = invoiceType === "GST";
   const totals = computeTotals(items, showTax);
@@ -238,6 +291,10 @@ export function BillingInvoiceForm({
       paymentStatus,
       paymentMode,
       items,
+      showBankDetails,
+      showUpiQr,
+      showTerms,
+      showNotes,
     };
     if (action) {
       startTransition(async () => {
@@ -261,7 +318,7 @@ export function BillingInvoiceForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-5xl space-y-5">
+    <form onSubmit={handleSubmit} className="w-full space-y-5">
       <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
         <div className="rounded-md border border-border bg-bg-raised p-4">
           <h2 className="mb-3 font-display text-sm font-bold text-text">Invoice Type</h2>
@@ -314,7 +371,7 @@ export function BillingInvoiceForm({
 
         <div className="rounded-md border border-border bg-bg-raised p-4">
           <h2 className="mb-3 font-display text-sm font-bold text-text">Invoice Details</h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <Field label="Issue Date" required>
               <input
                 type="date"
@@ -365,7 +422,7 @@ export function BillingInvoiceForm({
 
       <div className="rounded-md border border-border bg-bg-raised p-4">
         <h2 className="mb-3 font-display text-sm font-bold text-text">Bill To</h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           <Field label="Customer" required>
             <div className="flex gap-2">
               <input
@@ -386,7 +443,7 @@ export function BillingInvoiceForm({
                 list={contactOptions ? "billing-contact-options" : undefined}
                 className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text outline-none focus:border-teal"
               />
-              {customerOptions && customerOptions.length > 0 && (
+              {customerOptions && (
                 <button
                   type="button"
                   onClick={() => setBrowseCustomersOpen(true)}
@@ -557,6 +614,73 @@ export function BillingInvoiceForm({
         </div>
       </div>
 
+      <div className="rounded-md border border-border bg-bg-raised p-4">
+        <h2 className="font-display text-sm font-bold text-text">On this Invoice</h2>
+        <p className="mt-1 text-xs text-text-muted">
+          This is how the invoice footer will actually look. Click a tile to include/exclude it; anything not yet
+          set up in Settings shows as a placeholder you can jump straight to.
+        </p>
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <FooterTile
+            icon={<QrCode className="h-4 w-4" />}
+            label="UPI Payment QR"
+            configured={upiConfigured}
+            preview={partnerUpiId ?? undefined}
+            enabled={showUpiQr}
+            onToggle={() =>
+              setShowUpiQr((v) => {
+                const next = !v;
+                // Bank Details and UPI QR are mutually exclusive on the
+                // printed invoice — a customer should only ever see one
+                // payment option at once, same rule AN-CRM's invoice uses.
+                if (next) setShowBankDetails(false);
+                return next;
+              })
+            }
+            settingsHref={partnerId ? `/partner/${partnerId}/settings?tab=bank-details` : undefined}
+          />
+          <FooterTile
+            icon={<Landmark className="h-4 w-4" />}
+            label="Bank Account Details"
+            configured={bankConfigured}
+            preview={
+              bankConfigured
+                ? [partnerBankDetails?.accountName, maskAccountNumber(partnerBankDetails?.accountNumber)]
+                    .filter(Boolean)
+                    .join(" · ")
+                : undefined
+            }
+            enabled={showBankDetails}
+            onToggle={() =>
+              setShowBankDetails((v) => {
+                const next = !v;
+                if (next) setShowUpiQr(false);
+                return next;
+              })
+            }
+            settingsHref={partnerId ? `/partner/${partnerId}/settings?tab=bank-details` : undefined}
+          />
+          <FooterTile
+            icon={<FileText className="h-4 w-4" />}
+            label="Terms & Conditions"
+            configured={Boolean(terms.trim())}
+            preview={terms.trim() || undefined}
+            enabled={showTerms}
+            onToggle={() => setShowTerms((v) => !v)}
+            notConfiguredHint="Type Terms & Conditions above to include it"
+          />
+          <FooterTile
+            icon={<StickyNote className="h-4 w-4" />}
+            label="Notes"
+            configured={Boolean(notes.trim())}
+            preview={notes.trim() || undefined}
+            enabled={showNotes}
+            onToggle={() => setShowNotes((v) => !v)}
+            notConfiguredHint="Type a note above to include it"
+          />
+        </div>
+      </div>
+
       <div className="flex items-center gap-3">
         <button type="submit" className="btn-accent" disabled={pending}>
           {pending ? "Saving…" : submitLabel}
@@ -584,6 +708,83 @@ export function BillingInvoiceForm({
         />
       )}
     </form>
+  );
+}
+
+/**
+ * One "On this Invoice" footer element (UPI QR / Bank Details / Terms /
+ * Notes) rendered the way it will actually look on the printed document —
+ * a real preview snippet when the underlying data exists, or a dashed
+ * "not set up yet" placeholder otherwise. Clicking a configured tile
+ * toggles its inclusion on THIS invoice; clicking an unconfigured one jumps
+ * to Settings (for Bank/UPI) or just explains where to add it (for
+ * Terms/Notes, which are typed right in this form). Ports AN-CRM's real
+ * invoice-footer-tile feature (src/app/console/common/sales/new/_NewSalesInvoice.tsx,
+ * InvoiceFooterTile) rather than a plain checkbox list, so a partner sees
+ * exactly what will print instead of guessing.
+ */
+function FooterTile({
+  icon,
+  label,
+  configured,
+  preview,
+  enabled,
+  onToggle,
+  settingsHref,
+  notConfiguredHint,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  configured: boolean;
+  preview?: string;
+  enabled: boolean;
+  onToggle: () => void;
+  /** Where an unconfigured Bank/UPI tile links to set it up — omitted for Terms/Notes, which are edited in this same form. */
+  settingsHref?: string;
+  /** Shown instead of a Settings link for an unconfigured Terms/Notes tile. */
+  notConfiguredHint?: string;
+}) {
+  if (!configured) {
+    const body = (
+      <>
+        <Plus className="h-4 w-4 text-text-muted" />
+        <span className="text-center text-[11px] text-text-muted">
+          {settingsHref ? `Add ${label} in Settings` : notConfiguredHint ?? `${label} not set up yet`}
+        </span>
+      </>
+    );
+    if (settingsHref) {
+      return (
+        <Link
+          href={settingsHref}
+          className="flex flex-col items-center justify-center gap-1.5 rounded-md border border-dashed border-border bg-bg px-3 py-4 text-center transition-colors hover:border-accent"
+        >
+          {body}
+        </Link>
+      );
+    }
+    return (
+      <div className="flex flex-col items-center justify-center gap-1.5 rounded-md border border-dashed border-border bg-bg px-3 py-4 text-center">
+        {body}
+      </div>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className={`flex flex-col items-center justify-center gap-1.5 rounded-md border px-3 py-4 text-center transition-colors ${
+        enabled ? "border-accent bg-accent/10" : "border-border bg-bg hover:border-teal"
+      }`}
+    >
+      <div className="flex items-center gap-1.5 text-text">
+        {icon}
+        <span className="text-xs font-medium">{label}</span>
+        {enabled && <Check className="h-3.5 w-3.5 text-accent" />}
+      </div>
+      {preview && <span className="line-clamp-2 max-w-full text-[11px] text-text-muted">{preview}</span>}
+      <span className="text-[10px] text-text-muted">{enabled ? "Included" : "Excluded — click to include"}</span>
+    </button>
   );
 }
 

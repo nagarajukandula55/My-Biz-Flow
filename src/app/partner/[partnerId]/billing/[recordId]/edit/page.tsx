@@ -95,6 +95,10 @@ export default async function EditBillingPage({ params }: { params: { partnerId:
               paymentStatus: String(record["paymentStatus"] ?? "Draft"),
               paymentMode: String(record["paymentMode"] ?? "Bank Transfer"),
               items,
+              showBankDetails: record["showBankDetails"] === undefined ? undefined : Boolean(record["showBankDetails"]),
+              showUpiQr: record["showUpiQr"] === undefined ? undefined : Boolean(record["showUpiQr"]),
+              showTerms: record["showTerms"] === undefined ? undefined : Boolean(record["showTerms"]),
+              showNotes: record["showNotes"] === undefined ? undefined : Boolean(record["showNotes"]),
             }}
             submitLabel="Save changes"
             action={updateBusinessRecordAction.bind(null, params.partnerId, "billing", params.recordId)}
@@ -102,6 +106,14 @@ export default async function EditBillingPage({ params }: { params: { partnerId:
             customerOptions={customerOptions}
             itemOptions={itemOptions}
             partnerState={partner?.state}
+            partnerId={params.partnerId}
+            partnerBankDetails={{
+              accountName: partner?.bankAccountName,
+              bankName: partner?.bankName,
+              accountNumber: partner?.bankAccountNumber,
+              ifsc: partner?.bankIfsc,
+            }}
+            partnerUpiId={partner?.upiId}
           />
         </div>
       </div>

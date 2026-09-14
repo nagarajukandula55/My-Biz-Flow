@@ -72,6 +72,14 @@ export default async function NewBillingPage({ params }: { params: { partnerId: 
             customerOptions={customerOptions}
             itemOptions={itemOptions}
             partnerState={partner?.state}
+            partnerId={params.partnerId}
+            partnerBankDetails={{
+              accountName: partner?.bankAccountName,
+              bankName: partner?.bankName,
+              accountNumber: partner?.bankAccountNumber,
+              ifsc: partner?.bankIfsc,
+            }}
+            partnerUpiId={partner?.upiId}
           />
         </div>
       </div>

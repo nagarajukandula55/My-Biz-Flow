@@ -64,6 +64,10 @@ export async function BillingInvoiceDocument({
   termsText,
   supportHotline,
   upiId,
+  showBankDetails = true,
+  showUpiQr = true,
+  showTerms = true,
+  showNotes = true,
 }: {
   partnerId: string;
   partnerName: string;
@@ -101,6 +105,16 @@ export async function BillingInvoiceDocument({
   supportHotline?: string | null;
   /** The partner's own UPI VPA. When set (and the invoice is non-zero) a scannable payment QR is printed. */
   upiId?: string | null;
+  /** "On this Invoice" footer toggles from BillingInvoiceForm.tsx — each
+   * block below only prints when its toggle is on AND the underlying data
+   * actually exists, so a stale "on" from before Settings data was cleared
+   * never prints an empty/broken block. Default true (pre-existing
+   * invoices saved before this feature existed keep printing everything
+   * they always did). */
+  showBankDetails?: boolean;
+  showUpiQr?: boolean;
+  showTerms?: boolean;
+  showNotes?: boolean;
 }) {
   // Place of supply decides the split: a customer in the partner's own
   // state is an intra-state supply taxed as CGST + SGST at half the slab
@@ -138,12 +152,14 @@ export async function BillingInvoiceDocument({
   const documentType = customerGstin?.trim() ? "B2B" : "B2C";
   const isPlainBill = documentType === "B2C" && gstTotal === 0;
 
-  const upiQrDataUrl = await generateUpiQrDataUrl({
-    vpa: upiId ?? "",
-    payeeName: partnerName,
-    amount: grandTotal,
-    invoiceNumber,
-  });
+  const upiQrDataUrl = showUpiQr
+    ? await generateUpiQrDataUrl({
+        vpa: upiId ?? "",
+        payeeName: partnerName,
+        amount: grandTotal,
+        invoiceNumber,
+      })
+    : null;
 
   // One row per HSN code, which is the summary a GST-registered recipient
   // needs to claim input credit. Only meaningful on a B2B document.
@@ -397,7 +413,8 @@ export async function BillingInvoiceDocument({
               </div>
             </div>
 
-            {(bankDetails?.accountName || bankDetails?.bankName || bankDetails?.accountNumber || bankDetails?.ifsc) && (
+            {showBankDetails &&
+              (bankDetails?.accountName || bankDetails?.bankName || bankDetails?.accountNumber || bankDetails?.ifsc) && (
               <div className="mt-6 rounded-md border border-border p-4 text-xs text-text-muted">
                 <div className="font-semibold uppercase tracking-wide">Bank Details</div>
                 <div className="mt-1.5 grid grid-cols-2 gap-x-6 gap-y-1">
@@ -424,14 +441,14 @@ export async function BillingInvoiceDocument({
               </p>
             </div>
 
-            {notes?.trim() && (
+            {showNotes && notes?.trim() && (
               <div className="mt-6 border-t border-border pt-4 text-xs leading-relaxed text-text-muted">
                 <div className="font-semibold uppercase tracking-wide">Notes</div>
                 <p className="mt-1 whitespace-pre-line">{notes.trim()}</p>
               </div>
             )}
 
-            {termsText?.trim() && (
+            {showTerms && termsText?.trim() && (
               <div className="mt-6 border-t border-border pt-4 text-xs leading-relaxed text-text-muted">
                 <div className="font-semibold uppercase tracking-wide">Terms &amp; Conditions</div>
                 <p className="mt-1 whitespace-pre-line">{termsText.trim()}</p>

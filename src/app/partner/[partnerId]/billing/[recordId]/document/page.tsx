@@ -73,6 +73,10 @@ export default async function BillingDocumentPage({
       termsText={record["terms"] ? String(record["terms"]) : resolveDocumentTerms(partner, "invoice")}
       supportHotline={partner?.supportHotline}
       upiId={partner?.upiId}
+      showBankDetails={record["showBankDetails"] === undefined ? true : Boolean(record["showBankDetails"])}
+      showUpiQr={record["showUpiQr"] === undefined ? true : Boolean(record["showUpiQr"])}
+      showTerms={record["showTerms"] === undefined ? true : Boolean(record["showTerms"])}
+      showNotes={record["showNotes"] === undefined ? true : Boolean(record["showNotes"])}
     />
   );
 }

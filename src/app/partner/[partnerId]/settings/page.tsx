@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { AppShell } from "@/components/AppShell";
 import { registerPage } from "@/lib/designer/registry";
 import { getVisibleModuleSlugs } from "@/lib/designer/entitlements";
@@ -55,12 +56,18 @@ export default async function SettingsPage({ params }: { params: { partnerId: st
         }}
       />
       {partner && (
-        <SettingsTabs showServiceCentre={showServiceCentre}>
-          <BusinessProfileForm partnerId={params.partnerId} partner={partner} />
-          <ConfigForm partnerId={params.partnerId} partner={partner} />
-          <NumberingPanel partnerId={params.partnerId} />
-          {showServiceCentre && <ServiceCentrePanel partnerId={params.partnerId} partner={partner} />}
-        </SettingsTabs>
+        // SettingsTabs reads the ?tab= query param (useSearchParams) so a
+        // link from elsewhere (e.g. BillingInvoiceForm's "On this Invoice"
+        // footer placeholder tiles) can deep-link straight to a tab — that
+        // hook requires a Suspense boundary in the App Router.
+        <Suspense fallback={null}>
+          <SettingsTabs showServiceCentre={showServiceCentre}>
+            <BusinessProfileForm partnerId={params.partnerId} partner={partner} />
+            <ConfigForm partnerId={params.partnerId} partner={partner} />
+            <NumberingPanel partnerId={params.partnerId} />
+            {showServiceCentre && <ServiceCentrePanel partnerId={params.partnerId} partner={partner} />}
+          </SettingsTabs>
+        </Suspense>
       )}
     </AppShell>
   );

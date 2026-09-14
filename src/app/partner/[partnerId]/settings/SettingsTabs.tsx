@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { useSearchParams } from "next/navigation";
 
 /**
  * Real tab switcher for the four persisted Settings sections — only one
@@ -35,7 +36,15 @@ const TABS = [
 type TabId = (typeof TABS)[number]["id"];
 
 export function SettingsTabs({ children, showServiceCentre = false }: { children: ReactNode; showServiceCentre?: boolean }) {
-  const [active, setActive] = useState<TabId>("business-profile");
+  // Lets a link from elsewhere in the app (e.g. BillingInvoiceForm's "On
+  // this Invoice" footer placeholder tiles) deep-link straight to a tab —
+  // e.g. /partner/[partnerId]/settings?tab=bank-details — instead of just
+  // dropping the partner on the default Business Profile tab.
+  const searchParams = useSearchParams();
+  const requestedTab = searchParams.get("tab");
+  const initialTab: TabId =
+    requestedTab && TABS.some((t) => t.id === requestedTab) ? (requestedTab as TabId) : "business-profile";
+  const [active, setActive] = useState<TabId>(initialTab);
   // Service Centre tab only makes sense for a partner whose SC module is
   // actually visible to them — same "only shown when the module is
   // enabled" precedent as the Serialized Inventory block above on this
