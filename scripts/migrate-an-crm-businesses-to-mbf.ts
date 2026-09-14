@@ -79,6 +79,60 @@ function mapPaymentMode(v: unknown): string | undefined {
 }
 
 /**
+ * Resolves what this vendor ACTUALLY paid for in AN-CRM (src/models/
+ * VendorSubscription.ts — one doc per vendor, status computed from
+ * `currentPeriodEnd` rather than stored) into the real My-Biz-Flow
+ * subscription state, instead of blanket-granting every migrated partner
+ * Ultimate+Active regardless of whether they ever paid. Per explicit
+ * correction: "we should not give plan access to someone who never paid."
+ *   - currentPeriodEnd in the future  -> genuinely paid and current: Active,
+ *     with the real plan they bought.
+ *   - currentPeriodEnd in the past    -> paid once, lapsed: PastDue, keeps
+ *     the plan on record (so it's visible what they had, but access is
+ *     gated the same way a real PastDue partner's is elsewhere in this app).
+ *   - no currentPeriodEnd at all (NOT_SET/UNPAID — never confirmed a
+ *     payment) -> Trial, with the REAL signup date preserved as
+ *     trialStartAt (not "now") and a 15-day trialEndAt computed from it —
+ *     already expired if that's genuinely in the past, which is accurate,
+ *     not a bug: they never converted, so their trial is over.
+ */
+function resolveSubscription(
+  sub: Document | null,
+  vendorCreatedAt: Date | undefined
+): { subscriptionStatus: string; planId: string | null; billingCycle: string | null; trialStartAt: Date; trialEndAt: Date } {
+  const planKeyMap: Record<string, string> = {
+    STARTER: "PLAN-BASIC",
+    BASIC: "PLAN-PRO",
+    PRO: "PLAN-PRO",
+    ULTIMATE: "PLAN-ULTIMATE",
+  };
+  const signupAt = vendorCreatedAt ?? new Date();
+  const trialStartAt = signupAt;
+  const trialEndAt = new Date(signupAt);
+  trialEndAt.setDate(trialEndAt.getDate() + 15);
+
+  const currentPeriodEnd = sub ? pick(sub, "currentPeriodEnd") : undefined;
+  const planKey = sub ? str(pick(sub, "planKey")) : "";
+  const planId = planKey ? planKeyMap[planKey] ?? null : null;
+  const validityDays = sub ? Number(pick(sub, "validityDays")) || 30 : 30;
+  const billingCycle = validityDays >= 700 ? "TwoYearly" : "Yearly";
+
+  if (currentPeriodEnd instanceof Date) {
+    const active = currentPeriodEnd.getTime() > Date.now();
+    return {
+      subscriptionStatus: active ? "Active" : "PastDue",
+      planId,
+      billingCycle: planId ? billingCycle : null,
+      trialStartAt,
+      trialEndAt,
+    };
+  }
+
+  // Never had a confirmed paid period — real trial state, not a paid plan.
+  return { subscriptionStatus: "Trial", planId: null, billingCycle: null, trialStartAt, trialEndAt };
+}
+
+/**
  * AN-CRM's real CrmJobSheetStatus (CREATED/REPAIR_STARTED/REPAIR_IN_PROGRESS/
  * PART_PENDING/REPAIR_COMPLETED/CLOSED/CANCELLED) mapped onto My-Biz-Flow's
  * own stage ("Created"|"In Progress"|"Completed"|"Closed") + onHold side
@@ -200,8 +254,16 @@ async function main() {
     const password = generatePassword();
     if (!partnerAlreadyExists) generatedPasswords.push({ partnerId, businessName, loginContact, password });
 
+    // What this vendor ACTUALLY paid for, per AN-CRM's own real billing
+    // record — never a blanket grant. See resolveSubscription()'s own
+    // comment for the exact Active/PastDue/Trial rule.
+    const subDoc = await db.collection("vendorsubscriptions").findOne({ vendorId });
+    const vendorCreatedAtRaw = pick(vendor, "createdAt");
+    const resolved = resolveSubscription(subDoc, vendorCreatedAtRaw instanceof Date ? vendorCreatedAtRaw : undefined);
+
     console.log(`--- ${businessName} (AN-CRM VendorProfile ${vendorId}) -> ${partnerId}${partnerAlreadyExists ? " (already migrated, adding missing data only)" : ""} ---`);
     console.log(`  loginContact: ${loginContact}`);
+    console.log(`  real subscription: ${resolved.subscriptionStatus}${resolved.planId ? ` (${resolved.planId})` : " (no confirmed paid period found in AN-CRM)"}`);
 
     // Backfill onto an already-migrated Partner from the FIRST run of this
     // script, before planId/terms were part of the mapping — a plain
@@ -212,16 +274,29 @@ async function main() {
     // since edited themselves from Settings.
     if (confirm && partnerAlreadyExists && existingPartner) {
       const patch: Record<string, unknown> = {};
-      if (!existingPartner.planId) {
-        patch.planId = "PLAN-ULTIMATE";
-        patch.billingCycle = "Yearly";
+      // Corrects the earlier blanket Ultimate+Active grant this script
+      // used before real subscription data was checked — only overwrites
+      // planId/subscriptionStatus if the partner hasn't since been changed
+      // by a Super Admin from the live app (best-effort: only touches it
+      // when it's still exactly the old blanket value this script itself
+      // set, "PLAN-ULTIMATE" + "Active", never a value set any other way).
+      if (existingPartner.planId === "PLAN-ULTIMATE" && existingPartner.subscriptionStatus === "Active" && resolved.planId !== "PLAN-ULTIMATE") {
+        patch.planId = resolved.planId;
+        patch.subscriptionStatus = resolved.subscriptionStatus;
+        patch.billingCycle = resolved.billingCycle;
+        patch.trialStartAt = resolved.trialStartAt;
+        patch.trialEndAt = resolved.trialEndAt;
+      } else if (!existingPartner.planId && resolved.planId) {
+        patch.planId = resolved.planId;
+        patch.subscriptionStatus = resolved.subscriptionStatus;
+        patch.billingCycle = resolved.billingCycle;
       }
       if (!existingPartner.serviceTerms && serviceTerms) patch.serviceTerms = serviceTerms;
       if (!existingPartner.estimateTerms && estimateTermsAnCrm) patch.estimateTerms = estimateTermsAnCrm;
       if (!existingPartner.invoiceTerms && invoiceTermsAnCrm) patch.invoiceTerms = invoiceTermsAnCrm;
       if (Object.keys(patch).length > 0) {
         await prisma.partner.update({ where: { id: partnerId }, data: patch });
-        console.log(`  backfilled onto existing partner: ${Object.keys(patch).join(", ")}`);
+        console.log(`  backfilled/corrected onto existing partner: ${Object.keys(patch).join(", ")} (real status: ${resolved.subscriptionStatus}${resolved.planId ? `, ${resolved.planId}` : ""})`);
       }
     }
 
@@ -244,15 +319,17 @@ async function main() {
           passwordHash: hashPassword(password),
           mustChangePassword: true,
           status: "Active",
-          subscriptionStatus: "Active",
-          // Real, already-operating businesses migrated in with their full
-          // history — given Ultimate (not left planless) so nothing they
-          // could already do in AN-CRM (or anything gated in My-Biz-Flow,
-          // like the new Customers module) is invisible to them on day one.
-          // A planless Partner resolves to no tier access at all, per
-          // getPageTierAccess() in src/lib/tenant.ts.
-          planId: "PLAN-ULTIMATE",
-          billingCycle: "Yearly",
+          // Real subscription state from AN-CRM's own VendorSubscription
+          // record — Active+plan only if they actually have a confirmed,
+          // unexpired paid period; PastDue if they paid once and it lapsed;
+          // Trial (from their REAL signup date, not "now") if they never
+          // confirmed a payment at all. Never a blanket paid-plan grant —
+          // see resolveSubscription()'s own comment.
+          subscriptionStatus: resolved.subscriptionStatus,
+          planId: resolved.planId,
+          billingCycle: resolved.billingCycle,
+          trialStartAt: resolved.trialStartAt,
+          trialEndAt: resolved.trialEndAt,
           bankAccountName: str(pick(vendor, "bankAccountName")) || null,
           bankName: str(pick(vendor, "bankName")) || null,
           serviceHours: str(pick(vendor, "serviceCenterInfo.hours")) || null,
