@@ -48,6 +48,14 @@ export type Column = {
    * button click doesn't also trigger row navigation.
    */
   render?: (row: Row) => ReactNode;
+  /**
+   * Caps a "text" column's cell width (in ch units) and truncates overflow
+   * with an ellipsis (full value still available via the cell's title
+   * attribute, or the row's quick-view). Use on free-text fields (remarks,
+   * fault descriptions) that would otherwise force horizontal scrolling on
+   * a list with many columns — narrower, fixed-shape columns don't need it.
+   */
+  maxWidthCh?: number;
 };
 
 export type Row = Record<string, unknown>;
@@ -149,8 +157,21 @@ export function renderCell(column: Column, row: Row) {
     case "actions":
       return column.render ? column.render(row) : null;
     case "text":
-    default:
-      return <span>{String(value ?? "")}</span>;
+    default: {
+      const text = String(value ?? "");
+      if (column.maxWidthCh) {
+        return (
+          <span
+            className="block overflow-hidden text-ellipsis"
+            style={{ maxWidth: `${column.maxWidthCh}ch` }}
+            title={text}
+          >
+            {text}
+          </span>
+        );
+      }
+      return <span>{text}</span>;
+    }
   }
 }
 

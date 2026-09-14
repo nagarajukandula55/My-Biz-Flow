@@ -11,9 +11,20 @@ import { openPrintPopup } from "@/lib/openPrintPopup";
  * check in src/app/partner/[partnerId]/layout.tsx) — this component only
  * controls HOW it's opened, not what it looks like once open.
  */
-export function PrintPopupLink({ href, className, children }: { href: string; className?: string; children: React.ReactNode }) {
+export function PrintPopupLink({
+  href,
+  className,
+  title,
+  children,
+}: {
+  href: string;
+  className?: string;
+  /** Tooltip/accessible label — needed once the button's visible content is icon-only. */
+  title?: string;
+  children: React.ReactNode;
+}) {
   return (
-    <button type="button" className={className} onClick={() => openPrintPopup(href)}>
+    <button type="button" className={className} title={title} aria-label={title} onClick={() => openPrintPopup(href)}>
       {children}
     </button>
   );

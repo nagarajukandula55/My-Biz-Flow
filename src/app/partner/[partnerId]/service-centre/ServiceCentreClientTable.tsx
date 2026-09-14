@@ -1,9 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { Printer, ClipboardCheck, Receipt } from "lucide-react";
 import { DataTable, type Row, type Column } from "@/components/DataTable";
 import { PrintPopupLink } from "@/components/PrintPopupLink";
 import { serviceCentreListColumns, isUnderWarranty } from "@/lib/sample-data/service-centre";
+
+const ACTION_ICON_CLASS =
+  "rounded border border-border p-1.5 text-text-muted hover:bg-bg-sunken hover:text-text";
 
 /**
  * Print/document actions per row — always Print Workorder; Service Record
@@ -30,24 +34,27 @@ function renderWorkorderActions(partnerId: string, row: Row) {
     <div className="flex flex-wrap items-center gap-1.5" onClick={stop}>
       <PrintPopupLink
         href={`/partner/${partnerId}/service-centre/${row["id"]}/document`}
-        className="rounded border border-border px-2 py-1 text-xs hover:bg-bg-sunken"
+        className={ACTION_ICON_CLASS}
+        title="Print Workorder"
       >
-        Print Workorder
+        <Printer className="h-4 w-4" strokeWidth={2} />
       </PrintPopupLink>
       {closed && (
         <PrintPopupLink
           href={`/partner/${partnerId}/service-centre/${row["id"]}/service-record`}
-          className="rounded border border-border px-2 py-1 text-xs hover:bg-bg-sunken"
+          className={ACTION_ICON_CLASS}
+          title="Service Record"
         >
-          Service Record
+          <ClipboardCheck className="h-4 w-4" strokeWidth={2} />
         </PrintPopupLink>
       )}
       {closed && chargeable && invoiceId && (
         <PrintPopupLink
           href={`/partner/${partnerId}/service-centre/${row["id"]}/invoice`}
-          className="rounded border border-border px-2 py-1 text-xs hover:bg-bg-sunken"
+          className={ACTION_ICON_CLASS}
+          title="Invoice"
         >
-          Invoice
+          <Receipt className="h-4 w-4" strokeWidth={2} />
         </PrintPopupLink>
       )}
     </div>

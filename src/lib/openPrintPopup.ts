@@ -19,5 +19,9 @@ export function openPrintPopup(url: string): void {
   );
   if (!win) {
     window.open(url, "_blank", "noopener,noreferrer");
+    return;
   }
+  // Popups can otherwise open unfocused behind the opener tab, forcing the
+  // user to click into them before printing/scrolling works.
+  win.focus();
 }

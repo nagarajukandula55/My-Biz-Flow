@@ -586,9 +586,22 @@ const SERVICE_CENTRE_LIST_COLUMN_KEYS = [
   "deviceAppearance",
 ];
 
-export const serviceCentreListColumns: Column[] = SERVICE_CENTRE_LIST_COLUMN_KEYS.map(
-  (key) => serviceCentreColumns.find((c) => c.key === key)!
-).filter(Boolean);
+// The widest free-text fields on the list — capped and ellipsis-truncated
+// (full text still on hover via `title`, and always available in the
+// row's quick-view/detail page) so they don't force horizontal scrolling
+// across all 12 columns + TAT + Actions on a normal desktop viewport.
+const LIST_COLUMN_MAX_WIDTH_CH: Record<string, number> = {
+  faultDescription: 22,
+  remark: 18,
+  deviceAppearance: 18,
+};
+
+export const serviceCentreListColumns: Column[] = SERVICE_CENTRE_LIST_COLUMN_KEYS.map((key) => {
+  const column = serviceCentreColumns.find((c) => c.key === key);
+  if (!column) return column;
+  const maxWidthCh = LIST_COLUMN_MAX_WIDTH_CH[key];
+  return maxWidthCh ? { ...column, maxWidthCh } : column;
+}).filter(Boolean) as Column[];
 
 export const serviceCentreRows: Row[] = [
   {
