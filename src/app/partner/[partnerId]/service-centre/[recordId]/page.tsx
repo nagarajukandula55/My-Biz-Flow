@@ -5,6 +5,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { RecordDetail } from "@/components/RecordDetail";
 import { DeleteBusinessRecordButton } from "@/components/DeleteBusinessRecordButton";
+import { PrintPopupLink } from "@/components/PrintPopupLink";
 import {
   getServiceCentreDetailFields,
   getServiceCentreTimeline,
@@ -142,6 +143,8 @@ export default async function ServiceCentreDetailPage({
           invoiceId={lifecycle.invoiceId}
           cancelledAt={lifecycle.cancelledAt}
           cancelReason={lifecycle.cancelReason}
+          stageHistory={lifecycle.stageHistory}
+          receivedDate={typeof record["receivedDate"] === "string" ? (record["receivedDate"] as string) : undefined}
           bomMaterials={bomMaterials}
           solutionOptions={solutionOptions}
           solutionLaborCharges={solutionLaborCharges}
@@ -169,18 +172,18 @@ export default async function ServiceCentreDetailPage({
                 <Link href={`/partner/${params.partnerId}/service-centre`} className="btn-outline">
                   &larr; Back
                 </Link>
-                <Link
+                <PrintPopupLink
                   href={`/partner/${params.partnerId}/service-centre/${params.recordId}/document`}
                   className="btn-outline"
                 >
                   View document
-                </Link>
-                <Link
+                </PrintPopupLink>
+                <PrintPopupLink
                   href={`/partner/${params.partnerId}/service-centre/${params.recordId}/service-record`}
                   className="btn-outline"
                 >
                   Service record
-                </Link>
+                </PrintPopupLink>
                 <Link
                   href={`/partner/${params.partnerId}/service-centre/${params.recordId}/edit`}
                   className="btn-outline"

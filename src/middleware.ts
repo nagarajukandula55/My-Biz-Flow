@@ -21,6 +21,19 @@ import { env } from "@/lib/env";
  *    The login page itself (/admin/login) must stay reachable without the
  *    cookie, or nobody could ever get in.
  */
+/**
+ * Stamps the current pathname onto a request header so Server Components
+ * downstream (e.g. the partner layout deciding whether to render the
+ * Sidebar around a print-style document page) can read it via
+ * next/headers — App Router gives Server Components no direct access to
+ * the incoming URL otherwise.
+ */
+function next(request: NextRequest): NextResponse {
+  const headers = new Headers(request.headers);
+  headers.set("x-pathname", request.nextUrl.pathname);
+  return NextResponse.next({ request: { headers } });
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -36,7 +49,7 @@ export async function middleware(request: NextRequest) {
     if (!allowed) {
       return NextResponse.redirect(new URL("/field-force-app", request.url));
     }
-    return NextResponse.next();
+    return next(request);
   }
 
   const isAdminLogin = pathname === "/admin/login";
@@ -44,7 +57,7 @@ export async function middleware(request: NextRequest) {
   const isModuleAdminRoute = /^\/partner\/[^/]+\/[^/]+\/admin(\/|$)/.test(pathname);
 
   if (isAdminLogin || (!isAdminRoute && !isModuleAdminRoute)) {
-    return NextResponse.next();
+    return next(request);
   }
 
   // A Super Admin can mark an otherwise-gated page public from
@@ -57,7 +70,7 @@ export async function middleware(request: NextRequest) {
     );
     if (accessCheck.ok) {
       const { isPublic } = (await accessCheck.json()) as { isPublic: boolean };
-      if (isPublic) return NextResponse.next();
+      if (isPublic) return next(request);
     }
   } catch {
     // If the access-check call itself fails, fail closed (fall through to
@@ -66,7 +79,7 @@ export async function middleware(request: NextRequest) {
 
   const cookie = request.cookies.get(ADMIN_COOKIE_NAME)?.value;
   if (await isValidAdminCookie(cookie)) {
-    return NextResponse.next();
+    return next(request);
   }
 
   const loginUrl = new URL("/admin/login", request.url);

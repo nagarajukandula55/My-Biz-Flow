@@ -1,8 +1,28 @@
 import type { ReactNode } from "react";
+import { headers } from "next/headers";
 import { Sidebar } from "@/components/Sidebar";
 import { buildPartnerAdminNavGroups } from "@/lib/designer/partnerAdminNav";
 import { requirePartnerSessionForPage } from "@/lib/requirePartnerSession";
 import { computeAlerts } from "@/lib/alerts";
+
+/**
+ * Print-style document routes — the printable Job Card/Estimate/Service
+ * Record/Sales Invoice pages opened via openPrintPopup() (see
+ * src/lib/openPrintPopup.ts and its callers) into a small popup window.
+ * These must render with NO sidebar at all — a popup sized for a print
+ * preview showing the app's full nav is exactly the AN-CRM-layout mismatch
+ * reported ("without outside sidebar ... proper printing"), and unlike
+ * @media print (which already hides the Sidebar only while the browser's
+ * print dialog is open), the popup shows the sidebar on screen the whole
+ * time otherwise. Matched by suffix since these routes exist under
+ * several modules (service-centre, billing, pos, amc-field-service, …).
+ */
+const PRINT_ROUTE_SUFFIXES = ["/document", "/estimate", "/invoice", "/service-record", "/receipt"];
+
+function isPrintRoute(pathname: string | null): boolean {
+  if (!pathname) return false;
+  return PRINT_ROUTE_SUFFIXES.some((suffix) => pathname.endsWith(suffix));
+}
 
 /**
  * Shared layout for every /partner/[partnerId]/* route — renders the
@@ -29,6 +49,14 @@ export default async function PartnerLayout({
   params: { partnerId: string };
 }) {
   await requirePartnerSessionForPage(params.partnerId);
+
+  // Print-style document pages render on their own, chrome-free — see
+  // PRINT_ROUTE_SUFFIXES above. Skip the nav-building/alerts work too,
+  // since none of it is used when the Sidebar itself isn't rendered.
+  if (isPrintRoute(headers().get("x-pathname"))) {
+    return <>{children}</>;
+  }
+
   const navGroups = await buildPartnerAdminNavGroups(params.partnerId);
   // Alerts are computed here rather than in each page so the bell's count is
   // correct on every partner screen, and recomputed on each server render

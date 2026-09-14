@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import Link from "next/link";
+import { Check } from "lucide-react";
+import { openPrintPopup } from "@/lib/openPrintPopup";
 import { StatusChip } from "@/components/StatusChip";
 import { Modal } from "@/components/Modal";
 import { SearchSelectModal, type SearchSelectOption } from "@/components/SearchSelectModal";
@@ -14,6 +15,7 @@ import {
   type MilestoneStatus,
   type PartLine,
   type ServiceLine,
+  type StageHistoryEntry,
 } from "@/lib/sample-data/service-centre";
 import {
   setWorkorderHoldAction,
@@ -51,8 +53,38 @@ const MILESTONE_LABEL: Record<MilestoneStatus, string> = {
   CANCELLED: "Cancelled",
 };
 
-/** Linear stepper order — CANCELLED is a terminal side-branch, not shown inline. */
-const MILESTONE_STEPPER: MilestoneStatus[] = MILESTONE_STATUSES.filter((m) => m !== "CANCELLED");
+/**
+ * Linear stepper order — matches AN-CRM's real 4-step MilestoneStepper
+ * (CREATED / REPAIR_IN_PROGRESS / REPAIR_COMPLETED / CLOSED) exactly.
+ * REPAIR_STARTED and PART_PENDING are real MilestoneStatus values (used by
+ * mapStageToMilestone/getServiceCentreTimeline) but are NOT separate steps
+ * in the reference app's stepper: REPAIR_STARTED collapses into the same
+ * "In Progress" step, and PART_PENDING renders as a side Badge next to the
+ * stepper instead (see the `hold` StatusChip below) — showing them as extra
+ * steps was exactly the "looks different from AN-CRM" layout drift.
+ * CANCELLED is a terminal side-branch, not shown inline either.
+ */
+const MILESTONE_STEPPER: MilestoneStatus[] = ["CREATED", "REPAIR_IN_PROGRESS", "REPAIR_COMPLETED", "CLOSED"];
+
+function fmtStepDate(d?: string): string | null {
+  if (!d) return null;
+  const parsed = new Date(d);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed.toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+}
+
+/** First stageHistory timestamp recorded for a given milestone's underlying WorkorderStage, mirroring AN-CRM's per-step stepDates (repairInProgressAt/completedAt/handedOverAt). */
+function stepDateFor(milestone: MilestoneStatus, history: StageHistoryEntry[], createdAt?: string): string | undefined {
+  const stageForMilestone: Partial<Record<MilestoneStatus, WorkorderStage>> = {
+    REPAIR_IN_PROGRESS: "In Progress",
+    REPAIR_COMPLETED: "Completed",
+    CLOSED: "Closed",
+  };
+  if (milestone === "CREATED") return createdAt;
+  const wantedStage = stageForMilestone[milestone];
+  const hit = history.find((h) => h.stage === wantedStage);
+  return hit?.at;
+}
 
 export function WorkorderLifecycle({
   partnerId,
@@ -75,6 +107,8 @@ export function WorkorderLifecycle({
   invoiceId,
   cancelledAt,
   cancelReason,
+  stageHistory,
+  receivedDate,
   bomMaterials,
   solutionOptions,
   brandOptions,
@@ -111,6 +145,10 @@ export function WorkorderLifecycle({
   /** Set once the job has been cancelled (terminal — see cancelWorkorderAction). */
   cancelledAt?: string;
   cancelReason?: string;
+  /** Real stage transitions, used to show a per-milestone date on the stepper (mirrors AN-CRM's stepDates) — same source of truth the Activity Timeline reads via getServiceCentreTimeline. */
+  stageHistory?: StageHistoryEntry[];
+  /** Intake timestamp — the CREATED milestone's date. */
+  receivedDate?: string;
   /**
    * This partner's own live BOM materials (Inventory > Material Catalog) —
    * not the global sample catalog. `rate`/`taxPercent` are the material's
@@ -540,16 +578,34 @@ export function WorkorderLifecycle({
         </div>
       )}
       {(() => {
-        const currentMilestone = mapStageToMilestone(stage, hold, cancelled);
-        const currentIdx = MILESTONE_STEPPER.indexOf(currentMilestone);
+        // PART_PENDING and REPAIR_STARTED collapse onto the REPAIR_IN_PROGRESS
+        // step for stepper purposes (see MILESTONE_STEPPER's comment) — only
+        // the effective 4-step milestone is looked up against the stepper.
+        const rawMilestone = mapStageToMilestone(stage, hold, cancelled);
+        const effectiveMilestone: MilestoneStatus =
+          rawMilestone === "PART_PENDING" || rawMilestone === "REPAIR_STARTED" ? "REPAIR_IN_PROGRESS" : rawMilestone;
+        const currentIdx = MILESTONE_STEPPER.indexOf(effectiveMilestone);
+        const history = stageHistory ?? [];
         return (
-          <div className="flex flex-wrap items-center gap-2">
-            {MILESTONE_STEPPER.map((m, i) => (
-              <div key={m} className="flex items-center gap-2">
-                <StatusChip label={MILESTONE_LABEL[m]} variant={i <= currentIdx ? MILESTONE_VARIANT[m] : "neutral"} />
-                {i < MILESTONE_STEPPER.length - 1 && <span className="text-text-muted">&rarr;</span>}
-              </div>
-            ))}
+          <div className="flex flex-wrap items-center gap-1">
+            {MILESTONE_STEPPER.map((m, i) => {
+              const done = i <= currentIdx;
+              const date = fmtStepDate(stepDateFor(m, history, receivedDate));
+              return (
+                <div key={m} className="flex items-center gap-1">
+                  <div className={`flex flex-col items-center gap-1 rounded-md px-3 py-1.5 ${done ? "bg-accent-soft" : "bg-bg-raised"}`}>
+                    <span className={`flex items-center gap-1 text-xs font-medium ${done ? "text-accent" : "text-text-muted"}`}>
+                      {done && <Check className="h-3 w-3" />}
+                      {MILESTONE_LABEL[m]}
+                    </span>
+                    {date && <span className="text-[10px] text-text-muted">{date}</span>}
+                  </div>
+                  {i < MILESTONE_STEPPER.length - 1 && (
+                    <div className={`h-px w-6 ${i < currentIdx ? "bg-accent" : "bg-border"}`} />
+                  )}
+                </div>
+              );
+            })}
           </div>
         );
       })()}
@@ -800,16 +856,24 @@ export function WorkorderLifecycle({
             {stage === "Completed" && "Handover & Close"}
           </button>
         )}
-        <Link href={`/partner/${partnerId}/service-centre/${workorderId}/document`} className="btn-outline">
+        <button
+          type="button"
+          className="btn-outline"
+          onClick={() => openPrintPopup(`/partner/${partnerId}/service-centre/${workorderId}/document`)}
+        >
           Print Job Card
-        </Link>
+        </button>
         {/* The priced quote the customer approves. Only offered once there's
             something to price, and never for a warranty job — a
             non-chargeable repair has no estimate to approve. */}
         {!underWarranty && !cancelled && (serviceLines.length > 0 || partLines.length > 0) && (
-          <Link href={`/partner/${partnerId}/service-centre/${workorderId}/estimate`} className="btn-outline">
+          <button
+            type="button"
+            className="btn-outline"
+            onClick={() => openPrintPopup(`/partner/${partnerId}/service-centre/${workorderId}/estimate`)}
+          >
             Print Estimate
-          </Link>
+          </button>
         )}
         {/* Cancel is available from any non-terminal stage — a job can be
             abandoned before, during, or after repair, but never once it's
@@ -847,9 +911,13 @@ export function WorkorderLifecycle({
           </button>
         )}
         {stage === "Closed" && invoice && (
-          <Link href={`/partner/${partnerId}/service-centre/${workorderId}/invoice`} className="btn-outline">
+          <button
+            type="button"
+            className="btn-outline"
+            onClick={() => openPrintPopup(`/partner/${partnerId}/service-centre/${workorderId}/invoice`)}
+          >
             Sales Invoice
-          </Link>
+          </button>
         )}
       </div>
 
