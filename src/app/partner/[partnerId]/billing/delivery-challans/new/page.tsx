@@ -4,6 +4,7 @@ import { registerPage } from "@/lib/designer/registry";
 import { SalesDocumentForm } from "@/components/SalesDocumentForm";
 import { createBusinessRecordAction } from "@/lib/businessRecordActions";
 import { listBusinessRecords } from "@/lib/businessRecords";
+import { getLineItemCatalogOptions } from "@/lib/lineItemCatalog";
 
 registerPage({
   id: "billing.delivery-challans.create",
@@ -25,18 +26,11 @@ export default async function NewDeliveryChallanPage({ params }: { params: { par
   const tierGate = await renderTierGate(params.partnerId, "billing.delivery-challans.create", "Delivery Challans");
   if (tierGate) return <AppShell topbarTitle={"New Delivery Challan"}>{tierGate}</AppShell>;
 
-  const [contacts, catalogItems] = await Promise.all([
+  const [contacts, itemOptions] = await Promise.all([
     listBusinessRecords(params.partnerId, "billing-contacts"),
-    listBusinessRecords(params.partnerId, "billing-items"),
+    getLineItemCatalogOptions(params.partnerId),
   ]);
   const contactOptions = contacts.map((c) => ({ id: String(c["id"]), label: String(c["name"] ?? c["id"]), gstin: c["gstin"] ? String(c["gstin"]) : undefined }));
-  const itemOptions = catalogItems.map((it) => ({
-    id: String(it["id"]),
-    label: String(it["name"] ?? it["id"]),
-    unit: String(it["unit"] ?? "pcs"),
-    unitPrice: Number(it["rate"] ?? 0),
-    taxRate: Number(it["taxRate"] ?? 0),
-  }));
 
   return (
     <AppShell topbarTitle="New Delivery Challan — Billing">

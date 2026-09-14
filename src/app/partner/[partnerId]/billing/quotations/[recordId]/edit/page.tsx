@@ -5,6 +5,7 @@ import { SalesDocumentForm } from "@/components/SalesDocumentForm";
 import type { LineItem } from "@/lib/sample-data/billing";
 import { getBusinessRecord, listBusinessRecords } from "@/lib/businessRecords";
 import { updateBusinessRecordAction } from "@/lib/businessRecordActions";
+import { getLineItemCatalogOptions } from "@/lib/lineItemCatalog";
 
 registerPage({
   id: "billing.quotations.edit",
@@ -26,18 +27,11 @@ export default async function EditQuotationPage({ params }: { params: { partnerI
   const record = await getBusinessRecord(params.partnerId, "billing-quotations", params.recordId);
   if (!record) notFound();
   const items = (record["items"] as LineItem[] | undefined) ?? [];
-  const [contacts, catalogItems] = await Promise.all([
+  const [contacts, itemOptions] = await Promise.all([
     listBusinessRecords(params.partnerId, "billing-contacts"),
-    listBusinessRecords(params.partnerId, "billing-items"),
+    getLineItemCatalogOptions(params.partnerId),
   ]);
   const contactOptions = contacts.map((c) => ({ id: String(c["id"]), label: String(c["name"] ?? c["id"]), gstin: c["gstin"] ? String(c["gstin"]) : undefined }));
-  const itemOptions = catalogItems.map((it) => ({
-    id: String(it["id"]),
-    label: String(it["name"] ?? it["id"]),
-    unit: String(it["unit"] ?? "pcs"),
-    unitPrice: Number(it["rate"] ?? 0),
-    taxRate: Number(it["taxRate"] ?? 0),
-  }));
 
   return (
     <AppShell topbarTitle="Edit Quotation — Billing">

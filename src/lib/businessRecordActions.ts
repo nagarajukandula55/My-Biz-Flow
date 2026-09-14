@@ -22,11 +22,20 @@ export async function createBusinessRecordAction(
       const customerContact = customerContactId
         ? await getBusinessRecord(partnerId, "billing-contacts", customerContactId)
         : undefined;
+      // The invoice form now captures the customer's state directly (see
+      // BillingInvoiceForm.tsx) — prefer that over the linked contact's
+      // stored state, which only existed for invoices typed against a
+      // saved contact.
+      const customerState = record["customerState"]
+        ? String(record["customerState"])
+        : customerContact?.["state"]
+          ? String(customerContact["state"])
+          : undefined;
       await notifyCentralApiBillingInvoice(partner, {
         externalOrderId: String(record.id),
         customer: String(record["customer"] ?? ""),
         customerGstin: record["customerGstin"] ? String(record["customerGstin"]) : undefined,
-        customerState: customerContact?.["state"] ? String(customerContact["state"]) : undefined,
+        customerState,
         items: items.map((it) => ({
           description: String(it["description"] ?? ""),
           quantity: Number(it["quantity"] ?? 0),

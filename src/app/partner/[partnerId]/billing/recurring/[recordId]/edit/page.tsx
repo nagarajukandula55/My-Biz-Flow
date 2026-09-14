@@ -6,6 +6,7 @@ import type { LineItem } from "@/lib/sample-data/billing";
 import type { RecurringFrequency } from "@/lib/sample-data/billing-recurring";
 import { getBusinessRecord, listBusinessRecords } from "@/lib/businessRecords";
 import { updateBusinessRecordAction } from "@/lib/businessRecordActions";
+import { getLineItemCatalogOptions } from "@/lib/lineItemCatalog";
 
 registerPage({
   id: "billing.recurring.edit",
@@ -27,18 +28,11 @@ export default async function EditRecurringInvoicePage({ params }: { params: { p
   const record = await getBusinessRecord(params.partnerId, "billing-recurring", params.recordId);
   if (!record) notFound();
   const items = (record["items"] as LineItem[] | undefined) ?? [];
-  const [contacts, catalogItems] = await Promise.all([
+  const [contacts, itemOptions] = await Promise.all([
     listBusinessRecords(params.partnerId, "billing-contacts"),
-    listBusinessRecords(params.partnerId, "billing-items"),
+    getLineItemCatalogOptions(params.partnerId),
   ]);
   const contactOptions = contacts.map((c) => ({ id: String(c["id"]), label: String(c["name"] ?? c["id"]), gstin: c["gstin"] ? String(c["gstin"]) : undefined }));
-  const itemOptions = catalogItems.map((it) => ({
-    id: String(it["id"]),
-    label: String(it["name"] ?? it["id"]),
-    unit: String(it["unit"] ?? "pcs"),
-    unitPrice: Number(it["rate"] ?? 0),
-    taxRate: Number(it["taxRate"] ?? 0),
-  }));
 
   return (
     <AppShell topbarTitle="Edit Recurring Invoice — Billing">

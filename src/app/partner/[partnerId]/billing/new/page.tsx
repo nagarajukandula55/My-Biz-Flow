@@ -4,6 +4,8 @@ import { registerPage } from "@/lib/designer/registry";
 import { BillingInvoiceForm } from "@/components/BillingInvoiceForm";
 import { createBusinessRecordAction } from "@/lib/businessRecordActions";
 import { listBusinessRecords } from "@/lib/businessRecords";
+import { getPartner } from "@/lib/partnerData";
+import { getLineItemCatalogOptions } from "@/lib/lineItemCatalog";
 
 registerPage({
   id: "billing.create",
@@ -23,17 +25,21 @@ registerPage({
 
 export default async function NewBillingPage({ params }: { params: { partnerId: string } }) {
   const mod = await getModule("billing");
-  const [contacts, items] = await Promise.all([
+  const [contacts, partner, itemOptions] = await Promise.all([
     listBusinessRecords(params.partnerId, "billing-contacts"),
-    listBusinessRecords(params.partnerId, "billing-items"),
+    getPartner(params.partnerId),
+    getLineItemCatalogOptions(params.partnerId),
   ]);
-  const contactOptions = contacts.map((c) => ({ id: String(c["id"]), label: String(c["name"] ?? c["id"]), gstin: c["gstin"] ? String(c["gstin"]) : undefined }));
-  const itemOptions = items.map((it) => ({
-    id: String(it["id"]),
-    label: String(it["name"] ?? it["id"]),
-    unit: String(it["unit"] ?? "pcs"),
-    unitPrice: Number(it["rate"] ?? 0),
-    taxRate: Number(it["taxRate"] ?? 0),
+  const contactOptions = contacts.map((c) => ({
+    id: String(c["id"]),
+    label: String(c["name"] ?? c["id"]),
+    gstin: c["gstin"] ? String(c["gstin"]) : undefined,
+    phone: c["phone"] ? String(c["phone"]) : undefined,
+    email: c["email"] ? String(c["email"]) : undefined,
+    address: c["billingAddress"] ? String(c["billingAddress"]) : undefined,
+    city: c["city"] ? String(c["city"]) : undefined,
+    state: c["state"] ? String(c["state"]) : undefined,
+    pincode: c["pincode"] ? String(c["pincode"]) : undefined,
   }));
 
   return (
@@ -47,6 +53,7 @@ export default async function NewBillingPage({ params }: { params: { partnerId: 
             action={createBusinessRecordAction.bind(null, params.partnerId, "billing")}
             contactOptions={contactOptions}
             itemOptions={itemOptions}
+            partnerState={partner?.state}
           />
         </div>
       </div>

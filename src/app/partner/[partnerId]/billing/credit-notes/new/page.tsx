@@ -4,6 +4,7 @@ import { registerPage } from "@/lib/designer/registry";
 import { CreditNoteForm } from "@/components/CreditNoteForm";
 import { createBusinessRecordAction } from "@/lib/businessRecordActions";
 import { listBusinessRecords } from "@/lib/businessRecords";
+import { getLineItemCatalogOptions } from "@/lib/lineItemCatalog";
 
 registerPage({
   id: "billing.credit-notes.create",
@@ -25,19 +26,12 @@ export default async function NewCreditNotePage({ params }: { params: { partnerI
   const tierGate = await renderTierGate(params.partnerId, "billing.credit-notes.create", "Credit & Debit Notes");
   if (tierGate) return <AppShell topbarTitle={"New Credit Note"}>{tierGate}</AppShell>;
 
-  const [contacts, items, invoices] = await Promise.all([
+  const [contacts, itemOptions, invoices] = await Promise.all([
     listBusinessRecords(params.partnerId, "billing-contacts"),
-    listBusinessRecords(params.partnerId, "billing-items"),
+    getLineItemCatalogOptions(params.partnerId),
     listBusinessRecords(params.partnerId, "billing"),
   ]);
   const contactOptions = contacts.map((c) => ({ id: String(c["id"]), label: String(c["name"] ?? c["id"]), gstin: c["gstin"] ? String(c["gstin"]) : undefined }));
-  const itemOptions = items.map((it) => ({
-    id: String(it["id"]),
-    label: String(it["name"] ?? it["id"]),
-    unit: String(it["unit"] ?? "pcs"),
-    unitPrice: Number(it["rate"] ?? 0),
-    taxRate: Number(it["taxRate"] ?? 0),
-  }));
   const invoiceOptions = invoices.map((inv) => String(inv["id"]));
 
   return (

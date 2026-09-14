@@ -26,12 +26,15 @@ export type ItemOption = {
   unit: string;
   unitPrice: number;
   taxRate: number;
+  /** HSN/SAC code from the catalog record — stamped onto the line alongside rate/tax when picked. */
+  hsnCode?: string;
 };
 
 export function LineItemsEditor({
   items,
   onChange,
   showTax = true,
+  showHsn = false,
   itemOptions,
 }: {
   items: LineItem[];
@@ -40,9 +43,16 @@ export function LineItemsEditor({
    * Tax % column and the Tax row in the totals summary, and excludes tax
    * from the computed line/grand totals. */
   showTax?: boolean;
+  /** Adds a per-line HSN/SAC code column — used by Billing's GST invoice
+   * (mirrors AN-CRM's tax-invoice line shape) and left off every other
+   * caller of this shared editor so their layout is unchanged. */
+  showHsn?: boolean;
   /** When provided, each row gets a "pick from catalog" select that
-   * autofills description/unit/rate/tax from a Billing Items record —
-   * a line can still be typed freehand instead. */
+   * autofills description/unit/rate/tax/HSN from this partner's own live
+   * Material Catalog (BOM) record — a line can still be typed freehand
+   * instead. Shared with Service Centre's own BOM-priced part lines
+   * rather than a separate Billing-only product list — see
+   * lib/lineItemCatalog.ts. */
   itemOptions?: ItemOption[];
 }) {
   function updateItem(idx: number, patch: Partial<LineItem>) {
@@ -66,6 +76,7 @@ export function LineItemsEditor({
       unit: option.unit,
       unitPrice: option.unitPrice,
       taxRate: showTax ? option.taxRate : 0,
+      hsnCode: option.hsnCode ?? "",
     });
   }
 
@@ -79,6 +90,7 @@ export function LineItemsEditor({
             <tr className="border-b border-border bg-bg-sunken text-left text-xs font-semibold uppercase tracking-wide text-text-muted">
               {itemOptions && <th className="w-44 px-3 py-2.5">Catalog Item</th>}
               <th className="px-3 py-2.5">Description</th>
+              {showHsn && <th className="w-24 px-3 py-2.5">HSN/SAC</th>}
               <th className="w-20 px-3 py-2.5 text-right">Qty</th>
               <th className="w-24 px-3 py-2.5">Unit</th>
               <th className="w-32 px-3 py-2.5 text-right">Unit Price</th>
@@ -116,6 +128,16 @@ export function LineItemsEditor({
                       className="w-full rounded-md border border-border bg-bg px-2.5 py-1.5 text-sm text-text outline-none focus:border-accent"
                     />
                   </td>
+                  {showHsn && (
+                    <td className="px-3 py-2">
+                      <input
+                        value={item.hsnCode ?? ""}
+                        onChange={(e) => updateItem(i, { hsnCode: e.target.value })}
+                        placeholder="HSN"
+                        className="w-full rounded-md border border-border bg-bg px-2.5 py-1.5 text-sm text-text outline-none focus:border-accent"
+                      />
+                    </td>
+                  )}
                   <td className="px-3 py-2">
                     <input
                       type="number"
