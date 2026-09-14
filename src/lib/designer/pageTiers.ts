@@ -115,6 +115,12 @@ export const DEFAULT_PAGE_TIERS: Record<string, PlanTier> = {
   "service-centre.brands.create": "pro",
   "service-centre.models.list": "pro",
   "service-centre.models.create": "pro",
+  // Not Basic: TIER_FEATURES above lists "Customer database & full customer
+  // history" as a Pro bullet and Basic explicitly as "no standalone
+  // customer database" — a real, sourced reason (not guessed) to gate this
+  // the same as Brands/Models rather than leaving it open on every plan.
+  "service-centre.customers.list": "pro",
+  "service-centre.customers.create": "pro",
   // Same Pro gate as Brands/Models, for the same reason: a Starter partner
   // types the name free-text every time, a Pro+ partner keeps a roster and
   // picks from it.
