@@ -667,7 +667,20 @@ model FieldForceSettings {
 model TelegramSettings {
   partnerId String @id
   chatId    String?
+  /// The partner's group chat id — connected independently of `chatId`
+  /// (the personal/DM chat) via its own deep-link slot (see
+  /// buildTelegramConnectLink(partnerId, "group") in src/lib/telegram.ts).
+  /// Either, both, or neither may be set at a time.
+  groupChatId String?
   enabledTypes Json @default("[]")
+  /// Per-alert-type routing: which of the two connected chats
+  /// (personal/group/both) each TELEGRAM_ALERT_TYPES key is delivered to.
+  /// Keyed by TelegramAlertType, valued "personal" | "group" | "both" — see
+  /// TelegramRoutingMap in src/lib/telegram.ts. A type with no entry here
+  /// defaults to "both" (send to whichever of chatId/groupChatId is set),
+  /// matching this app's Json-column precedent for flexible per-type config
+  /// (Partner.productDomains).
+  routing Json @default("{}")
   /// Automatic periodic business-summary digest cadence, matching AN-CRM's
   /// VendorProfile.telegramReportFrequency (DAILY/WEEKLY/MONTHLY/NONE) —
   /// see src/lib/telegramTemplates.ts's businessReportMessage(). The setting

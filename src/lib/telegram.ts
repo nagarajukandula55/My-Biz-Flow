@@ -34,10 +34,20 @@ export type TelegramAlertType = (typeof TELEGRAM_ALERT_TYPES)[number]["key"];
 export const TELEGRAM_REPORT_FREQUENCIES = ["NONE", "DAILY", "WEEKLY", "MONTHLY"] as const;
 export type TelegramReportFrequency = (typeof TELEGRAM_REPORT_FREQUENCIES)[number];
 
+/** Which connected chat an alert type is routed to. A type with no explicit
+ * entry in `routing` defaults to "both" — send to whichever of
+ * chatId/groupChatId is actually connected (so a partner with only one chat
+ * connected keeps getting alerts there, unchanged from before routing existed). */
+export type TelegramChatSlot = "personal" | "group";
+export type AlertDestination = TelegramChatSlot | "both";
+export type TelegramRoutingMap = Partial<Record<TelegramAlertType, AlertDestination>>;
+
 export type TelegramSettingsRecord = {
   partnerId: string;
   chatId: string | null;
+  groupChatId: string | null;
   enabledTypes: TelegramAlertType[];
+  routing: TelegramRoutingMap;
   reportFrequency: TelegramReportFrequency;
 };
 
@@ -56,7 +66,9 @@ export async function getTelegramSettings(partnerId: string): Promise<TelegramSe
   return {
     partnerId,
     chatId: row?.chatId ?? null,
+    groupChatId: row?.groupChatId ?? null,
     enabledTypes: (row?.enabledTypes as TelegramAlertType[] | undefined) ?? [],
+    routing: (row?.routing as TelegramRoutingMap | undefined) ?? {},
     reportFrequency: (row?.reportFrequency as TelegramReportFrequency | undefined) ?? "NONE",
   };
 }
@@ -65,13 +77,45 @@ export async function saveTelegramSettings(
   partnerId: string,
   chatId: string,
   enabledTypes: TelegramAlertType[],
-  reportFrequency: TelegramReportFrequency
+  reportFrequency: TelegramReportFrequency,
+  extra?: { groupChatId?: string; routing?: TelegramRoutingMap }
 ): Promise<void> {
+  const existing = await getTelegramSettings(partnerId);
+  const groupChatId = extra?.groupChatId !== undefined ? extra.groupChatId : existing.groupChatId ?? "";
+  const routing = extra?.routing !== undefined ? extra.routing : existing.routing;
   await prisma.telegramSettings.upsert({
     where: { partnerId },
-    create: { partnerId, chatId: chatId || null, enabledTypes, reportFrequency },
-    update: { chatId: chatId || null, enabledTypes, reportFrequency },
+    create: { partnerId, chatId: chatId || null, groupChatId: groupChatId || null, enabledTypes, routing, reportFrequency },
+    update: { chatId: chatId || null, groupChatId: groupChatId || null, enabledTypes, routing, reportFrequency },
   });
+}
+
+/** Saves only the routing map, leaving chat ids / enabled types / report
+ * frequency untouched — the action behind the per-alert-type routing select
+ * on the Telegram Alerts page. */
+export async function saveTelegramRouting(partnerId: string, routing: TelegramRoutingMap): Promise<void> {
+  const existing = await getTelegramSettings(partnerId);
+  await saveTelegramSettings(partnerId, existing.chatId ?? "", existing.enabledTypes, existing.reportFrequency, {
+    groupChatId: existing.groupChatId ?? "",
+    routing,
+  });
+}
+
+/** Resolves which chat id(s) a given alert (or "test") should be sent to,
+ * honouring the routing map — a type with no explicit entry defaults to
+ * "both" so a partner with only one chat connected keeps getting alerts
+ * there exactly as before routing existed. "test" always goes to every
+ * connected chat, ignoring routing, so the Send Test Message button
+ * verifies both slots at once. */
+function resolveChatIdsForType(settings: TelegramSettingsRecord, type: TelegramAlertType | "test"): string[] {
+  if (type === "test") {
+    return [settings.chatId, settings.groupChatId].filter((id): id is string => Boolean(id));
+  }
+  const destination = settings.routing[type] ?? "both";
+  const ids: string[] = [];
+  if ((destination === "personal" || destination === "both") && settings.chatId) ids.push(settings.chatId);
+  if ((destination === "group" || destination === "both") && settings.groupChatId) ids.push(settings.groupChatId);
+  return ids;
 }
 
 /** Recent send-attempt history for a partner — real even with no bot token,
@@ -138,52 +182,61 @@ async function sendTelegramAlertInternal(
   workorderId: string | null
 ): Promise<void> {
   const settings = await getTelegramSettings(partnerId);
+  const chatIds = resolveChatIdsForType(settings, type);
 
-  if (!settings.chatId) {
+  if (chatIds.length === 0) {
     await recordTelegramLog({ partnerId, type, message, chatId: null, sent: false, reason: "no chat id configured", workorderId });
     return;
   }
   if (type !== "test" && !settings.enabledTypes.includes(type)) {
-    await recordTelegramLog({ partnerId, type, message, chatId: settings.chatId, sent: false, reason: "alert type disabled", workorderId });
+    await recordTelegramLog({ partnerId, type, message, chatId: chatIds[0], sent: false, reason: "alert type disabled", workorderId });
     return;
   }
 
   const botToken = env.telegramBotToken();
   if (!botToken) {
-    console.log(`[telegram:not-configured] would send to partner ${partnerId} chat ${settings.chatId}: ${message}`);
-    await recordTelegramLog({
-      partnerId, type, message, chatId: settings.chatId, sent: false,
-      reason: "not configured — no TELEGRAM_BOT_TOKEN", workorderId,
-    });
+    for (const chatId of chatIds) {
+      console.log(`[telegram:not-configured] would send to partner ${partnerId} chat ${chatId}: ${message}`);
+      await recordTelegramLog({
+        partnerId, type, message, chatId, sent: false,
+        reason: "not configured — no TELEGRAM_BOT_TOKEN", workorderId,
+      });
+    }
     return;
   }
 
-  try {
-    const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: settings.chatId, text: message, parse_mode: "Markdown" }),
-    });
-    // Telegram's sendMessage response carries the sent message's own
-    // message_id (result.message_id) — this is what a reply's
-    // reply_to_message.message_id will echo back, so it's the only real
-    // key for mapping a future reply to `workorderId`.
-    let sentMessageId: number | null = null;
+  // Routing can resolve to more than one chat (a "both" alert type with
+  // personal and group both connected) — send and log each independently so
+  // a failure delivering to one chat doesn't affect the other, and so
+  // reply-threading (findWorkorderByReplyMessageId) still resolves per-chat.
+  for (const chatId of chatIds) {
     try {
-      const body = (await res.json()) as { ok?: boolean; result?: { message_id?: number } };
-      if (body.ok && typeof body.result?.message_id === "number") {
-        sentMessageId = body.result.message_id;
+      const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: chatId, text: message, parse_mode: "Markdown" }),
+      });
+      // Telegram's sendMessage response carries the sent message's own
+      // message_id (result.message_id) — this is what a reply's
+      // reply_to_message.message_id will echo back, so it's the only real
+      // key for mapping a future reply to `workorderId`.
+      let sentMessageId: number | null = null;
+      try {
+        const body = (await res.json()) as { ok?: boolean; result?: { message_id?: number } };
+        if (body.ok && typeof body.result?.message_id === "number") {
+          sentMessageId = body.result.message_id;
+        }
+      } catch {
+        // Response body wasn't valid JSON — still record the send attempt below.
       }
-    } catch {
-      // Response body wasn't valid JSON — still record the send attempt below.
+      await recordTelegramLog({
+        partnerId, type, message, chatId, sent: true, reason: null,
+        messageId: sentMessageId, workorderId,
+      });
+    } catch (err) {
+      console.error("[telegram] send failed:", err);
+      await recordTelegramLog({ partnerId, type, message, chatId, sent: false, reason: "send failed", workorderId });
     }
-    await recordTelegramLog({
-      partnerId, type, message, chatId: settings.chatId, sent: true, reason: null,
-      messageId: sentMessageId, workorderId,
-    });
-  } catch (err) {
-    console.error("[telegram] send failed:", err);
-    await recordTelegramLog({ partnerId, type, message, chatId: settings.chatId, sent: false, reason: "send failed", workorderId });
   }
 }
 
@@ -267,35 +320,85 @@ export async function appendTelegramChatLogEntry(
   await updateBusinessRecord(partnerId, "service-centre", workorderId, { ...record, telegramChatLog: next });
 }
 
+/** Suffix appended to the deep-link `/start` payload to say which chat slot
+ * (personal DM vs. group) the connecting chat should be captured into — see
+ * buildTelegramConnectLink() / the webhook route's parseStartPayload(). Kept
+ * as a plain suffix (not e.g. a colon) because Telegram's start_param must
+ * match `[A-Za-z0-9_-]+`. */
+const START_PAYLOAD_SLOT_SUFFIX: Record<TelegramChatSlot, string> = {
+  personal: "_slot_personal",
+  group: "_slot_group",
+};
+
 /**
- * The "Connect Telegram" deep link shown on the Telegram Alerts page —
- * https://t.me/<bot_username>?start=<partnerId>. Opening it in Telegram and
- * hitting Start sends a /start <partnerId> command to the bot, which the
- * webhook route (src/app/api/telegram/webhook/route.ts) handles by calling
- * connectTelegramChat() below. Returns null when TELEGRAM_BOT_USERNAME isn't
- * configured yet, so the page can show a "not set up" state instead of a
- * dead link.
+ * The "Connect Telegram" deep link shown on the Telegram Alerts page, one
+ * per chat slot — https://t.me/<bot_username>?start=<partnerId>_slot_<slot>.
+ * Opening it in Telegram and hitting Start sends that payload as
+ * `/start <payload>` to the bot, which the webhook route
+ * (src/app/api/telegram/webhook/route.ts) decodes via parseStartPayload()
+ * and hands to connectTelegramChat() below. Returns null when
+ * TELEGRAM_BOT_USERNAME isn't configured yet, so the page can show a
+ * "not set up" state instead of a dead link.
  */
-export function buildTelegramConnectLink(partnerId: string): string | null {
+export function buildTelegramConnectLink(partnerId: string, slot: TelegramChatSlot = "personal"): string | null {
   const username = env.telegramBotUsername();
   if (!username) return null;
-  return `https://t.me/${username}?start=${encodeURIComponent(partnerId)}`;
+  const payload = `${partnerId}${START_PAYLOAD_SLOT_SUFFIX[slot]}`;
+  return `https://t.me/${username}?start=${encodeURIComponent(payload)}`;
 }
 
 /**
- * Called by the webhook route on a `/start <partnerId>` command — saves the
- * chat that sent it as this partner's TelegramSettings.chatId, replacing the
- * old manual-entry flow with an automatic capture. Preserves whatever
- * enabledTypes/reportFrequency the partner already had configured (or the
- * defaults, for a brand-new connection).
+ * Decodes a `/start` payload built by buildTelegramConnectLink() back into
+ * (partnerId, slot). Falls back to slot "personal" for a payload with no
+ * recognized suffix, so links generated before slots existed still connect
+ * as a personal chat instead of failing outright.
  */
-export async function connectTelegramChat(partnerId: string, chatId: string): Promise<void> {
-  const existing = await getTelegramSettings(partnerId);
-  await saveTelegramSettings(partnerId, chatId, existing.enabledTypes, existing.reportFrequency);
+export function parseStartPayload(payload: string): { partnerId: string; slot: TelegramChatSlot } {
+  for (const [slot, suffix] of Object.entries(START_PAYLOAD_SLOT_SUFFIX) as [TelegramChatSlot, string][]) {
+    if (payload.endsWith(suffix)) {
+      return { partnerId: payload.slice(0, -suffix.length), slot };
+    }
+  }
+  return { partnerId: payload, slot: "personal" };
 }
 
-/** Clears a partner's connected chat — the "Disconnect" affordance on the Telegram Alerts page. */
-export async function disconnectTelegramChat(partnerId: string): Promise<void> {
+/**
+ * Called by the webhook route on a `/start <payload>` command — saves the
+ * chat that sent it as this partner's TelegramSettings.chatId (personal) or
+ * groupChatId (group), replacing the old single-chat manual-entry flow with
+ * an automatic per-slot capture. Preserves whatever enabledTypes/routing/
+ * reportFrequency/other chat slot the partner already had configured (or
+ * the defaults, for a brand-new connection).
+ */
+export async function connectTelegramChat(partnerId: string, chatId: string, slot: TelegramChatSlot = "personal"): Promise<void> {
   const existing = await getTelegramSettings(partnerId);
-  await saveTelegramSettings(partnerId, "", existing.enabledTypes, existing.reportFrequency);
+  if (slot === "group") {
+    await saveTelegramSettings(partnerId, existing.chatId ?? "", existing.enabledTypes, existing.reportFrequency, {
+      groupChatId: chatId,
+      routing: existing.routing,
+    });
+  } else {
+    await saveTelegramSettings(partnerId, chatId, existing.enabledTypes, existing.reportFrequency, {
+      groupChatId: existing.groupChatId ?? "",
+      routing: existing.routing,
+    });
+  }
+}
+
+/** Clears one of a partner's connected chats — the "Disconnect" affordance
+ * on the Telegram Alerts page, now per-slot since personal and group
+ * connect/disconnect independently. */
+export async function disconnectTelegramChat(partnerId: string, slot: TelegramChatSlot = "personal"): Promise<void> {
+  const existing = await getTelegramSettings(partnerId);
+  if (slot === "group") {
+    await saveTelegramSettings(partnerId, existing.chatId ?? "", existing.enabledTypes, existing.reportFrequency, {
+      groupChatId: "",
+      routing: existing.routing,
+    });
+  } else {
+    await saveTelegramSettings(partnerId, "", existing.enabledTypes, existing.reportFrequency, {
+      groupChatId: existing.groupChatId ?? "",
+      routing: existing.routing,
+    });
+  }
 }

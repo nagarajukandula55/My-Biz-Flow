@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { env } from "@/lib/env";
 import { getPartner } from "@/lib/partnerData";
-import { connectTelegramChat, findWorkorderByReplyMessageId, appendTelegramChatLogEntry } from "@/lib/telegram";
+import { connectTelegramChat, findWorkorderByReplyMessageId, appendTelegramChatLogEntry, parseStartPayload } from "@/lib/telegram";
 
 /**
  * Receives every Telegram Bot API update once a webhook is registered
@@ -86,18 +86,20 @@ export async function POST(request: Request) {
   // Case 1: /start <partnerId> — the deep-link connect flow.
   const startMatch = text.match(/^\/start(?:@\S+)?(?:\s+(\S+))?/);
   if (startMatch) {
-    const partnerId = startMatch[1];
-    if (!partnerId) {
+    const rawPayload = startMatch[1];
+    if (!rawPayload) {
       await sendTelegramReply(message.chat.id, "Open this bot using the \"Connect Telegram\" link from your My Biz Flow Telegram Alerts page.");
       return NextResponse.json({ ok: true });
     }
+    const { partnerId, slot } = parseStartPayload(rawPayload);
     const partner = await getPartner(partnerId);
     if (!partner) {
       await sendTelegramReply(message.chat.id, "This connect link isn't valid — please use the link on your Telegram Alerts page again.");
       return NextResponse.json({ ok: true });
     }
-    await connectTelegramChat(partnerId, chatId);
-    await sendTelegramReply(message.chat.id, `✅ Connected — My Biz Flow alerts for ${partner.businessName} will come here.`);
+    await connectTelegramChat(partnerId, chatId, slot);
+    const slotLabel = slot === "group" ? "group chat" : "personal chat";
+    await sendTelegramReply(message.chat.id, `✅ Connected — My Biz Flow alerts for ${partner.businessName} will come here (${slotLabel}).`);
     return NextResponse.json({ ok: true });
   }
 
