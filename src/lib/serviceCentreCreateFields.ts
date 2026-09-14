@@ -7,7 +7,7 @@ import { categoryOptionsForDomains } from "@/lib/catalog/serviceCatalog";
 import { filterByDomains, scBrandFormFields } from "@/lib/sample-data/service-centre-brands";
 import { scModelFormFields } from "@/lib/sample-data/service-centre-models";
 import { activeStaffNames } from "@/lib/sample-data/service-centre-staff-names";
-import { createServiceCentreBrandAction, createServiceCentreModelAction } from "@/lib/serviceCentreCatalogActions";
+import { createServiceCentreBrandInlineAction, createServiceCentreModelInlineAction } from "@/lib/serviceCentreCatalogActions";
 import { getPageTierAccess } from "@/lib/tenant";
 import type { FormFieldDef, RecordFormAction } from "@/components/RecordForm";
 
@@ -109,7 +109,7 @@ export async function buildServiceCentreCreateFields(partnerId: string): Promise
             title: "New Brand",
             submitLabel: "Create Brand",
             fields: scBrandFormFields,
-            action: createServiceCentreBrandAction.bind(null, partnerId) as RecordFormAction,
+            action: createServiceCentreBrandInlineAction.bind(null, partnerId) as RecordFormAction,
           },
         }
       : {}),
@@ -120,7 +120,7 @@ export async function buildServiceCentreCreateFields(partnerId: string): Promise
             title: "New Model",
             submitLabel: "Create Model",
             fields: scModelFormFields,
-            action: createServiceCentreModelAction.bind(null, partnerId) as RecordFormAction,
+            action: createServiceCentreModelInlineAction.bind(null, partnerId) as RecordFormAction,
           },
         }
       : {}),

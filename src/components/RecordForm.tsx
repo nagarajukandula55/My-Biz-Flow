@@ -27,7 +27,9 @@ export type FormFieldType =
   | "rating"
   | "file";
 
-export type RecordFormAction = (values: Record<string, unknown>) => Promise<void | { error?: string }>;
+export type RecordFormAction = (
+  values: Record<string, unknown>
+) => Promise<void | { error?: string; id?: string; label?: string }>;
 
 export type FormFieldDef = {
   key: string;
@@ -365,6 +367,8 @@ export function RecordForm({ fields: allFields, initialValues, submitLabel, onSu
         action={async (vals) => {
           const result = await activeAddNewModal.action(vals);
           if (!result || !("error" in (result as object)) || !(result as { error?: string }).error) {
+            const label = (result as { label?: string } | void)?.label;
+            if (addNewModalKey && label) setValue(addNewModalKey, label);
             setAddNewModalKey(null);
             router.refresh();
           }

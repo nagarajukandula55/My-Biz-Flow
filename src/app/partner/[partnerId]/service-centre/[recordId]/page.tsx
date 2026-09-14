@@ -17,6 +17,8 @@ import { getBusinessRecord, listBusinessRecords } from "@/lib/businessRecords";
 import { getPartner } from "@/lib/partnerData";
 import { activeStaffNames } from "@/lib/sample-data/service-centre-staff-names";
 import { WorkorderLifecycle } from "./WorkorderLifecycle";
+import { getPageTierAccess } from "@/lib/tenant";
+import { createServiceCentreBrandInlineAction, createServiceCentreModelInlineAction } from "@/lib/serviceCentreCatalogActions";
 
 registerPage({
   id: "service-centre.detail",
@@ -101,6 +103,14 @@ export default async function ServiceCentreDetailPage({
     await listBusinessRecords(params.partnerId, "service-centre-staff-names")
   );
 
+  // Same tier check as the New Workorder form's inline "+ Add new" — Brand
+  // and Model catalogs are Pro+, so the button on this repair page must not
+  // even render for a Starter partner (server-checked, not just hidden).
+  const [brandsTier, modelsTier] = await Promise.all([
+    getPageTierAccess(params.partnerId, "service-centre.brands.create"),
+    getPageTierAccess(params.partnerId, "service-centre.models.create"),
+  ]);
+
   return (
     <AppShell topbarTitle={mod?.label ?? "Manage SC"}>
       <div>
@@ -138,6 +148,8 @@ export default async function ServiceCentreDetailPage({
           brandOptions={brandOptions}
           modelOptions={modelOptions}
           staffNameOptions={staffNameOptions}
+          addBrandAction={brandsTier.allowed ? createServiceCentreBrandInlineAction.bind(null, params.partnerId) : undefined}
+          addModelAction={modelsTier.allowed ? createServiceCentreModelInlineAction.bind(null, params.partnerId) : undefined}
         />
 
         <div className="mt-8">

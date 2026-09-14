@@ -81,6 +81,8 @@ export function WorkorderLifecycle({
   modelOptions,
   staffNameOptions,
   solutionLaborCharges,
+  addBrandAction,
+  addModelAction,
 }: {
   partnerId: string;
   workorderId: string;
@@ -131,6 +133,17 @@ export function WorkorderLifecycle({
    * — deliberately, not as a fallback failure.
    */
   staffNameOptions: string[];
+  /**
+   * Bound, tier-checked server actions for quick-adding a Brand/Model right
+   * from this repair page — omitted entirely (not just disabled) on a
+   * partner below the tier that allows it, so a Starter shop never sees
+   * the button at all. Mirrors the same "+ Add new" affordance already on
+   * the New Workorder form (serviceCentreCreateFields.ts), just reachable
+   * post-intake too, since a workorder's brand/model is often only
+   * confirmed once the device is actually opened up.
+   */
+  addBrandAction?: (values: Record<string, unknown>) => Promise<{ error?: string; id?: string; label?: string }>;
+  addModelAction?: (values: Record<string, unknown>) => Promise<{ error?: string; id?: string; label?: string }>;
 }) {
   const [stage, setStage] = useState<WorkorderStage>(initialStage);
   const [partLines, setPartLines] = useState<PartLine[]>(initialPartLines);
@@ -139,6 +152,16 @@ export function WorkorderLifecycle({
   const [solutionPickerOpen, setSolutionPickerOpen] = useState(false);
   const [brandPickerOpen, setBrandPickerOpen] = useState(false);
   const [modelPickerOpen, setModelPickerOpen] = useState(false);
+  // Seeded from the server-computed props, then appended to locally the
+  // moment a quick-add succeeds — so the just-created brand/model is
+  // immediately selectable in the SAME picker session without a refetch.
+  const [brandOptionsState, setBrandOptionsState] = useState(brandOptions);
+  const [modelOptionsState, setModelOptionsState] = useState(modelOptions);
+  const [addBrandOpen, setAddBrandOpen] = useState(false);
+  const [addModelOpen, setAddModelOpen] = useState(false);
+  const [newCatalogName, setNewCatalogName] = useState("");
+  const [addCatalogError, setAddCatalogError] = useState<string | null>(null);
+  const [addCatalogPending, setAddCatalogPending] = useState(false);
   const [pendingLineId, setPendingLineId] = useState<string | null>(null);
   const [closeBlockedMessage, setCloseBlockedMessage] = useState<string | null>(null);
   const [confirmCloseOpen, setConfirmCloseOpen] = useState(false);
@@ -323,6 +346,46 @@ export function WorkorderLifecycle({
     setModel({ id: option.value, name: option.label });
     setModelPickerOpen(false);
     persist({ modelId: option.value, modelName: option.label });
+  }
+
+  function openAddBrand() {
+    setBrandPickerOpen(false);
+    setNewCatalogName("");
+    setAddCatalogError(null);
+    setAddBrandOpen(true);
+  }
+
+  function openAddModel() {
+    setModelPickerOpen(false);
+    setNewCatalogName("");
+    setAddCatalogError(null);
+    setAddModelOpen(true);
+  }
+
+  async function submitAddCatalog() {
+    const name = newCatalogName.trim();
+    if (!name) return;
+    const isBrand = addBrandOpen;
+    const action = isBrand ? addBrandAction : addModelAction;
+    if (!action) return;
+    setAddCatalogPending(true);
+    setAddCatalogError(null);
+    const result = await action(isBrand ? { name } : { name, brandName: brand.name });
+    setAddCatalogPending(false);
+    if (result?.error) {
+      setAddCatalogError(result.error);
+      return;
+    }
+    const option: SearchSelectOption = { value: result?.id ?? name, label: result?.label ?? name };
+    if (isBrand) {
+      setBrandOptionsState((prev) => [...prev, option]);
+      selectBrand(option);
+      setAddBrandOpen(false);
+    } else {
+      setModelOptionsState((prev) => [...prev, option]);
+      selectModel(option);
+      setAddModelOpen(false);
+    }
   }
 
   /**
@@ -801,16 +864,64 @@ export function WorkorderLifecycle({
         open={brandPickerOpen}
         onClose={() => setBrandPickerOpen(false)}
         title="Select Brand"
-        options={brandOptions}
+        options={brandOptionsState}
         onSelect={selectBrand}
+        onAddNew={addBrandAction ? openAddBrand : undefined}
+        addNewLabel="Add new brand"
       />
       <SearchSelectModal
         open={modelPickerOpen}
         onClose={() => setModelPickerOpen(false)}
         title="Select Model"
-        options={modelOptions}
+        options={modelOptionsState}
         onSelect={selectModel}
+        onAddNew={addModelAction ? openAddModel : undefined}
+        addNewLabel="Add new model"
       />
+      <Modal
+        open={addBrandOpen || addModelOpen}
+        onClose={() => {
+          setAddBrandOpen(false);
+          setAddModelOpen(false);
+        }}
+        title={addBrandOpen ? "Add New Brand" : "Add New Model"}
+      >
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs font-medium text-text-muted">
+              {addBrandOpen ? "Brand name" : `Model name${brand.name ? ` (Brand: ${brand.name})` : ""}`}
+            </label>
+            <input
+              autoFocus
+              value={newCatalogName}
+              onChange={(e) => setNewCatalogName(e.target.value)}
+              className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text outline-none focus:border-accent"
+              placeholder={addBrandOpen ? "e.g. Samsung" : "e.g. Galaxy S21"}
+            />
+          </div>
+          {addCatalogError && <p className="text-sm text-danger">{addCatalogError}</p>}
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              className="btn-outline"
+              onClick={() => {
+                setAddBrandOpen(false);
+                setAddModelOpen(false);
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="btn-primary"
+              disabled={!newCatalogName.trim() || addCatalogPending}
+              onClick={submitAddCatalog}
+            >
+              {addCatalogPending ? "Saving…" : "Save"}
+            </button>
+          </div>
+        </div>
+      </Modal>
       <SearchSelectModal
         open={solutionPickerOpen}
         onClose={() => setSolutionPickerOpen(false)}

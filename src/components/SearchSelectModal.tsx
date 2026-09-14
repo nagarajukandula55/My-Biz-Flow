@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Search } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import { Modal } from "./Modal";
 
 export type SearchSelectOption = {
@@ -18,6 +18,15 @@ type SearchSelectModalProps = {
   options: SearchSelectOption[];
   onSelect: (option: SearchSelectOption) => void;
   searchPlaceholder?: string;
+  /**
+   * Optional "+ Add new" affordance shown above the list — used by the
+   * Brand/Model pickers on the workorder repair page so a new catalog
+   * entry can be created without leaving the workorder. Omitted entirely
+   * (not just hidden) for pickers that shouldn't offer it, e.g. Parts and
+   * Solutions, and for a partner below the tier that allows it.
+   */
+  onAddNew?: () => void;
+  addNewLabel?: string;
 };
 
 /**
@@ -33,6 +42,8 @@ export function SearchSelectModal({
   options,
   onSelect,
   searchPlaceholder = "Search…",
+  onAddNew,
+  addNewLabel = "Add new",
 }: SearchSelectModalProps) {
   const [query, setQuery] = useState("");
 
@@ -62,6 +73,17 @@ export function SearchSelectModal({
           className="w-full rounded-md border border-border bg-bg py-2 pl-9 pr-3 text-sm text-text outline-none focus:border-accent"
         />
       </div>
+
+      {onAddNew && (
+        <button
+          type="button"
+          onClick={onAddNew}
+          className="mt-2 flex w-full items-center gap-1.5 rounded-md border border-dashed border-accent px-3 py-2 text-sm font-medium text-accent hover:bg-accent/5"
+        >
+          <Plus className="h-4 w-4" strokeWidth={2} />
+          {addNewLabel}
+        </button>
+      )}
 
       <ul className="mt-3 max-h-72 divide-y divide-border overflow-y-auto rounded-md border border-border">
         {filtered.length === 0 ? (
