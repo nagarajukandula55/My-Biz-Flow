@@ -676,8 +676,24 @@ model TelegramLogEntry {
   sent      Boolean  @default(false)
   reason    String?
   createdAt DateTime @default(now())
+  /// The Bot API's own id for the message actually sent (Telegram's
+  /// sendMessage response), captured only when `sent` is true. Together with
+  /// chatId this is the reply-threading key: an incoming Telegram message
+  /// whose `reply_to_message.message_id` matches this row is a reply to
+  /// THIS alert — see findWorkorderByReplyMessageId() in src/lib/telegram.ts
+  /// and the webhook route that calls it.
+  messageId Int?
+  /// Which Service Centre workorder this alert was about, when sent via
+  /// sendWorkorderTelegramAlert() rather than the generic
+  /// sendPartnerTelegramAlert() — null for occasions that aren't yet
+  /// workorder-aware (see src/lib/telegram.ts).
+  workorderId String?
 
   @@index([partnerId, createdAt])
+  /// Reply-threading lookup: given the chatId + message_id a reply came in
+  /// on, find the one log row (and therefore workorder) that message_id was
+  /// originally sent for.
+  @@index([chatId, messageId])
   @@map("telegram_log_entries")
 }
 

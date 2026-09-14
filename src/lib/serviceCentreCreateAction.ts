@@ -2,6 +2,9 @@
 
 import { createBusinessRecordAction } from "@/lib/businessRecordActions";
 import { getNextNumber } from "@/lib/designer/numbering";
+import { getPartner } from "@/lib/partnerData";
+import { sendWorkorderTelegramAlert } from "@/lib/telegram";
+import { newWorkorderCreatedMessage } from "@/lib/telegramTemplates";
 
 /**
  * Service-Centre-specific create action: validates intake, assigns the Job
@@ -84,6 +87,29 @@ export async function createServiceCentreWorkorderAction(
   }
 
   const now = new Date();
+
+  // Fire the "new workorder" Telegram alert BEFORE createBusinessRecordAction,
+  // since that call ends in redirect() (throws to abort the action) — nothing
+  // after it would ever run. This is the one occasion made fully
+  // workorder-aware end-to-end: sent via sendWorkorderTelegramAlert so the
+  // Bot API's message_id gets tracked (TelegramLogEntry.messageId/workorderId),
+  // letting a reply in Telegram get matched back to this exact workorder by
+  // the webhook route. Every other alert type in TELEGRAM_ALERT_TYPES still
+  // goes through the generic, non-threaded sendPartnerTelegramAlert.
+  const partner = await getPartner(partnerId);
+  if (partner) {
+    await sendWorkorderTelegramAlert(
+      partnerId,
+      jobId,
+      "newWorkorder",
+      newWorkorderCreatedMessage({
+        partnerBusinessName: partner.businessName,
+        workorderNumber: jobId,
+        customerName: String(values["customer"] ?? ""),
+      })
+    );
+  }
+
   await createBusinessRecordAction(partnerId, "service-centre", {
     ...values,
     id: jobId,

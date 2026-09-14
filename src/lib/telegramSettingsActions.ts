@@ -5,6 +5,7 @@ import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import {
   saveTelegramSettings,
   sendPartnerTelegramAlert,
+  disconnectTelegramChat,
   TELEGRAM_ALERT_TYPES,
   TELEGRAM_REPORT_FREQUENCIES,
   type TelegramAlertType,
@@ -35,5 +36,16 @@ export async function saveTelegramSettingsAction(partnerId: string, formData: Fo
 export async function sendTestTelegramMessageAction(partnerId: string): Promise<void> {
   await requireSessionPartnerId(partnerId);
   await sendPartnerTelegramAlert(partnerId, "test", "🔔 This is a test message from your Telegram Alerts setup.");
+  revalidatePath(`/partner/${partnerId}/service-centre/telegram`);
+}
+
+/**
+ * "Disconnect" — clears the chat captured by the deep-link connect flow (or
+ * a manually-entered chat id), so alerts stop going to that chat until the
+ * partner connects again. Alert-type/report-frequency settings are kept.
+ */
+export async function disconnectTelegramAction(partnerId: string): Promise<void> {
+  await requireSessionPartnerId(partnerId);
+  await disconnectTelegramChat(partnerId);
   revalidatePath(`/partner/${partnerId}/service-centre/telegram`);
 }

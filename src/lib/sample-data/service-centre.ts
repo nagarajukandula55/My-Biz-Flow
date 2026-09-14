@@ -8,6 +8,7 @@ import {
   VEHICLE_CATEGORY_LABELS,
 } from "@/lib/catalog/vehicleCategory";
 import { PRODUCT_DOMAIN_LABELS } from "@/lib/catalog/productDomains";
+import type { TelegramChatLogEntry } from "@/lib/telegram";
 
 // Workorder (JobSheet) sample data for the service-centre module — realistic
 // field modeling, no backend wired up in this pass beyond the BusinessRecord
@@ -388,6 +389,12 @@ export function extractLifecycleFromRecord(record: Row): {
   paymentCollected?: boolean;
   paymentMode?: string;
   paymentCollectedAmount?: number;
+  /** Two-way Telegram thread for this workorder — the outbound alert(s) sent
+   * via sendWorkorderTelegramAlert plus any incoming replies the webhook
+   * route matched back to this workorder (src/lib/telegram.ts). Rendered
+   * into the unified activity feed by getServiceCentreTimeline below rather
+   * than as a second disconnected panel. */
+  telegramChatLog: TelegramChatLogEntry[];
 } {
   return {
     stage: (record["stage"] as WorkorderStage | undefined) ?? "Created",
@@ -414,6 +421,7 @@ export function extractLifecycleFromRecord(record: Row): {
     paymentCollected: Boolean(record["paymentCollected"]),
     paymentMode: record["paymentMode"] as string | undefined,
     paymentCollectedAmount: record["paymentCollectedAmount"] as number | undefined,
+    telegramChatLog: (record["telegramChatLog"] as TelegramChatLogEntry[] | undefined) ?? [],
   };
 }
 
@@ -746,6 +754,17 @@ export function getServiceCentreTimeline(record: Row): TimelineEntry[] {
     const mode = record["paymentMode"] ? ` via ${String(record["paymentMode"])}` : "";
     push("payment", `Payment collected${mode}`, record["paymentCollectedAt"]);
   }
+
+  // Two-way Telegram thread — outbound alerts + any incoming replies the
+  // webhook matched to this workorder (see extractLifecycleFromRecord's
+  // telegramChatLog / src/lib/telegram.ts). Folded into the same activity
+  // feed rather than a second disconnected panel, per direction.
+  const chatLog = (record["telegramChatLog"] as TelegramChatLogEntry[] | undefined) ?? [];
+  chatLog.forEach((entry, i) => {
+    if (!entry || typeof entry.at !== "string") return;
+    const label = entry.direction === "in" ? `Telegram reply: "${entry.text}"` : `Telegram alert sent: "${entry.text}"`;
+    push(`telegram-${i}`, label, entry.at);
+  });
 
   return entries.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
 }

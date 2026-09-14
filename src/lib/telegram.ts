@@ -14,6 +14,7 @@
  */
 import { prisma } from "@/lib/prisma";
 import { env } from "@/lib/env";
+import { getBusinessRecord, updateBusinessRecord } from "@/lib/businessRecords";
 
 export const TELEGRAM_ALERT_TYPES = [
   { key: "newWorkorder", label: "New workorder assigned" },
@@ -100,6 +101,8 @@ async function recordTelegramLog(input: {
   chatId: string | null;
   sent: boolean;
   reason: string | null;
+  messageId?: number | null;
+  workorderId?: string | null;
 }): Promise<void> {
   try {
     await prisma.telegramLogEntry.create({
@@ -119,39 +122,180 @@ async function recordTelegramLog(input: {
  * alert type and set a chatId. Every attempt — sent or not — is recorded
  * to TelegramLogEntry so the settings page has a real activity history.
  * Never throws — this is best-effort, matching sendSms()'s posture.
+ *
+ * When `workorderId` is given, the sent message's own Bot API message_id is
+ * captured onto the log row alongside it — that's the reply-threading key
+ * findWorkorderByReplyMessageId() below reads from, so a later reply in the
+ * partner's Telegram chat can be matched back to this exact workorder. Most
+ * callers should go through the plain sendPartnerTelegramAlert() below;
+ * sendWorkorderTelegramAlert() is the one that actually passes a
+ * workorderId.
  */
-export async function sendPartnerTelegramAlert(
+async function sendTelegramAlertInternal(
   partnerId: string,
   type: TelegramAlertType | "test",
-  message: string
+  message: string,
+  workorderId: string | null
 ): Promise<void> {
   const settings = await getTelegramSettings(partnerId);
 
   if (!settings.chatId) {
-    await recordTelegramLog({ partnerId, type, message, chatId: null, sent: false, reason: "no chat id configured" });
+    await recordTelegramLog({ partnerId, type, message, chatId: null, sent: false, reason: "no chat id configured", workorderId });
     return;
   }
   if (type !== "test" && !settings.enabledTypes.includes(type)) {
-    await recordTelegramLog({ partnerId, type, message, chatId: settings.chatId, sent: false, reason: "alert type disabled" });
+    await recordTelegramLog({ partnerId, type, message, chatId: settings.chatId, sent: false, reason: "alert type disabled", workorderId });
     return;
   }
 
   const botToken = env.telegramBotToken();
   if (!botToken) {
     console.log(`[telegram:not-configured] would send to partner ${partnerId} chat ${settings.chatId}: ${message}`);
-    await recordTelegramLog({ partnerId, type, message, chatId: settings.chatId, sent: false, reason: "not configured — no TELEGRAM_BOT_TOKEN" });
+    await recordTelegramLog({
+      partnerId, type, message, chatId: settings.chatId, sent: false,
+      reason: "not configured — no TELEGRAM_BOT_TOKEN", workorderId,
+    });
     return;
   }
 
   try {
-    await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+    const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ chat_id: settings.chatId, text: message, parse_mode: "Markdown" }),
     });
-    await recordTelegramLog({ partnerId, type, message, chatId: settings.chatId, sent: true, reason: null });
+    // Telegram's sendMessage response carries the sent message's own
+    // message_id (result.message_id) — this is what a reply's
+    // reply_to_message.message_id will echo back, so it's the only real
+    // key for mapping a future reply to `workorderId`.
+    let sentMessageId: number | null = null;
+    try {
+      const body = (await res.json()) as { ok?: boolean; result?: { message_id?: number } };
+      if (body.ok && typeof body.result?.message_id === "number") {
+        sentMessageId = body.result.message_id;
+      }
+    } catch {
+      // Response body wasn't valid JSON — still record the send attempt below.
+    }
+    await recordTelegramLog({
+      partnerId, type, message, chatId: settings.chatId, sent: true, reason: null,
+      messageId: sentMessageId, workorderId,
+    });
   } catch (err) {
     console.error("[telegram] send failed:", err);
-    await recordTelegramLog({ partnerId, type, message, chatId: settings.chatId, sent: false, reason: "send failed" });
+    await recordTelegramLog({ partnerId, type, message, chatId: settings.chatId, sent: false, reason: "send failed", workorderId });
   }
+}
+
+/** Generic alert send — not tied to a specific workorder. Kept for occasions
+ * that don't (yet) need reply-threading: paymentReceived, paymentDue,
+ * lowStock, subscriptionExpiring, generalAnnouncement, and the test button. */
+export async function sendPartnerTelegramAlert(
+  partnerId: string,
+  type: TelegramAlertType | "test",
+  message: string
+): Promise<void> {
+  await sendTelegramAlertInternal(partnerId, type, message, null);
+}
+
+/**
+ * Workorder-aware alert send — identical delivery/logging to
+ * sendPartnerTelegramAlert(), except the sent message's own message_id is
+ * captured and tied to `workorderId` on the TelegramLogEntry row, so a
+ * partner replying to this exact message in Telegram can be matched back to
+ * this workorder (see findWorkorderByReplyMessageId() + the webhook route).
+ * Currently wired only for the "new workorder" alert on workorder creation —
+ * see createServiceCentreWorkorderAction.
+ */
+export async function sendWorkorderTelegramAlert(
+  partnerId: string,
+  workorderId: string,
+  type: TelegramAlertType,
+  message: string
+): Promise<void> {
+  await sendTelegramAlertInternal(partnerId, type, message, workorderId);
+}
+
+/**
+ * Reply-threading lookup: given the chat a reply came in on and the
+ * message_id it was a reply TO (Telegram's
+ * update.message.reply_to_message.message_id), finds which
+ * (partnerId, workorderId) that original message was sent for. Returns null
+ * when no matching outbound alert is on record (e.g. the reply is to some
+ * other message, or threading was never enabled for that occasion).
+ */
+export async function findWorkorderByReplyMessageId(
+  chatId: string,
+  messageId: number
+): Promise<{ partnerId: string; workorderId: string } | null> {
+  const row = await prisma.telegramLogEntry.findFirst({
+    where: { chatId, messageId, sent: true, workorderId: { not: null } },
+    orderBy: { createdAt: "desc" },
+  });
+  if (!row || !row.workorderId) return null;
+  return { partnerId: row.partnerId, workorderId: row.workorderId };
+}
+
+/** One entry in a workorder's Telegram chat log — see appendTelegramChatLogEntry(). */
+export type TelegramChatLogEntry = {
+  at: string;
+  direction: "in" | "out";
+  text: string;
+  chatId: string;
+};
+
+/**
+ * Appends one entry to a workorder's `telegramChatLog` array field
+ * (service-centre BusinessRecord) — real-modify-write against the JSON
+ * blob, same pattern createInvoiceFromWorkorderAction/deductInventoryForWorkorderAction
+ * already use. Called by the webhook route when an incoming reply is
+ * matched to a workorder, so it shows up in that workorder's own activity
+ * feed (getServiceCentreTimeline in sample-data/service-centre.ts).
+ */
+export async function appendTelegramChatLogEntry(
+  partnerId: string,
+  workorderId: string,
+  entry: Omit<TelegramChatLogEntry, "at">
+): Promise<void> {
+  const record = await getBusinessRecord(partnerId, "service-centre", workorderId);
+  if (!record) {
+    console.error(`[telegram] cannot log chat reply — workorder "${workorderId}" not found for partner "${partnerId}"`);
+    return;
+  }
+  const existing = (record["telegramChatLog"] as TelegramChatLogEntry[] | undefined) ?? [];
+  const next: TelegramChatLogEntry[] = [...existing, { ...entry, at: new Date().toISOString() }];
+  await updateBusinessRecord(partnerId, "service-centre", workorderId, { ...record, telegramChatLog: next });
+}
+
+/**
+ * The "Connect Telegram" deep link shown on the Telegram Alerts page —
+ * https://t.me/<bot_username>?start=<partnerId>. Opening it in Telegram and
+ * hitting Start sends a /start <partnerId> command to the bot, which the
+ * webhook route (src/app/api/telegram/webhook/route.ts) handles by calling
+ * connectTelegramChat() below. Returns null when TELEGRAM_BOT_USERNAME isn't
+ * configured yet, so the page can show a "not set up" state instead of a
+ * dead link.
+ */
+export function buildTelegramConnectLink(partnerId: string): string | null {
+  const username = env.telegramBotUsername();
+  if (!username) return null;
+  return `https://t.me/${username}?start=${encodeURIComponent(partnerId)}`;
+}
+
+/**
+ * Called by the webhook route on a `/start <partnerId>` command — saves the
+ * chat that sent it as this partner's TelegramSettings.chatId, replacing the
+ * old manual-entry flow with an automatic capture. Preserves whatever
+ * enabledTypes/reportFrequency the partner already had configured (or the
+ * defaults, for a brand-new connection).
+ */
+export async function connectTelegramChat(partnerId: string, chatId: string): Promise<void> {
+  const existing = await getTelegramSettings(partnerId);
+  await saveTelegramSettings(partnerId, chatId, existing.enabledTypes, existing.reportFrequency);
+}
+
+/** Clears a partner's connected chat — the "Disconnect" affordance on the Telegram Alerts page. */
+export async function disconnectTelegramChat(partnerId: string): Promise<void> {
+  const existing = await getTelegramSettings(partnerId);
+  await saveTelegramSettings(partnerId, "", existing.enabledTypes, existing.reportFrequency);
 }

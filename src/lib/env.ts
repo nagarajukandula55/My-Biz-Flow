@@ -100,4 +100,17 @@ export const env = {
    * which isn't set up here yet; unset means sendPartnerTelegramAlert() logs instead of
    * sending, same graceful-degradation posture as sms.ts. From @BotFather on Telegram. */
   telegramBotToken: () => process.env.TELEGRAM_BOT_TOKEN,
+  /** Bot's own @username (no leading @), e.g. "MyBizFlowAlertsBot" — the token alone doesn't
+   * tell you the bot's handle, and the "Connect Telegram" deep link
+   * (https://t.me/<username>?start=<partnerId>) needs it. Set from @BotFather ("/mybots" ->
+   * your bot -> shows its @username). Unset means the Connect button on the Telegram Alerts
+   * page can't render a real link yet. */
+  telegramBotUsername: () => process.env.TELEGRAM_BOT_USERNAME,
+  /** Shared secret registered as `secret_token` on Telegram's setWebhook call — Telegram
+   * echoes it back as the `X-Telegram-Bot-Api-Secret-Token` header on every webhook POST
+   * (see src/app/api/telegram/webhook/route.ts), which is this route's ONLY verification
+   * that a request genuinely came from Telegram (Telegram doesn't sign webhook bodies the
+   * way Razorpay does). Unset means the webhook rejects every request — set this to any
+   * random string and pass the SAME value as `secret_token` in the setWebhook call below. */
+  telegramWebhookSecret: () => process.env.TELEGRAM_WEBHOOK_SECRET,
 };
