@@ -373,6 +373,8 @@ export function extractLifecycleFromRecord(record: Row): {
   onHold?: boolean;
   holdReason?: string;
   holdSince?: string;
+  /** The brand's/supplier's reference for the part order raised while the job waits on stock. */
+  brandJobNoForPartOrder?: string;
   estimateApproved?: boolean;
   invoiceId?: string;
   partLines: PartLine[];
@@ -399,6 +401,7 @@ export function extractLifecycleFromRecord(record: Row): {
     onHold: Boolean(record["onHold"]),
     holdReason: record["holdReason"] as string | undefined,
     holdSince: record["holdSince"] as string | undefined,
+    brandJobNoForPartOrder: record["brandJobNoForPartOrder"] as string | undefined,
     estimateApproved: Boolean(record["estimateApproved"]),
     invoiceId: record["invoiceId"] as string | undefined,
     partLines: (record["partLines"] as PartLine[] | undefined) ?? [],
@@ -444,6 +447,13 @@ export const serviceCentreColumns: Column[] = [
   // --- Future-proofing fields (beyond AN-CRM's current CrmJobSheet shape) ---
   { key: "imeiOrSerialNumber", label: "IMEI / Serial Number", type: "text" },
   { key: "faultDescription", label: "Fault in Device", type: "text" },
+  // Collected on the intake/edit form and shown on the detail view, but
+  // previously absent from `columns` — which meant neither the printed job
+  // card (DocumentView renders from `columns`) nor the report builder could
+  // ever show them. Both belong on a handover document: the customer's own
+  // description of the fault, and what was physically handed in with the unit.
+  { key: "issueDescription", label: "Issue Description", type: "text" },
+  { key: "standardAccessories", label: "Accessories Received", type: "text" },
   { key: "remark", label: "Remark", type: "text" },
   { key: "deviceAppearance", label: "Appearance", type: "select-chip" },
   { key: "fileBackupDescription", label: "File Backup Done", type: "text" },

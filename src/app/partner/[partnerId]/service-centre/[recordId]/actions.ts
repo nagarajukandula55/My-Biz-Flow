@@ -91,6 +91,21 @@ function assertLegalStageTransition(
     }
   }
 
+  if (nextStage === "Completed") {
+    // Mirrors the reference app's close route ("Cannot close a job sheet
+    // with no line items — add at least one before closing"): a repair that
+    // consumed no part and performed no service has nothing to invoice, and
+    // letting it through produces an empty Sales Invoice at handover.
+    // Warranty jobs are exempt from being CHARGED, not from being recorded.
+    const partLines = (existing["partLines"] as unknown[] | undefined) ?? [];
+    const serviceLines = (existing["serviceLines"] as unknown[] | undefined) ?? [];
+    if (partLines.length === 0 && serviceLines.length === 0) {
+      throw new Error(
+        "This workorder has no parts or service lines — add at least one before marking the repair completed."
+      );
+    }
+  }
+
   if (nextStage === "Closed") {
     const partLines = (existing["partLines"] as { serialized?: boolean; serial?: string; pending?: boolean }[] | undefined) ?? [];
     const unresolvedSerials = partLines.filter((p) => p.serialized && !p.serial && !p.pending);

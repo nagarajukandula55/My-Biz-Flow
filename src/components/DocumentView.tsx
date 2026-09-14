@@ -40,6 +40,10 @@ export async function DocumentView({
   sequenceIndex,
   lineItems,
   printSizes = ["a4"],
+  fieldKeys,
+  totals,
+  footerNote,
+  signatures,
 }: {
   pageId: string;
   /** The numbering system's document-type id, e.g. "billing.document" — see NUMBERED_DOCUMENT_TYPES. */
@@ -57,6 +61,23 @@ export async function DocumentView({
   /** Which page sizes this document offers a screen toggle for — e.g. Service Centre's
    * Sales Invoice is A4/A5 only, POS additionally offers Thermal. Defaults to A4 only. */
   printSizes?: PrintSize[];
+  /**
+   * Curated subset of `columns`, in print order. A record's column set is
+   * built for a LIST (every operational/routing/costing field), which is not
+   * the same thing as what belongs on a document handed to a customer — a job
+   * card showing pickup latitude and internal cost estimates is an internal
+   * sheet, not a handover receipt. When omitted every column still prints, so
+   * every other module's document is unchanged.
+   */
+  fieldKeys?: string[];
+  /** Overrides the totals read off the record — for documents whose figures
+   * are derived rather than stored (e.g. an estimate, priced live from the
+   * workorder's current parts/service lines). */
+  totals?: { subtotal: number; tax: number; total: number };
+  /** Declaration / disclaimer printed under the body, e.g. "not a tax invoice". */
+  footerNote?: string;
+  /** Signature lines printed at the foot of the document. */
+  signatures?: string[];
 }) {
   const customTemplate = await getDocumentTemplate(pageId);
   const scheme = await getEffectiveScheme(documentType, partnerId);
@@ -96,7 +117,11 @@ export async function DocumentView({
           ) : (
             <>
               <dl className="mt-6 grid grid-cols-2 gap-x-8 gap-y-4">
-                {columns
+                {(fieldKeys
+                  ? (fieldKeys
+                      .map((key) => columns.find((c) => c.key === key))
+                      .filter((c): c is Column => Boolean(c)))
+                  : columns)
                   .filter((c) => c.key !== "id" && c.key !== "lineItemsSummary")
                   .filter((c) => !(lineItems && lineItems.length > 0 && ["subtotal", "taxAmount", "totalAmount"].includes(c.key)))
                   .map((col) => (
@@ -151,19 +176,19 @@ export async function DocumentView({
                       <div className="flex justify-between text-text-muted">
                         <span>Subtotal</span>
                         <span className="font-mono tabular-nums">
-                          {formatCurrencyINR(Number(record["subtotal"]) || 0)}
+                          {formatCurrencyINR(totals ? totals.subtotal : Number(record["subtotal"]) || 0)}
                         </span>
                       </div>
                       <div className="mt-1.5 flex justify-between text-text-muted">
                         <span>Tax</span>
                         <span className="font-mono tabular-nums">
-                          {formatCurrencyINR(Number(record["taxAmount"]) || 0)}
+                          {formatCurrencyINR(totals ? totals.tax : Number(record["taxAmount"]) || 0)}
                         </span>
                       </div>
                       <div className="mt-2 flex justify-between border-t border-border pt-2 text-base font-bold text-text">
                         <span>Total</span>
                         <span className="font-mono tabular-nums">
-                          {formatCurrencyINR(Number(record["totalAmount"]) || 0)}
+                          {formatCurrencyINR(totals ? totals.total : Number(record["totalAmount"]) || 0)}
                         </span>
                       </div>
                     </div>
@@ -171,6 +196,23 @@ export async function DocumentView({
                 </div>
               )}
             </>
+          )}
+
+          {/* Signature block + declaration — what turns a field dump into a
+              document the customer actually signs on handover. Only rendered
+              for documents that ask for them, so other modules are unchanged. */}
+          {signatures && signatures.length > 0 && (
+            <div className="mt-12 flex flex-wrap justify-between gap-8">
+              {signatures.map((label) => (
+                <div key={label} className="min-w-[180px] flex-1">
+                  <div className="h-10 border-b border-border" />
+                  <div className="mt-1.5 text-xs text-text-muted">{label}</div>
+                </div>
+              ))}
+            </div>
+          )}
+          {footerNote && (
+            <p className="mt-8 border-t border-border pt-4 text-xs leading-relaxed text-text-muted">{footerNote}</p>
           )}
         </div>
         </PrintFrame>

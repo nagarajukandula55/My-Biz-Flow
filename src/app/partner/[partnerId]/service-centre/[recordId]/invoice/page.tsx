@@ -1,12 +1,12 @@
-import { extractLifecycleFromRecord } from "@/lib/sample-data/service-centre";
+import { buildServiceCentreLines } from "@/lib/serviceCentreLines";
 import { getEffectiveScheme } from "@/lib/designer/numbering";
 import { formatNumber } from "@/lib/designer/numberingFormat";
 import { registerPage } from "@/lib/designer/registry";
 import { notFound } from "next/navigation";
 import { getDocumentTemplate } from "@/lib/designer/documentTemplates";
 import { getPartner } from "@/lib/partnerData";
-import { getBusinessRecord, getBusinessRecordSequenceIndex, getBusinessRecordsByKeys } from "@/lib/businessRecords";
-import { ServiceCentreInvoiceDocument, type InvoiceLine } from "./ServiceCentreInvoiceDocument";
+import { getBusinessRecord, getBusinessRecordSequenceIndex } from "@/lib/businessRecords";
+import { ServiceCentreInvoiceDocument } from "./ServiceCentreInvoiceDocument";
 
 registerPage({
   id: "service-centre.invoice",
@@ -32,7 +32,7 @@ export default async function ServiceCentreInvoicePage({
   const sequenceIndex = await getBusinessRecordSequenceIndex(params.partnerId, "service-centre", params.recordId);
   const scheme = await getEffectiveScheme("service-centre.invoice", params.partnerId);
   const invoiceNumber = formatNumber(scheme, scheme.sequenceStart + sequenceIndex);
-  const lines = await buildInvoiceLines(params.partnerId, record);
+  const lines = await buildServiceCentreLines(params.partnerId, record);
   const customTemplate = await getDocumentTemplate("service-centre.invoice");
 
   return (
@@ -73,46 +73,4 @@ export default async function ServiceCentreInvoicePage({
       customTemplate={customTemplate}
     />
   );
-}
-
-/**
- * Derives Sales Invoice line items from a workorder's Parts & Service
- * Lines, looking materials up in THIS partner's own live BOM (not the
- * global sample catalog). Warranty jobs are non-chargeable: every line's
- * rate is zeroed rather than silently charging a warranty repair (the
- * same rule createInvoiceFromWorkorderAction, ../actions.ts, applies when
- * persisting the real Billing invoice).
- */
-async function buildInvoiceLines(partnerId: string, record: Awaited<ReturnType<typeof getBusinessRecord>>): Promise<InvoiceLine[]> {
-  if (!record) return [];
-  const underWarranty = Boolean(record["warrantyFlag"]);
-  const lifecycle = extractLifecycleFromRecord(record);
-  const items: InvoiceLine[] = [];
-  for (const line of lifecycle.serviceLines) {
-    items.push({ description: line.solutionLabel, hsn: "9987", quantity: 1, rate: underWarranty ? 0 : line.laborCharge, gstRate: 18 });
-  }
-
-  // Batch-fetch every referenced BOM material in one query instead of one
-  // getBusinessRecord() round-trip per part line.
-  const materialsById = await getBusinessRecordsByKeys(
-    partnerId,
-    "inventory-bom",
-    lifecycle.partLines.map((line) => line.materialId)
-  );
-  for (const line of lifecycle.partLines) {
-    const material = materialsById.get(line.materialId);
-    items.push({
-      description: line.materialLabel,
-      hsn: String(material?.["hsnCode"] ?? ""),
-      quantity: line.qty,
-      // Prefer the price stamped onto the line when it was added — that's
-      // the figure createInvoiceFromWorkorderAction bills and the customer
-      // approved, so the printed document can't drift from the persisted
-      // invoice if the catalog price changes afterwards. Falls back to the
-      // live catalog for lines added before prices were stamped.
-      rate: underWarranty ? 0 : Number(line.unitPrice ?? material?.["rate"] ?? 0),
-      gstRate: Number(line.taxRate ?? material?.["taxPercent"] ?? 18),
-    });
-  }
-  return items;
 }

@@ -113,6 +113,7 @@ export default async function ServiceCentreDetailPage({
           technicianName={lifecycle.technicianName}
           onHold={lifecycle.onHold}
           holdReason={lifecycle.holdReason}
+          brandJobNoForPartOrder={lifecycle.brandJobNoForPartOrder}
           estimateApproved={lifecycle.estimateApproved}
           underWarranty={Boolean(record["warrantyFlag"])}
           invoiceId={lifecycle.invoiceId}

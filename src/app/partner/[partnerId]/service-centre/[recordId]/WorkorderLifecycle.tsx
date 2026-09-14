@@ -69,6 +69,7 @@ export function WorkorderLifecycle({
   technicianName,
   onHold,
   holdReason,
+  brandJobNoForPartOrder,
   estimateApproved,
   underWarranty,
   invoiceId,
@@ -95,6 +96,13 @@ export function WorkorderLifecycle({
   technicianName?: string;
   onHold?: boolean;
   holdReason?: string;
+  /**
+   * The brand's/supplier's own reference for the part order raised while
+   * this job waits on stock — the reference app captures the same thing
+   * (brandJobNoForPartOrder) when a job is marked Part Pending, and it's
+   * the only way to chase the order afterwards.
+   */
+  brandJobNoForPartOrder?: string;
   estimateApproved?: boolean;
   underWarranty: boolean;
   invoiceId?: string;
@@ -135,6 +143,10 @@ export function WorkorderLifecycle({
   const [model, setModel] = useState({ id: modelId, name: modelName });
   const [technician, setTechnician] = useState({ id: technicianId, name: technicianName });
   const [hold, setHold] = useState(Boolean(onHold));
+  const [holdModalOpen, setHoldModalOpen] = useState(false);
+  const [holdReasonDraft, setHoldReasonDraft] = useState("");
+  const [brandJobNoDraft, setBrandJobNoDraft] = useState(brandJobNoForPartOrder ?? "");
+  const [brandJobNo, setBrandJobNo] = useState(brandJobNoForPartOrder ?? "");
   const [approved, setApproved] = useState(Boolean(estimateApproved) || underWarranty);
   const [invoice, setInvoice] = useState(invoiceId);
   const [cancelled, setCancelled] = useState(Boolean(cancelledAt));
@@ -174,6 +186,28 @@ export function WorkorderLifecycle({
   const laborTotal = serviceLines.reduce((sum, l) => sum + (l.laborCharge || 0), 0);
   const partsTotal = partLines.reduce((sum, p) => (p.pending ? sum : sum + (p.unitPrice || 0) * (p.qty || 1)), 0);
   const estimateTotal = laborTotal + partsTotal;
+  /**
+   * Live tax preview over the same lines, mirroring the reference app's
+   * Parts & Service Lines footer — previously the operator could see a bare
+   * labour/parts figure but never what the customer would actually be asked
+   * to pay, which is the taxed total. Labour is SAC 9987 @ 18%, parts use
+   * each line's own stamped slab — the same rates buildServiceCentreLines()
+   * puts on the Estimate and the Sales Invoice, so the three agree.
+   *
+   * Split CGST/SGST here assumes intra-state supply, the common case and the
+   * same assumption the reference app's live preview makes; the printed
+   * invoice is where place of supply is resolved for real (a customer in
+   * another state is taxed IGST at the full slab instead).
+   */
+  const laborTax = laborTotal * 0.18;
+  const partsTax = partLines.reduce(
+    (sum, p) => (p.pending ? sum : sum + (p.unitPrice || 0) * (p.qty || 1) * ((p.taxRate ?? 18) / 100)),
+    0
+  );
+  const taxTotal = underWarranty ? 0 : laborTax + partsTax;
+  const chargeableSubtotal = underWarranty ? 0 : estimateTotal;
+  const inr = (value: number) =>
+    value.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const editable = stage === "In Progress" && !hold && !cancelled;
   const terminal = cancelled || stage === "Closed";
@@ -274,10 +308,32 @@ export function WorkorderLifecycle({
     persist({ technicianId: option.value, technicianName: option.label, assignedAt });
   }
 
-  function toggleHold() {
-    const next = !hold;
-    setHold(next);
-    run(() => setWorkorderHoldAction(partnerId, workorderId, next));
+  /**
+   * Going on hold now captures WHY and the brand's part-order reference
+   * (the reference app's Mark Part Pending modal does the same) instead of
+   * silently stamping the hardcoded "Awaiting parts" the bare toggle used
+   * to — with no reference, a stalled job had nothing to chase the supplier
+   * with. Resuming needs no prompt, so it stays a one-click action.
+   */
+  function confirmHold() {
+    const reason = holdReasonDraft.trim() || "Awaiting parts";
+    const ref = brandJobNoDraft.trim();
+    run(
+      async () => {
+        await setWorkorderHoldAction(partnerId, workorderId, true, reason);
+        await patchServiceCentreWorkorderAction(partnerId, workorderId, { brandJobNoForPartOrder: ref || undefined });
+      },
+      () => {
+        setHold(true);
+        setBrandJobNo(ref);
+        setHoldModalOpen(false);
+      }
+    );
+  }
+
+  function resumeFromHold() {
+    setHold(false);
+    run(() => setWorkorderHoldAction(partnerId, workorderId, false));
   }
 
   function createInvoice() {
@@ -325,6 +381,15 @@ export function WorkorderLifecycle({
     if (next === "In Progress" && !approved) {
       setCloseBlockedMessage(
         "The customer must approve the estimate before repair work starts (skipped automatically for in-warranty jobs)."
+      );
+      return;
+    }
+    // Mirrors assertLegalStageTransition's server-side rule (and the
+    // reference app's close route): a repair with nothing recorded against
+    // it would produce an empty invoice at handover.
+    if (next === "Completed" && serviceLines.length === 0 && partLines.length === 0) {
+      setCloseBlockedMessage(
+        "Add at least one part or service line before marking the repair completed — otherwise there's nothing to hand over or invoice."
       );
       return;
     }
@@ -443,10 +508,26 @@ export function WorkorderLifecycle({
 
       {/* Hold (Parts Pending) — a side-state, not a stage; pauses editing without cancelling the job */}
       {stage === "In Progress" && !cancelled && (
-        <div className="mt-4">
-          <button type="button" className="btn-outline text-xs" onClick={toggleHold}>
-            {hold ? "Resume from Hold" : "Put On Hold (awaiting parts)"}
-          </button>
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          {hold ? (
+            <button type="button" className="btn-outline text-xs" onClick={resumeFromHold}>
+              Resume Repair
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="btn-outline text-xs"
+              onClick={() => {
+                setHoldReasonDraft(holdReason ?? "");
+                setBrandJobNoDraft(brandJobNo);
+                setActionError(null);
+                setHoldModalOpen(true);
+              }}
+            >
+              Mark Part Pending
+            </button>
+          )}
+          {brandJobNo && <span className="text-xs text-text-muted">Brand Job No.: {brandJobNo}</span>}
         </div>
       )}
 
@@ -540,6 +621,39 @@ export function WorkorderLifecycle({
             ))}
           </div>
         )}
+
+        {/* Totals footer — subtotal / CGST / SGST / payable, matching the
+            reference app's own line-items footer. */}
+        {(serviceLines.length > 0 || partLines.length > 0) && (
+          <div className="mt-4 space-y-1 border-t border-border pt-3">
+            <div className="flex items-center justify-between text-xs text-text-muted">
+              <span>Subtotal</span>
+              <span className="tabular-nums">₹{inr(chargeableSubtotal)}</span>
+            </div>
+            {!underWarranty && (
+              <>
+                <div className="flex items-center justify-between text-xs text-text-muted">
+                  <span>CGST</span>
+                  <span className="tabular-nums">₹{inr(taxTotal / 2)}</span>
+                </div>
+                <div className="flex items-center justify-between text-xs text-text-muted">
+                  <span>SGST</span>
+                  <span className="tabular-nums">₹{inr(taxTotal / 2)}</span>
+                </div>
+              </>
+            )}
+            <div className="flex items-center justify-between border-t border-border pt-1.5 text-sm font-semibold text-text">
+              <span>{underWarranty ? "Payable" : "Total"}</span>
+              <span className="tabular-nums">₹{inr(chargeableSubtotal + taxTotal)}</span>
+            </div>
+            {underWarranty && (
+              <p className="text-xs text-text-muted">
+                Costs above are for internal tracking only — this job is under warranty and non-chargeable, so every
+                invoice line bills at zero.
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Handover & Close, only surfaces after Completed */}
@@ -572,8 +686,16 @@ export function WorkorderLifecycle({
           </button>
         )}
         <Link href={`/partner/${partnerId}/service-centre/${workorderId}/document`} className="btn-outline">
-          View Service Order
+          Print Job Card
         </Link>
+        {/* The priced quote the customer approves. Only offered once there's
+            something to price, and never for a warranty job — a
+            non-chargeable repair has no estimate to approve. */}
+        {!underWarranty && !cancelled && (serviceLines.length > 0 || partLines.length > 0) && (
+          <Link href={`/partner/${partnerId}/service-centre/${workorderId}/estimate`} className="btn-outline">
+            Print Estimate
+          </Link>
+        )}
         {/* Cancel is available from any non-terminal stage — a job can be
             abandoned before, during, or after repair, but never once it's
             already Closed or Cancelled. */}
@@ -671,6 +793,49 @@ export function WorkorderLifecycle({
           This part will be marked pending — a Return/Purchase Order can be raised from Inventory to fulfill it.
           Continue?
         </p>
+      </Modal>
+      {/* Mark Part Pending — captures the reason and the brand's part-order
+          reference, matching the reference app's own Part Pending modal. */}
+      <Modal
+        open={holdModalOpen}
+        onClose={() => setHoldModalOpen(false)}
+        title="Mark Part Pending"
+        size="sm"
+        footer={
+          <>
+            <button type="button" className="btn-outline" onClick={() => setHoldModalOpen(false)}>
+              Cancel
+            </button>
+            <button type="button" className="btn-accent" onClick={confirmHold}>
+              Mark Part Pending
+            </button>
+          </>
+        }
+      >
+        <p className="text-sm text-text-muted">
+          This pauses editing on the job without cancelling it. Record what it&apos;s waiting on, and the supplier&apos;s
+          own reference for the part order if one was raised.
+        </p>
+        <label className="mt-3 block text-xs font-semibold uppercase tracking-wide text-text-muted">
+          Reason
+          <input
+            type="text"
+            value={holdReasonDraft}
+            onChange={(e) => setHoldReasonDraft(e.target.value)}
+            placeholder="Awaiting parts"
+            className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm font-normal normal-case tracking-normal text-text"
+          />
+        </label>
+        <label className="mt-3 block text-xs font-semibold uppercase tracking-wide text-text-muted">
+          Brand Job No. <span className="font-normal normal-case">(optional)</span>
+          <input
+            type="text"
+            value={brandJobNoDraft}
+            onChange={(e) => setBrandJobNoDraft(e.target.value)}
+            placeholder="The brand's / supplier's part-order reference"
+            className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm font-normal normal-case tracking-normal text-text"
+          />
+        </label>
       </Modal>
       <Modal
         open={confirmCloseOpen}
