@@ -74,7 +74,15 @@ export async function buildPartnerNavGroups(visibleSlugs?: string[]): Promise<Pa
 
   return [
     { title: "Brand", items: toItems(groups.brand) },
-    { title: "Modules", items: toItems(groups.vertical) },
-    { title: "Cross-cutting", items: toItems(groups["cross-cutting"]) },
+    // Was "Modules" — every nav item here already IS a module, so the old
+    // title said nothing about what's actually in the group (which business
+    // type this partner runs: POS, Service Centre, Clinic, etc).
+    { title: "Business Modules", items: toItems(groups.vertical) },
+    // Was "Cross-cutting" — internal engineering jargon (taxonomy name
+    // leaking into partner-facing UI). These are the add-ons that work
+    // alongside whichever business module(s) above are active (Inventory,
+    // Accounting/GST, Loyalty & Rewards, HRMS, Marketplace, Field Force),
+    // which "Shared Tools" actually describes.
+    { title: "Shared Tools", items: toItems(groups["cross-cutting"]) },
   ].filter((group) => group.items.length > 0);
 }

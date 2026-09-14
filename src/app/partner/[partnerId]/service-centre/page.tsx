@@ -14,7 +14,11 @@ import {
   computeDisplayStatus,
 } from "@/lib/sample-data/service-centre";
 import type { Column } from "@/components/DataTable";
-import { listBusinessRecords, listBusinessRecordsPaginated } from "@/lib/businessRecords";
+import {
+  listBusinessRecords,
+  listBusinessRecordsPaginated,
+  DEFAULT_BUSINESS_RECORD_PAGE_SIZE,
+} from "@/lib/businessRecords";
 
 registerPage({
   id: "service-centre.list",
@@ -47,6 +51,19 @@ export const dynamic = "force-dynamic";
 type SearchParams = {
   page?: string;
   status?: string;
+  /**
+   * The summary cards filter on this, NOT `status` — `status` is an
+   * exact-match filter on the raw stored `status` field (pushed down to the
+   * DB query below), while the cards are computed from milestone
+   * (computeDisplayStatus, same as the Status COLUMN) and can't be
+   * expressed as a single stored-field equality (it depends on
+   * stage + onHold + cancelled together). "OPEN" is a virtual value meaning
+   * "not CLOSED and not CANCELLED" (Created/In Progress/Part
+   * Pending/Completed), matching the Open card's count below. When present,
+   * this filter is applied in-memory against `allRows` and pagination is
+   * computed from that filtered set instead of the DB query.
+   */
+  milestone?: string;
   brandName?: string;
   engineerName?: string;
   paymentMode?: string;
@@ -88,18 +105,41 @@ export default async function ServiceCentrePage({
   const baseColumns = await applyCustomizations("service-centre.list", serviceCentreListColumns);
   const columns: Column[] = [...baseColumns, { key: "tat", label: "TAT", type: "text" }];
 
-  const { status, brandName, engineerName, paymentMode, warrantyStatus, from, to, q } = searchParams;
+  const { status, milestone, brandName, engineerName, paymentMode, warrantyStatus, from, to, q } = searchParams;
 
   const page = Math.max(1, Number(searchParams.page) || 1);
-  const [{ rows, total, totalPages, pageSize }, allRows] = await Promise.all([
-    listBusinessRecordsPaginated(params.partnerId, "service-centre", {
-      page,
-      filters: { status, brandName, engineerName, paymentMode, warrantyStatus },
-      dateRange: { field: "receivedDate", from, to },
-      search: q ? { query: q, fields: SEARCH_FIELDS } : undefined,
-    }),
-    listBusinessRecords(params.partnerId, "service-centre"),
-  ]);
+
+  let rows: Awaited<ReturnType<typeof listBusinessRecords>>;
+  let total: number;
+  let totalPages: number;
+  let pageSize: number;
+  let allRows: Awaited<ReturnType<typeof listBusinessRecords>>;
+
+  if (milestone) {
+    // Card-driven filter — see the `milestone` SearchParams comment above:
+    // this can't be pushed down to the DB query, so it's applied in-memory
+    // against the full unfiltered set and paginated by hand.
+    allRows = await listBusinessRecords(params.partnerId, "service-centre");
+    const matchesMilestone = (row: (typeof allRows)[number]) => {
+      const rowMilestone = computeDisplayStatus(row).milestone;
+      return milestone === "OPEN" ? rowMilestone !== "CLOSED" && rowMilestone !== "CANCELLED" : rowMilestone === milestone;
+    };
+    const filtered = allRows.filter(matchesMilestone);
+    pageSize = DEFAULT_BUSINESS_RECORD_PAGE_SIZE;
+    total = filtered.length;
+    totalPages = Math.max(1, Math.ceil(total / pageSize));
+    rows = filtered.slice((page - 1) * pageSize, page * pageSize);
+  } else {
+    [{ rows, total, totalPages, pageSize }, allRows] = await Promise.all([
+      listBusinessRecordsPaginated(params.partnerId, "service-centre", {
+        page,
+        filters: { status, brandName, engineerName, paymentMode, warrantyStatus },
+        dateRange: { field: "receivedDate", from, to },
+        search: q ? { query: q, fields: SEARCH_FIELDS } : undefined,
+      }),
+      listBusinessRecords(params.partnerId, "service-centre"),
+    ]);
+  }
 
   // The "Under Warranty" column reads `warrantyFlag` off each row, but that
   // boolean is a separate, independently-editable field on the edit form
@@ -156,7 +196,7 @@ export default async function ServiceCentrePage({
   const warrantyStatusOptions = distinct("warrantyStatus");
 
   const hasActiveFilters = Boolean(
-    q || status || brandName || engineerName || paymentMode || warrantyStatus || from || to
+    q || status || milestone || brandName || engineerName || paymentMode || warrantyStatus || from || to
   );
 
   // The quick-create modal renders the same domain-aware, brand-scoped
@@ -184,10 +224,30 @@ export default async function ServiceCentrePage({
           new markup.
         */}
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <StatCard label="Open" value={String(openCount)} />
-          <StatCard label="Closed" value={String(closedCount)} />
-          <StatCard label="Cancelled" value={String(cancelledCount)} />
-          <StatCard label="Part Pending" value={String(partPendingCount)} />
+          <StatCard
+            label="Open"
+            value={String(openCount)}
+            href={`/partner/${params.partnerId}/service-centre?milestone=OPEN`}
+            active={milestone === "OPEN"}
+          />
+          <StatCard
+            label="Closed"
+            value={String(closedCount)}
+            href={`/partner/${params.partnerId}/service-centre?milestone=CLOSED`}
+            active={milestone === "CLOSED"}
+          />
+          <StatCard
+            label="Cancelled"
+            value={String(cancelledCount)}
+            href={`/partner/${params.partnerId}/service-centre?milestone=CANCELLED`}
+            active={milestone === "CANCELLED"}
+          />
+          <StatCard
+            label="Part Pending"
+            value={String(partPendingCount)}
+            href={`/partner/${params.partnerId}/service-centre?milestone=PART_PENDING`}
+            active={milestone === "PART_PENDING"}
+          />
         </div>
 
         <form className="mt-4 flex flex-wrap items-end gap-3 rounded-md border border-border bg-bg-raised p-3" method="get">
@@ -259,12 +319,17 @@ export default async function ServiceCentrePage({
   );
 }
 
-function StatCard({ label, value }: { label: string; value: string }) {
+function StatCard({ label, value, href, active }: { label: string; value: string; href: string; active?: boolean }) {
   return (
-    <div className="rounded-lg border border-border bg-bg-raised p-4">
+    <Link
+      href={href}
+      className={`block rounded-lg border p-4 transition-colors hover:bg-bg-sunken ${
+        active ? "border-accent bg-bg-sunken" : "border-border bg-bg-raised"
+      }`}
+    >
       <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">{label}</div>
       <div className="mt-1 font-mono text-xl font-bold text-text">{value}</div>
-    </div>
+    </Link>
   );
 }
 

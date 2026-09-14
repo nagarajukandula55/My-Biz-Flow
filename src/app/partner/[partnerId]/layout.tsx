@@ -6,6 +6,7 @@ import { buildPartnerAdminNavGroups } from "@/lib/designer/partnerAdminNav";
 import { requirePartnerSessionForPage } from "@/lib/requirePartnerSession";
 import { computeAlerts } from "@/lib/alerts";
 import { getPartner } from "@/lib/partnerData";
+import { env } from "@/lib/env";
 
 /**
  * Print-style document routes — the printable Job Card/Estimate/Service
@@ -76,7 +77,7 @@ export default async function PartnerLayout({
         logoDataUrl={partner?.logoDataUrl ?? null}
       />
       {children}
-      <SupportWidget partnerId={params.partnerId} />
+      <SupportWidget partnerId={params.partnerId} whatsappNumber={env.platformSupportWhatsappNumber()} />
     </div>
   );
 }

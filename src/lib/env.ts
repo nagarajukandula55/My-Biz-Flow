@@ -115,4 +115,12 @@ export const env = {
    * way Razorpay does). Unset means the webhook rejects every request — set this to any
    * random string and pass the SAME value as `secret_token` in the setWebhook call below. */
   telegramWebhookSecret: () => process.env.TELEGRAM_WEBHOOK_SECRET,
+  /** Platform Super Admin's own WhatsApp number for partners reaching MY BIZ FLOW support
+   * (the support-ticket widget's "message us on WhatsApp" link — see
+   * src/components/SupportWidget.tsx). NOT a partner's own supportHotline (that's the
+   * partner's number shown to THEIR customers, stored per-partner on Partner.supportHotline) —
+   * this is the one platform-wide number partners message when they need help from us.
+   * Digits only, with country code, no "+" or spaces (e.g. "919876543210"), matching the
+   * wa.me deep-link format. Unset means the widget hides the WhatsApp button. */
+  platformSupportWhatsappNumber: () => process.env.PLATFORM_SUPPORT_WHATSAPP_NUMBER,
 };
