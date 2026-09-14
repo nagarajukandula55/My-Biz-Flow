@@ -209,8 +209,6 @@ export const MODULE_SUB_NAV: Record<string, PartnerNavSubItem[]> = {
   billing: [
     { key: "billing.list", label: "Invoices", href: "billing" },
     { key: "billing.new", label: "+ New Invoice", href: "billing/new" },
-    { key: "billing.contacts", label: "Contacts", href: "billing/contacts" },
-    { key: "billing.items", label: "Items", href: "billing/items" },
     { key: "billing.payments", label: "Payments", href: "billing/payments" },
     { key: "billing.credit-notes", label: "Credit/Debit Notes", href: "billing/credit-notes" },
     // The other three party-facing sales documents AN-CRM's shared
