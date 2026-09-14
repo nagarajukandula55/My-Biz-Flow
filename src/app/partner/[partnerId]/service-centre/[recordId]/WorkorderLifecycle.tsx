@@ -1606,26 +1606,8 @@ export function WorkorderLifecycle({
         )}
 
         {editable && solutionOptionsState.length === 0 && (
-          <div className="mt-3 flex flex-wrap items-center gap-2 rounded-md border border-warning bg-warning-soft px-3 py-2 text-sm text-warning">
-            <span>No Solutions found in your catalog yet.</span>
-            {addSolutionAction ? (
-              <button
-                type="button"
-                className="font-semibold underline"
-                onClick={() => {
-                  setNewSolutionTitle("");
-                  setNewSolutionCharge("");
-                  setAddSolutionError(null);
-                  setAddSolutionOpen(true);
-                }}
-              >
-                + New Solution
-              </button>
-            ) : (
-              <Link href={`/partner/${partnerId}/service-centre/solutions/new`} className="font-semibold underline">
-                Add one under Solutions
-              </Link>
-            )}
+          <div className="mt-3 rounded-md border border-warning bg-warning-soft px-3 py-2 text-sm text-warning">
+            No Solutions found in your catalog yet — click "+ Add Solution" below to add your first one.
           </div>
         )}
 
@@ -1660,26 +1642,24 @@ export function WorkorderLifecycle({
               <button
                 type="button"
                 className="btn-outline shrink-0"
-                disabled={!editable || !solutionSelectValue}
-                onClick={addSelectedSolution}
-              >
-                + Add Solution
-              </button>
-              {addSolutionAction && (
-                <button
-                  type="button"
-                  className="btn-outline shrink-0"
-                  disabled={!editable}
-                  onClick={() => {
+                disabled={!editable}
+                onClick={() => {
+                  // With something picked, just add it as a line. With
+                  // nothing to pick (or the catalog is empty), the same
+                  // button opens the quick-add modal instead of sitting
+                  // there disabled with no way forward.
+                  if (solutionSelectValue) {
+                    addSelectedSolution();
+                  } else if (addSolutionAction) {
                     setNewSolutionTitle("");
                     setNewSolutionCharge("");
                     setAddSolutionError(null);
                     setAddSolutionOpen(true);
-                  }}
-                >
-                  + New
-                </button>
-              )}
+                  }
+                }}
+              >
+                + Add Solution
+              </button>
             </div>
           </div>
           <label className="text-xs font-semibold uppercase tracking-wide text-text-muted">
