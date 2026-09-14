@@ -18,6 +18,7 @@ import {
   Percent,
   Boxes,
   Lock,
+  MessageCircle,
 } from "lucide-react";
 import { LogoMark } from "./LogoMark";
 import { signOutAdminAction } from "@/app/admin/login/actions";
@@ -33,6 +34,7 @@ type PlatformNavItem = {
 const NAV_ITEMS: PlatformNavItem[] = [
   { key: "modules", label: "Modules Overview", href: "/admin/modules", icon: Boxes },
   { key: "access-keys", label: "Access Keys", href: "/admin/access-keys", icon: Lock },
+  { key: "support-tickets", label: "Support Tickets", href: "/admin/support-tickets", icon: MessageCircle },
   { key: "designer", label: "Designer", href: "/admin/designer", icon: LayoutGrid },
   { key: "numbering", label: "Numbering", href: "/admin/numbering", icon: Hash },
   { key: "settings", label: "Settings", href: "/admin/settings", icon: SettingsIcon },

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { headers } from "next/headers";
 import { Sidebar } from "@/components/Sidebar";
+import { SupportWidget } from "@/components/SupportWidget";
 import { buildPartnerAdminNavGroups } from "@/lib/designer/partnerAdminNav";
 import { requirePartnerSessionForPage } from "@/lib/requirePartnerSession";
 import { computeAlerts } from "@/lib/alerts";
@@ -75,6 +76,7 @@ export default async function PartnerLayout({
         logoDataUrl={partner?.logoDataUrl ?? null}
       />
       {children}
+      <SupportWidget partnerId={params.partnerId} />
     </div>
   );
 }
