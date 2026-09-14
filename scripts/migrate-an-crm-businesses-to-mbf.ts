@@ -497,6 +497,31 @@ async function main() {
       }
     }
 
+    // Align this partner's "next workorder number" counter so a job
+    // created live in the app afterward continues on from the real,
+    // migrated history instead of restarting at #1 — migrated jobsheets
+    // keep their real AN-CRM job number directly (they bypass
+    // getNextNumber() entirely, see the crmjobsheets `map()` above), so
+    // NumberingCounter was never touched by the import itself. Brand/Model/
+    // BOM-material counters need no such fix: those DO go through
+    // createBusinessRecord's real numbered path on every migrated row, so
+    // they're already correctly incremented as a side effect of the import.
+    if (confirm) {
+      const totalWorkorders = await prisma.businessRecord.count({ where: { partnerId, moduleSlug: "service-centre" } });
+      if (totalWorkorders > 0) {
+        const scopeKey = `partner:${partnerId}:service-centre.workorder`;
+        const existingCounter = await prisma.numberingCounter.findUnique({ where: { scopeKey } });
+        if (!existingCounter || existingCounter.value < totalWorkorders) {
+          await prisma.numberingCounter.upsert({
+            where: { scopeKey },
+            create: { scopeKey, value: totalWorkorders },
+            update: { value: totalWorkorders },
+          });
+          console.log(`  aligned workorder number counter to ${totalWorkorders} — the next new workorder will be #${totalWorkorders + 1}.`);
+        }
+      }
+    }
+
     console.log("");
   }
 

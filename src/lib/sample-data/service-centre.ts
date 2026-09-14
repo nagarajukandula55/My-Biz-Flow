@@ -628,7 +628,6 @@ const SERVICE_CENTRE_LIST_COLUMN_KEYS = [
   "imeiOrSerialNumber",
   "faultDescription",
   "remark",
-  "deviceAppearance",
 ];
 
 // The widest free-text fields on the list — capped and ellipsis-truncated
@@ -638,7 +637,6 @@ const SERVICE_CENTRE_LIST_COLUMN_KEYS = [
 const LIST_COLUMN_MAX_WIDTH_CH: Record<string, number> = {
   faultDescription: 22,
   remark: 18,
-  deviceAppearance: 18,
 };
 
 export const serviceCentreListColumns: Column[] = SERVICE_CENTRE_LIST_COLUMN_KEYS.map((key) => {
