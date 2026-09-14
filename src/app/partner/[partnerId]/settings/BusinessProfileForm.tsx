@@ -11,13 +11,13 @@ import {
  * SettingsPageClient above it (that section stays an explicit demo stub;
  * this one actually writes to the Partner row via updatePartnerBusinessProfile).
  * Fields ported from AN-CRM's vendor profile page (src/app/vendor/profile/page.tsx):
- * contact person, PAN, business category, service terms/hours, a public
+ * contact person, PAN, business category, service hours, a public
  * support number, and bank details for settlement record-keeping (display
  * only — nothing debits/credits against these).
  */
 export function BusinessProfileForm({ partnerId, partner }: { partnerId: string; partner: PartnerRecord }) {
   return (
-    <div className="mt-10 border-t border-border pt-8">
+    <section id="business-profile" className="mt-10 scroll-mt-8 border-t border-border pt-8">
       <h2 className="font-display text-lg font-bold text-text">Business Profile</h2>
       <p className="mt-1 text-sm text-text-muted">
         Fills in the business details signup didn&apos;t collect — real, saved fields.
@@ -104,17 +104,15 @@ export function BusinessProfileForm({ partnerId, partner }: { partnerId: string;
           </div>
         </div>
 
-        <label className="sm:col-span-2 text-xs font-semibold uppercase tracking-wide text-text-muted">
-          Service Terms (printed on quotes/invoices)
-          <textarea
-            name="serviceTerms"
-            defaultValue={partner.serviceTerms ?? ""}
-            rows={3}
-            className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm normal-case text-text outline-none focus:border-accent"
-          />
-        </label>
+        {/* Terms & Conditions moved to the Config section below — that's
+            where the general terms and the per-document-type overrides live
+            together, so the fallback rule between them is visible in one
+            place. */}
 
-        <div className="sm:col-span-2 mt-2 text-xs font-semibold uppercase tracking-wide text-text-muted">
+        <div
+          id="bank-details"
+          className="sm:col-span-2 mt-2 scroll-mt-8 text-xs font-semibold uppercase tracking-wide text-text-muted"
+        >
           Bank Details (record only — no payouts are processed against these)
         </div>
         <label className="text-xs font-semibold uppercase tracking-wide text-text-muted">
@@ -160,6 +158,6 @@ export function BusinessProfileForm({ partnerId, partner }: { partnerId: string;
           </button>
         </div>
       </form>
-    </div>
+    </section>
   );
 }

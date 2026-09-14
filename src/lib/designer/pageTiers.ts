@@ -27,8 +27,10 @@
  *
  * Staff-login page ids that the original seed literal carried
  * (service-centre.staff*) are intentionally dropped — those routes no
- * longer exist (separate multi-account staff login is out of scope; the
- * technician roster is login-free).
+ * longer exist, and separate multi-account staff login stays out of scope.
+ * `service-centre.staff-names.*` below is NOT that: it gates a plain list of
+ * names used as suggestions on a workorder's who-did-this fields, with no
+ * credential or session of any kind behind it.
  */
 
 export type PlanTier = "basic" | "pro" | "ultimate";
@@ -58,6 +60,11 @@ export const DEFAULT_PAGE_TIERS: Record<string, PlanTier> = {
   "service-centre.brands.create": "pro",
   "service-centre.models.list": "pro",
   "service-centre.models.create": "pro",
+  // Same Pro gate as Brands/Models, for the same reason: a Starter partner
+  // types the name free-text every time, a Pro+ partner keeps a roster and
+  // picks from it.
+  "service-centre.staff-names.list": "pro",
+  "service-centre.staff-names.create": "pro",
   "service-centre.sc-profile.list": "pro",
   "service-centre.sc-profile.create": "pro",
   "service-centre.sub-scs": "ultimate",

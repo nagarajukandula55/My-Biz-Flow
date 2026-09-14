@@ -3,7 +3,7 @@ import { serviceCentreColumns } from "@/lib/sample-data/service-centre";
 import { buildServiceCentreLines } from "@/lib/serviceCentreLines";
 import { registerPage } from "@/lib/designer/registry";
 import { notFound } from "next/navigation";
-import { getPartner } from "@/lib/partnerData";
+import { getPartner, resolveDocumentTerms } from "@/lib/partnerData";
 import { getBusinessRecord, getBusinessRecordSequenceIndex } from "@/lib/businessRecords";
 
 registerPage({
@@ -40,7 +40,7 @@ const ESTIMATE_FIELDS = [
   "issueDescription",
   "receivedDate",
   "slaDate",
-  "technicianName",
+  "engineerName",
 ];
 
 const ESTIMATE_DECLARATION =
@@ -90,6 +90,8 @@ export default async function ServiceCentreEstimatePage({
         "Customer Signature (approval to proceed)",
         `For ${partner?.businessName ?? "Your Business"} — Authorised Signatory`,
       ]}
+      termsText={resolveDocumentTerms(partner, "estimate")}
+      contactBand={{ hours: partner?.serviceHours, hotline: partner?.supportHotline }}
       footerNote={ESTIMATE_DECLARATION}
       printSizes={["a4", "a5"]}
     />

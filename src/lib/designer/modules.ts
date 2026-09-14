@@ -138,7 +138,7 @@ export const MODULE_SUB_NAV: Record<string, PartnerNavSubItem[]> = {
   // PartnerType.planTierByPage (/admin/partner-types) — config-only
   // guidance, same as every module; nothing here runtime-enforces it.
   // Basic: workorders list/create/detail — ring up a repair job and track
-  // its stage. Pro: brand/model/technician assignment, estimate approval,
+  // its stage. Pro: brand/model catalogs and the staff-name roster, estimate approval,
   // hold state — the accountability layer AN-CRM gates similarly behind
   // its higher plans. Ultimate: real Billing invoice creation on close.
   // Sectioned (see PartnerNavSubItem.section) rather than one flat list,
@@ -159,6 +159,10 @@ export const MODULE_SUB_NAV: Record<string, PartnerNavSubItem[]> = {
     { key: "service-centre.solutions", label: "Solutions", href: "service-centre/solutions", section: "Masters" },
     { key: "service-centre.fault-codes", label: "Fault Codes", href: "service-centre/fault-codes", section: "Masters" },
     { key: "service-centre.symptom-codes", label: "Symptom Codes", href: "service-centre/symptom-codes", section: "Masters" },
+    // Names only — the source of the suggestion lists on a workorder's Logged
+    // By / Engineer / Collected By fields. Not a login and not an assignment
+    // roster; Service Centre has neither.
+    { key: "service-centre.staff-names", label: "Staff Names", href: "service-centre/staff-names", section: "Masters" },
     // Analytics is a partner-wide page (also linked from the Common
     // group) — surfaced inside the module too, the way AN-CRM keeps a
     // Reports section inside the same sidebar the workorders live in.
@@ -166,7 +170,6 @@ export const MODULE_SUB_NAV: Record<string, PartnerNavSubItem[]> = {
     { key: "service-centre.reports", label: "Report Builder", href: "service-centre/reports", section: "Reports" },
     { key: "service-centre.sc-profile", label: "SC Profiles", href: "service-centre/sc-profile", section: "Account" },
     { key: "service-centre.sub-scs", label: "Sub-Centres", href: "service-centre/sub-scs", section: "Account" },
-    { key: "service-centre.technicians", label: "Technicians", href: "service-centre/technicians", section: "Account" },
     { key: "service-centre.payments", label: "Payments & Settlements", href: "service-centre/payments", section: "Account" },
     { key: "service-centre.telegram", label: "Telegram Alerts", href: "service-centre/telegram", section: "Account" },
     { key: "service-centre.referrals", label: "Referrals", href: "service-centre/referrals", section: "Account" },

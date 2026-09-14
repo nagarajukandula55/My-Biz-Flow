@@ -33,7 +33,7 @@ export const dynamic = "force-dynamic";
  * read data directly at render time" convention. Filters/search/date-range
  * are applied to the same paginated query (listBusinessRecordsPaginated),
  * so pagination operates on the filtered result set, not the full table.
- * Filter option lists (status/priority/brand/model/technician) are drawn
+ * Filter option lists (status/priority/brand/model/engineer) are drawn
  * from the full unfiltered set so dropdowns don't shrink as filters narrow
  * the visible rows.
  */
@@ -43,7 +43,7 @@ type SearchParams = {
   priority?: string;
   brandName?: string;
   modelName?: string;
-  technicianName?: string;
+  engineerName?: string;
   from?: string;
   to?: string;
   q?: string;
@@ -71,13 +71,13 @@ export default async function ServiceCentrePage({
   const mod = await getModule("service-centre");
   const columns = await applyCustomizations("service-centre.list", serviceCentreColumns);
 
-  const { status, priority, brandName, modelName, technicianName, from, to, q } = searchParams;
+  const { status, priority, brandName, modelName, engineerName, from, to, q } = searchParams;
 
   const page = Math.max(1, Number(searchParams.page) || 1);
   const [{ rows, total, totalPages, pageSize }, allRows] = await Promise.all([
     listBusinessRecordsPaginated(params.partnerId, "service-centre", {
       page,
-      filters: { status, priority, brandName, modelName, technicianName },
+      filters: { status, priority, brandName, modelName, engineerName },
       dateRange: { field: "receivedDate", from, to },
       search: q ? { query: q, fields: SEARCH_FIELDS } : undefined,
     }),
@@ -92,9 +92,9 @@ export default async function ServiceCentrePage({
   const priorityOptions = distinct("priority");
   const brandOptions = distinct("brandName");
   const modelOptions = distinct("modelName");
-  const technicianOptions = distinct("technicianName");
+  const engineerOptions = distinct("engineerName");
 
-  const hasActiveFilters = Boolean(q || status || priority || brandName || modelName || technicianName || from || to);
+  const hasActiveFilters = Boolean(q || status || priority || brandName || modelName || engineerName || from || to);
 
   // The quick-create modal renders the same domain-aware, brand-scoped
   // field set the full-page /new form does — one builder, no drift.
@@ -125,7 +125,7 @@ export default async function ServiceCentrePage({
           <FilterSelect label="Priority" name="priority" value={priority} options={priorityOptions} />
           <FilterSelect label="Brand" name="brandName" value={brandName} options={brandOptions} />
           <FilterSelect label="Model" name="modelName" value={modelName} options={modelOptions} />
-          <FilterSelect label="Technician" name="technicianName" value={technicianName} options={technicianOptions} />
+          <FilterSelect label="Engineer / Serviced By" name="engineerName" value={engineerName} options={engineerOptions} />
           <div>
             <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-text-muted">From</label>
             <input type="date" name="from" defaultValue={from ?? ""} className="rounded-md border border-border bg-bg px-3 py-1.5 text-sm text-text" />

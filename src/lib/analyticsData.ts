@@ -92,11 +92,11 @@ export async function getWorkorderStatusBreakdown(partnerId: string): Promise<Pi
 /**
  * Service Centre period/volume + revenue-this-month stats for the partner
  * Dashboard — mirrors the reference vendor portal's "CRM Overview" (period
- * cards + open/closed counts + technician workload), computed from this
- * app's own BusinessRecord store (service-centre.stage/technicianName,
- * billing.totalAmount), not ported/fabricated. Only called when
- * "service-centre" is one of the partner's visible modules (see
- * dashboard/page.tsx).
+ * cards + open/closed counts), computed from this app's own BusinessRecord
+ * store (service-centre.stage, billing.totalAmount), not ported/fabricated.
+ * Only called when "service-centre" is one of the partner's visible modules
+ * (see dashboard/page.tsx). There is no technician/assignment concept in
+ * this app, so there is no workload-by-technician breakdown here either.
  */
 export interface ServiceCentreOverview {
   workordersToday: number;
@@ -106,7 +106,6 @@ export interface ServiceCentreOverview {
   openWorkorders: number;
   closedThisMonth: number;
   revenueThisMonth: number;
-  technicianWorkload: { technician: string; open: number }[];
 }
 
 export async function getServiceCentreOverview(partnerId: string): Promise<ServiceCentreOverview> {
@@ -134,7 +133,6 @@ export async function getServiceCentreOverview(partnerId: string): Promise<Servi
   let workordersThisYear = 0;
   let openWorkorders = 0;
   let closedThisMonth = 0;
-  const workloadByTechnician = new Map<string, number>();
 
   for (const r of workorders) {
     const data = r.data as Record<string, unknown>;
@@ -143,13 +141,10 @@ export async function getServiceCentreOverview(partnerId: string): Promise<Servi
     if (r.createdAt >= startOfWeek) workordersThisWeek++;
     if (r.createdAt >= startOfMonth) workordersThisMonth++;
     if (r.createdAt >= startOfYear) workordersThisYear++;
-    // A cancelled job is terminal (see cancelWorkorderAction) — it is not
-    // open work and must not sit in a technician's workload forever.
+    // A cancelled job is terminal (see cancelWorkorderAction) — it is not open work.
     const cancelled = Boolean(data.cancelledAt);
     if (stage !== "Closed" && !cancelled) {
       openWorkorders++;
-      const tech = typeof data.technicianName === "string" && data.technicianName.trim() ? data.technicianName.trim() : "Unassigned";
-      workloadByTechnician.set(tech, (workloadByTechnician.get(tech) ?? 0) + 1);
     }
     if (stage === "Closed" && r.createdAt >= startOfMonth) closedThisMonth++;
   }
@@ -169,11 +164,6 @@ export async function getServiceCentreOverview(partnerId: string): Promise<Servi
     return total;
   }, 0);
 
-  const technicianWorkload = Array.from(workloadByTechnician.entries())
-    .map(([technician, open]) => ({ technician, open }))
-    .sort((a, b) => b.open - a.open)
-    .slice(0, 6);
-
   return {
     workordersToday,
     workordersThisWeek,
@@ -182,7 +172,6 @@ export async function getServiceCentreOverview(partnerId: string): Promise<Servi
     openWorkorders,
     closedThisMonth,
     revenueThisMonth,
-    technicianWorkload,
   };
 }
 

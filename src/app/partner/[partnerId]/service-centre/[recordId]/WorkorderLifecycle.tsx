@@ -65,8 +65,8 @@ export function WorkorderLifecycle({
   brandName,
   modelId,
   modelName,
-  technicianId,
-  technicianName,
+  engineerName,
+  collectedByName,
   onHold,
   holdReason,
   brandJobNoForPartOrder,
@@ -79,7 +79,7 @@ export function WorkorderLifecycle({
   solutionOptions,
   brandOptions,
   modelOptions,
-  technicianOptions,
+  staffNameOptions,
   solutionLaborCharges,
 }: {
   partnerId: string;
@@ -92,8 +92,8 @@ export function WorkorderLifecycle({
   brandName?: string;
   modelId?: string;
   modelName?: string;
-  technicianId?: string;
-  technicianName?: string;
+  engineerName?: string;
+  collectedByName?: string;
   onHold?: boolean;
   holdReason?: string;
   /**
@@ -124,8 +124,13 @@ export function WorkorderLifecycle({
   brandOptions: SearchSelectOption[];
   /** This partner's own live Device Models catalog — labeled with brand for clarity since it isn't pre-filtered by the currently selected brand (that selection can change client-side after this prop was computed). */
   modelOptions: SearchSelectOption[];
-  /** This partner's own active team members (Users) eligible for assignment. */
-  technicianOptions: SearchSelectOption[];
+  /**
+   * Active names from this partner's Staff Names roster, offered as
+   * suggestions on the two mandatory handover name fields. Empty on Starter
+   * (the roster page is Pro), in which case both fields are plain free text
+   * — deliberately, not as a fallback failure.
+   */
+  staffNameOptions: string[];
 }) {
   const [stage, setStage] = useState<WorkorderStage>(initialStage);
   const [partLines, setPartLines] = useState<PartLine[]>(initialPartLines);
@@ -134,14 +139,18 @@ export function WorkorderLifecycle({
   const [solutionPickerOpen, setSolutionPickerOpen] = useState(false);
   const [brandPickerOpen, setBrandPickerOpen] = useState(false);
   const [modelPickerOpen, setModelPickerOpen] = useState(false);
-  const [technicianPickerOpen, setTechnicianPickerOpen] = useState(false);
   const [pendingLineId, setPendingLineId] = useState<string | null>(null);
   const [closeBlockedMessage, setCloseBlockedMessage] = useState<string | null>(null);
   const [confirmCloseOpen, setConfirmCloseOpen] = useState(false);
   const [handoverNotes, setHandoverNotes] = useState(initialHandoverNotes ?? "");
   const [brand, setBrand] = useState({ id: brandId, name: brandName });
   const [model, setModel] = useState({ id: modelId, name: modelName });
-  const [technician, setTechnician] = useState({ id: technicianId, name: technicianName });
+  // Both start from whatever is already stored and are otherwise BLANK —
+  // never prefilled from a previous job, a session user, or "last used".
+  // They are the record of who actually did the work and who handed the
+  // unit over, and a guessed answer to that is worse than no answer.
+  const [engineer, setEngineer] = useState(engineerName ?? "");
+  const [collectedBy, setCollectedBy] = useState(collectedByName ?? "");
   const [hold, setHold] = useState(Boolean(onHold));
   const [holdModalOpen, setHoldModalOpen] = useState(false);
   const [holdReasonDraft, setHoldReasonDraft] = useState("");
@@ -301,13 +310,6 @@ export function WorkorderLifecycle({
     persist({ modelId: option.value, modelName: option.label });
   }
 
-  function selectTechnician(option: SearchSelectOption) {
-    const assignedAt = new Date().toISOString();
-    setTechnician({ id: option.value, name: option.label });
-    setTechnicianPickerOpen(false);
-    persist({ technicianId: option.value, technicianName: option.label, assignedAt });
-  }
-
   /**
    * Going on hold now captures WHY and the brand's part-order reference
    * (the reference app's Mark Part Pending modal does the same) instead of
@@ -413,10 +415,30 @@ export function WorkorderLifecycle({
     }
   }
 
+  /**
+   * Both names are mandatory at close, mirroring the reference app's close
+   * route (its `engineerName` body field and `paymentCollectedByName`).
+   * Handing a repaired unit back with no record of who repaired it and no
+   * record of who released it is exactly the gap these two fields exist to
+   * shut, so the button is disabled until both are filled and the action is
+   * guarded again here rather than trusting the disabled state.
+   */
+  const handoverNamesMissing = !engineer.trim() || !collectedBy.trim();
+
   function confirmClose() {
+    if (handoverNamesMissing) {
+      setActionError("Engineer / Serviced By and Collected By are both required before a workorder can be closed.");
+      return;
+    }
     setStage("Closed");
     setConfirmCloseOpen(false);
-    persist({ stage: "Closed", handoverNotes });
+    persist({
+      stage: "Closed",
+      handoverNotes,
+      engineerName: engineer.trim(),
+      collectedByName: collectedBy.trim(),
+      handedOverAt: new Date().toISOString(),
+    });
   }
 
   function persistHandoverNotes() {
@@ -453,8 +475,11 @@ export function WorkorderLifecycle({
         {hold && <StatusChip label={`On Hold${holdReason ? ` — ${holdReason}` : ""}`} variant="danger" />}
       </div>
 
-      {/* Device & Assignment */}
-      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      {/* Device — Brand/Model only. There is deliberately no third
+          "assigned to" tile: Service Centre has no assignment concept at
+          all. Who did the work is recorded at handover, as a fact, not
+          allocated up front as a plan. */}
+      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <button
           type="button"
           onClick={() => setBrandPickerOpen(true)}
@@ -471,14 +496,6 @@ export function WorkorderLifecycle({
         >
           <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">Model</div>
           <div className="mt-0.5 text-text">{model.name ?? (brand.id ? "Select model" : "Pick a brand first")}</div>
-        </button>
-        <button
-          type="button"
-          onClick={() => setTechnicianPickerOpen(true)}
-          className="rounded-md border border-border bg-bg-raised px-3 py-2 text-left text-sm"
-        >
-          <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">Assigned Technician</div>
-          <div className="mt-0.5 text-text">{technician.name ?? "Unassigned"}</div>
         </button>
       </div>
 
@@ -760,13 +777,6 @@ export function WorkorderLifecycle({
         onSelect={selectModel}
       />
       <SearchSelectModal
-        open={technicianPickerOpen}
-        onClose={() => setTechnicianPickerOpen(false)}
-        title="Assign Technician"
-        options={technicianOptions}
-        onSelect={selectTechnician}
-      />
-      <SearchSelectModal
         open={solutionPickerOpen}
         onClose={() => setSolutionPickerOpen(false)}
         title="Add Solution"
@@ -847,15 +857,59 @@ export function WorkorderLifecycle({
             <button type="button" className="btn-outline" onClick={() => setConfirmCloseOpen(false)}>
               Cancel
             </button>
-            <button type="button" className="btn-accent" onClick={confirmClose}>
+            <button
+              type="button"
+              className="btn-accent disabled:opacity-50"
+              onClick={confirmClose}
+              disabled={handoverNamesMissing}
+            >
               Close Workorder
             </button>
           </>
         }
       >
         <p className="text-sm text-text-muted">
-          All serialized parts are accounted for. Close this workorder and hand it over to the customer?
+          All serialized parts are accounted for. Record who did the work and who handed the unit over, then close
+          this workorder. Both names are required.
         </p>
+        {/* Suggestions come from the partner's own Staff Names roster when
+            they keep one (Pro+). A `list` pointing at an empty <datalist>
+            is inert, so a Starter partner simply gets a plain text box —
+            no separate code path, and nothing is ever auto-filled. */}
+        <datalist id="wo-staff-names">
+          {staffNameOptions.map((name) => (
+            <option key={name} value={name} />
+          ))}
+        </datalist>
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <label className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+            Engineer / Serviced By <span className="text-danger">*</span>
+            <input
+              type="text"
+              list="wo-staff-names"
+              value={engineer}
+              onChange={(e) => setEngineer(e.target.value)}
+              placeholder="Who actually repaired this"
+              className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm font-normal normal-case tracking-normal text-text"
+            />
+          </label>
+          <label className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+            Collected By <span className="text-danger">*</span>
+            <input
+              type="text"
+              list="wo-staff-names"
+              value={collectedBy}
+              onChange={(e) => setCollectedBy(e.target.value)}
+              placeholder="Who handed it over / collected payment"
+              className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm font-normal normal-case tracking-normal text-text"
+            />
+          </label>
+        </div>
+        {staffNameOptions.length === 0 && (
+          <p className="mt-2 text-xs text-text-muted">
+            Type each name in full. Keeping a reusable Staff Names list (so these become pickable) is a Pro feature.
+          </p>
+        )}
       </Modal>
       {/* Cancellation — same Modal + confirm pattern as Mark Part Pending /
           Close Workorder above, with a mandatory reason. */}

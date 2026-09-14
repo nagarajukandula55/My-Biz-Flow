@@ -20,7 +20,7 @@ registerPage({
     { key: "validation-rules", label: "Validation rules" },
     { key: "default-values", label: "Default values" },
   ],
-  explanation: "The same config-driven RecordForm pre-populated with an existing workorder's real base fields, letting a user edit and save changes. Real persistence — writes to the BusinessRecord table. Note: this only covers the base fields (customer, device, technician, etc.); the workorder lifecycle (stage/parts/service lines) is separate, still sample-data-backed — see WorkorderLifecycle.tsx.",
+  explanation: "The same config-driven RecordForm pre-populated with an existing workorder's real base fields, letting a user edit and save changes. Real persistence — writes to the BusinessRecord table. Note: this only covers the base fields (customer, device, etc.); the workorder lifecycle (stage/parts/service lines) is separate, still sample-data-backed — see WorkorderLifecycle.tsx.",
   sourceFile: "src/app/partner/[partnerId]/service-centre/[recordId]/edit/page.tsx",
 });
 

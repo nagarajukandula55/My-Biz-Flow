@@ -58,7 +58,7 @@ const SERVICE_CENTRE_FAQS = [
   {
     question: "What does the Service Centre module actually track?",
     answer:
-      "Every workorder from intake to close: fault/symptom/solution details from a live catalog, brand/model and technician assignment, a Created → In Progress → Completed → Closed lifecycle, and the parts and labour line items tied to it.",
+      "Every workorder from intake to close: fault/symptom/solution details from a live catalog, brand/model selection, a Created → In Progress → Completed → Closed lifecycle, and the parts and labour line items tied to it.",
   },
   {
     question: "Can customers check on their repair without logging in?",
@@ -188,7 +188,7 @@ export default async function RootPage({
             </h1>
             <p className="mbf-prose mx-auto mt-5 text-lg leading-relaxed text-text-muted">
               My Biz Flow's Service Centre module takes a repair from intake to invoice without switching tools —
-              log the fault, assign a technician, move the workorder through its lifecycle, and bill it out with
+              log the fault, move the workorder through its lifecycle, and bill it out with
               GST-compliant invoicing that deducts the parts used straight from Inventory.
             </p>
           </>
@@ -230,7 +230,7 @@ export default async function RootPage({
                 {
                   title: "Full workorder lifecycle",
                   description:
-                    "Created → In Progress → Completed → Closed, with fault/symptom/solution details, brand/model and technician assignment on every job.",
+                    "Created → In Progress → Completed → Closed, with fault/symptom/solution details and brand/model on every job.",
                 },
                 {
                   title: "Public repair tracking",

@@ -2,6 +2,8 @@ import { PrintButton } from "@/components/PrintButton";
 import { PrintFrame } from "@/components/PrintFrame";
 import { formatCurrencyINR, formatDate } from "@/lib/format";
 import { renderTemplate } from "@/lib/designer/documentTemplates";
+import { DocumentContactBand } from "@/components/DocumentView";
+import { generateUpiQrDataUrl } from "@/lib/upiQr";
 
 export type InvoiceLine = {
   description: string;
@@ -34,7 +36,7 @@ function normalizeState(value?: string): string {
  * layout per CLAUDE.md's documented UX-pattern exception — no code,
  * copy, or visual styling copied.
  */
-export function ServiceCentreInvoiceDocument({
+export async function ServiceCentreInvoiceDocument({
   partnerName,
   partnerGstin,
   partnerPhone,
@@ -58,6 +60,10 @@ export function ServiceCentreInvoiceDocument({
   customerPincode,
   lines,
   customTemplate,
+  termsText,
+  serviceHours,
+  supportHotline,
+  upiId,
 }: {
   partnerName: string;
   /** The issuing partner's own GSTIN/contact — blank renders as an em dash, never a fabricated number. */
@@ -89,6 +95,12 @@ export function ServiceCentreInvoiceDocument({
   /** Super-Admin-designed override from the Designer (src/lib/designer/documentTemplates.ts) — same
    * {{placeholder}} mechanism as every other document page; when set, replaces the default layout below. */
   customTemplate?: string;
+  /** Already resolved by resolveDocumentTerms() — invoice-specific text, else the partner's general terms, else null. */
+  termsText?: string | null;
+  serviceHours?: string | null;
+  supportHotline?: string | null;
+  /** The partner's own UPI VPA. When set (and the invoice is non-zero) a scannable payment QR is printed. */
+  upiId?: string | null;
 }) {
   // Place of supply decides the split: a customer in the service centre's
   // own state is an intra-state supply taxed as CGST + SGST at half the
@@ -128,6 +140,17 @@ export function ServiceCentreInvoiceDocument({
   // A GST-registered recipient makes this a B2B document — previously
   // hardcoded "B2C" because no GSTIN was ever collected at intake.
   const documentType = customerGstin?.trim() ? "B2B" : "B2C";
+  // Encodes the partner's own VPA and this invoice's exact grand total, so
+  // the customer scans and pays the correct amount straight to the partner.
+  // Returns null (and the block below is skipped) when no UPI ID is
+  // configured, it's malformed, or the document is zero-value — e.g. a
+  // fully non-chargeable warranty job, where a "pay now" QR would be wrong.
+  const upiQrDataUrl = await generateUpiQrDataUrl({
+    vpa: upiId ?? "",
+    payeeName: partnerName,
+    amount: grandTotal,
+    invoiceNumber,
+  });
   // A B2C document carrying no tax at all (e.g. an entirely non-chargeable
   // warranty job) is a plain Bill, not a Tax Invoice — calling it one would
   // be a false statement on the document.
@@ -420,6 +443,25 @@ export function ServiceCentreInvoiceDocument({
               </div>
             )}
 
+            {upiQrDataUrl && (
+              <div className="mt-6 flex items-center gap-4 rounded-md border border-border p-4">
+                {/* eslint-disable-next-line @next/next/no-img-element -- a
+                    generated data: URL, not a file next/image can optimise. */}
+                <img src={upiQrDataUrl} alt="UPI payment QR code" className="h-28 w-28 flex-shrink-0" width={112} height={112} />
+                <div className="text-xs text-text-muted">
+                  <div className="font-semibold uppercase tracking-wide text-text">Pay by UPI</div>
+                  <p className="mt-1">
+                    Scan with any UPI app to pay {formatCurrencyINR(grandTotal)} to{" "}
+                    <span className="font-mono text-text">{upiId}</span>.
+                  </p>
+                  <p className="mt-1">
+                    Payment goes directly to {partnerName}. Please quote invoice {invoiceNumber} as the
+                    reference — receipt of payment is confirmed by the service centre, not by this document.
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div className="mt-10 grid grid-cols-2 gap-6 text-center text-xs text-text-muted">
               <div className="border-t border-border pt-2">Customer Signature</div>
               <div className="border-t border-border pt-2">Authorized Signatory (Service Centre)</div>
@@ -432,6 +474,15 @@ export function ServiceCentreInvoiceDocument({
                 electronically and does not require a physical signature.
               </p>
             </div>
+
+            {termsText?.trim() && (
+              <div className="mt-6 border-t border-border pt-4 text-xs leading-relaxed text-text-muted">
+                <div className="font-semibold uppercase tracking-wide">Terms &amp; Conditions</div>
+                <p className="mt-1 whitespace-pre-line">{termsText.trim()}</p>
+              </div>
+            )}
+
+            <DocumentContactBand hours={serviceHours} hotline={supportHotline} />
 
             <div className="mt-6 text-center text-xs text-text-muted">
               <div>Thank you for your business with {partnerName}</div>

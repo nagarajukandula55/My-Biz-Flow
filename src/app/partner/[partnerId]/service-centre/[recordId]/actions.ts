@@ -46,7 +46,7 @@ function appendStageHistory(existing: Record<string, unknown>, stage: string): S
  * confirms the caller's session belongs to THIS exact partnerId. Does NOT
  * implement a per-role permission matrix (assign vs. start vs. complete vs.
  * cancel) — anyone signed in as this partner can perform every action here,
- * which matches "one login for the business" rather than per-technician
+ * which matches "one login for the business" rather than per-staff-member
  * accounts.
  */
 async function assertCanActOnServiceCentre(partnerId: string): Promise<void> {
@@ -123,7 +123,7 @@ function assertLegalStageTransition(
  * first, and — when the patch includes a `stage` change — validated against
  * assertLegalStageTransition so the state machine can't be bypassed by a
  * direct call. Used by WorkorderLifecycle for every lifecycle patch (stage
- * transitions, brand/model/technician assignment, parts/service lines,
+ * transitions, brand/model selection, engineer/collected-by names, parts/service lines,
  * handover notes) instead of calling the generic action directly.
  */
 export async function patchServiceCentreWorkorderAction(

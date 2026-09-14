@@ -211,8 +211,34 @@ model Partner {
   /// every row that predates the column, which reads as ELECTRONICS-only —
   /// what the module has always been.
   productDomains     Json    @default("[]")
-  /// Free-text terms printed on the partner's own quotes/invoices.
+  /// Free-text terms printed on the partner's own quotes/invoices — the
+  /// GENERAL default. Each of the per-document-type overrides below falls
+  /// back to this when blank, and a document whose specific override AND
+  /// this general field are both blank prints no terms block at all (rather
+  /// than empty boilerplate). Same fallback rule as AN-CRM's
+  /// Business.termsAndConditions (src/models/Business.ts).
   serviceTerms       String? @db.Text
+  /// --- Per-document-type Terms & Conditions overrides ---
+  /// One per printable Service Centre document, each falling back to
+  /// serviceTerms above. Kept as separate nullable columns rather than a
+  /// JSON blob so the fallback is a plain `?? serviceTerms` at the point of
+  /// render and nothing has to parse/defend against a malformed shape.
+  workorderTerms     String? @db.Text
+  estimateTerms      String? @db.Text
+  invoiceTerms       String? @db.Text
+  serviceRecordTerms String? @db.Text
+  /// Default labour charge, in WHOLE RUPEES (this app stores money in
+  /// rupees, not paise — see Plan.price and ServiceLine.laborCharge, both
+  /// plain rupee amounts). Used to pre-fill the labour figure on a new
+  /// workorder service line. Null/0 means "no default" — the field is left
+  /// blank rather than pre-filled with a zero that reads as a real quote.
+  defaultLaborCharge Int?
+  /// The partner's own UPI VPA, e.g. "yourshop@okhdfcbank". Printed on the
+  /// Sales Invoice as a scannable UPI payment QR (src/lib/upiQr.ts). There
+  /// is no gateway, webhook or reconciliation behind it: the customer scans
+  /// and pays the partner directly, and matching the payment against the
+  /// invoice stays manual.
+  upiId              String?
   /// e.g. "Mon-Sat, 9:30am - 7:00pm"
   serviceHours       String?
   /// A public support number, distinct from businessContact (the number we

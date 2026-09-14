@@ -2,7 +2,7 @@ import { DocumentView } from "@/components/DocumentView";
 import { serviceCentreColumns } from "@/lib/sample-data/service-centre";
 import { registerPage } from "@/lib/designer/registry";
 import { notFound } from "next/navigation";
-import { getPartner } from "@/lib/partnerData";
+import { getPartner, resolveDocumentTerms } from "@/lib/partnerData";
 import { getBusinessRecord, getBusinessRecordSequenceIndex } from "@/lib/businessRecords";
 
 registerPage({
@@ -63,7 +63,7 @@ const JOB_CARD_FIELDS = [
   "receivedDate",
   "slaDate",
   "loggedBy",
-  "technicianName",
+  "engineerName",
 ];
 
 const JOB_CARD_DECLARATION =
@@ -95,6 +95,8 @@ export default async function ServiceCentreDocumentPage({
         "Customer Signature",
         `For ${partner?.businessName ?? "Your Business"} — Authorised Signatory`,
       ]}
+      termsText={resolveDocumentTerms(partner, "workorder")}
+      contactBand={{ hours: partner?.serviceHours, hotline: partner?.supportHotline }}
       footerNote={JOB_CARD_DECLARATION}
     />
   );

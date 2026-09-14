@@ -4,7 +4,7 @@ import { formatNumber } from "@/lib/designer/numberingFormat";
 import { registerPage } from "@/lib/designer/registry";
 import { notFound } from "next/navigation";
 import { getDocumentTemplate } from "@/lib/designer/documentTemplates";
-import { getPartner } from "@/lib/partnerData";
+import { getPartner, resolveDocumentTerms } from "@/lib/partnerData";
 import { getBusinessRecord, getBusinessRecordSequenceIndex } from "@/lib/businessRecords";
 import { ServiceCentreInvoiceDocument } from "./ServiceCentreInvoiceDocument";
 
@@ -71,6 +71,10 @@ export default async function ServiceCentreInvoicePage({
       customerPincode={String(record["customerPincode"] ?? "")}
       lines={lines}
       customTemplate={customTemplate}
+      termsText={resolveDocumentTerms(partner, "invoice")}
+      serviceHours={partner?.serviceHours}
+      supportHotline={partner?.supportHotline}
+      upiId={partner?.upiId}
     />
   );
 }

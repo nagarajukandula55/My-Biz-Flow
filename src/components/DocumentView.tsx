@@ -44,6 +44,8 @@ export async function DocumentView({
   totals,
   footerNote,
   signatures,
+  termsText,
+  contactBand,
 }: {
   pageId: string;
   /** The numbering system's document-type id, e.g. "billing.document" — see NUMBERED_DOCUMENT_TYPES. */
@@ -78,6 +80,20 @@ export async function DocumentView({
   footerNote?: string;
   /** Signature lines printed at the foot of the document. */
   signatures?: string[];
+  /**
+   * This partner's configured Terms & Conditions for THIS document type,
+   * already resolved (document-specific override -> general fallback) by
+   * resolveDocumentTerms(). Null/blank prints no terms block at all — an
+   * empty "Terms & Conditions" heading is worse than none.
+   */
+  termsText?: string | null;
+  /**
+   * The service centre's own opening hours / public support number, from
+   * Settings > Business Profile. Printed as a footer band so a customer
+   * holding the paper knows when and where to call. Omitted entirely when
+   * the partner hasn't set either.
+   */
+  contactBand?: { hours?: string | null; hotline?: string | null };
 }) {
   const customTemplate = await getDocumentTemplate(pageId);
   const scheme = await getEffectiveScheme(documentType, partnerId);
@@ -214,9 +230,31 @@ export async function DocumentView({
           {footerNote && (
             <p className="mt-8 border-t border-border pt-4 text-xs leading-relaxed text-text-muted">{footerNote}</p>
           )}
+          {termsText?.trim() && (
+            <div className="mt-6 border-t border-border pt-4 text-xs leading-relaxed text-text-muted">
+              <div className="font-semibold uppercase tracking-wide">Terms &amp; Conditions</div>
+              <p className="mt-1 whitespace-pre-line">{termsText.trim()}</p>
+            </div>
+          )}
+          <DocumentContactBand hours={contactBand?.hours} hotline={contactBand?.hotline} />
         </div>
         </PrintFrame>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Shared footer band — the service centre's opening hours and public
+ * support number. Exported so the Sales Invoice (which builds its own
+ * layout rather than going through DocumentView) prints the identical band.
+ */
+export function DocumentContactBand({ hours, hotline }: { hours?: string | null; hotline?: string | null }) {
+  if (!hours?.trim() && !hotline?.trim()) return null;
+  return (
+    <div className="mt-6 flex flex-wrap justify-center gap-x-6 gap-y-1 border-t border-border pt-3 text-xs text-text-muted">
+      {hours?.trim() && <span>Service Hours: {hours.trim()}</span>}
+      {hotline?.trim() && <span>Support: {hotline.trim()}</span>}
     </div>
   );
 }

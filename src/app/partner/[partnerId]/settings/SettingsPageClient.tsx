@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { RecordForm, type FormFieldDef } from "@/components/RecordForm";
 import { StatusChip } from "@/components/StatusChip";
 import { MODULES } from "@/lib/designer/modules";
@@ -19,7 +19,15 @@ const SETTINGS_FIELDS: FormFieldDef[] = [
  * call the fs-based, override-aware buildPartnerAdminNavGroups(), which
  * cannot run in a Client Component — see modules.ts's header).
  */
-export function SettingsPageClient({ visibleModuleSlugs }: { visibleModuleSlugs: string[] }) {
+export function SettingsPageClient({
+  visibleModuleSlugs,
+  sectionNav,
+}: {
+  visibleModuleSlugs: string[];
+  /** Jump-nav to the real, persisted sections further down the page — rendered
+   * here so it sits directly under the page title rather than above it. */
+  sectionNav?: ReactNode;
+}) {
   const [logoName, setLogoName] = useState<string | null>(null);
   // Reflects this partner's real ModuleAccessKey state (src/lib/designer/accessKeys.ts)
   // at page load — toggling here is still a demo stub (does not persist), but the
@@ -34,8 +42,11 @@ export function SettingsPageClient({ visibleModuleSlugs }: { visibleModuleSlugs:
     <div>
       <h1 className="font-display text-2xl font-bold text-text">Settings</h1>
       <p className="mt-1 text-sm text-text-muted">
-        Partner profile, branding, and enabled modules. Demo stubs throughout — no backend persistence yet.
+        Partner profile, branding, and enabled modules. This first block is a demo stub — the Business
+        Profile, Bank Details and Config sections further down are real, persisted settings.
       </p>
+
+      {sectionNav}
 
       <div className="mt-6">
         <RecordForm fields={SETTINGS_FIELDS} submitLabel="Save settings" />

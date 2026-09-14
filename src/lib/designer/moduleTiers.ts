@@ -36,7 +36,7 @@ export const MODULE_TIER_FEATURES: Record<string, ModuleTierFeatures> = {
   // adds multi-center hierarchy and financial reporting.
   "service-centre": {
     basic: ["Single-login workorder flow: job card, device & fault intake to close", "GST & non-GST invoicing (no inventory or catalog storage)", "Customer-facing repair status tracking page"],
-    pro: ["Customer database, fault/symptom/solution library, technician assignment", "Quotations, Credit/Debit Notes, Delivery Challans, UPI payment QR", "Inventory, Brands/Models, Custom Report Builder & Analytics"],
+    pro: ["Customer database, fault/symptom/solution library, staff-name roster", "Quotations, Credit/Debit Notes, Delivery Challans, UPI payment QR", "Inventory, Brands/Models, Custom Report Builder & Analytics"],
     ultimate: ["Ledger Book, Profit & Loss reports and expense tracking", "Unlimited multi-center hierarchy under one login, centralized reporting", "Automated business reports (daily/weekly/monthly) and priority support"],
   },
   billing: {

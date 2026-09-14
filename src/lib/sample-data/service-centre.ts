@@ -297,9 +297,8 @@ export const workorderLifecycle: Record<
     brandName?: string;
     modelId?: string;
     modelName?: string;
-    technicianId?: string;
-    technicianName?: string;
-    assignedAt?: string;
+    engineerName?: string;
+    collectedByName?: string;
     onHold?: boolean;
     holdReason?: string;
     holdSince?: string;
@@ -367,9 +366,10 @@ export function extractLifecycleFromRecord(record: Row): {
   brandName?: string;
   modelId?: string;
   modelName?: string;
-  technicianId?: string;
-  technicianName?: string;
-  assignedAt?: string;
+  /** Free-text name of the person who actually performed the repair, captured at handover. Mirrors AN-CRM's close-route `engineerName`. Not an assignment: nobody is allocated a job in this app. */
+  engineerName?: string;
+  /** Free-text name of the person who handed the unit over / collected the payment at close. Mirrors AN-CRM's `paymentCollectedByName`. */
+  collectedByName?: string;
   onHold?: boolean;
   holdReason?: string;
   holdSince?: string;
@@ -395,9 +395,8 @@ export function extractLifecycleFromRecord(record: Row): {
     brandName: record["brandName"] as string | undefined,
     modelId: record["modelId"] as string | undefined,
     modelName: record["modelName"] as string | undefined,
-    technicianId: record["technicianId"] as string | undefined,
-    technicianName: record["technicianName"] as string | undefined,
-    assignedAt: record["assignedAt"] as string | undefined,
+    engineerName: record["engineerName"] as string | undefined,
+    collectedByName: record["collectedByName"] as string | undefined,
     onHold: Boolean(record["onHold"]),
     holdReason: record["holdReason"] as string | undefined,
     holdSince: record["holdSince"] as string | undefined,
@@ -435,7 +434,8 @@ export const serviceCentreColumns: Column[] = [
   { key: "device", label: "Device", type: "text" },
   { key: "brandName", label: "Brand", type: "text" },
   { key: "modelName", label: "Model", type: "text" },
-  { key: "technicianName", label: "Assigned Technician", type: "text" },
+  { key: "engineerName", label: "Engineer / Serviced By", type: "text" },
+  { key: "collectedByName", label: "Collected By", type: "text" },
   { key: "priority", label: "Priority", type: "select-chip" },
   { key: "status", label: "Status", type: "select-chip", chipVariantMap: STATUS_VARIANT },
   { key: "receivedDate", label: "Received Date", type: "date" },
@@ -471,7 +471,6 @@ export const serviceCentreRows: Row[] = [
     id: "WO-2291",
     customer: "Ravi Shankar",
     device: "Samsung Galaxy S23",
-    technician: "Suresh M.",
     priority: "High",
     status: "In repair",
     receivedDate: "2026-08-05",
@@ -485,7 +484,6 @@ export const serviceCentreRows: Row[] = [
     id: "WO-2290",
     customer: "Priya Nair",
     device: "Dell Inspiron 15 3520",
-    technician: "Arjun K.",
     priority: "Medium",
     status: "Ready",
     receivedDate: "2026-08-04",
@@ -499,7 +497,6 @@ export const serviceCentreRows: Row[] = [
     id: "WO-2289",
     customer: "Faisal Ahmed",
     device: "LG GL-T292RPZY Double Door",
-    technician: "Suresh M.",
     priority: "Urgent",
     status: "Diagnosed",
     receivedDate: "2026-08-06",
@@ -513,7 +510,6 @@ export const serviceCentreRows: Row[] = [
     id: "WO-2288",
     customer: "Divya Menon",
     device: "Sony Bravia X75L 55\"",
-    technician: "Neha P.",
     priority: "Low",
     status: "Delivered",
     receivedDate: "2026-08-01",
@@ -609,12 +605,13 @@ export const serviceCentreFormFields: FormFieldDef[] = [
   // Duplicates Fault in Device at intake; kept for the diagnosis stage.
   { section: "Issue", column: 2, key: "issueDescription", label: "Issue Description (customer's own words)", type: "textarea", required: false, createHidden: true },
   { section: "Issue", column: 2, key: "remark", label: "Remark", type: "text", required: false },
-  // Free text, not a picker: the technician roster (PartnerStaff) is the
-  // roster of people who REPAIR, while this records the front-desk person
-  // who took the job in — often not on that roster at all. The reference
-  // app makes the same call for its equivalent `ccoName` field, offering
-  // recently-used names as suggestions rather than a fixed list.
-  { section: "Issue", column: 2, key: "loggedBy", label: "Logged By (CCO Name)", type: "text", required: true, placeholder: "Select a recent name or type a new one" },
+  // Mandatory and deliberately NOT prefilled: this records WHO at the front
+  // desk took the job in, and silently defaulting it to whoever booked the
+  // last job makes that answer worthless. It stays free text so a walk-in
+  // shift can always be logged, but a Pro+ partner who maintains the Staff
+  // Names roster (service-centre-staff-names) gets that roster offered as
+  // suggestions — the same catalog-vs-free-text arrangement Brand/Model use.
+  { section: "Issue", column: 2, key: "loggedBy", label: "Logged By (CCO Name)", type: "text", required: true, placeholder: "Type the front-desk name that booked this job in" },
 
   // --- Job handling (this app's own operational fields) ---
   // Every field below is createHidden: the system sets it at creation, or a
@@ -675,7 +672,8 @@ export function getServiceCentreDetailFields(record: Row): RecordField[] {
     { label: "Device", value: r["device"], type: "text" },
     { label: "Brand", value: r["brandName"], type: "text" },
     { label: "Model", value: r["modelName"], type: "text" },
-    { label: "Assigned Technician", value: r["technicianName"], type: "text" },
+    { label: "Engineer / Serviced By", value: r["engineerName"], type: "text" },
+    { label: "Collected By", value: r["collectedByName"], type: "text" },
     { label: "Priority", value: r["priority"], type: "select", chipVariant: STATUS_VARIANT[String(r["priority"])] ?? "neutral" },
     { label: "Status", value: r["status"], type: "select", chipVariant: STATUS_VARIANT[String(r["status"])] ?? "neutral" },
     { label: "Received Date", value: r["receivedDate"], type: "date" },
@@ -707,7 +705,7 @@ export function getServiceCentreDetailFields(record: Row): RecordField[] {
  * Real activity timeline for a workorder, derived ENTIRELY from timestamps
  * already persisted on the record itself — intake date, the stageHistory
  * entries appended by patchServiceCentreWorkorderAction on every stage
- * change, technician assignment, estimate approval, hold, and cancellation.
+ * change, estimate approval, hold, and cancellation.
  *
  * Deliberately carries NO `actor` and no IP address: Service Centre has a
  * single login for the whole business (see requirePartnerSession.ts /
@@ -733,9 +731,6 @@ export function getServiceCentreTimeline(record: Row): TimelineEntry[] {
     push(`stage-${i}`, `Stage changed to ${h.stage}`, h.at);
   });
 
-  if (record["technicianName"]) {
-    push("assigned", `Technician assigned — ${String(record["technicianName"])}`, record["assignedAt"]);
-  }
   if (record["estimateApproved"]) {
     push("estimate", "Estimate approved by customer", record["customerApprovalAt"]);
   }

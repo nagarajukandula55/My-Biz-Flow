@@ -14,7 +14,8 @@ import {
 } from "@/lib/sample-data/service-centre";
 import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
 import { getBusinessRecord, listBusinessRecords } from "@/lib/businessRecords";
-import { listActivePartnerStaff } from "@/lib/partnerStaff";
+import { getPartner } from "@/lib/partnerData";
+import { activeStaffNames } from "@/lib/sample-data/service-centre-staff-names";
 import { WorkorderLifecycle } from "./WorkorderLifecycle";
 
 registerPage({
@@ -29,7 +30,7 @@ registerPage({
     { key: "timeline", label: "Activity timeline" },
     { key: "related-records", label: "Related records rail" },
   ],
-  explanation: "Read-only detail view of a single workorder, rendered via the shared RecordDetail component (field grid + activity timeline), with Edit and Delete actions in the header. The WorkorderLifecycle panel above it carries the real domain logic: Brand/Model/Technician assignment against this partner's own live catalogs, an estimate-approval gate before repair work starts (skipped for in-warranty jobs, which are also non-chargeable throughout), a Hold (Parts Pending) side-state distinct from Cancelled, and real Billing-invoice creation on Close.",
+  explanation: "Read-only detail view of a single workorder, rendered via the shared RecordDetail component (field grid + activity timeline), with Edit and Delete actions in the header. The WorkorderLifecycle panel above it carries the real domain logic: Brand/Model selection against this partner's own live catalogs, an estimate-approval gate before repair work starts (skipped for in-warranty jobs, which are also non-chargeable throughout), a Hold (Parts Pending) side-state distinct from Cancelled, and real Billing-invoice creation on Close.",
   sourceFile: "src/app/partner/[partnerId]/service-centre/[recordId]/page.tsx",
 });
 
@@ -62,10 +63,21 @@ export default async function ServiceCentreDetailPage({
   const solutionRecords = await listBusinessRecords(params.partnerId, "service-centre-solutions");
   const activeSolutions = solutionRecords.filter((r) => r["status"] === "Active");
   const solutionOptions = activeSolutions.map((r) => ({ value: String(r["id"]), label: String(r["title"] ?? r["id"]) }));
+  // Settings > Config's default labour charge — used below as the fallback
+  // when a Solution itself carries no defaultLaborCharge, so a new service
+  // line pre-fills with the partner's own default rather than ₹0.
+  const partner = await getPartner(params.partnerId);
   // defaultLaborCharge lives on each Solution but was never read — service
-  // lines were always added at ₹0. Passed through so a new line pre-fills.
+  // lines were always added at ₹0. Passed through so a new line pre-fills;
+  // a Solution with no charge of its own falls back to the partner-level
+  // default set in Settings > Config, and only then to ₹0.
   const solutionLaborCharges = Object.fromEntries(
-    activeSolutions.map((r) => [String(r["id"]), typeof r["defaultLaborCharge"] === "number" ? r["defaultLaborCharge"] : 0])
+    activeSolutions.map((r) => [
+      String(r["id"]),
+      typeof r["defaultLaborCharge"] === "number" && r["defaultLaborCharge"] > 0
+        ? r["defaultLaborCharge"]
+        : partner?.defaultLaborCharge ?? 0,
+    ])
   );
 
   const brandRecords = await listBusinessRecords(params.partnerId, "service-centre-brands");
@@ -78,15 +90,14 @@ export default async function ServiceCentreDetailPage({
     .filter((r) => r["status"] === "Active")
     .map((r) => ({ value: String(r["id"]), label: `${r["name"] ?? r["id"]} (${r["brandName"] ?? "—"})` }));
 
-  // Sourced from real PartnerStaff accounts (technicians/managers can be
-  // assigned) instead of the label-only "users" BusinessRecord sample data
-  // — see src/lib/sample-data/users.ts's header comment. "users" is still
-  // used elsewhere unchanged (e.g. other modules' team-member display) —
-  // only Service Centre's technician assignment has been switched over.
-  const staffRecords = await listActivePartnerStaff(params.partnerId);
-  const technicianOptions = staffRecords
-    .filter((s) => s.role === "Technician" || s.role === "Manager" || s.role === "Owner")
-    .map((s) => ({ value: s.id, label: `${s.name} (${s.role})` }));
+  // Suggestion list for the two mandatory who-did-this name fields captured
+  // at handover (Engineer / Serviced By, Collected By). These are NAMES, not
+  // accounts and not an assignment: a workorder is never allocated to
+  // anybody in this app. A Starter partner has no roster, so this is empty
+  // and both fields render as plain free text.
+  const staffNameOptions = activeStaffNames(
+    await listBusinessRecords(params.partnerId, "service-centre-staff-names")
+  );
 
   return (
     <AppShell topbarTitle={mod?.label ?? "Service Centre"}>
@@ -109,8 +120,8 @@ export default async function ServiceCentreDetailPage({
           brandName={lifecycle.brandName}
           modelId={lifecycle.modelId}
           modelName={lifecycle.modelName}
-          technicianId={lifecycle.technicianId}
-          technicianName={lifecycle.technicianName}
+          engineerName={lifecycle.engineerName}
+          collectedByName={lifecycle.collectedByName}
           onHold={lifecycle.onHold}
           holdReason={lifecycle.holdReason}
           brandJobNoForPartOrder={lifecycle.brandJobNoForPartOrder}
@@ -124,7 +135,7 @@ export default async function ServiceCentreDetailPage({
           solutionLaborCharges={solutionLaborCharges}
           brandOptions={brandOptions}
           modelOptions={modelOptions}
-          technicianOptions={technicianOptions}
+          staffNameOptions={staffNameOptions}
         />
 
         <div className="mt-8">
@@ -147,6 +158,12 @@ export default async function ServiceCentreDetailPage({
                   className="btn-outline"
                 >
                   View document
+                </Link>
+                <Link
+                  href={`/partner/${params.partnerId}/service-centre/${params.recordId}/service-record`}
+                  className="btn-outline"
+                >
+                  Service record
                 </Link>
                 <Link
                   href={`/partner/${params.partnerId}/service-centre/${params.recordId}/edit`}

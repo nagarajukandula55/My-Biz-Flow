@@ -34,17 +34,15 @@ function card(emoji: string, title: string, rows: { label: string; value: string
 // Notification templates — one-off ops/staff-facing event alerts.
 // ---------------------------------------------------------------------------
 
-/** New Service Centre workorder assigned/created — equivalent of AN-CRM's NEW_WORKORDER type. */
-export function newWorkorderAssignedMessage(opts: {
+/** New Service Centre workorder created — equivalent of AN-CRM's NEW_WORKORDER type. */
+export function newWorkorderCreatedMessage(opts: {
   partnerBusinessName: string;
   workorderNumber: string;
   customerName: string;
-  technicianName?: string;
 }): string {
   return card("🆕", `${opts.partnerBusinessName} — New Workorder`, [
     { label: "Workorder", value: opts.workorderNumber },
     { label: "Customer", value: opts.customerName },
-    ...(opts.technicianName ? [{ label: "Assigned to", value: opts.technicianName }] : []),
   ]);
 }
 

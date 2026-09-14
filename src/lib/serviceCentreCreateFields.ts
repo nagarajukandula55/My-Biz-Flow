@@ -5,6 +5,7 @@ import { getPartner } from "@/lib/partnerData";
 import { parseProductDomains } from "@/lib/catalog/productDomains";
 import { categoryOptionsForDomains } from "@/lib/catalog/serviceCatalog";
 import { filterByDomains } from "@/lib/sample-data/service-centre-brands";
+import { activeStaffNames } from "@/lib/sample-data/service-centre-staff-names";
 import type { FormFieldDef } from "@/components/RecordForm";
 
 /**
@@ -19,7 +20,8 @@ import type { FormFieldDef } from "@/components/RecordForm";
  * It applies, in order: the Designer's per-page customizations, the
  * partner's product-domain scoping of Device Type, this partner's own live
  * Brand/Model catalogs as suggestions (Models keyed BY BRAND), the
- * "+ Add new" catalog links, and the recently-used "logged by" names.
+ * "+ Add new" catalog links, and the partner's Staff Names roster as the
+ * suggestion source for "Logged By".
  *
  * Field VISIBILITY at create time is not done here — RecordForm's
  * `mode="create"` drops every `createHidden` field, so the same field set
@@ -42,10 +44,10 @@ export async function buildServiceCentreCreateFields(partnerId: string): Promise
   const partner = await getPartner(partnerId);
   const domains = parseProductDomains(partner?.productDomains);
 
-  const [brands, models, priorJobs] = await Promise.all([
+  const [brands, models, staffNames] = await Promise.all([
     listBusinessRecords(partnerId, "service-centre-brands"),
     listBusinessRecords(partnerId, "service-centre-models"),
-    listBusinessRecords(partnerId, "service-centre"),
+    listBusinessRecords(partnerId, "service-centre-staff-names"),
   ]);
 
   const scopedModels = filterByDomains(models, domains);
@@ -64,13 +66,23 @@ export async function buildServiceCentreCreateFields(partnerId: string): Promise
   }
 
   const base = `/partner/${partnerId}/service-centre`;
+  // "Logged By" is sourced from the partner's own Staff Names roster, NOT
+  // from the names typed on past workorders. Scraping history meant the
+  // field quietly proposed (and, being the only suggestion, effectively
+  // defaulted to) whoever booked the last job — so the mandatory "who took
+  // this in" answer was whatever the previous shift happened to be. A
+  // Starter partner has no roster and therefore no suggestions: they type
+  // the name each time, which is the correct behaviour, not a degradation.
   const suggestionsByKey: Record<string, string[]> = {
     brandName: distinct(filterByDomains(brands, domains), "name"),
-    loggedBy: distinct(priorJobs, "loggedBy"),
+    loggedBy: activeStaffNames(staffNames),
   };
   const addNewByKey: Record<string, { label: string; href: string }> = {
     brandName: { label: "Add new brand", href: `${base}/brands/new` },
     modelName: { label: "Add new model", href: `${base}/models/new` },
+    // Only offered once the roster exists — a Starter partner can't reach
+    // the page, so pointing them at it would be a dead end.
+    ...(staffNames.length ? { loggedBy: { label: "Manage staff names", href: `${base}/staff-names` } } : {}),
   };
 
   const categoryOptions = categoryOptionsForDomains(domains);

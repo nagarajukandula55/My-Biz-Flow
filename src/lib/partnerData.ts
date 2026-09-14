@@ -58,6 +58,14 @@ export type PartnerRecord = {
   bankName: string | null;
   bankAccountNumber: string | null;
   bankIfsc: string | null;
+  /** Per-document-type T&C overrides; each falls back to serviceTerms when blank. */
+  workorderTerms: string | null;
+  estimateTerms: string | null;
+  invoiceTerms: string | null;
+  serviceRecordTerms: string | null;
+  /** Whole rupees (this app stores money in rupees, not paise). */
+  defaultLaborCharge: number | null;
+  upiId: string | null;
 };
 
 function toRecord(row: {
@@ -94,6 +102,14 @@ function toRecord(row: {
   bankName: string | null;
   bankAccountNumber: string | null;
   bankIfsc: string | null;
+  /** Per-document-type T&C overrides; each falls back to serviceTerms when blank. */
+  workorderTerms: string | null;
+  estimateTerms: string | null;
+  invoiceTerms: string | null;
+  serviceRecordTerms: string | null;
+  /** Whole rupees (this app stores money in rupees, not paise). */
+  defaultLaborCharge: number | null;
+  upiId: string | null;
 }): PartnerRecord {
   return {
     ...row,
@@ -108,13 +124,31 @@ export type PartnerBusinessProfileInput = {
   businessCategory: string;
   /** Raw checkbox values from the Settings form; normalised before storing. */
   productDomains: string[];
-  serviceTerms: string;
   serviceHours: string;
   supportHotline: string;
   bankAccountName: string;
   bankName: string;
   bankAccountNumber: string;
   bankIfsc: string;
+};
+
+/**
+ * The Config-tab fields: operational defaults and the Terms & Conditions
+ * text that prints on each document. Separate from
+ * PartnerBusinessProfileInput because they are a separate form (and a
+ * separate Server Action) on the Settings page — saving one must not blank
+ * the other's columns.
+ */
+export type PartnerConfigInput = {
+  /** Raw form string in whole rupees; blank/0/non-numeric stores null. */
+  defaultLaborCharge: string;
+  upiId: string;
+  /** The general fallback — stored in the existing serviceTerms column. */
+  serviceTerms: string;
+  workorderTerms: string;
+  estimateTerms: string;
+  invoiceTerms: string;
+  serviceRecordTerms: string;
 };
 
 /**
@@ -140,7 +174,6 @@ export async function updatePartnerBusinessProfile(
       // ELECTRONICS) so nothing downstream has to defend against a
       // hand-posted value.
       productDomains: parseProductDomains(input.productDomains),
-      serviceTerms: clean(input.serviceTerms),
       serviceHours: clean(input.serviceHours),
       supportHotline: clean(input.supportHotline),
       bankAccountName: clean(input.bankAccountName),
@@ -149,6 +182,63 @@ export async function updatePartnerBusinessProfile(
       bankIfsc: clean(input.bankIfsc),
     },
   });
+}
+
+/**
+ * Persists the Settings > Config section. Money is stored in whole rupees
+ * (this app's convention throughout — Plan.price and a service line's
+ * laborCharge are both plain rupee amounts, not paise), so the form value
+ * is stored as-is once validated. A blank, zero, negative or non-numeric
+ * labour charge stores null — "no default" — rather than a 0 that would
+ * pre-fill every new service line with a figure that reads as a real quote.
+ */
+export async function updatePartnerConfig(partnerId: string, input: PartnerConfigInput): Promise<void> {
+  const clean = (v: string) => v.trim() || null;
+  const parsedLabor = Math.round(Number(input.defaultLaborCharge.trim()));
+  const defaultLaborCharge =
+    input.defaultLaborCharge.trim() === "" || !Number.isFinite(parsedLabor) || parsedLabor <= 0
+      ? null
+      : parsedLabor;
+
+  await prisma.partner.update({
+    where: { id: partnerId },
+    data: {
+      defaultLaborCharge,
+      upiId: clean(input.upiId),
+      serviceTerms: clean(input.serviceTerms),
+      workorderTerms: clean(input.workorderTerms),
+      estimateTerms: clean(input.estimateTerms),
+      invoiceTerms: clean(input.invoiceTerms),
+      serviceRecordTerms: clean(input.serviceRecordTerms),
+    },
+  });
+}
+
+/** The four printable Service Centre documents that can carry their own terms. */
+export type PartnerDocumentTermsKind = "workorder" | "estimate" | "invoice" | "serviceRecord";
+
+/**
+ * Resolves which Terms & Conditions text a given document should print:
+ * that document type's own override, else the partner's general terms,
+ * else nothing at all. Returning null (rather than "") is deliberate —
+ * callers render the terms block only when this is non-null, so a partner
+ * who has configured no terms gets no empty boilerplate heading.
+ */
+export function resolveDocumentTerms(
+  partner: Pick<
+    PartnerRecord,
+    "serviceTerms" | "workorderTerms" | "estimateTerms" | "invoiceTerms" | "serviceRecordTerms"
+  > | null | undefined,
+  kind: PartnerDocumentTermsKind
+): string | null {
+  if (!partner) return null;
+  const specific = {
+    workorder: partner.workorderTerms,
+    estimate: partner.estimateTerms,
+    invoice: partner.invoiceTerms,
+    serviceRecord: partner.serviceRecordTerms,
+  }[kind];
+  return specific?.trim() || partner.serviceTerms?.trim() || null;
 }
 
 /**

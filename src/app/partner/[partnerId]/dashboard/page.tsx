@@ -63,11 +63,7 @@ export default async function PartnerDashboardPage({ params }: { params: { partn
                 <DashboardWidget label="Workorders This Year" value={String(scOverview.workordersThisYear)} />
               </Link>
               <Link href={`/partner/${params.partnerId}/service-centre`}>
-                <DashboardWidget
-                  label="Open Workorders"
-                  value={String(scOverview.openWorkorders)}
-                  trend={{ direction: "up", label: `${scOverview.technicianWorkload.length} technician(s) assigned` }}
-                />
+                <DashboardWidget label="Open Workorders" value={String(scOverview.openWorkorders)} />
               </Link>
               <Link href={`/partner/${params.partnerId}/service-centre`}>
                 <DashboardWidget label="Closed This Month" value={String(scOverview.closedThisMonth)} />
@@ -76,22 +72,6 @@ export default async function PartnerDashboardPage({ params }: { params: { partn
                 <DashboardWidget label="Revenue This Month" value={formatCurrencyINR(scOverview.revenueThisMonth)} neon />
               </Link>
             </div>
-
-            {scOverview.technicianWorkload.length > 0 && (
-              <div className="mt-4 rounded-lg border border-border bg-bg-raised p-4">
-                <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">
-                  Technician Workload (open jobs)
-                </div>
-                <div className="mt-3 space-y-2">
-                  {scOverview.technicianWorkload.map((t) => (
-                    <div key={t.technician} className="flex items-center justify-between text-sm">
-                      <span className="text-text">{t.technician}</span>
-                      <span className="font-mono font-semibold text-text">{t.open}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         )}
 
