@@ -9,6 +9,7 @@ import {
   type NumberingScheme,
 } from "@/lib/designer/numbering";
 
+/** Editing the platform-wide Main scheme is a Super Admin action (now lives in My Biz Flow Admin) -- kept here only because NumberingSchemeEditor is one shared component for both Main and per-partner editing; nothing in this app currently renders it without a partnerId, so this path is unreachable here. */
 export async function saveMainSchemeAction(documentType: string, scheme: NumberingScheme) {
   await saveMainScheme(documentType, scheme);
   revalidatePath("/admin/numbering");

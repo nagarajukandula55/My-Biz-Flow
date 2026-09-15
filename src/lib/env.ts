@@ -29,6 +29,19 @@ function requireEnv(name: string): string {
 
 export const env = {
   superAdminSecret: () => requireEnv("SUPER_ADMIN_SECRET"),
+  /** Optional parent-domain cookie scope (e.g. ".mybizflow.in") for the
+   * Super Admin session cookie — set on My Biz Flow Admin (which now owns
+   * the only real /admin/login) so the cookie it sets is also readable on
+   * this app's own domain, keeping the admin-can-view-any-partner bypass
+   * in requirePartnerSession.ts working across the two separate
+   * deployments. Unset (e.g. on localhost) means a host-only cookie, same
+   * as before. */
+  adminCookieDomain: () => process.env.ADMIN_COOKIE_DOMAIN || undefined,
+  /** Where the separate My Biz Flow Admin app is deployed — src/middleware.ts
+   * redirects any /admin/* request here now that this app has no admin
+   * pages of its own. Defaults to a placeholder subdomain; set
+   * ADMIN_APP_URL once the admin app has a real domain. */
+  adminAppUrl: () => process.env.ADMIN_APP_URL || "https://admin.mybizflow.in",
   /** Signing secret for the partner session JWT (src/lib/partnerSession.ts).
    * Required — there is no insecure fallback. Without this set, every
    * partner login/session-check throws rather than silently issuing an
