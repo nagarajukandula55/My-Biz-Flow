@@ -132,8 +132,14 @@ export async function BillingInvoiceDocument({
   const hasTax = items.some((it) => it.taxRate > 0);
 
   const rows = items.map((it) => {
-    const taxable = it.quantity * it.unitPrice;
-    const gstAmount = taxable * (it.taxRate / 100);
+    // Mirrors LineItemsEditor.tsx's lineAmounts() -- `unitPrice` is exactly
+    // what was typed on the create form; priceMode "incl" means it's
+    // already the tax-inclusive final rate (back the tax OUT of it),
+    // "excl"/absent means tax is added ON TOP of it, same as before this
+    // toggle existed.
+    const gross = it.quantity * it.unitPrice;
+    const taxable = it.priceMode === "incl" && it.taxRate > 0 ? gross / (1 + it.taxRate / 100) : gross;
+    const gstAmount = it.priceMode === "incl" ? gross - taxable : taxable * (it.taxRate / 100);
     return {
       ...it,
       taxable,

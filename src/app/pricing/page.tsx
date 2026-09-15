@@ -116,38 +116,87 @@ export default async function PricingPage({
           <Link href="/login" className="text-text-muted hover:text-text">
             Sign in
           </Link>
-          <Link href="/signup" className="btn-accent">
+          <Link href="/signup" className="btn-accent mbf-cta-glow">
             Get started
           </Link>
         </nav>
       </header>
 
-      <div className="px-6 py-16 text-center">
+      <div className="relative overflow-hidden px-6 py-16 text-center">
+        <div aria-hidden className="mbf-glow-blob mbf-glow-blob--accent -top-24 -right-16 h-80 w-80" />
+        <div aria-hidden className="mbf-glow-blob mbf-glow-blob--teal top-32 -left-16 h-64 w-64" />
         {selectedType ? (
           <>
-            <div className="mb-3 flex items-center justify-center gap-2 text-sm">
+            <div className="relative z-10 mb-3 flex items-center justify-center gap-2 text-sm">
               <Link href="/pricing" className="font-semibold text-accent hover:underline">
                 ← Change business type
               </Link>
             </div>
-            <h1 className="font-display text-3xl font-bold text-text sm:text-4xl">
-              Plans for {selectedType.id}
+            <h1 className="relative z-10 font-display text-3xl font-bold text-text sm:text-4xl">
+              Plans for <span className="mbf-gradient-text">{selectedType.id}</span>
             </h1>
-            <p className="mbf-prose mx-auto mt-3 text-base text-text-muted">
+            <p className="mbf-prose relative z-10 mx-auto mt-3 text-base text-text-muted">
               {selectedType.description || "No-code stays no-code at every tier."} What changes as you grow is how
               many modules and seats you get — not whether the builder works.
             </p>
           </>
         ) : (
           <>
-            <h1 className="font-display text-3xl font-bold text-text sm:text-4xl">Plans for every stage</h1>
-            <p className="mbf-prose mx-auto mt-3 text-base text-text-muted">
+            <h1 className="relative z-10 font-display text-3xl font-bold text-text sm:text-4xl">
+              Plans for <span className="mbf-gradient-text">every stage</span>
+            </h1>
+            <p className="mbf-prose relative z-10 mx-auto mt-3 text-base text-text-muted">
               No-code stays no-code at every tier. Pick the kind of business you run to see the modules, tiers, and
               pricing bundled for it.
             </p>
           </>
         )}
       </div>
+
+      {selectedType?.id === "service-centre" && (
+        <section className="border-t border-border bg-bg-raised px-6 py-16">
+          <div className="mx-auto max-w-5xl">
+            <p className="text-center text-xs font-semibold uppercase tracking-widest text-accent">What you get</p>
+            <h2 className="mt-2 text-center font-display text-2xl font-bold text-text">
+              Everything a repair shop actually needs, in one screen
+            </h2>
+            <p className="mbf-prose mx-auto mt-2 text-center text-base text-text-muted">
+              Service Centre isn't a generic ticketing tool bent into shape — this is what it actually does, ready
+              the moment you sign up below.
+            </p>
+            <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              {[
+                {
+                  title: "Full workorder lifecycle",
+                  description:
+                    "Created → In Progress → Completed → Closed, with fault/symptom/solution details and brand/model on every job.",
+                },
+                {
+                  title: "Public repair tracking",
+                  description:
+                    "Every workorder gets a shareable tracking link — customers check status without an account or a phone call.",
+                },
+                {
+                  title: "Inventory-linked billing",
+                  description:
+                    "Close a workorder and it can generate a GST-compliant invoice from the parts and labour used, deducting stock from Inventory automatically.",
+                },
+                {
+                  title: "No-code, same as every module",
+                  description:
+                    "Fields, statuses, and catalogs are config-driven — a Super Admin can tailor Service Centre without custom development.",
+                },
+              ].map((f) => (
+                <div key={f.title} className="mbf-glass-card p-5">
+                  <h3 className="font-display text-base font-bold text-text">{f.title}</h3>
+                  <p className="mt-1.5 text-sm leading-relaxed text-text-muted">{f.description}</p>
+                </div>
+              ))}
+            </div>
+            <p className="mt-8 text-center text-sm font-semibold text-text-muted">Pick your plan below to get started ↓</p>
+          </div>
+        </section>
+      )}
 
       {!selectedType ? (
         partnerTypes.length === 0 ? (
@@ -160,7 +209,7 @@ export default async function PricingPage({
               <Link
                 key={t.id}
                 href={`/pricing?type=${encodeURIComponent(t.id)}`}
-                className="flex flex-col rounded-lg border border-border bg-bg-raised p-5 transition hover:border-accent"
+                className="mbf-glass-card flex flex-col p-5"
               >
                 <h2 className="font-display text-base font-bold text-text">{t.id}</h2>
                 <p className="mt-1 flex-1 text-sm text-text-muted">{t.description || "—"}</p>
@@ -181,9 +230,7 @@ export default async function PricingPage({
           return (
           <div
             key={plan.id}
-            className={`flex flex-col rounded-lg border p-6 ${
-              i === 1 ? "border-accent bg-bg-raised shadow-lg" : "border-border bg-bg-raised"
-            }`}
+            className={`mbf-glass-card flex flex-col p-6 ${i === 1 ? "mbf-cta-glow border-accent/50" : ""}`}
           >
             {i === 1 && (
               <StatusChip label="Most popular" variant="amber" className="mb-3 w-fit" />

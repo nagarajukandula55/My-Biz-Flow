@@ -6,23 +6,37 @@ import { HSN_CODES } from "@/lib/sample-data/bom";
 
 const EMPTY_ITEM: LineItem = { description: "", quantity: 1, unit: "pcs", unitPrice: 0, taxRate: 18, priceMode: "excl" };
 
-/** unitPrice is always the tax-exclusive rate (see LineItem's own doc comment) -- this is just the per-unit inclusive number for DISPLAY when priceMode is "incl". */
-export function displayedUnitPrice(item: LineItem): number {
-  if ((item.priceMode ?? "excl") === "incl") return item.unitPrice * (1 + item.taxRate / 100);
-  return item.unitPrice;
-}
-
-/** Converts a typed price back to the canonical tax-exclusive unitPrice, given the row's current mode and tax rate — the inverse of displayedUnitPrice(). */
-function unitPriceFromTypedValue(typedValue: number, mode: "excl" | "incl", taxRate: number): number {
-  if (mode === "incl" && taxRate > 0) return typedValue / (1 + taxRate / 100);
-  return typedValue;
+/**
+ * The one place that turns a line item into its real numbers. `unitPrice`
+ * is ALWAYS exactly what was typed into the Unit Price box — toggling
+ * Excl/Incl GST never rewrites it, only changes which formula below
+ * applies to that same number:
+ *  - "excl" (default): unitPrice is the pre-tax rate. Tax is added on top
+ *    — lineTotal = taxable + tax, bigger than what's in the box.
+ *  - "incl": unitPrice IS the final, tax-inclusive per-unit rate. Tax is
+ *    backed OUT of it — lineTotal = quantity * unitPrice EXACTLY (matches
+ *    what's typed), taxable = lineTotal / (1 + rate/100).
+ */
+export function lineAmounts(item: LineItem, showTax: boolean) {
+  const rate = showTax ? item.taxRate : 0;
+  const mode = item.priceMode ?? "excl";
+  const gross = item.quantity * item.unitPrice;
+  if (mode === "incl") {
+    const taxable = rate > 0 ? gross / (1 + rate / 100) : gross;
+    return { taxable, tax: gross - taxable, total: gross };
+  }
+  const tax = gross * (rate / 100);
+  return { taxable: gross, tax, total: gross + tax };
 }
 
 export function computeTotals(items: LineItem[], showTax = true) {
-  const subtotal = items.reduce((sum, it) => sum + it.quantity * it.unitPrice, 0);
-  const taxTotal = showTax
-    ? items.reduce((sum, it) => sum + it.quantity * it.unitPrice * (it.taxRate / 100), 0)
-    : 0;
+  let subtotal = 0;
+  let taxTotal = 0;
+  for (const it of items) {
+    const { taxable, tax } = lineAmounts(it, showTax);
+    subtotal += taxable;
+    taxTotal += tax;
+  }
   return { subtotal, taxTotal, grandTotal: subtotal + taxTotal };
 }
 
@@ -142,9 +156,7 @@ export function LineItemsEditor({
           </thead>
           <tbody>
             {items.map((item, i) => {
-              const lineTotal = item.quantity * item.unitPrice * (1 + (showTax ? item.taxRate : 0) / 100);
-              const lineTaxable = item.quantity * item.unitPrice;
-              const lineGst = showTax ? lineTaxable * (item.taxRate / 100) : 0;
+              const { taxable: lineTaxable, tax: lineGst, total: lineTotal } = lineAmounts(item, showTax);
               const lineCgst = showGstSplit && !interState ? lineGst / 2 : 0;
               const lineSgst = showGstSplit && !interState ? lineGst / 2 : 0;
               const lineIgst = showGstSplit && interState ? lineGst : 0;
@@ -211,12 +223,8 @@ export function LineItemsEditor({
                     <input
                       type="number"
                       min={0}
-                      value={displayedUnitPrice(item)}
-                      onChange={(e) => {
-                        const typed = Number(e.target.value) || 0;
-                        const mode = item.priceMode ?? "excl";
-                        updateItem(i, { unitPrice: unitPriceFromTypedValue(typed, mode, item.taxRate) });
-                      }}
+                      value={item.unitPrice}
+                      onChange={(e) => updateItem(i, { unitPrice: Number(e.target.value) || 0 })}
                       className="w-full rounded-md border border-border bg-bg px-2.5 py-1.5 text-right text-sm text-text tabular-nums outline-none focus:border-accent"
                     />
                     {showTax && (
