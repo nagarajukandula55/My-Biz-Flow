@@ -1,13 +1,17 @@
 /**
- * One-off correction: the 8 real partners migrated from AN-CRM earlier this
- * session were left on a blanket "Active + PLAN-ULTIMATE + Yearly" default
- * from the FIRST migration run — the later fix (resolveSubscription() in
- * migrate-an-crm-businesses-to-mbf.ts, commit a76bf9b) that reads each
- * vendor's REAL AN-CRM VendorSubscription.currentPeriodEnd was written but
- * never actually re-run with --confirm against production. This script
- * applies that same real-status correction directly, without importing
- * businessRecords.ts (whose listBusinessRecords is now wrapped in React's
- * cache() — not usable outside a real React render, breaks under plain tsx).
+ * One-off (re-runnable) correction for the 8 real partners migrated from
+ * AN-CRM. Two rounds of the same underlying mistake, both fixed here:
+ *  1. The very first migration run left everyone on a blanket "Active +
+ *     PLAN-ULTIMATE + Yearly" default.
+ *  2. A first correction pass (this script, run once already) then read
+ *     VendorSubscription.currentPeriodEnd as if it meant "genuinely paid" —
+ *     but AN-CRM's own free-trial grant creates the exact same shape.
+ *     Confirmed directly: ALL 8 vendors have zero PAID
+ *     VendorBillingInvoice records. See resolveSubscription()'s own
+ *     comment for the real gate now used (mirroring AN-CRM's own
+ *     planAccess.ts).
+ * Safe to re-run — only updates a partner whose stored values actually
+ * differ from the freshly-resolved real values.
  *
  * Usage:
  *   MONGODB_URI=... DATABASE_URL=... npx tsx scripts/fix-migrated-partner-subscriptions.ts            (dry run)
@@ -35,24 +39,55 @@ function str(v: unknown, fallback = ""): string {
   return v === undefined || v === null ? fallback : String(v);
 }
 
-function resolveSubscription(sub: Document | null, vendorCreatedAt: Date | undefined) {
+/**
+ * The presence of a VendorSubscription row with a future currentPeriodEnd
+ * does NOT mean the vendor paid — AN-CRM's own free-trial grant creates
+ * exactly the same shape (planKey: "ULTIMATE", a currentPeriodEnd 15 days
+ * out) as a real purchase would. Confirmed directly against production:
+ * ALL 8 real migrated vendors have ZERO documents in vendorbillinginvoices
+ * with status "PAID" — every one of them is genuinely still on the free
+ * trial, never a real payment, regardless of what currentPeriodEnd says.
+ * AN-CRM's own real gate for "did they actually pay" is exactly this check
+ * (see src/core/pricing/planAccess.ts's getVendorTelegramTier/
+ * vendorHasCustomerDatabaseAccess, both of which check
+ * VendorBillingInvoice.exists({ vendorId, status: "PAID" }) rather than
+ * trusting VendorSubscription alone) — mirrored here.
+ *
+ * Trial partners keep PLAN-ULTIMATE so they retain full feature access
+ * during the trial (AN-CRM's own trial is full-featured, not limited), but
+ * subscriptionStatus stays "Trial" so the Subscription page shows a real
+ * day-countdown and keeps the "choose a plan to convert" purchase UI
+ * visible throughout — a partner can purchase at any time during trial,
+ * not just after it lapses.
+ */
+function resolveSubscription(sub: Document | null, hasPaidInvoice: boolean, vendorCreatedAt: Date | undefined) {
   const planKeyMap: Record<string, string> = { STARTER: "PLAN-BASIC", BASIC: "PLAN-PRO", PRO: "PLAN-PRO", ULTIMATE: "PLAN-ULTIMATE" };
   const signupAt = vendorCreatedAt ?? new Date();
-  const trialStartAt = signupAt;
-  const trialEndAt = new Date(signupAt);
-  trialEndAt.setDate(trialEndAt.getDate() + 15);
-
   const currentPeriodEnd = sub ? pick(sub, "currentPeriodEnd") : undefined;
   const planKey = sub ? str(pick(sub, "planKey")) : "";
   const planId = planKey ? planKeyMap[planKey] ?? null : null;
   const validityDays = sub ? Number(pick(sub, "validityDays")) || 30 : 30;
   const billingCycle = validityDays >= 700 ? "TwoYearly" : "Yearly";
 
+  // Trial window: the same currentPeriodEnd the free-trial grant set, since
+  // that IS the real trial-end date here (falls back to signup + 15 days if
+  // there's no VendorSubscription row at all yet).
+  const trialStartAt = signupAt;
+  const trialEndAt = currentPeriodEnd instanceof Date ? currentPeriodEnd : new Date(signupAt.getTime() + 15 * 24 * 60 * 60 * 1000);
+
+  if (!hasPaidInvoice) {
+    // Never paid -- always Trial, whether or not the trial window has
+    // lapsed (the Subscription page already derives "Trial Expired" display
+    // state from trialEndAt being in the past; the stored status stays
+    // "Trial" either way, matching how it already handles a fresh signup).
+    return { subscriptionStatus: "Trial", planId, billingCycle: null, trialStartAt, trialEndAt };
+  }
+
   if (currentPeriodEnd instanceof Date) {
     const active = currentPeriodEnd.getTime() > Date.now();
     return { subscriptionStatus: active ? "Active" : "PastDue", planId, billingCycle: planId ? billingCycle : null, trialStartAt, trialEndAt };
   }
-  return { subscriptionStatus: "Trial", planId: null, billingCycle: null, trialStartAt, trialEndAt };
+  return { subscriptionStatus: "Trial", planId, billingCycle: null, trialStartAt, trialEndAt };
 }
 
 async function main() {
@@ -70,16 +105,18 @@ async function main() {
       continue;
     }
     const sub = await db.collection("vendorsubscriptions").findOne({ vendorId: vendor._id });
-    const resolved = resolveSubscription(sub, vendor.createdAt instanceof Date ? vendor.createdAt : undefined);
+    const hasPaidInvoice = (await db.collection("vendorbillinginvoices").countDocuments({ vendorId: vendor._id, status: "PAID" })) > 0;
+    const resolved = resolveSubscription(sub, hasPaidInvoice, vendor.createdAt instanceof Date ? vendor.createdAt : undefined);
 
     const changed =
       partner.subscriptionStatus !== resolved.subscriptionStatus ||
       partner.planId !== resolved.planId ||
-      partner.billingCycle !== resolved.billingCycle;
+      partner.billingCycle !== resolved.billingCycle ||
+      partner.trialEndAt?.getTime() !== resolved.trialEndAt.getTime();
 
     console.log(
       `${partner.id} (${partner.businessName}): stored=${partner.subscriptionStatus}/${partner.planId} -> real=${resolved.subscriptionStatus}/${resolved.planId}` +
-        (sub ? ` (AN-CRM currentPeriodEnd: ${str(pick(sub, "currentPeriodEnd"))})` : " (no AN-CRM subscription doc)") +
+        ` (hasPaidInvoice: ${hasPaidInvoice}, trialEndAt: ${resolved.trialEndAt.toISOString()})` +
         (changed ? "  ** WILL UPDATE **" : "  (already correct)")
     );
 
@@ -90,6 +127,8 @@ async function main() {
           subscriptionStatus: resolved.subscriptionStatus,
           planId: resolved.planId,
           billingCycle: resolved.billingCycle,
+          trialStartAt: resolved.trialStartAt,
+          trialEndAt: resolved.trialEndAt,
         },
       });
     }
