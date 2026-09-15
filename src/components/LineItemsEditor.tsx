@@ -127,6 +127,7 @@ export function LineItemsEditor({
               <th className="w-20 px-3 py-2.5 text-right">Qty</th>
               <th className="w-24 px-3 py-2.5">Unit</th>
               <th className="w-32 px-3 py-2.5 text-right">Unit Price</th>
+              {showTax && <th className="w-28 px-3 py-2.5 text-right">Taxable Value</th>}
               {showTax && <th className="w-24 px-3 py-2.5 text-right">Tax %</th>}
               {showGstSplit && interState && <th className="w-24 px-3 py-2.5 text-right">IGST</th>}
               {showGstSplit && !interState && (
@@ -238,6 +239,11 @@ export function LineItemsEditor({
                       </div>
                     )}
                   </td>
+                  {showTax && (
+                    <td className="px-3 py-2 text-right font-mono text-sm tabular-nums text-text-muted">
+                      {formatCurrencyINR(lineTaxable)}
+                    </td>
+                  )}
                   {showTax && (
                     <td className="px-3 py-2">
                       <input
