@@ -212,6 +212,66 @@ h3,
     0 0 24px color-mix(in srgb, var(--accent) 25%, transparent);
 }
 
+/* ---------------------------------------------------------------------
+   Public marketing accents ("neon touch-up") — subtle glow polish for
+   the pre-login pages only (home, pricing, login, signup): ambient glow
+   blobs, a glowing primary CTA, gradient headline text, glass cards.
+   Reuses existing tokens (--accent, --teal, --success) via color-mix,
+   same technique .neon-num above already established, rather than
+   inventing new colors — per DESIGN_SYSTEM.md, extend the token set,
+   don't hand-roll new ones. Deliberately not used inside the partner
+   console/admin, which keep their plain, no-glow surfaces. */
+
+.mbf-glow-blob {
+  position: absolute;
+  pointer-events: none;
+  border-radius: 9999px;
+  filter: blur(90px);
+  opacity: 0.35;
+}
+.mbf-glow-blob--accent {
+  background: var(--accent);
+}
+.mbf-glow-blob--teal {
+  background: var(--teal);
+}
+.mbf-glow-blob--success {
+  background: var(--success);
+}
+
+.mbf-gradient-text {
+  background-image: linear-gradient(90deg, var(--accent), var(--teal));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.mbf-cta-glow {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent),
+    0 8px 24px -8px color-mix(in srgb, var(--accent) 55%, transparent);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.mbf-cta-glow:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent),
+    0 12px 32px -6px color-mix(in srgb, var(--accent) 65%, transparent);
+}
+
+.mbf-glass-card {
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg-raised) 92%, transparent);
+  backdrop-filter: blur(6px);
+  transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
+}
+.mbf-glass-card:hover {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  box-shadow: 0 0 32px -12px color-mix(in srgb, var(--accent) 45%, transparent);
+  transform: translateY(-2px);
+}
+
 /* Buttons — brand/primary action (accent) and destructive action (danger).
    Text on accent uses --accent-contrast per DESIGN_SYSTEM.md §2. */
 .btn-accent {

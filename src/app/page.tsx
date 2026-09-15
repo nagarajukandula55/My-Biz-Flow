@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { Sparkles } from "lucide-react";
 import { BrandLogo } from "@/components/BrandLogo";
 import { registerPage } from "@/lib/designer/registry";
 import { listActivePartnerTypes } from "@/lib/designer/partnerTypesData";
@@ -174,19 +175,27 @@ export default async function RootPage({
           <Link href="/login" className="text-text-muted hover:text-text">
             Sign in
           </Link>
-          <Link href="/signup" className="btn-accent">
+          <Link href="/signup" className="btn-accent mbf-cta-glow">
             Get started
           </Link>
         </nav>
       </header>
 
-      <section className="px-6 py-20 text-center">
+      <section className="relative overflow-hidden px-6 py-20 text-center">
+        <div aria-hidden className="mbf-glow-blob mbf-glow-blob--accent -top-32 -right-24 h-96 w-96" />
+        <div aria-hidden className="mbf-glow-blob mbf-glow-blob--teal top-40 -left-24 h-80 w-80" />
+
+        <div className="relative z-10 mx-auto mb-6 inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3.5 py-1.5 text-xs font-semibold text-accent">
+          <Sparkles className="h-3.5 w-3.5" />
+          Built for Service Centres
+        </div>
+
         {isServiceCentre ? (
           <>
-            <h1 className="mx-auto max-w-3xl font-display text-4xl font-extrabold text-text sm:text-5xl">
-              Run your service centre from one screen.
+            <h1 className="relative z-10 mx-auto max-w-3xl font-display text-4xl font-extrabold text-text sm:text-5xl">
+              Run your <span className="mbf-gradient-text">service centre</span> from one screen.
             </h1>
-            <p className="mbf-prose mx-auto mt-5 text-lg leading-relaxed text-text-muted">
+            <p className="mbf-prose relative z-10 mx-auto mt-5 text-lg leading-relaxed text-text-muted">
               My Biz Flow's Service Centre module takes a repair from intake to invoice without switching tools —
               log the fault, move the workorder through its lifecycle, and bill it out with
               GST-compliant invoicing that deducts the parts used straight from Inventory.
@@ -194,10 +203,10 @@ export default async function RootPage({
           </>
         ) : (
           <>
-            <h1 className="mx-auto max-w-3xl font-display text-4xl font-extrabold text-text sm:text-5xl">
-              One platform. Every business you run.
+            <h1 className="relative z-10 mx-auto max-w-3xl font-display text-4xl font-extrabold text-text sm:text-5xl">
+              One platform. <span className="mbf-gradient-text">Every business you run.</span>
             </h1>
-            <p className="mbf-prose mx-auto mt-5 text-lg leading-relaxed text-text-muted">
+            <p className="mbf-prose relative z-10 mx-auto mt-5 text-lg leading-relaxed text-text-muted">
               My Biz Flow is a modular, no-code, multi-vertical business/CRM platform. Instead of shipping a separate
               product per industry, every business runs on one shared metadata engine — modules, fields, pipelines,
               and dashboards are all config-driven. Mix and match POS, Service Centre, Billing, Clinic, HRMS, and
@@ -205,8 +214,8 @@ export default async function RootPage({
             </p>
           </>
         )}
-        <div className="mt-8 flex items-center justify-center gap-4">
-          <Link href={isServiceCentre ? "/signup?type=service-centre" : "/signup"} className="btn-accent">
+        <div className="relative z-10 mt-8 flex items-center justify-center gap-4">
+          <Link href={isServiceCentre ? "/signup?type=service-centre" : "/signup"} className="btn-accent mbf-cta-glow">
             Register your business
           </Link>
           <Link href={isServiceCentre ? "/pricing?type=service-centre" : "/pricing"} className="btn-outline">
@@ -215,15 +224,17 @@ export default async function RootPage({
         </div>
       </section>
 
-      {isServiceCentre && (
-        <section className="border-t border-border px-6 py-16">
+      <section className="border-t border-border px-6 py-16">
           <div className="mx-auto max-w-5xl">
-            <h2 className="text-center font-display text-2xl font-bold text-text">
+            <p className="text-center text-xs font-semibold uppercase tracking-widest text-accent">
+              {isServiceCentre ? "The module" : "Spotlight module"}
+            </p>
+            <h2 className="mt-2 text-center font-display text-2xl font-bold text-text">
               Built around the real repair workflow
             </h2>
             <p className="mbf-prose mx-auto mt-2 text-center text-base text-text-muted">
               Not a generic ticketing tool bent into shape — these are the actual capabilities of the Service Centre
-              module.
+              module, ready the moment you sign up.
             </p>
             <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
               {[
@@ -248,15 +259,21 @@ export default async function RootPage({
                     "Fields, statuses, and catalogs are config-driven — a Super Admin can tailor Service Centre without custom development.",
                 },
               ].map((f) => (
-                <div key={f.title} className="rounded-lg border border-border bg-bg-raised p-5">
+                <div key={f.title} className="mbf-glass-card p-5">
                   <h3 className="font-display text-base font-bold text-text">{f.title}</h3>
                   <p className="mt-1.5 text-sm leading-relaxed text-text-muted">{f.description}</p>
                 </div>
               ))}
             </div>
+            {!isServiceCentre && (
+              <div className="mt-8 text-center">
+                <Link href="/signup?type=service-centre" className="btn-accent mbf-cta-glow">
+                  Sign up as Service Centre
+                </Link>
+              </div>
+            )}
           </div>
         </section>
-      )}
 
       <section className="border-t border-border px-6 py-16">
         <div className="mx-auto max-w-5xl">
@@ -272,10 +289,10 @@ export default async function RootPage({
           ) : (
             <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-3">
               {partnerTypes.map((t) => (
-                <div key={t.id} className="flex flex-col rounded-lg border border-border bg-bg-raised p-5">
+                <div key={t.id} className="mbf-glass-card flex flex-col p-5">
                   <h3 className="font-display text-base font-bold text-text">{t.id}</h3>
                   <p className="mt-1 flex-1 text-sm text-text-muted">{t.description || "—"}</p>
-                  <Link href={`/signup?type=${encodeURIComponent(t.id)}`} className="btn-accent mt-4 text-center">
+                  <Link href={`/signup?type=${encodeURIComponent(t.id)}`} className="btn-accent mbf-cta-glow mt-4 text-center">
                     Sign up as {t.id}
                   </Link>
                 </div>
@@ -293,7 +310,7 @@ export default async function RootPage({
           </p>
           <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-3">
             {SCREENSHOTS.map((s) => (
-              <div key={s.name} className="overflow-hidden rounded-lg border border-border bg-bg-sunken">
+              <div key={s.name} className="mbf-glass-card overflow-hidden bg-bg-sunken">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={`/screenshots/${s.name}.png`}
@@ -323,10 +340,11 @@ export default async function RootPage({
         </div>
       </section>
 
-      <section className="border-t border-border px-6 py-16 text-center">
-        <h2 className="font-display text-2xl font-bold text-text">Ready to set up your business?</h2>
-        <div className="mt-6 flex items-center justify-center gap-4">
-          <Link href="/signup" className="btn-accent">
+      <section className="relative overflow-hidden border-t border-border px-6 py-16 text-center">
+        <div aria-hidden className="mbf-glow-blob mbf-glow-blob--success bottom-0 left-1/2 h-64 w-64 -translate-x-1/2" />
+        <h2 className="relative z-10 font-display text-2xl font-bold text-text">Ready to set up your business?</h2>
+        <div className="relative z-10 mt-6 flex items-center justify-center gap-4">
+          <Link href="/signup" className="btn-accent mbf-cta-glow">
             Register your business
           </Link>
           <Link href="/pricing" className="btn-outline">
