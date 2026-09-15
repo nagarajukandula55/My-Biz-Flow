@@ -35,22 +35,40 @@ export async function dispatchBookingRequest(bookingId: string): Promise<{ offer
     relatedBookingId: booking.id,
   });
 
-  for (const provider of candidates) {
-    await prisma.jobOffer.create({
-      data: { bookingId: booking.id, providerId: provider.id, partnerId: booking.partnerId },
+  if (candidates.length > 0) {
+    // JobOffer rows carry no data the accept/decline flow reads back from
+    // this call (respondToOffer() looks the row up fresh by offerId, and
+    // "first response wins" is decided by that later update transaction,
+    // not by creation order/timestamps here) — so the per-candidate inserts
+    // can be a single batched createMany instead of N sequential creates.
+    await prisma.jobOffer.createMany({
+      data: candidates.map((provider) => ({
+        bookingId: booking.id,
+        providerId: provider.id,
+        partnerId: booking.partnerId,
+      })),
     });
-    await notify({
-      partnerId: booking.partnerId,
-      audience: "provider",
-      recipientId: provider.id,
-      type: "job-offer",
-      title: `New job: ${booking.service.name}`,
-      body: `${booking.address.pincode} — ${booking.slotLabel} on ${booking.scheduledAt.toDateString()}. Standard rate ₹${(booking.priceAmount / 100).toLocaleString("en-IN")}.`,
-      relatedBookingId: booking.id,
-    });
-    await sendSms(
-      provider.phone,
-      `New job available: ${booking.service.name} (${booking.address.pincode}), ${booking.slotLabel}. Open your dashboard to accept.`
+    // Notify + SMS per candidate are independent, best-effort side effects
+    // (notify() and sendSms() each write/send for one provider only) — fan
+    // them out in parallel rather than serially awaiting each one.
+    await Promise.all(
+      candidates.map((provider) =>
+        Promise.all([
+          notify({
+            partnerId: booking.partnerId,
+            audience: "provider",
+            recipientId: provider.id,
+            type: "job-offer",
+            title: `New job: ${booking.service.name}`,
+            body: `${booking.address.pincode} — ${booking.slotLabel} on ${booking.scheduledAt.toDateString()}. Standard rate ₹${(booking.priceAmount / 100).toLocaleString("en-IN")}.`,
+            relatedBookingId: booking.id,
+          }),
+          sendSms(
+            provider.phone,
+            `New job available: ${booking.service.name} (${booking.address.pincode}), ${booking.slotLabel}. Open your dashboard to accept.`
+          ),
+        ])
+      )
     );
   }
 
