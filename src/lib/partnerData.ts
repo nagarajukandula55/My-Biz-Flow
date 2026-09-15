@@ -9,7 +9,7 @@
  * partner. businessId fixed to "BIZ002" until real cross-business support
  * exists.
  */
-import { cache } from "react";
+import { safeCache as cache } from "@/lib/safeCache";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 import { hashPassword, verifyPassword, generatePassword } from "@/lib/passwords";

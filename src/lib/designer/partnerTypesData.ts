@@ -7,7 +7,7 @@
  * (src/lib/plansData.ts) it bundles for actual billing (planIds, added
  * 2026-08-08) — a separate concern from the page split above.
  */
-import { cache } from "react";
+import { safeCache as cache } from "@/lib/safeCache";
 import { prisma } from "@/lib/prisma";
 
 export type PlanTier = "basic" | "pro" | "ultimate";

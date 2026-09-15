@@ -6,7 +6,7 @@
  * — this layer just persists/scopes/looks it up, it doesn't know or care
  * about per-module field shape.
  */
-import { cache } from "react";
+import { safeCache as cache } from "@/lib/safeCache";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 import type { Row } from "@/components/DataTable";

@@ -19,7 +19,7 @@
  *    actually shows.
  */
 
-import { cache } from "react";
+import { safeCache as cache } from "@/lib/safeCache";
 import { type ModuleDefinition } from "@/lib/designer/modules";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { getPartnerEntitlements } from "@/lib/designer/accessKeys";
