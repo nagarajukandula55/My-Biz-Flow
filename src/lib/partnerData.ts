@@ -9,6 +9,7 @@
  * partner. businessId fixed to "BIZ002" until real cross-business support
  * exists.
  */
+import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 import { hashPassword, verifyPassword, generatePassword } from "@/lib/passwords";
@@ -518,10 +519,17 @@ export async function setPartnerPassword(partnerId: string, newPassword: string)
   });
 }
 
-export async function getPartner(id: string): Promise<PartnerRecord | undefined> {
+/**
+ * Wrapped in React's cache() so the many partner pages/layouts that each
+ * call getPartner(partnerId) independently within one request (e.g. the
+ * partner layout plus its child page) share a single Postgres query
+ * instead of re-fetching. Dedup is per-request only — no cross-request
+ * staleness risk, unlike a time-based cache would introduce.
+ */
+export const getPartner = cache(async function getPartner(id: string): Promise<PartnerRecord | undefined> {
   const row = await prisma.partner.findUnique({ where: { id } });
   return row ? toRecord(row) : undefined;
-}
+});
 
 export async function listPartners(): Promise<PartnerRecord[]> {
   const rows = await prisma.partner.findMany({ orderBy: { id: "asc" } });
