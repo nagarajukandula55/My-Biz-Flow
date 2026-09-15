@@ -1,5 +1,4 @@
 import type { Column, Row } from "@/components/DataTable";
-import { LogoMark } from "@/components/LogoMark";
 import { PrintButton } from "@/components/PrintButton";
 import { PrintFrame, type PrintSize } from "@/components/PrintFrame";
 import { formatCurrencyINR, formatDate } from "@/lib/format";
@@ -119,9 +118,10 @@ export async function DocumentView({
   upiPayment?: { vpa: string | null | undefined; payeeName: string; amount: number } | null;
   /**
    * This partner's own uploaded logo (Settings > Business Details, stored
-   * as a `data:` URL — see src/lib/partnerData.ts's updatePartnerLogo, and
-   * Sidebar.tsx for the same fallback pattern). Null/unset renders the
-   * generic LogoMark, same as before any partner had uploaded one.
+   * as a `data:` URL — see src/lib/partnerData.ts's updatePartnerLogo).
+   * Null/unset prints no logo at all — a generic placeholder mark on a
+   * printed customer-facing document reads as if it were the partner's
+   * real branding, which is worse than just leaving that space blank.
    */
   logoDataUrl?: string | null;
 }) {
@@ -150,11 +150,9 @@ export async function DocumentView({
         <div className="rounded-lg border border-border bg-bg-raised p-10 shadow-sm print:rounded-none print:border-0 print:shadow-none">
           <div className="flex items-center justify-between border-b border-border pb-6">
             <div className="flex items-center gap-2.5">
-              {logoDataUrl ? (
+              {logoDataUrl && (
                 // eslint-disable-next-line @next/next/no-img-element -- a data: URL, not a file next/image can optimise.
                 <img src={logoDataUrl} alt={`${partnerName} logo`} className="h-7 max-w-[7rem] rounded bg-white object-contain p-0.5" />
-              ) : (
-                <LogoMark size={28} />
               )}
               <span className="font-display text-lg font-extrabold text-text">{partnerName}</span>
             </div>
