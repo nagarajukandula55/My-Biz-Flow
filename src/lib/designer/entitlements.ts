@@ -19,6 +19,7 @@
  *    actually shows.
  */
 
+import { cache } from "react";
 import { type ModuleDefinition } from "@/lib/designer/modules";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { getPartnerEntitlements } from "@/lib/designer/accessKeys";
@@ -33,12 +34,18 @@ async function getEnabledModuleSlugs(partnerId: string): Promise<string[]> {
   return partnerType?.defaultModules ?? [];
 }
 
-/** Module slugs this partner is both enabled for AND holds an active access key for. */
-export async function getVisibleModuleSlugs(partnerId: string): Promise<string[]> {
+/**
+ * Wrapped in React's cache() — the partner layout calls this once (via
+ * buildPartnerAdminNavGroups, to scope the sidebar) on EVERY partner page
+ * request, and several individual pages (settings, analytics, dashboard)
+ * call it again directly for the same partnerId within that same request.
+ * Dedup is per-request only, same as getPartner().
+ */
+export const getVisibleModuleSlugs = cache(async function getVisibleModuleSlugs(partnerId: string): Promise<string[]> {
   const enabled = await getEnabledModuleSlugs(partnerId);
   const keyed = new Set(await getPartnerEntitlements(partnerId));
   return enabled.filter((slug) => keyed.has(slug));
-}
+});
 
 export async function getVisibleModules(partnerId: string): Promise<ModuleDefinition[]> {
   const slugs = await getVisibleModuleSlugs(partnerId);

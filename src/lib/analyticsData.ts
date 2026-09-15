@@ -84,14 +84,16 @@ export async function getRevenueTrend(partnerId: string): Promise<LineSeriesPoin
 }
 
 export async function getWorkorderStatusBreakdown(partnerId: string): Promise<PieSlice[]> {
-  const rows = await prisma.businessRecord.findMany({
-    where: { partnerId, moduleSlug: "service-centre" },
-    select: { data: true },
-  });
+  // Reads via listBusinessRecords (React-cache()'d) rather than its own
+  // prisma.businessRecord.findMany — this is the same full, unfiltered
+  // "service-centre" table also read by getAnalyticsSummary/
+  // getTopBrandsByWorkorderCount/getAverageTat on the same Analytics page
+  // render; sharing the cached call collapses what used to be several
+  // separate full-table queries into one.
+  const rows = await listBusinessRecords(partnerId, "service-centre");
   const counts = new Map<WorkorderStage, number>(WORKORDER_STAGES.map((s) => [s, 0]));
   for (const r of rows) {
-    const data = r.data as Record<string, unknown>;
-    const stage = WORKORDER_STAGES.includes(data.stage as WorkorderStage) ? (data.stage as WorkorderStage) : "Created";
+    const stage = WORKORDER_STAGES.includes(r["stage"] as WorkorderStage) ? (r["stage"] as WorkorderStage) : "Created";
     counts.set(stage, (counts.get(stage) ?? 0) + 1);
   }
   return Array.from(counts.entries()).map(([name, value]) => ({ name, value }));
@@ -425,18 +427,17 @@ export async function getPeriodComparison(partnerId: string): Promise<PeriodComp
  * in this file), grouped by a field that already exists on every record.
  */
 export async function getRevenueBySource(partnerId: string): Promise<PieSlice[]> {
-  const rows = await prisma.businessRecord.findMany({
-    where: { partnerId, moduleSlug: "billing" },
-    select: { data: true },
-  });
+  // Shares the cached listBusinessRecords(partnerId, "billing") call with
+  // getInvoiceStatusBreakdown/getAnalyticsSummary below — same full,
+  // unfiltered "billing" table, same partner, same request.
+  const rows = await listBusinessRecords(partnerId, "billing");
   const byMode = new Map<string, number>();
   for (const r of rows) {
-    const data = r.data as Record<string, unknown>;
     let amount = 0;
-    if (typeof data.amountPaid === "number") amount = data.amountPaid;
-    else if (data.paymentStatus === "Paid" && typeof data.totalAmount === "number") amount = data.totalAmount;
+    if (typeof r["amountPaid"] === "number") amount = r["amountPaid"] as number;
+    else if (r["paymentStatus"] === "Paid" && typeof r["totalAmount"] === "number") amount = r["totalAmount"] as number;
     if (amount === 0) continue;
-    const mode = typeof data.paymentMode === "string" && data.paymentMode ? data.paymentMode : "Unspecified";
+    const mode = typeof r["paymentMode"] === "string" && r["paymentMode"] ? (r["paymentMode"] as string) : "Unspecified";
     byMode.set(mode, (byMode.get(mode) ?? 0) + amount);
   }
   return Array.from(byMode.entries()).map(([name, value]) => ({ name, value }));
@@ -471,10 +472,7 @@ export async function getAnalyticsSummary(partnerId: string): Promise<AnalyticsS
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
   const [billingRows, workorderRows] = await Promise.all([
-    prisma.businessRecord.findMany({
-      where: { partnerId, moduleSlug: "billing" },
-      select: { data: true, createdAt: true },
-    }),
+    listBusinessRecords(partnerId, "billing"),
     listBusinessRecords(partnerId, "service-centre"),
   ]);
 
@@ -483,15 +481,14 @@ export async function getAnalyticsSummary(partnerId: string): Promise<AnalyticsS
   let thisMonthRevenue = 0;
   let thisMonthInvoiceCount = 0;
   for (const r of billingRows) {
-    const data = r.data as Record<string, unknown>;
     let amount = 0;
-    if (typeof data.amountPaid === "number") amount = data.amountPaid;
-    else if (data.paymentStatus === "Paid" && typeof data.totalAmount === "number") amount = data.totalAmount;
+    if (typeof r["amountPaid"] === "number") amount = r["amountPaid"] as number;
+    else if (r["paymentStatus"] === "Paid" && typeof r["totalAmount"] === "number") amount = r["totalAmount"] as number;
     if (amount > 0) {
       totalRevenue += amount;
       paidInvoiceCount++;
     }
-    if (r.createdAt >= startOfMonth) {
+    if (new Date(r["recordCreatedAt"] as string) >= startOfMonth) {
       thisMonthInvoiceCount++;
       if (amount > 0) thisMonthRevenue += amount;
     }
@@ -564,14 +561,10 @@ export async function getSixMonthTrend(partnerId: string): Promise<ComboTrendPoi
 
 /** Every Billing record (any status), counted by `paymentStatus` — real invoice-status composition, not scoped to paid-only. */
 export async function getInvoiceStatusBreakdown(partnerId: string): Promise<PieSlice[]> {
-  const rows = await prisma.businessRecord.findMany({
-    where: { partnerId, moduleSlug: "billing" },
-    select: { data: true },
-  });
+  const rows = await listBusinessRecords(partnerId, "billing");
   const byStatus = new Map<string, number>();
   for (const r of rows) {
-    const data = r.data as Record<string, unknown>;
-    const status = typeof data.paymentStatus === "string" && data.paymentStatus ? data.paymentStatus : "Draft";
+    const status = typeof r["paymentStatus"] === "string" && r["paymentStatus"] ? (r["paymentStatus"] as string) : "Draft";
     byStatus.set(status, (byStatus.get(status) ?? 0) + 1);
   }
   return Array.from(byStatus.entries()).map(([name, value]) => ({ name, value }));
@@ -585,14 +578,10 @@ export async function getInvoiceStatusBreakdown(partnerId: string): Promise<PieS
  * Capped to the top 8 so the bar chart stays readable.
  */
 export async function getTopBrandsByWorkorderCount(partnerId: string): Promise<BarPoint[]> {
-  const rows = await prisma.businessRecord.findMany({
-    where: { partnerId, moduleSlug: "service-centre" },
-    select: { data: true },
-  });
+  const rows = await listBusinessRecords(partnerId, "service-centre");
   const byBrand = new Map<string, number>();
   for (const r of rows) {
-    const data = r.data as Record<string, unknown>;
-    const brand = typeof data.brandName === "string" ? data.brandName.trim() : "";
+    const brand = typeof r["brandName"] === "string" ? (r["brandName"] as string).trim() : "";
     if (!brand) continue;
     byBrand.set(brand, (byBrand.get(brand) ?? 0) + 1);
   }
@@ -610,23 +599,19 @@ export interface AverageTat {
 
 /** Average turnaround time for completed jobs — reuses computeWorkorderTat(), the same single source of truth the Workorders list/detail pages use for their own per-row TAT badge. */
 export async function getAverageTat(partnerId: string): Promise<AverageTat> {
-  const rows = await prisma.businessRecord.findMany({
-    where: { partnerId, moduleSlug: "service-centre" },
-    select: { data: true, createdAt: true },
-  });
+  const rows = await listBusinessRecords(partnerId, "service-centre");
 
   let total = 0;
   let closedCount = 0;
   for (const r of rows) {
-    const data = r.data as Record<string, unknown>;
-    const stageHistory = (data.stageHistory as StageHistoryEntry[] | undefined) ?? [];
+    const stageHistory = (r["stageHistory"] as StageHistoryEntry[] | undefined) ?? [];
     const isClosed = stageHistory.some((h) => h.stage === "Closed");
     if (!isClosed) continue;
     const { hours } = computeWorkorderTat({
-      recordCreatedAt: r.createdAt.toISOString(),
-      receivedDate: typeof data.receivedDate === "string" ? data.receivedDate : undefined,
+      recordCreatedAt: r["recordCreatedAt"] as string,
+      receivedDate: typeof r["receivedDate"] === "string" ? (r["receivedDate"] as string) : undefined,
       stageHistory,
-      cancelledAt: typeof data.cancelledAt === "string" ? data.cancelledAt : undefined,
+      cancelledAt: typeof r["cancelledAt"] === "string" ? (r["cancelledAt"] as string) : undefined,
       terminal: true,
     });
     if (hours !== undefined) {

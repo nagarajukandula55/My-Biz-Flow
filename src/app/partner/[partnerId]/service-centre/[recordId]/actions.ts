@@ -303,7 +303,15 @@ export async function createInvoiceFromWorkorderAction(
   // — this invoice is created directly via createBusinessRecord above so it
   // bypasses that hook, and without this call a Service Centre invoice would
   // never reach AN-Accounting at all. Best-effort: notifyCentralApiBillingInvoice
-  // never throws, so a sync failure can't block the workorder from closing.
+  // never throws, retries transient failures with backoff internally, and its
+  // return value is ignored here (same as every other call site) — none of
+  // that result feeds into what happens next in this function. So it's fired
+  // without awaiting rather than blocking the user's "Close Workorder" click
+  // on an external API's retry/backoff round-trip for a workorder that is
+  // already closed and invoiced regardless of whether this sync succeeds.
+  // `.catch` is a belt-and-braces guard against an unhandled rejection, not
+  // because this is expected to reject (see notifyCentralApiBillingInvoice's
+  // own "deliberately never throws" doc).
   const partner = await getPartner(partnerId);
   if (partner) {
     const items = [
@@ -326,7 +334,7 @@ export async function createInvoiceFromWorkorderAction(
               taxRate: 18,
             }))),
     ];
-    await notifyCentralApiBillingInvoice(partner, {
+    void notifyCentralApiBillingInvoice(partner, {
       externalOrderId: String(invoice.id),
       customer: String(record["customer"] ?? ""),
       customerGstin: record["customerGstin"] ? String(record["customerGstin"]) : undefined,
@@ -334,7 +342,7 @@ export async function createInvoiceFromWorkorderAction(
       items,
       totalAmount,
       issueDate,
-    });
+    }).catch(() => {});
   }
 
   await updateBusinessRecord(partnerId, "service-centre", workorderId, {

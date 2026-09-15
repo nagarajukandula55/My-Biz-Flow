@@ -6,6 +6,7 @@
  * — this layer just persists/scopes/looks it up, it doesn't know or care
  * about per-module field shape.
  */
+import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 import type { Row } from "@/components/DataTable";
@@ -22,13 +23,26 @@ function toRow(row: { recordKey: string; data: unknown; createdAt: Date }): Row 
   return { ...(row.data as Record<string, unknown>), id: row.recordKey, recordCreatedAt: row.createdAt.toISOString() };
 }
 
-export async function listBusinessRecords(partnerId: string, moduleSlug: string): Promise<Row[]> {
+/**
+ * Wrapped in React's cache() — several pages/functions call
+ * listBusinessRecords(partnerId, moduleSlug) for the SAME moduleSlug more
+ * than once within one request (e.g. the Analytics page: getAnalyticsSummary,
+ * getWorkorderStatusBreakdown, getTopBrandsByWorkorderCount, getAverageTat,
+ * getRevenueBySource and getInvoiceStatusBreakdown in analyticsData.ts all
+ * read the same full unfiltered "service-centre"/"billing" table for the
+ * same partner on the same render). Dedup is per-request only, same as
+ * getPartner() — no cross-request staleness risk.
+ */
+export const listBusinessRecords = cache(async function listBusinessRecords(
+  partnerId: string,
+  moduleSlug: string
+): Promise<Row[]> {
   const rows = await prisma.businessRecord.findMany({
     where: { partnerId, moduleSlug },
     orderBy: { createdAt: "desc" },
   });
   return rows.map(toRow);
-}
+});
 
 /** Default page size for `listBusinessRecordsPaginated` — one place to change it consistently. */
 export const DEFAULT_BUSINESS_RECORD_PAGE_SIZE = 25;
