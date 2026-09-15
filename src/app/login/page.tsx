@@ -35,6 +35,13 @@ export default function LoginPage({
           </p>
         )}
 
+        {searchParams.error === "server_misconfigured" && (
+          <p className="mt-3 rounded-md border border-danger bg-danger-soft px-3 py-2 text-sm text-danger">
+            Sign-in is temporarily unavailable due to a server configuration issue. Please try again shortly, or
+            contact support if this persists.
+          </p>
+        )}
+
         {searchParams.reset === "success" && (
           <p className="mt-3 rounded-md border border-success-soft bg-success-soft px-3 py-2 text-sm font-semibold text-success">
             Your password has been reset. Sign in with your new password.

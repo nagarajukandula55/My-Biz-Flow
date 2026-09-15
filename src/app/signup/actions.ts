@@ -101,7 +101,19 @@ export async function registerBusiness(formData: FormData) {
   // on the forced first-time password screen directly, instead of
   // surfacing the generated password on-screen for them to copy and then
   // separately visit /login with it.
-  const token = await createPartnerSessionToken(partnerId);
+  // The partner account itself is already created by this point (row
+  // inserted, welcome email sent) -- if session-token creation fails (e.g.
+  // PARTNER_SESSION_SECRET misconfigured), send them to /login instead of
+  // a raw 500; their account still exists, they can sign in once it's
+  // fixed. See login/actions.ts's matching guard for why this path was
+  // previously unguarded and never noticed (Super Admin's view-any-partner
+  // bypass never exercises real partner-session signing).
+  let token: string;
+  try {
+    token = await createPartnerSessionToken(partnerId);
+  } catch {
+    redirect("/login?error=server_misconfigured");
+  }
   cookies().set(PARTNER_SESSION_COOKIE, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",

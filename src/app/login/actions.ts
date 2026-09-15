@@ -42,7 +42,19 @@ export async function signInAsPartner(formData: FormData) {
     redirect("/login?error=invalid_credentials");
   }
 
-  const token = await createPartnerSessionToken(partner.id);
+  // If PARTNER_SESSION_SECRET is misconfigured (unset/misnamed), this
+  // throws -- previously unguarded, so a real partner logging in with
+  // valid credentials got a raw 500 instead of a page that says what's
+  // actually wrong. This is the ONE place that's ever hit for a genuine
+  // partner login (viewing partner pages as Super Admin bypasses session
+  // verification entirely — see requirePartnerSession.ts — so that path
+  // never surfaced a missing secret).
+  let token: string;
+  try {
+    token = await createPartnerSessionToken(partner.id);
+  } catch {
+    redirect("/login?error=server_misconfigured");
+  }
   cookies().set(PARTNER_SESSION_COOKIE, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
