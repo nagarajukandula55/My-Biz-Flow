@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Printer, ClipboardList, ClipboardCheck, Receipt } from "lucide-react";
+import { Printer, ClipboardCheck, Receipt } from "lucide-react";
 import { DataTable, type Row, type Column } from "@/components/DataTable";
 import { PrintPopupLink } from "@/components/PrintPopupLink";
 import { serviceCentreListColumns, isUnderWarranty } from "@/lib/sample-data/service-centre";
@@ -39,13 +39,6 @@ function renderWorkorderActions(partnerId: string, row: Row) {
         title="Print Workorder"
       >
         <Printer className="h-4 w-4" strokeWidth={2} />
-      </PrintPopupLink>
-      <PrintPopupLink
-        href={`/partner/${partnerId}/service-centre/${row["id"]}/intake-receipt`}
-        className={ACTION_ICON_CLASS}
-        title="Intake Receipt"
-      >
-        <ClipboardList className="h-4 w-4" strokeWidth={2} />
       </PrintPopupLink>
       {closed && (
         <PrintPopupLink

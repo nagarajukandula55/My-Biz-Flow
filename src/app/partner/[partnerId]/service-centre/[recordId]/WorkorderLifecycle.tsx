@@ -1105,9 +1105,6 @@ export function WorkorderLifecycle({
           <PrintPopupLink href={`/partner/${partnerId}/service-centre/${workorderId}/document`} className="btn-outline">
             🖨 Print Workorder
           </PrintPopupLink>
-          <PrintPopupLink href={`/partner/${partnerId}/service-centre/${workorderId}/intake-receipt`} className="btn-outline">
-            🖨 Intake Receipt
-          </PrintPopupLink>
           {/* Generate Estimate — greyed out (not hidden) until there's
               something to estimate, matching AN-CRM's own header exactly.
               Same document the "Print Estimate" button used to open lower
