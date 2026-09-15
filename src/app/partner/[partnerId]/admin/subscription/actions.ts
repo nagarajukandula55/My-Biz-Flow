@@ -5,12 +5,23 @@ import { getPartner, updatePartnerSubscription } from "@/lib/partnerData";
 import { BILLING_CYCLES, type BillingCycle } from "@/lib/subscriptionData";
 
 /**
- * Partner picks a Plan + billing cycle to convert off trial. There's no
- * payment gateway wired up (see CLAUDE.md's integration constraints), so
- * this records the choice and moves the partner to "PastDue" — payment
- * pending offline confirmation — rather than pretending a real charge
- * happened. A Super Admin flips it to "Active" once paid, from
- * /admin/subscribers/[partnerId]/edit.
+ * Partner picks a Plan + billing cycle to convert off trial (or to switch
+ * plan/cycle while still awaiting payment — see below). Moves to "PastDue"
+ * ("payment chosen, not yet paid") so a real Razorpay charge
+ * (RazorpayCheckoutButton -> /api/razorpay/create-order+verify) can
+ * immediately follow on this same page; verify/route.ts flips this to
+ * "Active" itself once the payment is confirmed — no manual Super Admin
+ * step needed for the normal path. A Super Admin can still hand-activate
+ * from /admin/subscribers/[partnerId]/edit as a fallback (e.g. an offline
+ * payment), which is the only case this status is genuinely "awaiting a
+ * human" rather than "awaiting Razorpay's own callback."
+ *
+ * Re-callable from PastDue, not just Trial: if a partner opened Razorpay
+ * checkout and closed it without paying, they'd otherwise be stuck seeing
+ * only a "Pay ₹X" button for their original choice with no way to pick a
+ * different plan/cycle before trying again — this action being safe to
+ * call again (just overwrites planId/billingCycle, stays PastDue) is what
+ * lets the page offer a "Change plan" option in that state instead.
  */
 export async function chooseSubscriptionAction(partnerId: string, formData: FormData) {
   const planId = String(formData.get("planId") ?? "").trim();

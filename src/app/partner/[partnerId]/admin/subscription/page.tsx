@@ -121,7 +121,7 @@ export default async function PartnerSubscriptionPage({ params }: { params: { pa
               ).
               {offer ? ` Offer "${offer.name}" applied.` : ""}
             </p>
-            <div className="mt-4">
+            <div className="mt-4 flex flex-wrap items-center gap-3">
               {due ? (
                 <RazorpayCheckoutButton
                   partnerId={partner.id}
@@ -135,17 +135,28 @@ export default async function PartnerSubscriptionPage({ params }: { params: { pa
               ) : (
                 <p className="text-xs text-text-muted">Could not compute an amount due — contact us to complete payment.</p>
               )}
+              <a href="#change-plan" className="text-xs font-semibold text-accent underline underline-offset-2">
+                Change plan
+              </a>
             </div>
+            <p className="mt-2 text-xs text-text-muted">
+              Closed the payment window without paying? Pick a different plan or billing cycle below any time before
+              trying again.
+            </p>
           </div>
         )}
 
-        {(partner.subscriptionStatus === "Trial" || subState.isTrialExpired) && (
-          <div className="mt-6 rounded-lg border border-border bg-bg-raised p-5">
-            <h2 className="font-display text-base font-bold text-text">Choose a plan to continue</h2>
+        {(partner.subscriptionStatus === "Trial" || subState.isTrialExpired || partner.subscriptionStatus === "PastDue") && (
+          <div id="change-plan" className="mt-6 rounded-lg border border-border bg-bg-raised p-5">
+            <h2 className="font-display text-base font-bold text-text">
+              {partner.subscriptionStatus === "PastDue" ? "Change plan" : "Choose a plan to continue"}
+            </h2>
             <p className="mt-1 text-sm text-text-muted">
-              {subState.isTrialExpired
-                ? "Your trial has ended — choose a plan and billing cycle to keep using My Biz Flow."
-                : "You're currently on a free trial. Choose a plan and billing cycle any time to convert early."}
+              {partner.subscriptionStatus === "PastDue"
+                ? "Pick a different plan or billing cycle — this replaces your current pending choice."
+                : subState.isTrialExpired
+                  ? "Your trial has ended — choose a plan and billing cycle to keep using My Biz Flow."
+                  : "You're currently on a free trial. Choose a plan and billing cycle any time to convert early."}
             </p>
 
             {bundledPlans.length === 0 ? (
@@ -205,7 +216,7 @@ export default async function PartnerSubscriptionPage({ params }: { params: { pa
                   {offer ? `, plus your active offer "${offer.name}" applied at checkout` : ""}.
                 </p>
                 <button type="submit" className="btn-accent">
-                  Choose plan
+                  {partner.subscriptionStatus === "PastDue" ? "Update plan choice" : "Choose plan"}
                 </button>
               </form>
             )}
