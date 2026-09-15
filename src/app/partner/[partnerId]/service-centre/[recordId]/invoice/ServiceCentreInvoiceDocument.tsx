@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import { renderTemplate } from "@/lib/designer/documentTemplates";
+import { PrintFrame } from "@/components/PrintFrame";
 
 export type InvoiceLine = {
   description: string;
@@ -173,16 +174,25 @@ export function ServiceCentreInvoiceDocument({
       totalAmount: grandTotal,
     });
     return (
-      <div className="ric-page">
-        <style>{RIC_STYLES}</style>
-        <div dangerouslySetInnerHTML={{ __html: html }} />
+      <div className="mbf-page bg-gray-100 print:bg-white">
+        <div className="mx-auto flex max-w-3xl flex-col gap-4 py-8 print:max-w-none print:py-0">
+          <PrintFrame sizes={["a4", "a5"]}>
+            <div className="ric-page">
+              <style>{RIC_STYLES}</style>
+              <div dangerouslySetInnerHTML={{ __html: html }} />
+            </div>
+          </PrintFrame>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="ric-page">
-      <style>{RIC_STYLES}</style>
+    <div className="mbf-page bg-gray-100 print:bg-white">
+      <div className="mx-auto flex max-w-3xl flex-col gap-4 py-8 print:max-w-none print:py-0">
+        <PrintFrame sizes={["a4", "a5"]}>
+        <div className="ric-page">
+          <style>{RIC_STYLES}</style>
 
       <div className="ric-invoiceTitle" style={{ color: accent }}>
         {isPlainBill ? "BILL" : "TAX INVOICE"}
@@ -353,6 +363,9 @@ export function ServiceCentreInvoiceDocument({
       <button onClick={() => window.print()} className="ric-printBtn print:hidden">
         Print / Save as PDF
       </button>
+        </div>
+        </PrintFrame>
+      </div>
     </div>
   );
 }

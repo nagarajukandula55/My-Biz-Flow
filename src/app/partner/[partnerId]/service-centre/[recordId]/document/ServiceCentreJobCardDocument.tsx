@@ -1,4 +1,5 @@
 import { PrintButton } from "@/components/PrintButton";
+import { PrintFrame } from "@/components/PrintFrame";
 import { generateTrackingQrDataUrl, buildTrackingUrl } from "@/lib/trackingQr";
 
 /**
@@ -84,13 +85,14 @@ export async function ServiceCentreJobCardDocument({
     ) : null;
 
   return (
-    <div className="min-h-screen bg-gray-100 py-8 print:bg-white print:py-0">
-      <div className="mx-auto mb-4 flex max-w-[1800px] items-center justify-between print:hidden">
-        <div />
-        <PrintButton />
-      </div>
+    <div className="mbf-page min-h-screen bg-gray-100 py-8 print:bg-white print:py-0">
+      <div className="mx-auto flex max-w-3xl flex-col gap-4 print:max-w-none">
+        <div className="flex justify-end print:hidden">
+          <PrintButton />
+        </div>
 
-      <div className="mx-auto max-w-3xl rounded-2xl bg-white p-10 shadow-sm print:rounded-none print:p-0 print:shadow-none">
+        <PrintFrame sizes={["a4", "a5"]}>
+        <div className="rounded-2xl bg-white p-10 shadow-sm print:rounded-none print:p-10 print:shadow-none">
         <div className="text-sm text-gray-900">
           <div className="mb-6 flex items-start justify-between border-b pb-4" style={{ borderColor: "#111827" }}>
             <div>
@@ -143,7 +145,11 @@ export async function ServiceCentreJobCardDocument({
 
           <div>
             <p className="mb-4 text-[11px] font-medium text-gray-700">Signature constitutes agreement to the above terms.</p>
-            <div className="flex justify-center">
+            <div className="flex justify-center gap-16">
+              <div className="text-center text-xs text-gray-500">
+                <div className="h-10 w-40" />
+                <div className="mx-auto w-40 border-t border-gray-300 pt-1">Customer Signature</div>
+              </div>
               <div className="text-center text-xs text-gray-500">
                 <div className="h-10 w-40" />
                 <div className="mx-auto w-40 border-t border-gray-300 pt-1">Authorized Signatory (Service Centre)</div>
@@ -167,6 +173,8 @@ export async function ServiceCentreJobCardDocument({
         <div className="mt-6 border-t border-gray-200 pt-4 text-[10px] text-gray-400">
           This is a service work order and not a tax invoice.
         </div>
+        </div>
+        </PrintFrame>
       </div>
     </div>
   );
