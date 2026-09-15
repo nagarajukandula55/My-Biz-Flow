@@ -34,7 +34,10 @@ export default async function PlanDetailPage({ params }: { params: { recordId: s
             <div>
               <h1 className="font-display text-xl font-bold text-text">{plan.name}</h1>
               <p className="mt-1 text-xs text-text-muted">
-                ₹{plan.price.toLocaleString("en-IN")} / {plan.billingCycle}
+                ₹{plan.price.toLocaleString("en-IN")} / month (standard)
+                {plan.launchPrice != null && ` · ₹${plan.launchPrice.toLocaleString("en-IN")} / month (launch price, until cutover)`}
+                {" — billed "}
+                {plan.billingCycle}
               </p>
             </div>
             <div className="flex items-center gap-3">

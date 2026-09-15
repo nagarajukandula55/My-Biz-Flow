@@ -4,7 +4,7 @@ import { SuperAdminGate } from "@/components/SuperAdminGate";
 import { registerPage } from "@/lib/designer/registry";
 import { getPartner } from "@/lib/partnerData";
 import { listPlans } from "@/lib/plansData";
-import { listOffers, BILLING_CYCLES, cycleLabel } from "@/lib/subscriptionData";
+import { listOffers, BILLING_CYCLES, cycleLabel, currentMonthlyRate, isLaunchPricingActive } from "@/lib/subscriptionData";
 import { updatePartnerSubscriptionAction } from "../../actions";
 
 export const dynamic = "force-dynamic";
@@ -99,7 +99,7 @@ export default async function EditPartnerSubscriptionPage({ params }: { params: 
                   <option value="">— None —</option>
                   {plans.map((p) => (
                     <option key={p.id} value={p.id}>
-                      {p.name} — ₹{p.price.toLocaleString("en-IN")}/mo
+                      {p.name} — ₹{currentMonthlyRate(p).toLocaleString("en-IN")}/mo{p.launchPrice != null && isLaunchPricingActive() ? " (launch price)" : ""}
                     </option>
                   ))}
                 </select>

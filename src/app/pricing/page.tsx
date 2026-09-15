@@ -17,7 +17,7 @@ import { SITE_URL, SITE_NAME } from "@/lib/seo";
 // see subscriptionData.ts) computed from each plan's monthly rate, so a
 // visitor sees the real amount they'd pay up front instead of only a
 // monthly base rate with billing-cycle math left implicit.
-import { BILLING_CYCLES, CYCLE_DISCOUNT_PCT, computeCyclePrice, cycleLabel } from "@/lib/subscriptionData";
+import { BILLING_CYCLES, CYCLE_DISCOUNT_PCT, computeCyclePrice, currentMonthlyRate, isLaunchPricingActive, cycleLabel } from "@/lib/subscriptionData";
 
 // Reads live DB-backed module label overrides / partner type + plan data —
 // must not be baked into a static build.
@@ -95,7 +95,7 @@ export default async function PricingPage({
       "@type": "Offer",
       name: plan.name,
       url: `${SITE_URL}/pricing${selectedType ? `?type=${encodeURIComponent(selectedType.id)}` : ""}`,
-      price: plan.price,
+      price: currentMonthlyRate(plan),
       priceCurrency: "INR",
       description: `Up to ${plan.maxUsers} users, ${plan.maxLocations} location${plan.maxLocations === 1 ? "" : "s"}, billed ${plan.billingCycle}.`,
     })),
@@ -194,17 +194,25 @@ export default async function PricingPage({
             </p>
             <div className="mt-3 flex items-baseline gap-1">
               <span className="font-mono text-3xl font-bold tabular-nums text-text">
-                ₹{plan.price.toLocaleString("en-IN")}
+                ₹{currentMonthlyRate(plan).toLocaleString("en-IN")}
               </span>
-              <span className="text-sm text-text-muted">/ {plan.billingCycle}</span>
+              <span className="text-sm text-text-muted">/ month</span>
+              {isLaunchPricingActive() && plan.launchPrice != null && (
+                <span className="ml-1 font-mono text-sm text-text-muted line-through">
+                  ₹{plan.price.toLocaleString("en-IN")}
+                </span>
+              )}
             </div>
+            {isLaunchPricingActive() && plan.launchPrice != null && (
+              <p className="mt-0.5 text-xs font-semibold text-success">Launch pricing</p>
+            )}
             <p className="mt-2 text-sm text-text-muted">
               Up to {plan.maxUsers} users · {plan.maxLocations} location{plan.maxLocations === 1 ? "" : "s"}
             </p>
             <div className="mt-2 space-y-0.5 text-xs text-text-muted">
               {BILLING_CYCLES.map((c) => (
                 <div key={c}>
-                  {cycleLabel(c)}: <span className="font-semibold text-text">₹{computeCyclePrice(plan.price, c).toLocaleString("en-IN")}</span> total ({CYCLE_DISCOUNT_PCT[c]}% off)
+                  {cycleLabel(c)}: <span className="font-semibold text-text">₹{computeCyclePrice(currentMonthlyRate(plan), c).toLocaleString("en-IN")}</span> total ({CYCLE_DISCOUNT_PCT[c]}% off)
                 </div>
               ))}
             </div>

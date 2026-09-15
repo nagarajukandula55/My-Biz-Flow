@@ -11,6 +11,9 @@ import {
   getOffer,
   computePartnerDueAmount,
   computeCyclePrice,
+  currentMonthlyRate,
+  isLaunchPricingActive,
+  LAUNCH_PRICING_CUTOVER,
   BILLING_CYCLES,
   CYCLE_DISCOUNT_PCT,
   cycleLabel,
@@ -165,10 +168,18 @@ export default async function PartnerSubscriptionPage({ params }: { params: { pa
               </p>
             ) : (
               <form action={action} className="mt-4 space-y-4">
+                {isLaunchPricingActive() && (
+                  <p className="text-xs font-semibold text-success">
+                    Launch pricing is live — the discounted rates below apply until{" "}
+                    {LAUNCH_PRICING_CUTOVER.toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}.
+                  </p>
+                )}
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   {bundledPlans.map((p, i) => {
                     const tier = tierForPlanIndex(i, bundledPlans.length);
                     const features = TIER_FEATURES[tier];
+                    const rate = currentMonthlyRate(p);
+                    const onLaunchRate = rate !== p.price;
                     return (
                       <label
                         key={p.id}
@@ -177,11 +188,19 @@ export default async function PartnerSubscriptionPage({ params }: { params: { pa
                         <input type="radio" name="planId" value={p.id} required className="mt-0.5 h-4 w-4 accent-accent" />
                         <span>
                           <span className="block font-semibold">{p.name}</span>
-                          <span className="block text-xs text-text-muted">₹{p.price.toLocaleString("en-IN")}/mo base</span>
+                          <span className="block text-xs text-text-muted">
+                            ₹{rate.toLocaleString("en-IN")}/mo base
+                            {onLaunchRate && (
+                              <>
+                                {" "}
+                                <span className="line-through">₹{p.price.toLocaleString("en-IN")}</span> launch price
+                              </>
+                            )}
+                          </span>
                           <span className="mt-1.5 block space-y-0.5 text-xs text-text-muted">
                             {BILLING_CYCLES.map((c) => (
                               <span key={c} className="block">
-                                {cycleLabel(c)}: ₹{computeCyclePrice(p.price, c).toLocaleString("en-IN")}
+                                {cycleLabel(c)}: ₹{computeCyclePrice(rate, c).toLocaleString("en-IN")}
                                 {" "}total ({CYCLE_DISCOUNT_PCT[c]}% off)
                               </span>
                             ))}

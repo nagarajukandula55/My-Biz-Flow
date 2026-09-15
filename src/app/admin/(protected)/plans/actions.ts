@@ -8,7 +8,9 @@ function parseInput(values: Record<string, unknown>): PlanInput {
   return {
     name: String(values.name ?? "").trim(),
     price: Number(values.price ?? 0),
-    billingCycle: (values.billingCycle as "monthly" | "yearly") ?? "monthly",
+    launchPrice: values.launchPrice === undefined || values.launchPrice === null || values.launchPrice === "" ? null : Number(values.launchPrice),
+    // Only "yearly" is ever offered -- see planFormFields' own comment.
+    billingCycle: (values.billingCycle as "monthly" | "yearly") ?? "yearly",
     includedModuleSlugs: Array.isArray(values.includedModuleSlugs) ? (values.includedModuleSlugs as string[]) : [],
     maxUsers: Number(values.maxUsers ?? 0),
     maxLocations: Number(values.maxLocations ?? 0),

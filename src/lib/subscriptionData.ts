@@ -34,6 +34,27 @@ export const BILLING_CYCLES: BillingCycle[] = ["Yearly", "TwoYearly"];
 const CYCLE_MONTHS: Record<BillingCycle, number> = { Yearly: 12, TwoYearly: 24 };
 const CYCLE_DISCOUNT: Record<BillingCycle, number> = { Yearly: 0.35, TwoYearly: 0.55 };
 
+/**
+ * Launch-pricing auto-hike, ported verbatim from AN-CRM's real, currently-
+ * live values (src/core/pricing/plans.ts LAUNCH_START/LAUNCH_PRICING_CUTOVER)
+ * -- not invented here. Every plan prices at its bare-minimum introductory
+ * `launchPrice` until this fixed cutover date, then automatically switches
+ * to the standard `price` with no admin action needed. Deliberately NOT
+ * per-partner-grandfathered, same as AN-CRM: the price change lands on the
+ * same calendar date for everyone, same as a plain global price change.
+ */
+export const LAUNCH_PRICING_CUTOVER = new Date("2027-03-01T00:00:00+05:30");
+
+export function isLaunchPricingActive(now: Date = new Date()): boolean {
+  return now.getTime() < LAUNCH_PRICING_CUTOVER.getTime();
+}
+
+/** The per-month rate to actually charge right now -- a plan's launchPrice before LAUNCH_PRICING_CUTOVER (falling back to price if the plan has no launch rate set), price automatically after. */
+export function currentMonthlyRate(plan: { price: number; launchPrice: number | null }, now: Date = new Date()): number {
+  if (isLaunchPricingActive(now) && plan.launchPrice != null) return plan.launchPrice;
+  return plan.price;
+}
+
 /** Exported whole-percent form of CYCLE_DISCOUNT, for display (e.g. "35% off") without every caller re-deriving `* 100` from the fractional rate. */
 export const CYCLE_DISCOUNT_PCT: Record<BillingCycle, number> = { Yearly: 35, TwoYearly: 55 };
 
@@ -167,7 +188,7 @@ export async function computePartnerDueAmount(partner: PartnerRecord): Promise<{
   const plan = await getPlan(partner.planId);
   if (!plan) return undefined;
   const cycle = partner.billingCycle;
-  const cyclePrice = computeCyclePrice(plan.price, cycle);
+  const cyclePrice = computeCyclePrice(currentMonthlyRate(plan), cycle);
   const offer = partner.offerId ? await getOffer(partner.offerId) : undefined;
   const amount = applyOfferDiscount(cyclePrice, offer, plan.id, cycle);
   return { amount, planName: plan.name };

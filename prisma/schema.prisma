@@ -330,6 +330,8 @@ model Plan {
   id                  String   @id
   name                String
   price               Int
+  /// Bare-minimum introductory monthly rate, active until subscriptionData.ts's LAUNCH_PRICING_CUTOVER (matches AN-CRM's src/core/pricing/plans.ts launchPriceINR/LAUNCH_PRICING_CUTOVER exactly) -- after which `price` applies automatically, no admin action needed. Null on a plan means no launch discount (use `price` from day one).
+  launchPrice         Int?
   billingCycle        String
   includedModuleSlugs Json     @default("[]")
   maxUsers            Int
