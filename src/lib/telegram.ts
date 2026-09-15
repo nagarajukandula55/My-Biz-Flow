@@ -295,6 +295,10 @@ export type TelegramChatLogEntry = {
   direction: "in" | "out";
   text: string;
   chatId: string;
+  /** The inbound Telegram message_id this entry was logged from — see
+   *  appendTelegramChatLogEntry()'s idempotency check below. Optional only
+   *  because entries logged before this field existed don't have it. */
+  messageId?: number;
 };
 
 /**
@@ -316,6 +320,15 @@ export async function appendTelegramChatLogEntry(
     return;
   }
   const existing = (record["telegramChatLog"] as TelegramChatLogEntry[] | undefined) ?? [];
+  // Telegram guarantees at-least-once webhook delivery — a slow response
+  // (or a timeout that still completed server-side) makes Telegram resend
+  // the exact same update. Without this check, a retried reply would be
+  // appended to telegramChatLog a second time as a duplicate "in" entry.
+  // messageId is the inbound message's own id, which is stable across
+  // retries of the same update, so it doubles as the idempotency key.
+  if (entry.messageId !== undefined && existing.some((e) => e.messageId === entry.messageId)) {
+    return;
+  }
   const next: TelegramChatLogEntry[] = [...existing, { ...entry, at: new Date().toISOString() }];
   await updateBusinessRecord(partnerId, "service-centre", workorderId, { ...record, telegramChatLog: next });
 }

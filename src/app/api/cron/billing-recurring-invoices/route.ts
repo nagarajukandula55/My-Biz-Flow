@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 import { env } from "@/lib/env";
 import { listPartners } from "@/lib/partnerData";
-import { listBusinessRecords, createBusinessRecord, updateBusinessRecord } from "@/lib/businessRecords";
+import { listBusinessRecords, getBusinessRecord, createBusinessRecord, updateBusinessRecord } from "@/lib/businessRecords";
 import { advanceNextRunDate, type RecurringFrequency } from "@/lib/sample-data/billing-recurring";
 import { notifyCentralApiBillingInvoice } from "@/lib/centralApi";
 
@@ -34,6 +34,17 @@ export async function GET(request: Request) {
       if (template["status"] !== "Active") continue;
       const nextRunDate = String(template["nextRunDate"] ?? "");
       if (!nextRunDate || nextRunDate > today) continue;
+
+      // Re-check against a fresh read right before creating the invoice.
+      // Vercel Cron does not guarantee a single run per schedule — a slow
+      // run can still be in flight when the next scheduled trigger fires,
+      // and both would otherwise be working off the same stale `templates`
+      // snapshot fetched above. If another (possibly overlapping) run
+      // already advanced this template's nextRunDate past today, this
+      // template's cycle is already billed — skip it rather than creating
+      // a second invoice for the same period.
+      const fresh = await getBusinessRecord(partner.id, "billing-recurring", String(template["id"]));
+      if (!fresh || fresh["status"] !== "Active" || String(fresh["nextRunDate"] ?? "") !== nextRunDate) continue;
 
       const record = await createBusinessRecord(partner.id, "billing", {
         customer: template["customer"],

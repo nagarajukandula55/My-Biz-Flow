@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
+import { useState, useTransition, useEffect, useRef } from "react";
 import Link from "next/link";
 import { Check, Trash2 } from "lucide-react";
 import { openPrintPopup } from "@/lib/openPrintPopup";
@@ -349,20 +349,44 @@ export function WorkorderLifecycle({
   }, [stage, cancelledAt]);
 
   /**
+   * Queue every persist so at most one patchServiceCentreWorkorderAction
+   * call is ever in flight for this record at a time. That action does a
+   * read-modify-write (reads the record, spreads the patch over it, writes
+   * it back) — it is NOT atomic. Two of these firing concurrently (e.g. an
+   * "excl/incl" select's immediate onChange persist overlapping a nearby
+   * field's onBlur persist while the first request is still in flight)
+   * would both read the same pre-write snapshot, and whichever write lands
+   * second would silently clobber the first one's already-saved fields
+   * with that stale snapshot — a lost update. Chaining onto this ref
+   * instead serializes them: each persist only starts once the previous
+   * one has actually finished, so every write sees the other's result.
+   */
+  const persistQueueRef = useRef<Promise<void>>(Promise.resolve());
+
+  /**
    * Every mutation goes through here so a Server Action rejection (an
    * illegal stage transition, a missing record, an empty cancel reason)
    * surfaces in the UI rather than vanishing into an unhandled transition.
    */
   function run(fn: () => Promise<void>, onSuccess?: () => void) {
     setActionError(null);
-    startPersist(async () => {
-      try {
-        await fn();
-        onSuccess?.();
-      } catch (error) {
-        setActionError(error instanceof Error ? error.message : "Something went wrong. Please try again.");
-      }
-    });
+    persistQueueRef.current = persistQueueRef.current
+      .catch(() => {})
+      .then(
+        () =>
+          new Promise<void>((resolve) => {
+            startPersist(async () => {
+              try {
+                await fn();
+                onSuccess?.();
+              } catch (error) {
+                setActionError(error instanceof Error ? error.message : "Something went wrong. Please try again.");
+              } finally {
+                resolve();
+              }
+            });
+          })
+      );
   }
 
   function persist(patch: Record<string, unknown>, successLabel?: string) {

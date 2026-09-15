@@ -113,6 +113,10 @@ export async function POST(request: Request) {
         direction: "in",
         text,
         chatId,
+        // Telegram retries webhook deliveries it didn't get a timely 200
+        // for — same update_id/message_id resent. appendTelegramChatLogEntry
+        // uses this to skip a duplicate log entry on a retried delivery.
+        messageId: message.message_id,
       });
     }
     return NextResponse.json({ ok: true });
