@@ -11,6 +11,7 @@ import {
 import { generateTelegramConnectQrDataUrl } from "@/lib/telegramQr";
 import { saveTelegramSettingsAction, sendTestTelegramMessageAction, disconnectTelegramAction } from "@/lib/telegramSettingsActions";
 import { env } from "@/lib/env";
+import { NoticeCard } from "@/components/NoticeCard";
 
 registerPage({
   id: "service-centre.telegram",
@@ -79,6 +80,9 @@ export default async function TelegramAlertsPage({ params }: { params: { partner
     },
   ];
 
+  const anyChatConnected = Boolean(settings.chatId || settings.groupChatId);
+  const bothChatsConnected = Boolean(settings.chatId && settings.groupChatId);
+
   return (
     <AppShell topbarTitle="Telegram Alerts">
       <div className="max-w-xl space-y-4">
@@ -87,12 +91,21 @@ export default async function TelegramAlertsPage({ params }: { params: { partner
           alert right there in the chat to log that reply against the workorder it's about.
         </p>
 
-        {!botConfigured && (
-          <div className="rounded-md border border-warning bg-warning-soft px-3 py-2 text-sm text-warning">
-            No Telegram bot is connected yet on this deployment — your settings below will be saved, and test/alert
-            attempts will be recorded in the activity log, but no messages will actually send until a bot token is
-            configured.
-          </div>
+        {anyChatConnected ? (
+          <NoticeCard tone="success" title="✅ Telegram is connected">
+            {bothChatsConnected
+              ? "Both your personal and group chats are linked — alerts will send per the routing you choose below."
+              : `Your ${settings.chatId ? "personal" : "group"} chat is linked. Connect the other one below too if you want alerts there as well.`}
+          </NoticeCard>
+        ) : botConfigured ? (
+          <NoticeCard tone="info" title="Telegram isn't connected yet">
+            Scan a QR code or tap Connect below to start receiving alerts.
+          </NoticeCard>
+        ) : (
+          <NoticeCard tone="warning" title="No Telegram bot is connected on this deployment">
+            Your settings below will still save, and test/alert attempts will be recorded in the activity log, but no
+            messages will actually send until a bot token is configured.
+          </NoticeCard>
         )}
 
         {chatSlots.map(({ slot, label, chatId, connectLink, qr, hint }) => {

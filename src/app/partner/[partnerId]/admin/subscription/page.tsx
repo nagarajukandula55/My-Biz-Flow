@@ -20,6 +20,7 @@ import {
 } from "@/lib/subscriptionData";
 import { chooseSubscriptionAction } from "./actions";
 import { RazorpayCheckoutButton } from "@/components/RazorpayCheckoutButton";
+import { NoticeCard } from "@/components/NoticeCard";
 import { env } from "@/lib/env";
 // Real per-tier feature bullets (verbatim from AN-CRM's own plan
 // definitions, see this file's own comment) and the tier-vs-price index
@@ -105,12 +106,12 @@ export default async function PartnerSubscriptionPage({ params }: { params: { pa
         </div>
 
         {partner.subscriptionStatus === "Active" && partner.planId && partner.billingCycle && (
-          <div className="mt-6 rounded-lg border border-border bg-bg-raised p-5">
-            <h2 className="font-display text-base font-bold text-text">Your active plan</h2>
-            <p className="mt-2 text-sm text-text">
+          <div className="mt-6">
+            <NoticeCard tone="success" title="✅ Your plan is active">
               {allPlans.find((p) => p.id === partner.planId)?.name ?? partner.planId} —{" "}
               {cycleLabel(partner.billingCycle)}
-            </p>
+              {offer ? ` — offer "${offer.name}" applied` : ""}
+            </NoticeCard>
           </div>
         )}
 

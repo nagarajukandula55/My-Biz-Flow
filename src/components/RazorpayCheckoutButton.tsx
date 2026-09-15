@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Script from "next/script";
 import { useRouter } from "next/navigation";
+import { NoticeCard } from "@/components/NoticeCard";
 
 declare global {
   interface Window {
@@ -48,6 +49,7 @@ export function RazorpayCheckoutButton({
   const [scriptReady, setScriptReady] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
+  const [paid, setPaid] = useState(false);
 
   if (!publicKeyId) {
     return (
@@ -84,6 +86,8 @@ export function RazorpayCheckoutButton({
             body: JSON.stringify({ partnerId, ...extraBody, ...response }),
           });
           if (verifyRes.ok) {
+            setPaid(true);
+            setPending(false);
             router.refresh();
           } else {
             const body = await verifyRes.json();
@@ -97,6 +101,14 @@ export function RazorpayCheckoutButton({
       setError(err instanceof Error ? err.message : "Could not start payment");
       setPending(false);
     }
+  }
+
+  if (paid) {
+    return (
+      <NoticeCard tone="success" title="✅ Payment successful">
+        Your plan is now active — this page will update automatically.
+      </NoticeCard>
+    );
   }
 
   return (
