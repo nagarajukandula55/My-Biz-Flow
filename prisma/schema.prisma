@@ -685,10 +685,15 @@ model TelegramSettings {
   routing Json @default("{}")
   /// Automatic periodic business-summary digest cadence, matching AN-CRM's
   /// VendorProfile.telegramReportFrequency (DAILY/WEEKLY/MONTHLY/NONE) —
-  /// see src/lib/telegramTemplates.ts's businessReportMessage(). The setting
-  /// is real and saved here; actually SENDING a scheduled digest still needs
-  /// a real bot token + cron wiring this repo doesn't have.
+  /// see src/lib/telegramTemplates.ts's businessReportMessage(). Actually
+  /// sent by /api/cron/telegram-reports (see that route + lastReportSentAt
+  /// below for the idempotency guard) once a bot token is configured.
   reportFrequency String   @default("NONE")
+  /// When the last scheduled digest was sent (or attempted, if no bot token
+  /// is configured) — the cron's idempotency guard, since Vercel Cron does
+  /// not guarantee exactly-once delivery and this route may run more than
+  /// once on the same calendar day/week/month.
+  lastReportSentAt DateTime?
   updatedAt       DateTime @updatedAt
 
   @@map("telegram_settings")

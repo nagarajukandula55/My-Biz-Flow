@@ -49,6 +49,7 @@ export type TelegramSettingsRecord = {
   enabledTypes: TelegramAlertType[];
   routing: TelegramRoutingMap;
   reportFrequency: TelegramReportFrequency;
+  lastReportSentAt: Date | null;
 };
 
 export type TelegramLogEntryRecord = {
@@ -70,7 +71,22 @@ export async function getTelegramSettings(partnerId: string): Promise<TelegramSe
     enabledTypes: (row?.enabledTypes as TelegramAlertType[] | undefined) ?? [],
     routing: (row?.routing as TelegramRoutingMap | undefined) ?? {},
     reportFrequency: (row?.reportFrequency as TelegramReportFrequency | undefined) ?? "NONE",
+    lastReportSentAt: row?.lastReportSentAt ?? null,
   };
+}
+
+/** Every partner with a non-"NONE" report frequency — the cron's iteration set (no per-partner round-trip needed to check who opted in). */
+export async function listPartnersWithReportsEnabled(): Promise<TelegramSettingsRecord[]> {
+  const rows = await prisma.telegramSettings.findMany({ where: { reportFrequency: { not: "NONE" } } });
+  return rows.map((row) => ({
+    partnerId: row.partnerId,
+    chatId: row.chatId,
+    groupChatId: row.groupChatId,
+    enabledTypes: (row.enabledTypes as TelegramAlertType[] | undefined) ?? [],
+    routing: (row.routing as TelegramRoutingMap | undefined) ?? {},
+    reportFrequency: (row.reportFrequency as TelegramReportFrequency | undefined) ?? "NONE",
+    lastReportSentAt: row.lastReportSentAt ?? null,
+  }));
 }
 
 export async function saveTelegramSettings(
@@ -107,8 +123,12 @@ export async function saveTelegramRouting(partnerId: string, routing: TelegramRo
  * there exactly as before routing existed. "test" always goes to every
  * connected chat, ignoring routing, so the Send Test Message button
  * verifies both slots at once. */
-function resolveChatIdsForType(settings: TelegramSettingsRecord, type: TelegramAlertType | "test"): string[] {
-  if (type === "test") {
+function resolveChatIdsForType(settings: TelegramSettingsRecord, type: TelegramAlertType | "test" | "report"): string[] {
+  // "report" (the scheduled digest) has its own independent on/off switch
+  // (reportFrequency != "NONE", checked by the cron before calling this at
+  // all) rather than a TELEGRAM_ALERT_TYPES routing entry -- send to every
+  // connected chat, same as "test".
+  if (type === "test" || type === "report") {
     return [settings.chatId, settings.groupChatId].filter((id): id is string => Boolean(id));
   }
   const destination = settings.routing[type] ?? "both";
@@ -177,7 +197,7 @@ async function recordTelegramLog(input: {
  */
 async function sendTelegramAlertInternal(
   partnerId: string,
-  type: TelegramAlertType | "test",
+  type: TelegramAlertType | "test" | "report",
   message: string,
   workorderId: string | null
 ): Promise<void> {
@@ -188,7 +208,7 @@ async function sendTelegramAlertInternal(
     await recordTelegramLog({ partnerId, type, message, chatId: null, sent: false, reason: "no chat id configured", workorderId });
     return;
   }
-  if (type !== "test" && !settings.enabledTypes.includes(type)) {
+  if (type !== "test" && type !== "report" && !settings.enabledTypes.includes(type)) {
     await recordTelegramLog({ partnerId, type, message, chatId: chatIds[0], sent: false, reason: "alert type disabled", workorderId });
     return;
   }
@@ -214,7 +234,10 @@ async function sendTelegramAlertInternal(
       const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chat_id: chatId, text: message, parse_mode: "Markdown" }),
+        // "HTML" (not "Markdown") -- every message template in
+        // telegramTemplates.ts uses Telegram's HTML subset (<b>, <pre>), so
+        // Markdown parse_mode would render those tags as literal text.
+        body: JSON.stringify({ chat_id: chatId, text: message, parse_mode: "HTML" }),
       });
       // Telegram's sendMessage response carries the sent message's own
       // message_id (result.message_id) — this is what a reply's
@@ -267,6 +290,20 @@ export async function sendWorkorderTelegramAlert(
   message: string
 ): Promise<void> {
   await sendTelegramAlertInternal(partnerId, type, message, workorderId);
+}
+
+/**
+ * Sends the scheduled business-summary digest to a partner's connected
+ * chat(s) and stamps `lastReportSentAt` so /api/cron/telegram-reports's
+ * idempotency check sees this partner as done for the current period even
+ * if the cron runs again the same day (Vercel Cron doesn't guarantee
+ * exactly-once). Stamped regardless of whether a chat is actually
+ * connected/a bot token is configured -- "attempted for this period" is
+ * the right idempotency signal, not "successfully delivered".
+ */
+export async function sendPartnerTelegramReport(partnerId: string, message: string): Promise<void> {
+  await sendTelegramAlertInternal(partnerId, "report", message, null);
+  await prisma.telegramSettings.update({ where: { partnerId }, data: { lastReportSentAt: new Date() } }).catch(() => {});
 }
 
 /**

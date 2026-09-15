@@ -22,7 +22,7 @@ registerPage({
   superAdminOnly: false,
   customizableRegions: [],
   explanation:
-    "Per-partner Telegram alert setup — two independently-connectable chats (a personal DM and a group chat), each with its own QR-code deep link that captures the chat id automatically via the bot's webhook (no manual entry needed); per-alert-type routing between personal/group/both; which alert occasions to send; an automatic report digest frequency; a Send Test Message button; and a real send-attempt log (TelegramLogEntry) including two-way reply threading on the new-workorder alert. Settings/log are real and persisted; actual delivery needs a real bot token + registered webhook (TELEGRAM_BOT_TOKEN / TELEGRAM_BOT_USERNAME / TELEGRAM_WEBHOOK_SECRET), which isn't configured here — see src/lib/telegram.ts and src/app/api/telegram/webhook/route.ts.",
+    "Per-partner Telegram alert setup — two independently-connectable chats (a personal DM and a group chat), each with its own QR-code deep link that captures the chat id automatically via the bot's webhook (no manual entry needed); per-alert-type routing between personal/group/both; which alert occasions to send; an automatic report digest frequency (DAILY/WEEKLY/MONTHLY, actually sent by /api/cron/telegram-reports — real per-partner revenue/invoice/workorder data, never shared across partners); a Send Test Message button; and a real send-attempt log (TelegramLogEntry) including two-way reply threading on the new-workorder alert. Settings/log are real and persisted; actual delivery needs a real bot token + registered webhook (TELEGRAM_BOT_TOKEN / TELEGRAM_BOT_USERNAME / TELEGRAM_WEBHOOK_SECRET) — see src/lib/telegram.ts and src/app/api/telegram/webhook/route.ts.",
   sourceFile: "src/app/partner/[partnerId]/service-centre/telegram/page.tsx",
 });
 
@@ -225,8 +225,10 @@ export default async function TelegramAlertsPage({ params }: { params: { partner
               ))}
             </select>
             <span className="mt-1 block text-xs font-normal normal-case text-text-muted">
-              How often a revenue/workorder summary digest is sent to your linked chat(s). Sending on this schedule
-              still needs a real bot connection — the setting itself is saved now.
+              How often a real, per-business revenue/invoice/workorder summary digest is sent to your linked
+              chat(s) — DAILY sends every day (for the prior day), WEEKLY every Monday (for the prior week), MONTHLY
+              on the 1st (for the prior month). Sent automatically by a daily scheduled job; still needs a real bot
+              connection to actually deliver.
             </span>
           </label>
 

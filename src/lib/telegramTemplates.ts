@@ -1,10 +1,10 @@
 /**
  * Telegram message CONTENT templates — plain functions returning message
- * text only. NOT YET SENT ANYWHERE: there is no Telegram bot/integration
- * wired up in My Biz Flow (no TELEGRAM_BOT_TOKEN, no sendTelegramMessage()
- * equivalent, no webhook). This file exists purely so the copy/tone/
- * structure is ready to reuse once a real bot integration is added later —
- * do not add any fetch()/API call here, that's future work.
+ * text only, no fetch()/API call here (that lives in src/lib/telegram.ts's
+ * sendPartnerTelegramAlert/sendWorkorderTelegramAlert/
+ * sendPartnerTelegramReport, called from action sites and from
+ * /api/cron/telegram-reports for the scheduled digest). Delivery still
+ * needs a real bot token (TELEGRAM_BOT_TOKEN) configured on the deployment.
  *
  * Adapted from AN-CRM's real Telegram templates (src/core/telegram/
  * vendorMessageTypes.ts's VENDOR_TELEGRAM_MESSAGE_TYPES catalog +
