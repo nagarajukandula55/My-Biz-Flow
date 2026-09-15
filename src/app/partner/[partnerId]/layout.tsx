@@ -20,7 +20,7 @@ import { env } from "@/lib/env";
  * time otherwise. Matched by suffix since these routes exist under
  * several modules (service-centre, billing, pos, amc-field-service, …).
  */
-const PRINT_ROUTE_SUFFIXES = ["/document", "/estimate", "/invoice", "/service-record", "/receipt"];
+const PRINT_ROUTE_SUFFIXES = ["/document", "/estimate", "/invoice", "/service-record", "/receipt", "/intake-receipt"];
 
 function isPrintRoute(pathname: string | null): boolean {
   if (!pathname) return false;

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Printer, ClipboardCheck, Receipt } from "lucide-react";
+import { Printer, ClipboardList, ClipboardCheck, Receipt } from "lucide-react";
 import { DataTable, type Row, type Column } from "@/components/DataTable";
 import { PrintPopupLink } from "@/components/PrintPopupLink";
 import { serviceCentreListColumns, isUnderWarranty } from "@/lib/sample-data/service-centre";
@@ -10,8 +10,9 @@ const ACTION_ICON_CLASS =
   "rounded border border-border p-1.5 text-text-muted hover:bg-bg-sunken hover:text-text";
 
 /**
- * Print/document actions per row — always Print Workorder; Service Record
- * only once the job is Closed; Invoice only once the job is BOTH chargeable
+ * Print/document actions per row — Print Workorder and Intake Receipt
+ * always (both exist from intake); Service Record only once the job is
+ * Closed; Invoice only once the job is BOTH chargeable
  * (out-of-warranty-or-90-days — reusing isUnderWarranty(), the same
  * single source of truth the detail page's warranty badge and chargeable-
  * amount calc use) AND Closed with an invoice actually created
@@ -38,6 +39,13 @@ function renderWorkorderActions(partnerId: string, row: Row) {
         title="Print Workorder"
       >
         <Printer className="h-4 w-4" strokeWidth={2} />
+      </PrintPopupLink>
+      <PrintPopupLink
+        href={`/partner/${partnerId}/service-centre/${row["id"]}/intake-receipt`}
+        className={ACTION_ICON_CLASS}
+        title="Intake Receipt"
+      >
+        <ClipboardList className="h-4 w-4" strokeWidth={2} />
       </PrintPopupLink>
       {closed && (
         <PrintPopupLink
