@@ -4,7 +4,19 @@ import type { LineItem } from "@/lib/sample-data/billing";
 import { formatCurrencyINR } from "@/lib/format";
 import { HSN_CODES } from "@/lib/sample-data/bom";
 
-const EMPTY_ITEM: LineItem = { description: "", quantity: 1, unit: "pcs", unitPrice: 0, taxRate: 18 };
+const EMPTY_ITEM: LineItem = { description: "", quantity: 1, unit: "pcs", unitPrice: 0, taxRate: 18, priceMode: "excl" };
+
+/** unitPrice is always the tax-exclusive rate (see LineItem's own doc comment) -- this is just the per-unit inclusive number for DISPLAY when priceMode is "incl". */
+export function displayedUnitPrice(item: LineItem): number {
+  if ((item.priceMode ?? "excl") === "incl") return item.unitPrice * (1 + item.taxRate / 100);
+  return item.unitPrice;
+}
+
+/** Converts a typed price back to the canonical tax-exclusive unitPrice, given the row's current mode and tax rate — the inverse of displayedUnitPrice(). */
+function unitPriceFromTypedValue(typedValue: number, mode: "excl" | "incl", taxRate: number): number {
+  if (mode === "incl" && taxRate > 0) return typedValue / (1 + taxRate / 100);
+  return typedValue;
+}
 
 export function computeTotals(items: LineItem[], showTax = true) {
   const subtotal = items.reduce((sum, it) => sum + it.quantity * it.unitPrice, 0);
@@ -89,7 +101,12 @@ export function LineItemsEditor({
       itemId: option.id,
       description: option.label,
       unit: option.unit,
+      // Catalog rates are stored tax-exclusive, same as unitPrice's own
+      // canonical convention — reset to "excl" so a prior Incl-GST toggle
+      // on this row doesn't reinterpret the catalog's already-exclusive
+      // rate as if it were inclusive.
       unitPrice: option.unitPrice,
+      priceMode: "excl",
       taxRate: showTax ? option.taxRate : 0,
       hsnCode: option.hsnCode ?? "",
     });
@@ -193,10 +210,33 @@ export function LineItemsEditor({
                     <input
                       type="number"
                       min={0}
-                      value={item.unitPrice}
-                      onChange={(e) => updateItem(i, { unitPrice: Number(e.target.value) || 0 })}
+                      value={displayedUnitPrice(item)}
+                      onChange={(e) => {
+                        const typed = Number(e.target.value) || 0;
+                        const mode = item.priceMode ?? "excl";
+                        updateItem(i, { unitPrice: unitPriceFromTypedValue(typed, mode, item.taxRate) });
+                      }}
                       className="w-full rounded-md border border-border bg-bg px-2.5 py-1.5 text-right text-sm text-text tabular-nums outline-none focus:border-accent"
                     />
+                    {showTax && (
+                      <div className="mt-1 flex gap-1 text-[10px] font-semibold uppercase tracking-wide">
+                        {(["excl", "incl"] as const).map((mode) => {
+                          const active = (item.priceMode ?? "excl") === mode;
+                          return (
+                            <button
+                              key={mode}
+                              type="button"
+                              onClick={() => updateItem(i, { priceMode: mode })}
+                              className={`flex-1 rounded px-1.5 py-0.5 transition-colors ${
+                                active ? "bg-accent text-white" : "bg-bg-sunken text-text-muted hover:text-text"
+                              }`}
+                            >
+                              {mode === "excl" ? "Excl GST" : "Incl GST"}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
                   </td>
                   {showTax && (
                     <td className="px-3 py-2">

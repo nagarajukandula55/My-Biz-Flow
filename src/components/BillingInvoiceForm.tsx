@@ -218,7 +218,15 @@ export function BillingInvoiceForm({
   const [showTerms, setShowTerms] = useState(initialValues?.showTerms ?? true);
   const [showNotes, setShowNotes] = useState(initialValues?.showNotes ?? true);
 
-  const showTax = invoiceType === "GST";
+  // "GST" vs "Non-GST" is a DOCUMENT FORMAT distinction (B2B tax invoice
+  // vs B2C simplified bill), not a tax-on/tax-off switch — a Non-GST/B2C
+  // sale still charges and must split GST correctly, it just doesn't
+  // need the buyer's GSTIN. Previously showTax was invoiceType === "GST",
+  // so every Non-GST invoice silently charged zero tax — a real reported
+  // bug, fixed here. isB2B below gates only the GSTIN field, which a B2C
+  // customer genuinely doesn't have.
+  const showTax = true;
+  const isB2B = invoiceType === "GST";
   const totals = computeTotals(items, showTax);
 
   // The manual toggle (supplyType state, above) is the real value — CGST+SGST
@@ -230,13 +238,11 @@ export function BillingInvoiceForm({
   const grandTotal = totals.grandTotal - (discountAmount || 0);
 
   function handleInvoiceTypeChange(next: InvoiceType) {
+    // GST vs Non-GST only changes the document format (B2B tax invoice vs
+    // B2C simplified bill, i.e. whether a buyer GSTIN is collected) — tax
+    // rates on existing lines are real, already-entered charges and must
+    // not be wiped just because the invoice format toggle was clicked.
     setInvoiceType(next);
-    // A Non-GST invoice never carries a tax rate — zero out any items
-    // that were entered while GST was selected, rather than just hiding
-    // a nonzero rate from the UI.
-    if (next === "Non-GST") {
-      setItems((prev) => prev.map((it) => ({ ...it, taxRate: 0 })));
-    }
   }
 
   function applyContact(c: ContactOption) {
@@ -503,7 +509,7 @@ export function BillingInvoiceForm({
               className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text outline-none focus:border-teal"
             />
           </Field>
-          {showTax && (
+          {isB2B && (
             <Field label="Customer GSTIN">
               <input
                 value={customerGstin}

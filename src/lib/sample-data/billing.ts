@@ -18,8 +18,19 @@ export type LineItem = {
   description: string;
   quantity: number;
   unit: string;
+  /** ALWAYS the tax-EXCLUSIVE per-unit rate, regardless of `priceMode` —
+   * every downstream reader (totals, printed documents) can keep doing
+   * qty * unitPrice * (1 + taxRate/100) unmodified. `priceMode` only
+   * changes how the Line Items editor's price input is typed into and
+   * displayed — see LineItemsEditor.tsx's displayedUnitPrice(). */
   unitPrice: number;
   taxRate: number; // percent
+  /** Whether this line's price was entered tax-exclusive (default, add
+   * GST on top) or tax-inclusive (GST backed out of the typed amount) —
+   * a display/input-interpretation hint only, not a second source of
+   * truth: `unitPrice` above is already normalized to exclusive either
+   * way. Absent on any line item saved before this existed -> "excl". */
+  priceMode?: "excl" | "incl";
   /** Optional link back to the catalog record (now Inventory's own
    * inventory-bom Material Catalog — see lib/lineItemCatalog.ts, not the
    * separate billing-items list) used to autofill this line. */
