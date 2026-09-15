@@ -60,6 +60,38 @@ export default async function ServiceCentreServiceRecordPage({
   // Same derivation as the Sales Invoice/Estimate — a Service Record has no
   // stored subtotal/tax/total of its own, it prices the workorder's current
   // lines live.
+  //
+  // AN-CRM's own serviceRecordToRenderData() reads a PERSISTED invoice's
+  // items/totals when one exists, falling back to live recompute only
+  // pre-invoice — specifically to avoid the Service Record and the actual
+  // invoice drifting apart. Re-verified this pass that My-Biz-Flow's
+  // always-live-recompute approach here is safe by construction and does
+  // NOT need that same persisted-invoice read, because (see commit
+  // 4163281, "Close+invoice atomically, add HSN suggestions, per-line GST
+  // split, and B2B/B2C invoice numbering"):
+  //   1. partLines/serviceLines become read-only the moment the workorder
+  //      leaves "In Progress" (WorkorderLifecycle.tsx: `editable = stage
+  //      === "In Progress" && !hold && !cancelled`) — there is no UI path
+  //      to edit a line once the job is Completed or Closed.
+  //   2. createInvoiceFromWorkorderAction only ever fires once the
+  //      workorder is already "Closed" (actions.ts), i.e. strictly after
+  //      lines have frozen — so the invoice, once it exists, is always a
+  //      snapshot of the same frozen lines this page recomputes from.
+  //   3. A Closed workorder can no longer be cancelled/reopened
+  //      (cancelWorkorderAction throws "A closed workorder can no longer
+  //      be cancelled"), so there is no cancel-then-reopen path back to an
+  //      editable state post-invoice.
+  //   4. The generic Edit form (../edit/page.tsx) only submits
+  //      serviceCentreFormFields, which deliberately excludes
+  //      partLines/serviceLines — so it can't touch lines either,
+  //      regardless of stage.
+  // Net: once an invoice exists for this workorder, its lines cannot
+  // change, so live-recompute and read-the-persisted-invoice necessarily
+  // agree. If a future change reopens any of the above (e.g. an admin
+  // "Designer"-style raw record editor that can write partLines/
+  // serviceLines directly), switch this to read invoice.items/totals
+  // when `invoiceId` is set on the record, matching AN-CRM's real
+  // approach — buildServiceCentreLines() would then only run pre-invoice.
   const subtotal = lines.reduce((sum, l) => sum + l.quantity * l.rate, 0);
   const tax = lines.reduce((sum, l) => sum + l.quantity * l.rate * (l.gstRate / 100), 0);
 
@@ -80,7 +112,7 @@ export default async function ServiceCentreServiceRecordPage({
       lineItems={lines.map((l) => ({
         description: l.description,
         quantity: l.quantity,
-        unit: "PCS",
+        unit: l.unit,
         unitPrice: l.rate,
         taxRate: l.gstRate,
       }))}

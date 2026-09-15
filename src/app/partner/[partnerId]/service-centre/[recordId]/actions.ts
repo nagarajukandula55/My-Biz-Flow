@@ -14,6 +14,7 @@ import {
 import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import { getPartner } from "@/lib/partnerData";
 import { notifyCentralApiBillingInvoice } from "@/lib/centralApi";
+import { buildServiceCentreLines } from "@/lib/serviceCentreLines";
 
 /**
  * Shared lookup for every action below. Previously each action did
@@ -225,17 +226,21 @@ export async function createInvoiceFromWorkorderAction(
   if (lifecycle.invoiceId) return; // already invoiced — don't double-create
 
   const underWarranty = isUnderWarranty(record);
-  const laborTotal = underWarranty ? 0 : lifecycle.serviceLines.reduce((sum, l) => sum + (l.laborCharge || 0), 0);
-  // Parts were previously never billed at all (hardcoded to 0) — a
-  // workorder could consume real inventory and still invoice for labor
-  // only. Each PartLine already carries its own unitPrice/qty (see
-  // service-centre.ts), so bill fulfilled lines (not ones marked Pending —
-  // never actually supplied) at qty * unitPrice, same warranty rule as labor.
-  const partsTotal = underWarranty
-    ? 0
-    : lifecycle.partLines.reduce((sum, p) => (p.pending ? sum : sum + (p.unitPrice || 0) * (p.qty || 1)), 0);
-  const subtotal = laborTotal + partsTotal;
-  const taxAmount = Math.round(subtotal * 0.18);
+  // Priced from the SAME buildServiceCentreLines() the printed Sales
+  // Invoice, Estimate and Service Record all use, so the figure persisted
+  // on this Billing record cannot disagree with the figure on the
+  // documents. It previously recomputed its own subtotal inline and then
+  // taxed it at a flat, rounded 18% — while every printed document taxed
+  // each line at that line's OWN gstRate (the part's BOM taxPercent, which
+  // is frequently 5% or 12%, not 18%). That is exactly the
+  // persisted-vs-printed drift AN-CRM's serviceRecordToRenderData() reads
+  // the persisted invoice to avoid; here the two are made to agree at the
+  // source instead. buildServiceCentreLines() applies the identical
+  // warranty-zeroing and exclude-Pending-parts rules this used to apply by
+  // hand, so the subtotal itself is unchanged.
+  const invoiceLines = await buildServiceCentreLines(partnerId, record);
+  const subtotal = invoiceLines.reduce((sum, l) => sum + l.quantity * l.rate, 0);
+  const taxAmount = invoiceLines.reduce((sum, l) => sum + l.quantity * l.rate * (l.gstRate / 100), 0);
   const totalAmount = subtotal + taxAmount;
 
   const partsSummary = lifecycle.partLines
@@ -271,6 +276,21 @@ export async function createInvoiceFromWorkorderAction(
     issueDate,
     dueDate: issueDate,
     lineItemsSummary: lineSummary || "No chargeable lines",
+    // The real itemized lines, in Billing's own LineItem shape. Without
+    // these the Billing-side document for a workorder-originated invoice
+    // (billing/[recordId]/document) rendered an EMPTY item table — it
+    // reads record["items"], which nothing ever wrote here, so only the
+    // one-line lineItemsSummary above survived the handoff. Same lines the
+    // Service Centre-side invoice prints, so the two documents for this
+    // one invoice now show identical items.
+    items: invoiceLines.map((l) => ({
+      description: l.description,
+      quantity: l.quantity,
+      unit: l.unit,
+      unitPrice: l.rate,
+      taxRate: l.gstRate,
+      hsnCode: l.hsn || undefined,
+    })),
     subtotal,
     taxAmount,
     discountAmount: 0,
@@ -314,26 +334,16 @@ export async function createInvoiceFromWorkorderAction(
   // own "deliberately never throws" doc).
   const partner = await getPartner(partnerId);
   if (partner) {
-    const items = [
-      ...(underWarranty
-        ? []
-        : lifecycle.serviceLines.map((l: ServiceLine) => ({
-            description: l.solutionLabel,
-            quantity: 1,
-            unitPrice: l.laborCharge || 0,
-            taxRate: 18,
-          }))),
-      ...(underWarranty
-        ? []
-        : lifecycle.partLines
-            .filter((p) => !p.pending)
-            .map((p) => ({
-              description: p.materialLabel,
-              quantity: p.qty || 1,
-              unitPrice: p.unitPrice || 0,
-              taxRate: 18,
-            }))),
-    ];
+    // Same lines persisted on the invoice above, rather than a third
+    // hand-rolled rebuild that re-applied the warranty/pending rules and
+    // hardcoded every taxRate to 18% — AN-Accounting was being told a
+    // different tax rate than the invoice and the printed document carry.
+    const items = invoiceLines.map((l) => ({
+      description: l.description,
+      quantity: l.quantity,
+      unitPrice: l.rate,
+      taxRate: l.gstRate,
+    }));
     void notifyCentralApiBillingInvoice(partner, {
       externalOrderId: String(invoice.id),
       customer: String(record["customer"] ?? ""),

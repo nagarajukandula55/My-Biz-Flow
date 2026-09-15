@@ -142,6 +142,12 @@ export async function BillingInvoiceDocument({
       cgst: hasTax && !interState ? gstAmount / 2 : 0,
       sgst: hasTax && !interState ? gstAmount / 2 : 0,
       igst: hasTax && interState ? gstAmount : 0,
+      // Rates, not amounts — printed per-line (see the item table below),
+      // matching AN-CRM's own item.cgstRate/sgstRate/igstRate convention
+      // and ServiceCentreInvoiceDocument.tsx's identical fields.
+      cgstRate: hasTax && !interState ? it.taxRate / 2 : 0,
+      sgstRate: hasTax && !interState ? it.taxRate / 2 : 0,
+      igstRate: hasTax && interState ? it.taxRate : 0,
       total: taxable + gstAmount,
     };
   });
@@ -323,7 +329,6 @@ export async function BillingInvoiceDocument({
                     <th className="px-2 py-2">Unit</th>
                     <th className="px-2 py-2 text-right">Rate</th>
                     <th className="px-2 py-2 text-right">Taxable</th>
-                    {hasTax && <th className="px-2 py-2 text-right">GST%</th>}
                     {hasTax && interState && <th className="px-2 py-2 text-right">IGST</th>}
                     {hasTax && !interState && (
                       <>
@@ -344,14 +349,13 @@ export async function BillingInvoiceDocument({
                       <td className="px-2 py-2 text-text-muted">{r.unit}</td>
                       <td className="px-2 py-2 text-right font-mono tabular-nums text-text">{formatCurrencyINR(r.unitPrice)}</td>
                       <td className="px-2 py-2 text-right font-mono tabular-nums text-text">{formatCurrencyINR(r.taxable)}</td>
-                      {hasTax && <td className="px-2 py-2 text-right font-mono tabular-nums text-text">{r.taxRate}%</td>}
                       {hasTax && interState && (
-                        <td className="px-2 py-2 text-right font-mono tabular-nums text-text">{formatCurrencyINR(r.igst)}</td>
+                        <td className="px-2 py-2 text-right font-mono tabular-nums text-text">{r.igstRate ? `${r.igstRate}%` : "—"}</td>
                       )}
                       {hasTax && !interState && (
                         <>
-                          <td className="px-2 py-2 text-right font-mono tabular-nums text-text">{formatCurrencyINR(r.cgst)}</td>
-                          <td className="px-2 py-2 text-right font-mono tabular-nums text-text">{formatCurrencyINR(r.sgst)}</td>
+                          <td className="px-2 py-2 text-right font-mono tabular-nums text-text">{r.cgstRate ? `${r.cgstRate}%` : "—"}</td>
+                          <td className="px-2 py-2 text-right font-mono tabular-nums text-text">{r.sgstRate ? `${r.sgstRate}%` : "—"}</td>
                         </>
                       )}
                       <td className="px-2 py-2 text-right font-mono tabular-nums font-semibold text-text">
@@ -360,6 +364,32 @@ export async function BillingInvoiceDocument({
                     </tr>
                   ))}
                 </tbody>
+                {/* Column-totals row, matching
+                    ServiceCentreInvoiceDocument.tsx's — this table
+                    previously ended at the last item with no totals row at
+                    all, so the two invoice documents' item tables didn't
+                    end the same way. colSpan covers #, Description,
+                    (HSN,) Qty, Unit, Rate. */}
+                <tfoot>
+                  <tr className="border-t-2 border-border font-semibold text-text">
+                    <td className="px-2 py-2" colSpan={hasTax ? 6 : 5}>
+                      Total
+                    </td>
+                    <td className="px-2 py-2 text-right font-mono tabular-nums">{formatCurrencyINR(subtotal)}</td>
+                    {hasTax && interState && (
+                      <td className="px-2 py-2 text-right font-mono tabular-nums">{formatCurrencyINR(igstTotal)}</td>
+                    )}
+                    {hasTax && !interState && (
+                      <>
+                        <td className="px-2 py-2 text-right font-mono tabular-nums">{formatCurrencyINR(cgstTotal)}</td>
+                        <td className="px-2 py-2 text-right font-mono tabular-nums">{formatCurrencyINR(sgstTotal)}</td>
+                      </>
+                    )}
+                    <td className="px-2 py-2 text-right font-mono tabular-nums">
+                      {formatCurrencyINR(subtotal + gstTotal)}
+                    </td>
+                  </tr>
+                </tfoot>
               </table>
               <p className="mt-1 text-xs text-text-muted">Total Items: {rows.length}</p>
             </div>

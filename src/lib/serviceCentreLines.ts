@@ -11,6 +11,12 @@ export type ServiceCentreLine = {
   description: string;
   hsn: string;
   quantity: number;
+  /** Unit of measure printed in the invoice/estimate item table's "Unit"
+   * column — the BOM material's own `uom` for a part line, and the fixed
+   * "Service" for a labour line (a solution isn't measured in pieces).
+   * Previously the priced documents hardcoded "PCS" for every line, which
+   * printed "1 PCS" against labour. */
+  unit: string;
   rate: number;
   gstRate: number;
   discount?: number;
@@ -47,6 +53,7 @@ export async function buildServiceCentreLines(
       description: line.solutionLabel,
       hsn: SERVICE_HSN,
       quantity: 1,
+      unit: "Service",
       rate: underWarranty ? 0 : line.laborCharge,
       gstRate: DEFAULT_GST_RATE,
     });
@@ -65,6 +72,7 @@ export async function buildServiceCentreLines(
     items.push({
       description: line.materialLabel,
       hsn: String(material?.["hsnCode"] ?? ""),
+      unit: String(material?.["uom"] ?? "PCS"),
       quantity: line.qty,
       // Prefer the price stamped onto the line when it was added — that's
       // the figure the customer approved, so the printed document can't

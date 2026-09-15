@@ -81,7 +81,7 @@ export default async function ServiceCentreEstimatePage({
       lineItems={lines.map((l) => ({
         description: l.description,
         quantity: l.quantity,
-        unit: "PCS",
+        unit: l.unit,
         unitPrice: l.rate,
         taxRate: l.gstRate,
       }))}

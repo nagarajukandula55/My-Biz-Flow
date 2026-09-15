@@ -84,6 +84,10 @@ export default async function ServiceCentreInvoicePage({
       customerPincode={String(record["customerPincode"] ?? "")}
       lines={lines}
       customTemplate={customTemplate}
+      // The note the engineer recorded at handover — the closest thing a
+      // workorder has to Billing's free-text invoice `notes`, and what a
+      // customer reading this invoice would want alongside the charges.
+      notes={String(record["handoverNotes"] ?? "")}
       termsText={resolveDocumentTerms(partner, "invoice")}
       serviceHours={partner?.serviceHours}
       supportHotline={partner?.supportHotline}

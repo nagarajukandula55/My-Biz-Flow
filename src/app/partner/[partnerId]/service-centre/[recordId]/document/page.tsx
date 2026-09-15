@@ -24,13 +24,22 @@ registerPage({
  * What actually prints on the job card, in reading order: who the customer
  * is, what came in, what's wrong with it, and who took it in.
  *
- * Everything else on the workorder is deliberately left off. Cost fields
- * (estimatedAmount/estimatedCost/actualCost) are not knowable at intake and
- * a figure on a job card reads as a quote the shop is bound by; pickup
- * latitude/longitude, branch, priority, appointment/request type and the
- * lifecycle status are internal dispatch metadata; internal notes are
- * staff-only by definition. All of them remain on the detail view and the
- * edit form — this is a print-selection, nothing is dropped from the record.
+ * This is deliberately THIN, matching AN-CRM's real split between its
+ * work_order print (jobsheets/[id]/page.tsx?doc=work_order, via
+ * jobSheetToRenderData) and its separate, more detailed intake-receipt
+ * page ("Service Handover Report") — see ../intake-receipt/page.tsx in
+ * this app. Intake-condition fields (warranty status/flag/expiry, device
+ * appearance, file-backup, accessories, SLA date) print on THAT document
+ * instead, not here; the two used to be folded into one document, which
+ * is exactly the inconsistency this split fixes.
+ *
+ * Also left off entirely: cost fields (estimatedAmount/estimatedCost/
+ * actualCost) are not knowable at intake and a figure on a job card reads
+ * as a quote the shop is bound by; pickup latitude/longitude, branch,
+ * priority, appointment/request type and the lifecycle status are internal
+ * dispatch metadata; internal notes are staff-only by definition. All of
+ * them remain on the detail view and the edit form — this is a
+ * print-selection, nothing is dropped from the record.
  */
 const JOB_CARD_FIELDS = [
   // Customer
@@ -49,19 +58,12 @@ const JOB_CARD_FIELDS = [
   "modelName",
   "device",
   "imeiOrSerialNumber",
-  "warrantyStatus",
-  "warrantyFlag",
-  "warrantyExpiryDate",
-  "deviceAppearance",
-  "fileBackupDescription",
-  "standardAccessories",
   // Why it's here
   "faultDescription",
   "issueDescription",
   "remark",
   // Handling
   "receivedDate",
-  "slaDate",
   "loggedBy",
   "engineerName",
 ];

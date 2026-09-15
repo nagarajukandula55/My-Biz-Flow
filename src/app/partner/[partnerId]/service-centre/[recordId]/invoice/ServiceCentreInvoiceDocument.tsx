@@ -3,13 +3,17 @@ import { PrintFrame } from "@/components/PrintFrame";
 import { LogoMark } from "@/components/LogoMark";
 import { formatCurrencyINR, formatDate } from "@/lib/format";
 import { renderTemplate } from "@/lib/designer/documentTemplates";
-import { DocumentContactBand } from "@/components/DocumentView";
+import { DocumentContactBand, DocumentUpiBlock } from "@/components/DocumentView";
 import { generateUpiQrDataUrl } from "@/lib/upiQr";
 
 export type InvoiceLine = {
   description: string;
   hsn: string;
   quantity: number;
+  /** Unit of measure — "Service" for a labour line, the BOM material's own
+   * uom for a part line. Printed in the item table's Unit column, same as
+   * BillingInvoiceDocument.tsx's LineItem.unit. */
+  unit: string;
   rate: number;
   gstRate: number;
   /** Per-line discount in rupees, applied before tax. */
@@ -62,10 +66,15 @@ export async function ServiceCentreInvoiceDocument({
   customerPincode,
   lines,
   customTemplate,
+  notes,
   termsText,
   serviceHours,
   supportHotline,
   upiId,
+  showBankDetails = true,
+  showUpiQr = true,
+  showTerms = true,
+  showNotes = true,
   logoDataUrl,
 }: {
   /** Needed (alongside the workorder number) to build the public tracking QR/URL. */
@@ -100,12 +109,27 @@ export async function ServiceCentreInvoiceDocument({
   /** Super-Admin-designed override from the Designer (src/lib/designer/documentTemplates.ts) — same
    * {{placeholder}} mechanism as every other document page; when set, replaces the default layout below. */
   customTemplate?: string;
+  /** Free-text handover note carried over from the workorder — prints in
+   * the same Notes block BillingInvoiceDocument.tsx has. */
+  notes?: string;
   /** Already resolved by resolveDocumentTerms() — invoice-specific text, else the partner's general terms, else null. */
   termsText?: string | null;
   serviceHours?: string | null;
   supportHotline?: string | null;
   /** The partner's own UPI VPA. When set (and the invoice is non-zero) a scannable payment QR is printed. */
   upiId?: string | null;
+  /** Per-document footer-block toggles, identical in name, default and
+   * meaning to BillingInvoiceDocument.tsx's — the two invoice documents
+   * are meant to be interchangeable in everything but where their line
+   * items come from, and this one previously had no toggles at all, so a
+   * partner could suppress the bank/UPI/terms/notes blocks on a Billing
+   * invoice but not on a Service Centre one. Each block still prints only
+   * when its toggle is on AND the underlying data actually exists.
+   * Default true, so existing workorders print exactly what they did. */
+  showBankDetails?: boolean;
+  showUpiQr?: boolean;
+  showTerms?: boolean;
+  showNotes?: boolean;
   /** This partner's own uploaded logo (Settings > Business Details) — see DocumentView.tsx's identical fallback pattern. */
   logoDataUrl?: string | null;
 }) {
@@ -134,6 +158,11 @@ export async function ServiceCentreInvoiceDocument({
       cgst: interState ? 0 : gstAmount / 2,
       sgst: interState ? 0 : gstAmount / 2,
       igst: interState ? gstAmount : 0,
+      // Rates, not amounts — printed per-line (see the item table below),
+      // matching AN-CRM's own item.cgstRate/sgstRate/igstRate convention.
+      cgstRate: interState ? 0 : l.gstRate / 2,
+      sgstRate: interState ? 0 : l.gstRate / 2,
+      igstRate: interState ? l.gstRate : 0,
       total: taxable + gstAmount,
     };
   });
@@ -152,12 +181,21 @@ export async function ServiceCentreInvoiceDocument({
   // Returns null (and the block below is skipped) when no UPI ID is
   // configured, it's malformed, or the document is zero-value — e.g. a
   // fully non-chargeable warranty job, where a "pay now" QR would be wrong.
-  const upiQrDataUrl = await generateUpiQrDataUrl({
-    vpa: upiId ?? "",
-    payeeName: partnerName,
-    amount: grandTotal,
-    invoiceNumber,
-  });
+  const upiQrDataUrl = showUpiQr
+    ? await generateUpiQrDataUrl({
+        vpa: upiId ?? "",
+        payeeName: partnerName,
+        amount: grandTotal,
+        invoiceNumber,
+      })
+    : null;
+  // Only rendered when at least one line actually carries a discount —
+  // buildServiceCentreLines() never sets one today, so an always-₹0.00
+  // "Disc" column would be pure noise AND the one column that made this
+  // table's shape differ from BillingInvoiceDocument.tsx's. The per-line
+  // discount capability itself is kept (InvoiceLine.discount), it just no
+  // longer costs a printed column when unused.
+  const hasLineDiscount = rows.some((r) => r.discount > 0);
   // A B2C document carrying no tax at all (e.g. an entirely non-chargeable
   // warranty job) is a plain Bill, not a Tax Invoice — calling it one would
   // be a false statement on the document.
@@ -317,10 +355,15 @@ export async function ServiceCentreInvoiceDocument({
                     <th className="px-2 py-2">Description</th>
                     <th className="px-2 py-2">HSN</th>
                     <th className="px-2 py-2 text-right">Qty</th>
+                    <th className="px-2 py-2">Unit</th>
                     <th className="px-2 py-2 text-right">Rate</th>
-                    <th className="px-2 py-2 text-right">Disc</th>
+                    {hasLineDiscount && <th className="px-2 py-2 text-right">Disc</th>}
                     <th className="px-2 py-2 text-right">Taxable</th>
-                    <th className="px-2 py-2 text-right">GST%</th>
+                    {/* Per line, AN-CRM's own invoice layout shows the tax
+                        RATE (%) that applies, not a computed rupee amount —
+                        the rupee split is what the totals box below is for.
+                        Matched here rather than showing amount columns
+                        twice. */}
                     {interState ? (
                       <th className="px-2 py-2 text-right">IGST</th>
                     ) : (
@@ -339,16 +382,18 @@ export async function ServiceCentreInvoiceDocument({
                       <td className="px-2 py-2 text-text">{r.description}</td>
                       <td className="px-2 py-2 text-text-muted">{r.hsn || "—"}</td>
                       <td className="px-2 py-2 text-right font-mono tabular-nums text-text">{r.quantity}</td>
+                      <td className="px-2 py-2 text-text-muted">{r.unit}</td>
                       <td className="px-2 py-2 text-right font-mono tabular-nums text-text">{formatCurrencyINR(r.rate)}</td>
-                      <td className="px-2 py-2 text-right font-mono tabular-nums text-text-muted">{formatCurrencyINR(r.discount)}</td>
+                      {hasLineDiscount && (
+                        <td className="px-2 py-2 text-right font-mono tabular-nums text-text-muted">{formatCurrencyINR(r.discount)}</td>
+                      )}
                       <td className="px-2 py-2 text-right font-mono tabular-nums text-text">{formatCurrencyINR(r.taxable)}</td>
-                      <td className="px-2 py-2 text-right font-mono tabular-nums text-text">{r.gstRate}%</td>
                       {interState ? (
-                        <td className="px-2 py-2 text-right font-mono tabular-nums text-text">{formatCurrencyINR(r.igst)}</td>
+                        <td className="px-2 py-2 text-right font-mono tabular-nums text-text">{r.igstRate ? `${r.igstRate}%` : "—"}</td>
                       ) : (
                         <>
-                          <td className="px-2 py-2 text-right font-mono tabular-nums text-text">{formatCurrencyINR(r.cgst)}</td>
-                          <td className="px-2 py-2 text-right font-mono tabular-nums text-text">{formatCurrencyINR(r.sgst)}</td>
+                          <td className="px-2 py-2 text-right font-mono tabular-nums text-text">{r.cgstRate ? `${r.cgstRate}%` : "—"}</td>
+                          <td className="px-2 py-2 text-right font-mono tabular-nums text-text">{r.sgstRate ? `${r.sgstRate}%` : "—"}</td>
                         </>
                       )}
                       <td className="px-2 py-2 text-right font-mono tabular-nums font-semibold text-text">
@@ -359,11 +404,11 @@ export async function ServiceCentreInvoiceDocument({
                 </tbody>
                 <tfoot>
                   <tr className="border-t-2 border-border font-semibold text-text">
-                    <td className="px-2 py-2" colSpan={6}>
+                    {/* #, Description, HSN, Qty, Unit, Rate (+ Disc when shown) */}
+                    <td className="px-2 py-2" colSpan={hasLineDiscount ? 7 : 6}>
                       Total
                     </td>
                     <td className="px-2 py-2 text-right font-mono tabular-nums">{formatCurrencyINR(taxableTotal)}</td>
-                    <td className="px-2 py-2" />
                     {interState ? (
                       <td className="px-2 py-2 text-right font-mono tabular-nums">{formatCurrencyINR(igstTotal)}</td>
                     ) : (
@@ -446,7 +491,8 @@ export async function ServiceCentreInvoiceDocument({
 
             {/* Rendered only when the partner has actually saved bank
                 details on their profile — never a placeholder account. */}
-            {(bankDetails?.accountName || bankDetails?.bankName || bankDetails?.accountNumber || bankDetails?.ifsc) && (
+            {showBankDetails &&
+              (bankDetails?.accountName || bankDetails?.bankName || bankDetails?.accountNumber || bankDetails?.ifsc) && (
               <div className="mt-6 rounded-md border border-border p-4 text-xs text-text-muted">
                 <div className="font-semibold uppercase tracking-wide">Bank Details</div>
                 <div className="mt-1.5 grid grid-cols-2 gap-x-6 gap-y-1">
@@ -458,24 +504,13 @@ export async function ServiceCentreInvoiceDocument({
               </div>
             )}
 
-            {upiQrDataUrl && (
-              <div className="mt-6 flex items-center gap-4 rounded-md border border-border p-4">
-                {/* eslint-disable-next-line @next/next/no-img-element -- a
-                    generated data: URL, not a file next/image can optimise. */}
-                <img src={upiQrDataUrl} alt="UPI payment QR code" className="h-28 w-28 flex-shrink-0" width={112} height={112} />
-                <div className="text-xs text-text-muted">
-                  <div className="font-semibold uppercase tracking-wide text-text">Pay by UPI</div>
-                  <p className="mt-1">
-                    Scan with any UPI app to pay {formatCurrencyINR(grandTotal)} to{" "}
-                    <span className="font-mono text-text">{upiId}</span>.
-                  </p>
-                  <p className="mt-1">
-                    Payment goes directly to {partnerName}. Please quote invoice {invoiceNumber} as the
-                    reference — receipt of payment is confirmed by the service centre, not by this document.
-                  </p>
-                </div>
-              </div>
-            )}
+            {/* The shared DocumentUpiBlock, same as
+                BillingInvoiceDocument.tsx and every DocumentView-based
+                print. This used to be a hand-inlined copy with its own
+                markup and wording, so the two invoice documents printed
+                visibly different UPI blocks for the same partner and the
+                same QR generator. */}
+            {upiQrDataUrl && <DocumentUpiBlock qrDataUrl={upiQrDataUrl} />}
 
             <div className="mt-10 grid grid-cols-2 gap-6 text-center text-xs text-text-muted">
               <div className="border-t border-border pt-2">Customer Signature</div>
@@ -490,7 +525,18 @@ export async function ServiceCentreInvoiceDocument({
               </p>
             </div>
 
-            {termsText?.trim() && (
+            {/* Notes then Terms, same order and markup as
+                BillingInvoiceDocument.tsx — this document previously had
+                no Notes block at all, so a handover note recorded against
+                the workorder never reached the printed invoice. */}
+            {showNotes && notes?.trim() && (
+              <div className="mt-6 border-t border-border pt-4 text-xs leading-relaxed text-text-muted">
+                <div className="font-semibold uppercase tracking-wide">Notes</div>
+                <p className="mt-1 whitespace-pre-line">{notes.trim()}</p>
+              </div>
+            )}
+
+            {showTerms && termsText?.trim() && (
               <div className="mt-6 border-t border-border pt-4 text-xs leading-relaxed text-text-muted">
                 <div className="font-semibold uppercase tracking-wide">Terms &amp; Conditions</div>
                 <p className="mt-1 whitespace-pre-line">{termsText.trim()}</p>
