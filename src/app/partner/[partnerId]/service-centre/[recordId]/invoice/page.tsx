@@ -49,7 +49,6 @@ export default async function ServiceCentreInvoicePage({
 
   return (
     <ServiceCentreInvoiceDocument
-      partnerId={params.partnerId}
       partnerName={partner?.businessName ?? "Your Business"}
       partnerGstin={partner?.gstin ?? ""}
       partnerPhone={partner?.businessContact ?? ""}
@@ -59,22 +58,15 @@ export default async function ServiceCentreInvoicePage({
       // it with the customer's is what decides CGST+SGST vs IGST.
       partnerState={partner?.state ?? ""}
       partnerPincode={partner?.pincode ?? ""}
-      bankDetails={{
-        accountName: partner?.bankAccountName ?? undefined,
-        bankName: partner?.bankName ?? undefined,
-        accountNumber: partner?.bankAccountNumber ?? undefined,
-        ifsc: partner?.bankIfsc ?? undefined,
-      }}
       invoiceNumber={invoiceNumber}
       invoiceDate={String(record["receivedDate"] ?? new Date().toISOString())}
       workorderNumber={String(record["id"] ?? "")}
+      status={String(record["status"] ?? "")}
       // Only what was actually collected at handover — an uncollected job
       // prints an em dash rather than a guessed payment mode.
       paymentMode={String(record["paymentMode"] ?? "")}
-      paymentReference={String(record["paymentReference"] ?? "")}
       customerName={String(record["customer"] ?? "Walk-in Customer")}
       customerPhone={String(record["customerPhone"] ?? "")}
-      customerCompany={String(record["customerCompany"] ?? "")}
       customerGstin={String(record["customerGstin"] ?? "")}
       customerAddress={String(record["customerAddress"] ?? "")}
       // Falls back to the workorder's branch for jobs created before the
@@ -82,6 +74,9 @@ export default async function ServiceCentreInvoicePage({
       customerCity={String(record["customerCity"] ?? record["branch"] ?? "")}
       customerState={String(record["customerState"] ?? "")}
       customerPincode={String(record["customerPincode"] ?? "")}
+      brand={record["brandName"] ? String(record["brandName"]) : undefined}
+      model={String(record["modelName"] ?? record["device"] ?? "") || undefined}
+      imeiOrSerial={record["imeiOrSerialNumber"] ? String(record["imeiOrSerialNumber"]) : undefined}
       lines={lines}
       customTemplate={customTemplate}
       // The note the engineer recorded at handover — the closest thing a
@@ -89,8 +84,6 @@ export default async function ServiceCentreInvoicePage({
       // customer reading this invoice would want alongside the charges.
       notes={String(record["handoverNotes"] ?? "")}
       termsText={resolveDocumentTerms(partner, "invoice")}
-      serviceHours={partner?.serviceHours}
-      supportHotline={partner?.supportHotline}
       upiId={partner?.upiId}
       logoDataUrl={partner?.logoDataUrl}
     />
