@@ -73,12 +73,16 @@ export async function createServiceCentreWorkorderAction(
   // same NumberingMainScheme/NumberingPartnerScheme/NumberingCounter
   // mechanism invoice numbers use, configurable at
   // /partner/<id>/settings/numbering. The operator never types one.
-  // Falls back to a WO-prefixed default scheme when nothing is configured.
+  // Falls back to a WO+YYYYMMDD+seq default (matching AN-CRM's own
+  // "WO202609150001" job-sheet-number format, e.g. WO202609150001) when
+  // nothing is configured — a YY-YY financial-year-suffixed default used to
+  // apply here instead, which is why workorders created before this fix
+  // don't look like AN-CRM's.
   let jobId: string;
   try {
     jobId = await getNextNumber("service-centre.workorder", partnerId, {
       prefix: "WO",
-      financialYearFormat: "YY-YY",
+      template: "{prefix}{yyyy}{mm}{dd}{seq}",
       sequenceDigits: 4,
     });
   } catch {

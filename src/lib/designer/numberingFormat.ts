@@ -15,6 +15,19 @@ export type NumberingScheme = {
   sequenceDigits: number; // zero-padding width, e.g. 4 -> 0007
   sequenceStart: number;
   suffix: string;
+  /**
+   * Optional token template, e.g. "{prefix}{yyyy}{mm}{dd}{seq}" — when set,
+   * this REPLACES the structured prefix/fy/seq/suffix + separator building
+   * below entirely, so a scheme can produce formats the structured fields
+   * can't express (e.g. AN-CRM's own "WO202609150001": prefix + full
+   * YYYYMMDD + a 4-digit running sequence, no separators at all — not
+   * expressible via financialYearFormat, which only ever renders a
+   * financial-year string, never a literal calendar date).
+   * Available tokens: {prefix} {suffix} {seq} {fy} {yyyy} {yy} {mm} {dd}.
+   * An unrecognized {token} is left as literal text rather than stripped,
+   * so a typo is visible in the live preview instead of silently vanishing.
+   */
+  template?: string;
 };
 
 export const DEFAULT_SCHEME: NumberingScheme = {
@@ -66,10 +79,24 @@ export function getFinancialYear(date: Date, format: FinancialYearFormat): strin
 const SEPARATOR_CHAR: Record<Separator, string> = { "-": "-", "/": "/", ".": ".", none: "" };
 
 export function formatNumber(scheme: NumberingScheme, sequence: number, date: Date = new Date()): string {
-  const sep = SEPARATOR_CHAR[scheme.separator];
   const fy = getFinancialYear(date, scheme.financialYearFormat);
   const paddedSeq = String(sequence).padStart(scheme.sequenceDigits, "0");
 
+  if (scheme.template?.trim()) {
+    const tokens: Record<string, string> = {
+      prefix: scheme.prefix,
+      suffix: scheme.suffix,
+      seq: paddedSeq,
+      fy,
+      yyyy: String(date.getFullYear()),
+      yy: String(date.getFullYear()).slice(-2),
+      mm: String(date.getMonth() + 1).padStart(2, "0"),
+      dd: String(date.getDate()).padStart(2, "0"),
+    };
+    return scheme.template.replace(/\{(\w+)\}/g, (match, key: string) => (key in tokens ? tokens[key] : match));
+  }
+
+  const sep = SEPARATOR_CHAR[scheme.separator];
   const parts = [scheme.prefix, fy, paddedSeq].filter((p) => p !== "");
   return parts.join(sep) + (scheme.suffix ? sep + scheme.suffix : "");
 }

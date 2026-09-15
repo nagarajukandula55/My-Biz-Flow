@@ -1,9 +1,7 @@
 import { notFound } from "next/navigation";
 import { registerPage } from "@/lib/designer/registry";
 import { getPartner, resolveDocumentTerms } from "@/lib/partnerData";
-import { getBusinessRecord, getBusinessRecordSequenceIndex } from "@/lib/businessRecords";
-import { getEffectiveScheme } from "@/lib/designer/numbering";
-import { formatNumber } from "@/lib/designer/numberingFormat";
+import { getBusinessRecord } from "@/lib/businessRecords";
 import { ServiceCentreJobCardDocument } from "./ServiceCentreJobCardDocument";
 
 registerPage({
@@ -34,11 +32,15 @@ export default async function ServiceCentreDocumentPage({
   const record = await getBusinessRecord(params.partnerId, "service-centre", params.recordId);
   if (!record) notFound();
   const partner = await getPartner(params.partnerId);
-  const sequenceIndex = await getBusinessRecordSequenceIndex(params.partnerId, "service-centre", params.recordId);
-  const scheme = await getEffectiveScheme("service-centre.document", params.partnerId);
-  const documentNumber = formatNumber(scheme, scheme.sequenceStart + sequenceIndex);
 
   const r = record as Record<string, unknown>;
+  // The printed "RO No." IS the workorder's own id (assigned once, at
+  // creation, by createServiceCentreWorkorderAction's own numbering call) —
+  // not a second, separately-numbered sequence peeked from this print page.
+  // Matches AN-CRM, where the Work Order print's doc number and the job
+  // sheet's own jobSheetNumber are the same field, never two different
+  // counters that could drift apart.
+  const documentNumber = params.recordId;
   const companyAddress = [partner?.addressLine, partner?.city, partner?.state, partner?.pincode]
     .filter((v) => typeof v === "string" && v.trim())
     .join(", ");

@@ -1,9 +1,7 @@
 import { notFound } from "next/navigation";
 import { registerPage } from "@/lib/designer/registry";
 import { getPartner, resolveDocumentTerms } from "@/lib/partnerData";
-import { getBusinessRecord, getBusinessRecordSequenceIndex } from "@/lib/businessRecords";
-import { getEffectiveScheme } from "@/lib/designer/numbering";
-import { formatNumber } from "@/lib/designer/numberingFormat";
+import { getBusinessRecord } from "@/lib/businessRecords";
 import { buildServiceCentreLines } from "@/lib/serviceCentreLines";
 import { ServiceCentreServiceRecordDocument } from "./ServiceCentreServiceRecordDocument";
 
@@ -35,12 +33,12 @@ export default async function ServiceCentreServiceRecordPage({
   const record = await getBusinessRecord(params.partnerId, "service-centre", params.recordId);
   if (!record) notFound();
   const partner = await getPartner(params.partnerId);
-  const sequenceIndex = await getBusinessRecordSequenceIndex(params.partnerId, "service-centre", params.recordId);
-  const scheme = await getEffectiveScheme("service-centre.document", params.partnerId);
-  const documentNumber = formatNumber(scheme, scheme.sequenceStart + sequenceIndex);
   const lines = await buildServiceCentreLines(params.partnerId, record);
 
   const r = record as Record<string, unknown>;
+  // Same workorder id as the Job Card print, not a second peeked sequence —
+  // see document/page.tsx's identical comment.
+  const documentNumber = params.recordId;
   const companyAddress = [partner?.addressLine, partner?.city, partner?.state, partner?.pincode]
     .filter((v) => typeof v === "string" && v.trim())
     .join(", ");
