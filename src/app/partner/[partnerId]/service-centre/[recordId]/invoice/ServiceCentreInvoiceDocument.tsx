@@ -131,8 +131,7 @@ export function ServiceCentreInvoiceDocument({
   const hasGstSplit = !!(cgstTotal || sgstTotal || igstTotal);
 
   const isB2B = !!customerGstin?.trim();
-  const isPlainBill = !isB2B && !hasGstSplit;
-  const isPayableDoc = true; // Sales Invoice / Bill is always a payable document, unlike Estimate/Workorder/Service Record.
+  const isPayableDoc = true; // Sales Invoice is always a payable document, unlike Estimate/Workorder/Service Record.
   const showPaymentQr = isPayableDoc && !!upiId?.trim();
 
   useEffect(() => {
@@ -194,8 +193,11 @@ export function ServiceCentreInvoiceDocument({
         <div className="ric-page">
           <style>{RIC_STYLES}</style>
 
+      {/* B2C prints as "Invoice", B2B as "Tax Invoice" -- driven purely by
+          document type, per explicit direction, not by whether this
+          particular invoice happens to carry tax. */}
       <div className="ric-invoiceTitle" style={{ color: accent }}>
-        {isPlainBill ? "BILL" : "TAX INVOICE"}
+        {isB2B ? "TAX INVOICE" : "INVOICE"}
       </div>
 
       <div className="ric-header">
@@ -207,11 +209,15 @@ export function ServiceCentreInvoiceDocument({
         </div>
 
         <div className="ric-invoiceBox">
-          <div><b>{isPlainBill ? "Bill No:" : "Invoice No:"}</b> {safe(invoiceNumber)}</div>
+          <div><b>Invoice No:</b> {safe(invoiceNumber)}</div>
           {workorderNumber && <div><b>WO:</b> {workorderNumber}</div>}
           <div><b>Date:</b> {safe(invoiceDate)}</div>
           {status && <div><b>Status:</b> {safe(status)}</div>}
-          <div><b>Document Type:</b> {isPlainBill ? "Bill (No Tax)" : isB2B ? "B2B" : "B2C"}</div>
+          {/* Document Type is always exactly B2B or B2C -- never a third
+              "Bill (No Tax)" value, per explicit direction. A B2C
+              non-chargeable/zero-tax job is still a B2C invoice, just one
+              with no tax lines. */}
+          <div><b>Document Type:</b> {isB2B ? "B2B" : "B2C"}</div>
         </div>
       </div>
 
@@ -346,7 +352,7 @@ export function ServiceCentreInvoiceDocument({
       </div>
 
       <div className="ric-footer">
-        {isPlainBill ? "This is a computer-generated bill." : "This is a computer-generated document."}
+        This is a computer-generated document.
       </div>
 
       <div className="ric-declaration">

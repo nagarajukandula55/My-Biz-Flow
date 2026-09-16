@@ -165,7 +165,6 @@ export async function BillingInvoiceDocument({
   const grandTotal = subtotal + gstTotal - discount;
   // A GST-registered recipient makes this a B2B document.
   const documentType = customerGstin?.trim() ? "B2B" : "B2C";
-  const isPlainBill = documentType === "B2C" && gstTotal === 0;
 
   const upiQrDataUrl = showUpiQr
     ? await generateUpiQrDataUrl({
@@ -236,8 +235,11 @@ export async function BillingInvoiceDocument({
 
         <PrintFrame sizes={["a4", "a5"]}>
           <div className="rounded-lg border border-border bg-bg-raised p-10 shadow-sm print:rounded-none print:border-0 print:shadow-none">
+            {/* B2C prints as "Invoice", B2B as "Tax Invoice" -- driven
+                purely by document type, per explicit direction, not by
+                whether this particular invoice happens to carry tax. */}
             <h1 className="text-center font-display text-xl font-bold tracking-wide text-text">
-              {isPlainBill ? "BILL" : "TAX INVOICE"}
+              {documentType === "B2B" ? "TAX INVOICE" : "INVOICE"}
             </h1>
 
             <div className="mt-6 flex items-start justify-between gap-6">
@@ -257,11 +259,11 @@ export async function BillingInvoiceDocument({
               </div>
               <div className="rounded-md border border-border px-4 py-3 text-right text-xs text-text-muted">
                 <div>
-                  {isPlainBill ? "Bill No" : "Invoice No"}:{" "}
+                  Invoice No:{" "}
                   <span className="font-mono font-semibold text-text">{invoiceNumber}</span>
                 </div>
                 <div>
-                  {isPlainBill ? "Bill Date" : "Invoice Date"}:{" "}
+                  Invoice Date:{" "}
                   <span className="font-semibold text-text">{formatDate(invoiceDate)}</span>
                 </div>
                 {dueDate && (
@@ -269,9 +271,12 @@ export async function BillingInvoiceDocument({
                     Due Date: <span className="font-semibold text-text">{formatDate(dueDate)}</span>
                   </div>
                 )}
+                {/* Document Type is always exactly B2B or B2C -- never a
+                    third "Bill (No Tax)" value, per explicit direction. A
+                    zero-tax B2C invoice is still a B2C invoice. */}
                 <div>
                   Document Type:{" "}
-                  <span className="font-semibold text-text">{isPlainBill ? "Bill (No Tax)" : documentType}</span>
+                  <span className="font-semibold text-text">{documentType}</span>
                 </div>
                 {hasTax && (
                   <div>
@@ -500,7 +505,7 @@ export async function BillingInvoiceDocument({
 
             <div className="mt-6 text-center text-xs text-text-muted">
               <div>Thank you for your business with {partnerName}</div>
-              <div>{isPlainBill ? "This is a computer generated bill." : "This is a computer generated GST invoice."}</div>
+              <div>This is a computer generated invoice.</div>
             </div>
           </div>
         </PrintFrame>
