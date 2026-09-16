@@ -117,6 +117,7 @@ export default async function PartnerLayout({
         navGroups={navGroups}
         alerts={alerts}
         logoDataUrl={partner?.logoDataUrl ?? null}
+        partnerName={partner?.businessName ?? null}
       />
       {children}
       <SupportWidget partnerId={params.partnerId} whatsappNumber={env.platformSupportWhatsappNumber()} />

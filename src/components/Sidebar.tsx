@@ -71,6 +71,7 @@ export function Sidebar({
   navGroups,
   alerts,
   logoDataUrl,
+  partnerName,
 }: {
   partnerId: string;
   navGroups: NavGroup[];
@@ -83,6 +84,10 @@ export function Sidebar({
    * uploaded one.
    */
   logoDataUrl?: string | null;
+  /** This partner's own business name (Partner.businessName) — shown next
+   * to the logo so it's clear which business is currently signed in,
+   * since the same MyBizFlow app/branding is shared across every partner. */
+  partnerName?: string | null;
 }) {
   const pathname = usePathname();
 
@@ -118,12 +123,19 @@ export function Sidebar({
   return (
     <aside className="sticky top-0 flex h-screen w-64 flex-shrink-0 flex-col bg-sidebar-bg print:hidden">
       <div className="flex items-center justify-between gap-2 px-4 py-4">
-        {logoDataUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element -- a data: URL, not a file next/image can optimise.
-          <img src={logoDataUrl} alt="Business logo" className="h-6 max-w-[9.5rem] rounded bg-white object-contain p-0.5" />
-        ) : (
-          <BrandLogo height={24} />
-        )}
+        <div className="flex min-w-0 items-center gap-2">
+          {logoDataUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element -- a data: URL, not a file next/image can optimise.
+            <img src={logoDataUrl} alt="Business logo" className="h-6 w-6 flex-shrink-0 rounded bg-white object-contain p-0.5" />
+          ) : (
+            <BrandLogo height={24} />
+          )}
+          {partnerName && (
+            <span className="truncate text-sm font-semibold text-sidebar-text" title={partnerName}>
+              {partnerName}
+            </span>
+          )}
+        </div>
         <AlertsBell partnerId={partnerId} alerts={alerts} />
       </div>
 
