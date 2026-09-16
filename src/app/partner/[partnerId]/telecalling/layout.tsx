@@ -4,20 +4,20 @@ import type { Metadata, Viewport } from "next";
  * PWA metadata for the whole Telecalling subtree — mirrors Field Force's
  * per-role layout (see field-force/provider/layout.tsx). Lets an agent
  * "Add to Home Screen" on their phone and get a real app icon that opens
- * straight into public/telecalling-manifest.json's start_url in standalone
- * mode (no browser address bar), instead of a bookmark inside the browser.
+ * straight into their own partner's login in standalone mode (no browser
+ * address bar), instead of a bookmark inside the browser.
  *
- * public/telecalling-manifest.json's start_url/scope are hardcoded to
- * partner CC0001 — the only Telecalling partner that exists today (see
- * scripts/create-internal-telecalling-partner.ts). If a second Telecalling
- * partner is ever onboarded, this manifest needs to become per-partner
- * (a dynamic route handler generating it from params.partnerId) instead of
- * this single static /public file.
+ * The manifest itself is generated per-partner by
+ * manifest.webmanifest/route.ts (from this same params.partnerId), not a
+ * static /public file — so this works correctly for CC0001, CC0002, or any
+ * future Telecalling partner with zero further code changes.
  */
-export const metadata: Metadata = {
-  manifest: "/telecalling-manifest.json",
-  appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "Telecalling" },
-};
+export async function generateMetadata({ params }: { params: { partnerId: string } }): Promise<Metadata> {
+  return {
+    manifest: `/partner/${params.partnerId}/telecalling/manifest.webmanifest`,
+    appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "Telecalling" },
+  };
+}
 
 export const viewport: Viewport = { themeColor: "#0B0F19" };
 

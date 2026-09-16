@@ -12,7 +12,7 @@ registerPage({
   superAdminOnly: false,
   customizableRegions: [],
   explanation:
-    "The Telecalling module's own staff roster — create a Telecaller agent account (email+password, shown once), suspend/reactivate one, or reset a forgotten password. This is the ONLY place PartnerStaff accounts get created in the whole app right now (createPartnerStaff existed but had no UI before this). Agents sign in independently at /partner/[partnerId]/telecalling/login — not the business owner's own /login.",
+    "The Telecalling module's own staff roster — create a Telecaller agent account (a generated Agent ID + password, shown once — no email needed), suspend/reactivate one, or reset a forgotten password. This is the ONLY place PartnerStaff accounts get created in the whole app right now (createPartnerStaff existed but had no UI before this). Agents sign in independently at /partner/[partnerId]/telecalling/login with their Agent ID — not the business owner's own /login, and not email.",
   sourceFile: "src/app/partner/[partnerId]/telecalling/agents/page.tsx",
 });
 

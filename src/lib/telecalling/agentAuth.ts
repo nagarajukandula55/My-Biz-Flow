@@ -4,22 +4,24 @@
  * Telecaller agent login — the first real user of PartnerStaff's session
  * token machinery (src/lib/partnerSession.ts's createStaffSessionToken/
  * verifyStaffSessionToken existed unused until now). A PartnerStaff row
- * with role "Telecaller" logs in with their own email+password, separate
- * from the business owner's own /login — see src/lib/requirePartnerSession.ts
- * (PageSession's "staff" case) and src/app/partner/[partnerId]/layout.tsx
- * for how that session is scoped to ONLY this module's pages.
+ * with role "Telecaller" logs in with a generated Agent ID + password
+ * (src/lib/partnerStaff.ts's loginId/nextAgentLoginId — not email, an agent
+ * shouldn't need one just to sign in), separate from the business owner's
+ * own /login — see src/lib/requirePartnerSession.ts (PageSession's "staff"
+ * case) and src/app/partner/[partnerId]/layout.tsx for how that session is
+ * scoped to ONLY this module's pages.
  */
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { findPartnerStaffByEmail, verifyPartnerStaffPassword, setPartnerStaffPassword } from "@/lib/partnerStaff";
+import { findPartnerStaffByLoginId, verifyPartnerStaffPassword, setPartnerStaffPassword } from "@/lib/partnerStaff";
 import { createStaffSessionToken, STAFF_SESSION_COOKIE, STAFF_SESSION_MAX_AGE_SECONDS } from "@/lib/partnerSession";
 import { getStaffSession } from "@/lib/requirePartnerSession";
 
 export async function staffLoginAction(partnerId: string, formData: FormData) {
-  const email = String(formData.get("email") ?? "").trim();
+  const agentLoginId = String(formData.get("agentId") ?? "").trim();
   const password = String(formData.get("password") ?? "");
 
-  const staff = await findPartnerStaffByEmail(partnerId, email);
+  const staff = await findPartnerStaffByLoginId(partnerId, agentLoginId);
   if (!staff || staff.role !== "Telecaller" || staff.status !== "Active" || !(await verifyPartnerStaffPassword(partnerId, staff.id, password))) {
     redirect(`/partner/${partnerId}/telecalling/login?error=1`);
   }

@@ -5,7 +5,7 @@ import { createLead, bulkCreateLeads, assignLead, autoAssignBatch, type LeadStat
 import { logCall, type CallOutcome } from "@/lib/telecalling/callsData";
 import { createTemplate, updateTemplate, deleteTemplate, type MessageChannel } from "@/lib/telecalling/templatesData";
 import { sendTemplateToLead } from "@/lib/telecalling/messaging";
-import { createPartnerStaff, updatePartnerStaff, resetPartnerStaffPassword } from "@/lib/partnerStaff";
+import { createPartnerStaff, updatePartnerStaff, resetPartnerStaffPassword, nextAgentLoginId } from "@/lib/partnerStaff";
 
 /** Minimal CSV parser: first row is the header, columns matched case-insensitively
  * against name/phone/email/source. No quoted-comma support — good enough for a
@@ -136,15 +136,17 @@ export async function deleteTemplateAction(partnerId: string, formData: FormData
 
 /** Creates a Telecaller agent account (role is always "Telecaller" — this
  * page is the Telecalling module's own staff roster, not a general staff
- * manager) and returns the generated password once, same convention as
- * every other generated-password flow in this app (shown once, never
- * retrievable again). */
+ * manager). Generates the Agent ID (loginId) the agent will sign in with —
+ * no email required — and returns it plus the generated password once, same
+ * convention as every other generated-password flow in this app (shown
+ * once, never retrievable again). */
 export async function createAgentAction(partnerId: string, formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
-  const email = String(formData.get("email") ?? "").trim();
   const phone = String(formData.get("phone") ?? "").trim();
-  if (!name || !email) throw new Error("Name and email are required");
-  const result = await createPartnerStaff({ partnerId, name, email, phone, role: "Telecaller" });
+  const email = String(formData.get("email") ?? "").trim();
+  if (!name) throw new Error("Name is required");
+  const loginId = await nextAgentLoginId(partnerId, "Telecaller");
+  const result = await createPartnerStaff({ partnerId, name, email: email || undefined, phone, role: "Telecaller", loginId });
   revalidatePath(`/partner/${partnerId}/telecalling/agents`);
   return result;
 }
@@ -156,7 +158,7 @@ export async function setAgentStatusAction(partnerId: string, formData: FormData
   if (!id || !status) throw new Error("Agent id and status are required");
   await updatePartnerStaff(partnerId, id, {
     name: String(existing ?? ""),
-    email: String(formData.get("email") ?? ""),
+    email: String(formData.get("email") ?? "") || undefined,
     phone: String(formData.get("phone") ?? "") || undefined,
     role: "Telecaller",
     status,

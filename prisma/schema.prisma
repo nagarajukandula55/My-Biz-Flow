@@ -446,18 +446,29 @@ model PartnerStaff {
   id        String @id @default(cuid())
   partnerId String
 
-  name         String
-  email        String
+  name  String
+  /// Optional now (was required) — Telecaller agents log in with loginId
+  /// below instead of email, and don't necessarily have a work email to give.
+  /// Still required for every role that predates this (Owner/Manager/
+  /// Technician/FrontDesk created before this column existed keep theirs).
+  email        String?
   phone        String?
   passwordHash String
-  /// "Owner" | "Manager" | "Technician" | "FrontDesk" — a plain string, not
-  /// an AN-CRM-style per-action permission matrix (documented fast-follow).
+  /// "Owner" | "Manager" | "Technician" | "FrontDesk" | "Telecaller" — a
+  /// plain string, not an AN-CRM-style per-action permission matrix
+  /// (documented fast-follow).
   role   String @default("Technician")
   status String @default("Active") // Active | Suspended
   /// True until the staff member completes their first forced password
   /// change — same convention as Partner.mustChangePassword; set when the
   /// Partner owner creates the account with a generated password.
   mustChangePassword Boolean  @default(true)
+  /// Short generated login id (e.g. "AGT001"), unique per partner — the
+  /// Telecalling module's own login credential instead of email, since an
+  /// agent shouldn't need a real email address just to sign in and it's
+  /// easier to read back over the phone than one. Nullable/unused for every
+  /// other role today. See src/lib/telecalling/agentAuth.ts.
+  loginId            String?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
@@ -465,6 +476,7 @@ model PartnerStaff {
   calls         Call[]
 
   @@unique([partnerId, email])
+  @@unique([partnerId, loginId])
   @@index([partnerId])
   @@map("partner_staff")
 }

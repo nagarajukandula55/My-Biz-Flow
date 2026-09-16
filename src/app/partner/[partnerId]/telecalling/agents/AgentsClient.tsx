@@ -7,15 +7,16 @@ import { createAgentAction, setAgentStatusAction, resetAgentPasswordAction } fro
 type Agent = {
   id: string;
   name: string;
-  email: string;
+  email: string | null;
   phone: string | null;
+  loginId: string | null;
   status: string;
 };
 
 export function AgentsClient({ partnerId, agents }: { partnerId: string; agents: Agent[] }) {
   const [showAdd, setShowAdd] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [credentials, setCredentials] = useState<{ email: string; password: string } | null>(null);
+  const [credentials, setCredentials] = useState<{ loginId: string; password: string } | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const boundCreate = createAgentAction.bind(null, partnerId);
@@ -34,7 +35,7 @@ export function AgentsClient({ partnerId, agents }: { partnerId: string; agents:
         <div className="rounded-md border border-success bg-success-soft px-3 py-2 text-sm text-success">
           Account ready — share these with the agent (shown once, not recoverable after this):
           <div className="mt-1 font-mono text-sm">
-            Email: {credentials.email}
+            Agent ID: {credentials.loginId}
             <br />
             Password: {credentials.password}
           </div>
@@ -48,7 +49,7 @@ export function AgentsClient({ partnerId, agents }: { partnerId: string; agents:
             startTransition(async () => {
               try {
                 const result = await boundCreate(fd);
-                setCredentials({ email: result.staff.email, password: result.password });
+                setCredentials({ loginId: result.staff.loginId ?? "", password: result.password });
                 setShowAdd(false);
               } catch (e) {
                 setError(e instanceof Error ? e.message : "Failed to create agent");
@@ -58,8 +59,11 @@ export function AgentsClient({ partnerId, agents }: { partnerId: string; agents:
           className="grid grid-cols-1 gap-3 rounded-lg border border-border bg-bg-raised p-4 sm:grid-cols-3"
         >
           <input name="name" required placeholder="Full name *" className="rounded-md border border-border bg-bg px-3 py-2 text-sm text-text" />
-          <input name="email" type="email" required placeholder="Email *" className="rounded-md border border-border bg-bg px-3 py-2 text-sm text-text" />
           <input name="phone" placeholder="Phone" className="rounded-md border border-border bg-bg px-3 py-2 text-sm text-text" />
+          <input name="email" type="email" placeholder="Email (optional)" className="rounded-md border border-border bg-bg px-3 py-2 text-sm text-text" />
+          <p className="text-xs text-text-muted sm:col-span-3">
+            An Agent ID (e.g. AGT001) is generated automatically — the agent signs in with that, not an email.
+          </p>
           <button type="submit" disabled={isPending} className="btn-accent sm:col-span-3 sm:w-fit">
             Create Agent
           </button>
@@ -70,8 +74,8 @@ export function AgentsClient({ partnerId, agents }: { partnerId: string; agents:
         <table className="w-full text-sm">
           <thead className="bg-bg-raised text-xs font-semibold uppercase tracking-wide text-text-muted">
             <tr>
+              <th className="px-3 py-2 text-left">Agent ID</th>
               <th className="px-3 py-2 text-left">Name</th>
-              <th className="px-3 py-2 text-left">Email</th>
               <th className="px-3 py-2 text-left">Phone</th>
               <th className="px-3 py-2 text-left">Status</th>
               <th className="px-3 py-2 text-left">Actions</th>
@@ -87,8 +91,8 @@ export function AgentsClient({ partnerId, agents }: { partnerId: string; agents:
             )}
             {agents.map((agent) => (
               <tr key={agent.id} className="border-t border-border">
+                <td className="px-3 py-2 font-mono text-text">{agent.loginId ?? "—"}</td>
                 <td className="px-3 py-2 text-text">{agent.name}</td>
-                <td className="px-3 py-2 text-text-muted">{agent.email}</td>
                 <td className="px-3 py-2 text-text-muted">{agent.phone ?? "—"}</td>
                 <td className="px-3 py-2">
                   <StatusChip label={agent.status} variant={agent.status === "Active" ? "success" : "neutral"} />
@@ -99,7 +103,7 @@ export function AgentsClient({ partnerId, agents }: { partnerId: string; agents:
                       action={(fd) => {
                         fd.set("id", agent.id);
                         fd.set("name", agent.name);
-                        fd.set("email", agent.email);
+                        fd.set("email", agent.email ?? "");
                         fd.set("phone", agent.phone ?? "");
                         fd.set("status", agent.status === "Active" ? "Suspended" : "Active");
                         startTransition(() => {
@@ -117,7 +121,7 @@ export function AgentsClient({ partnerId, agents }: { partnerId: string; agents:
                         setError(null);
                         startTransition(async () => {
                           const password = await boundResetPassword(fd);
-                          if (password) setCredentials({ email: agent.email, password });
+                          if (password) setCredentials({ loginId: agent.loginId ?? "", password });
                         });
                       }}
                     >
