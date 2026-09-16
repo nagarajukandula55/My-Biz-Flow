@@ -56,15 +56,25 @@ export const TIER_LABEL: Record<PlanTier, string> = {
 };
 
 /**
- * Real, accurate feature bullets per tier -- verbatim from AN-CRM's own
- * src/core/pricing/plans.ts (the single source of truth that app's /pricing
- * renders from), mapped tier-for-tier onto this app's internal PlanTier keys:
- * AN-CRM's "STARTER" plan -> this app's "basic", AN-CRM's "BASIC" plan
- * (displayed there as "Pro") -> this app's "pro", AN-CRM's "ULTIMATE" -> this
- * app's "ultimate". Trimmed to bullets that describe something this app's
- * own module/page set actually has (drops AN-CRM-specific items with no
- * counterpart here, e.g. WhatsApp quota, sub-vendor hierarchy wording specific
- * to AN-CRM's vendor portal) -- everything kept is real, not invented copy.
+ * Real, accurate feature bullets per tier -- based on AN-CRM's own
+ * src/core/pricing/plans.ts, mapped tier-for-tier onto this app's internal
+ * PlanTier keys: AN-CRM's "STARTER" plan -> this app's "basic", AN-CRM's
+ * "BASIC" plan (displayed there as "Pro") -> this app's "pro", AN-CRM's
+ * "ULTIMATE" -> this app's "ultimate". Trimmed to bullets that describe
+ * something this app's own module/page set actually has (drops AN-CRM-
+ * specific items with no counterpart here, e.g. WhatsApp quota, sub-vendor
+ * hierarchy wording specific to AN-CRM's vendor portal).
+ *
+ * One deliberate departure from AN-CRM's ladder: Telegram daily/weekly/
+ * monthly business-report digests are NOT tier-gated here (product decision
+ * for this app) -- every tier gets them, matching what the code actually
+ * does (the reportFrequency selector on the Telegram Alerts page and
+ * /api/cron/telegram-reports have never checked plan tier; only the
+ * marketing copy previously claimed otherwise, which this file now
+ * corrects rather than adding a gate to match stale copy). Trial-period
+ * partners get the type's top tier automatically regardless (see
+ * getPageTierAccess() in src/lib/tenant.ts), so this only matters for
+ * paid Basic/Starter partners.
  */
 export const TIER_FEATURES: Record<PlanTier, string[]> = {
   basic: [
@@ -73,7 +83,8 @@ export const TIER_FEATURES: Record<PlanTier, string[]> = {
     "Job card / device intake with device & fault details",
     "Customer-facing repair status tracking page",
     "GST & non-GST invoicing",
-    "Basic Telegram alerts (new & closed workorder only)",
+    "Telegram alerts for every new/closed workorder",
+    "Automated Telegram daily business reports",
     "Email support",
   ],
   pro: [
@@ -87,6 +98,7 @@ export const TIER_FEATURES: Record<PlanTier, string[]> = {
     "Inventory & Stock Transfers",
     "Financial Statement, Custom Report Builder & Analytics dashboard",
     "Telegram alerts for every new/closed workorder",
+    "Automated Telegram daily/weekly/monthly business reports",
     "Priority support",
   ],
   ultimate: [
@@ -95,7 +107,7 @@ export const TIER_FEATURES: Record<PlanTier, string[]> = {
     "Profit & Loss reports and expense tracking",
     "Unlimited sub-vendor / multi-center hierarchy under one login",
     "Centralized reporting & business controls across every center",
-    "Automated Telegram business reports (daily/weekly/monthly/yearly, with charts)",
+    "Automated Telegram daily/weekly/monthly/yearly business reports, with charts",
     "Dedicated onboarding & SLA-backed priority support",
   ],
 };

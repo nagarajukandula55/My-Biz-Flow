@@ -1,11 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createLead, bulkCreateLeads, assignLead, autoAssignBatch, type LeadStatus } from "@/lib/telecalling/leadsData";
+import { createLead, bulkCreateLeads, assignLead, autoAssignBatch, autoAssignByTerritory, type LeadStatus } from "@/lib/telecalling/leadsData";
 import { logCall, type CallOutcome } from "@/lib/telecalling/callsData";
 import { createTemplate, updateTemplate, deleteTemplate, type MessageChannel } from "@/lib/telecalling/templatesData";
 import { sendTemplateToLead } from "@/lib/telecalling/messaging";
-import { createPartnerStaff, updatePartnerStaff, resetPartnerStaffPassword, nextAgentLoginId } from "@/lib/partnerStaff";
+import { createPartnerStaff, updatePartnerStaff, resetPartnerStaffPassword, nextAgentLoginId, setAgentTerritory } from "@/lib/partnerStaff";
 
 /** Minimal CSV parser: first row is the header, columns matched case-insensitively
  * against name/phone/email/source. No quoted-comma support — good enough for a
@@ -46,7 +46,10 @@ export async function createLeadAction(partnerId: string, formData: FormData) {
   const state = String(formData.get("state") ?? "").trim();
   const city = String(formData.get("city") ?? "").trim();
   if (!phone) throw new Error("Phone is required");
-  await createLead(partnerId, { name: name || phone, phone, email, source, state, city });
+  const lead = await createLead(partnerId, { name: name || phone, phone, email, source, state, city });
+  // Auto-assign by territory (see leadsData.ts's doc comment) — a lead
+  // matching no agent's territory is left unassigned rather than guessed at.
+  await autoAssignByTerritory(partnerId, lead.importBatch);
   revalidatePath(`/partner/${partnerId}/telecalling`);
 }
 
@@ -63,7 +66,13 @@ export async function importLeadsAction(partnerId: string, formData: FormData) {
   const importBatch = batchLabel || `Import ${new Date().toISOString().slice(0, 10)}`;
   const count = await bulkCreateLeads(partnerId, importBatch, rows);
   if (agentIds.length > 0) {
+    // Explicit manual agent picks always win over territory matching.
     await autoAssignBatch(partnerId, importBatch, agentIds);
+  } else {
+    // No manual picks — auto-assign by each agent's configured territory
+    // instead (see leadsData.ts's autoAssignByTerritory doc comment). A
+    // lead whose state/city matches no agent's territory stays unassigned.
+    await autoAssignByTerritory(partnerId, importBatch);
   }
 
   revalidatePath(`/partner/${partnerId}/telecalling`);
@@ -140,15 +149,45 @@ export async function deleteTemplateAction(partnerId: string, formData: FormData
  * no email required — and returns it plus the generated password once, same
  * convention as every other generated-password flow in this app (shown
  * once, never retrievable again). */
+/** Splits a comma-separated textbox value into trimmed, deduped, non-empty entries. */
+function parseTerritoryList(raw: string): string[] {
+  return Array.from(new Set(raw.split(",").map((s) => s.trim()).filter(Boolean)));
+}
+
 export async function createAgentAction(partnerId: string, formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const phone = String(formData.get("phone") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim();
+  const assignedStates = parseTerritoryList(String(formData.get("assignedStates") ?? ""));
+  const assignedCities = parseTerritoryList(String(formData.get("assignedCities") ?? ""));
   if (!name) throw new Error("Name is required");
   const loginId = await nextAgentLoginId(partnerId, "Telecaller");
-  const result = await createPartnerStaff({ partnerId, name, email: email || undefined, phone, role: "Telecaller", loginId });
+  const result = await createPartnerStaff({
+    partnerId,
+    name,
+    email: email || undefined,
+    phone,
+    role: "Telecaller",
+    loginId,
+    assignedStates,
+    assignedCities,
+  });
   revalidatePath(`/partner/${partnerId}/telecalling/agents`);
   return result;
+}
+
+/** Updates just an agent's territory (states/cities) — see setAgentTerritory's doc comment. */
+export async function setAgentTerritoryAction(partnerId: string, formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  if (!id) throw new Error("Agent id is required");
+  const assignedStates = parseTerritoryList(String(formData.get("assignedStates") ?? ""));
+  const assignedCities = parseTerritoryList(String(formData.get("assignedCities") ?? ""));
+  await setAgentTerritory(partnerId, id, { assignedStates, assignedCities });
+  // Territory changes can newly qualify previously-unassigned leads for
+  // this agent — sweep the whole partner (no importBatch scope) so those
+  // show up in their queue immediately rather than waiting for the next import.
+  await autoAssignByTerritory(partnerId);
+  revalidatePath(`/partner/${partnerId}/telecalling/agents`);
 }
 
 export async function setAgentStatusAction(partnerId: string, formData: FormData) {

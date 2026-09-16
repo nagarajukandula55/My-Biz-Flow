@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { StatusChip, type StatusVariant } from "@/components/StatusChip";
-import { logCallAction, sendTemplateAction } from "@/lib/telecalling/actions";
+import { logCallAction, sendTemplateAction, assignLeadAction } from "@/lib/telecalling/actions";
 import { CALL_OUTCOMES } from "@/lib/telecalling/callsData";
 
 type Lead = {
@@ -15,6 +15,10 @@ type Lead = {
   city: string | null;
   status: string;
   notes: string | null;
+  /** Null means this lead showed up here purely because its state/city
+   * matches the agent's territory (see leadsData.ts's listLeadsForAgent) —
+   * not yet actually assigned to them. "Claim" below assigns it. */
+  assignedToId: string | null;
 };
 
 type Template = { id: string; name: string; channel: string; category: string };
@@ -105,6 +109,27 @@ export function QueueClient({
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <StatusChip label={lead.status} variant={STATUS_VARIANT[lead.status] ?? "neutral"} />
+                {view === "active" && !lead.assignedToId && (
+                  <span className="rounded-md bg-warning-soft px-2 py-1 text-xs font-semibold text-warning">
+                    Unassigned — in your territory
+                  </span>
+                )}
+                {view === "active" && !lead.assignedToId && (
+                  <button
+                    onClick={() =>
+                      startTransition(() => {
+                        const fd = new FormData();
+                        fd.set("leadId", lead.id);
+                        fd.set("assignedToId", agentId);
+                        assignLeadAction(partnerId, fd);
+                      })
+                    }
+                    disabled={isPending}
+                    className="rounded-md border border-accent px-3 py-1.5 text-sm font-semibold text-accent hover:bg-accent-soft disabled:opacity-50"
+                  >
+                    Claim
+                  </button>
+                )}
                 {view === "active" && (
                   <>
                     <a href={`tel:${lead.phone}`} className="btn-accent">

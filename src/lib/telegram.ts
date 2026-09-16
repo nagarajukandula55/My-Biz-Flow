@@ -307,6 +307,45 @@ export async function sendPartnerTelegramReport(partnerId: string, message: stri
 }
 
 /**
+ * Reverse lookup for command handling in the webhook route: given the chat
+ * id an incoming Telegram command arrived on, which partner (if any) has it
+ * connected as either its personal or group chat. Null means this chat
+ * isn't connected to any partner — commands from it get a "not connected"
+ * reply rather than being silently ignored.
+ */
+export async function findPartnerIdByChatId(chatId: string): Promise<string | null> {
+  const row = await prisma.telegramSettings.findFirst({
+    where: { OR: [{ chatId }, { groupChatId: chatId }] },
+    select: { partnerId: true },
+  });
+  return row?.partnerId ?? null;
+}
+
+/**
+ * Direct, unlogged send to an arbitrary chat id — used only for replying to
+ * a bot command in the exact chat it came from (test-template previews,
+ * /help, on-demand /report_* pulls). Deliberately bypasses
+ * TelegramSettings.enabledTypes/routing entirely: a command is an explicit
+ * pull the chat just asked for, not a push subscription, so those
+ * per-alert-type settings don't apply. Still a no-op (not a throw) with no
+ * bot token configured, matching every other send path's graceful
+ * degradation.
+ */
+export async function sendRawTelegramMessage(chatId: string, text: string): Promise<void> {
+  const botToken = env.telegramBotToken();
+  if (!botToken) return;
+  try {
+    await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: chatId, text, parse_mode: "HTML" }),
+    });
+  } catch (err) {
+    console.error("[telegram] command reply send failed:", err);
+  }
+}
+
+/**
  * Reply-threading lookup: given the chat a reply came in on and the
  * message_id it was a reply TO (Telegram's
  * update.message.reply_to_message.message_id), finds which

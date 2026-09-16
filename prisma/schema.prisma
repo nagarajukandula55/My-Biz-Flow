@@ -469,6 +469,16 @@ model PartnerStaff {
   /// easier to read back over the phone than one. Nullable/unused for every
   /// other role today. See src/lib/telecalling/agentAuth.ts.
   loginId            String?
+  /// Telecalling-only territory gate: the states/cities (Lead.state/
+  /// Lead.city, both plain free-text as typed on a lead's CSV import — no
+  /// canonical state/city master list exists yet) this Telecaller may see
+  /// and be auto-assigned. Empty array on both means "no restriction" — an
+  /// agent created before this feature, or explicitly given open access,
+  /// sees every lead exactly as before. Unused for every other role. See
+  /// src/lib/telecalling/leadsData.ts's territory filtering and
+  /// autoAssignByTerritory().
+  assignedStates Json @default("[]")
+  assignedCities Json @default("[]")
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
@@ -745,6 +755,21 @@ model TelegramLogEntry {
   /// originally sent for.
   @@index([chatId, messageId])
   @@map("telegram_log_entries")
+}
+
+/// Admin-editable override for a Telegram message template's body text —
+/// keyed by the template's canonical key (see src/lib/telegramTemplateDefs.ts,
+/// duplicated in My Biz Flow Admin where the edit UI lives). No row for a
+/// key means the hardcoded defaultBody in that file is used — same
+/// "DB overrides a code default" convention as ModuleAppearance/
+/// PageCustomization. Global/platform-wide, not partner-scoped: these are
+/// the platform's own wording, not something a partner customizes.
+model TelegramMessageTemplate {
+  key       String   @id
+  body      String   @db.Text
+  updatedAt DateTime @updatedAt
+
+  @@map("telegram_message_templates")
 }
 
 /// The platform's own commission on a Booking — a single global row

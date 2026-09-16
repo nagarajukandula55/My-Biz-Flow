@@ -1,7 +1,103 @@
 import { NextResponse } from "next/server";
 import { env } from "@/lib/env";
 import { getPartner } from "@/lib/partnerData";
-import { connectTelegramChat, findWorkorderByReplyMessageId, appendTelegramChatLogEntry, parseStartPayload } from "@/lib/telegram";
+import {
+  connectTelegramChat,
+  findWorkorderByReplyMessageId,
+  appendTelegramChatLogEntry,
+  parseStartPayload,
+  findPartnerIdByChatId,
+  sendRawTelegramMessage,
+} from "@/lib/telegram";
+import { findTelegramTemplateDefByCommand, TELEGRAM_TEMPLATE_DEFS } from "@/lib/telegramTemplateDefs";
+import { getTelegramTemplateBody, renderTelegramTemplate } from "@/lib/telegramTemplatesData";
+import { businessReportMessage, helpMessageText, connectConfirmationMessage, type ReportFrequency } from "@/lib/telegramTemplates";
+import { computePartnerReportComparison } from "@/lib/telegramReportData";
+
+function formatInr(n: number): string {
+  return `₹${Math.round(n).toLocaleString("en-IN")}`;
+}
+
+/** Sample values for a /test_* command preview — same shape as the real
+ * template variables, but fixed placeholder data since there's no real
+ * event to pull from on demand. */
+const SAMPLE_VARS: Record<string, string> = {
+  businessName: "Sample Business",
+  workorderNumber: "SC0001-000123",
+  customerName: "Sample Customer",
+  amount: "₹1,500",
+  reason: "Customer cancelled",
+  planName: "Pro",
+  dueDate: "2026-09-20",
+  expiresOn: "2026-09-30",
+  itemName: "Sample Part",
+  quantityRemaining: "2",
+  reorderThreshold: "5",
+  partnerTypeName: "Service Centre",
+  text: "This is a sample announcement.",
+};
+
+/** Handles every non-/start bot command from telegramTemplateDefs.ts:
+ * /report_daily|weekly|monthly pull that connected partner's real current
+ * digest; /test_* commands preview a template with sample data; /help lists
+ * every command. Returns true if `text` was a recognized command (caller
+ * should stop processing the update either way once this returns). */
+async function handleTemplateCommand(chatId: string, text: string): Promise<boolean> {
+  const head = text.trim().split(/\s/)[0];
+  if (!head.startsWith("/")) return false;
+
+  if (head.toLowerCase() === "/help") {
+    const commandList = TELEGRAM_TEMPLATE_DEFS.filter((d) => d.command !== "/start")
+      .map((d) => `${d.command} — ${d.label}`)
+      .join("\n");
+    await sendRawTelegramMessage(chatId, await helpMessageText(commandList));
+    return true;
+  }
+
+  const def = findTelegramTemplateDefByCommand(head);
+  if (!def) return false;
+
+  const partnerId = await findPartnerIdByChatId(chatId);
+  if (!partnerId) {
+    await sendRawTelegramMessage(chatId, "This chat isn't connected to a My Biz Flow account yet — use the \"Connect Telegram\" link on your Telegram Alerts page first.");
+    return true;
+  }
+  const partner = await getPartner(partnerId);
+  if (!partner) {
+    await sendRawTelegramMessage(chatId, "Couldn't find this account anymore.");
+    return true;
+  }
+
+  if (def.key === "report_daily" || def.key === "report_weekly" || def.key === "report_monthly") {
+    const frequency = def.key.replace("report_", "").toUpperCase() as ReportFrequency;
+    const { current, prior, changePct } = await computePartnerReportComparison(partnerId, frequency, new Date());
+    const message = await businessReportMessage({
+      partnerBusinessName: partner.businessName,
+      frequency,
+      revenue: formatInr(current.revenue),
+      priorRevenue: formatInr(prior.revenue),
+      invoiceCount: current.invoiceCount,
+      priorInvoiceCount: prior.invoiceCount,
+      workorderCount: current.workorderCount,
+      priorWorkorderCount: prior.workorderCount,
+      changePct,
+    });
+    await sendRawTelegramMessage(chatId, message);
+    return true;
+  }
+
+  if (def.key === "test_message") {
+    await sendRawTelegramMessage(chatId, renderTelegramTemplate(await getTelegramTemplateBody("test_message"), { businessName: partner.businessName }));
+    return true;
+  }
+
+  // Every remaining command is a /test_* preview: render the template with
+  // sample data plus this partner's real business name where relevant.
+  const body = await getTelegramTemplateBody(def.key);
+  const vars: Record<string, string> = { ...SAMPLE_VARS, businessName: partner.businessName };
+  await sendRawTelegramMessage(chatId, renderTelegramTemplate(body, vars));
+  return true;
+}
 
 /**
  * Receives every Telegram Bot API update once a webhook is registered
@@ -15,11 +111,18 @@ import { connectTelegramChat, findWorkorderByReplyMessageId, appendTelegramChatL
  * way Razorpay signs its webhook payloads, so there's no signature to
  * verify instead.
  *
- * Handles exactly two cases, both described in the task:
+ * Handles:
  *   1. `/start <partnerId>` — the "Connect Telegram" deep-link flow
  *      (buildTelegramConnectLink in src/lib/telegram.ts). Saves the chat
  *      that sent it as that partner's TelegramSettings.chatId and replies
  *      with a confirmation.
+ *   1b. Every other slash command in telegramTemplateDefs.ts — see
+ *      handleTemplateCommand() below: /report_daily|weekly|monthly pull
+ *      that chat's connected partner's real current digest on demand,
+ *      /test_* commands preview a template with sample data, /help lists
+ *      every command. Any admin-edited template body (My Biz Flow Admin,
+ *      a separate app — see telegramTemplatesData.ts) is reflected
+ *      immediately since these read the same DB override every send does.
  *   2. Any other message that is itself a reply
  *      (message.reply_to_message.message_id set) to a message THIS bot
  *      sent — looked up via findWorkorderByReplyMessageId() against the
@@ -99,7 +202,13 @@ export async function POST(request: Request) {
     }
     await connectTelegramChat(partnerId, chatId, slot);
     const slotLabel = slot === "group" ? "group chat" : "personal chat";
-    await sendTelegramReply(message.chat.id, `✅ Connected — My Biz Flow alerts for ${partner.businessName} will come here (${slotLabel}).`);
+    await sendTelegramReply(message.chat.id, await connectConfirmationMessage(slotLabel));
+    return NextResponse.json({ ok: true });
+  }
+
+  // Case 1b: any other slash command from telegramTemplateDefs.ts — see
+  // handleTemplateCommand's own doc comment (/report_*, /test_*, /help).
+  if (text.startsWith("/") && (await handleTemplateCommand(chatId, text))) {
     return NextResponse.json({ ok: true });
   }
 

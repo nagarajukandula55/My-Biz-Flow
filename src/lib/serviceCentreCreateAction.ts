@@ -106,7 +106,7 @@ export async function createServiceCentreWorkorderAction(
       partnerId,
       jobId,
       "newWorkorder",
-      newWorkorderCreatedMessage({
+      await newWorkorderCreatedMessage({
         partnerBusinessName: partner.businessName,
         workorderNumber: jobId,
         customerName: String(values["customer"] ?? ""),

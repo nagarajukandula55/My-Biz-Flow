@@ -8,6 +8,7 @@
  */
 import { prisma } from "@/lib/prisma";
 import { assertPartnerScope } from "@/lib/tenant";
+import { getPartnerStaff, listActivePartnerStaff } from "@/lib/partnerStaff";
 
 export const LEAD_STATUSES = [
   "New",
@@ -122,9 +123,15 @@ export async function listLeadsForPartner(partnerId: string, filter?: LeadFilter
   return rows.map(toRecord);
 }
 
-/** A Telecaller's own queue — leads assigned to them. `view: "active"` (default)
- * excludes every TERMINAL_LEAD_STATUS so closed leads fall out of the working
- * list automatically; `view: "closed"` shows only those, for the queue's
+/** A Telecaller's own queue — leads assigned to them, PLUS any still-
+ * unassigned lead whose state/city falls inside their territory (see
+ * PartnerStaff.assignedStates/assignedCities) so a territory-restricted
+ * agent can see and pick up new leads in their area as soon as they land,
+ * not just what's been explicitly assigned. An agent with no territory set
+ * (both arrays empty — the default) sees every unassigned lead too, exactly
+ * as before this feature existed. `view: "active"` (default) excludes every
+ * TERMINAL_LEAD_STATUS so closed leads fall out of the working list
+ * automatically; `view: "closed"` shows only those, for the queue's
  * separate "Closed" tab (reference/history, not a working list). */
 export async function listLeadsForAgent(
   partnerId: string,
@@ -132,11 +139,35 @@ export async function listLeadsForAgent(
   options?: { view?: "active" | "closed"; filter?: LeadFilter }
 ): Promise<LeadRecord[]> {
   const view = options?.view ?? "active";
+  const agent = await getPartnerStaff(partnerId, agentId);
+  const hasTerritory = Boolean(agent && (agent.assignedStates.length > 0 || agent.assignedCities.length > 0));
+
+  const visibility = hasTerritory
+    ? {
+        OR: [
+          { assignedToId: agentId },
+          {
+            assignedToId: null,
+            OR: [
+              ...(agent!.assignedStates.length > 0 ? [{ state: { in: agent!.assignedStates } }] : []),
+              ...(agent!.assignedCities.length > 0 ? [{ city: { in: agent!.assignedCities } }] : []),
+            ],
+          },
+        ],
+      }
+    : { assignedToId: agentId };
+
   const rows = await prisma.lead.findMany({
+    // AND'd as separate clauses (not spread into one object) since both
+    // buildWhere's search filter and `visibility` above may independently
+    // need their own top-level "OR" key — merging them by spread would
+    // silently drop one.
     where: {
-      ...buildWhere(partnerId, options?.filter),
-      assignedToId: agentId,
-      status: view === "closed" ? { in: [...TERMINAL_LEAD_STATUSES] } : { notIn: [...TERMINAL_LEAD_STATUSES] },
+      AND: [
+        buildWhere(partnerId, options?.filter),
+        visibility,
+        { status: view === "closed" ? { in: [...TERMINAL_LEAD_STATUSES] } : { notIn: [...TERMINAL_LEAD_STATUSES] } },
+      ],
     },
     include: INCLUDE,
     orderBy: { createdAt: view === "closed" ? "desc" : "asc" },
@@ -210,7 +241,7 @@ export async function assignLead(id: string, partnerId: string, assignedToId: st
   await prisma.lead.update({ where: { id }, data: { assignedToId } });
 }
 
-/** Bulk auto-assign: round-robins every unassigned lead in a batch across the given agent ids. */
+/** Bulk auto-assign: round-robins every unassigned lead in a batch across the given agent ids, ignoring territory (an explicit manual agent pick always wins). */
 export async function autoAssignBatch(partnerId: string, importBatch: string, agentIds: string[]): Promise<number> {
   if (agentIds.length === 0) return 0;
   const unassigned = await prisma.lead.findMany({
@@ -224,6 +255,63 @@ export async function autoAssignBatch(partnerId: string, importBatch: string, ag
     )
   );
   return unassigned.length;
+}
+
+/**
+ * Territory-based auto-assign: for every still-unassigned lead in a batch
+ * (or, with no `importBatch` given, every unassigned lead in the partner),
+ * finds every Active Telecaller whose assignedStates/assignedCities
+ * matches that lead's own state/city and round-robins it to one of them
+ * (a lead matching more than one agent's territory rotates evenly across
+ * just that matching set, tracked independently per distinct match-set so
+ * one popular city doesn't starve a less-covered one's rotation). A lead
+ * matching no agent's territory is left unassigned — there's no correct
+ * agent to give it to, and silently assigning it to an unrelated agent
+ * would be worse than a manager noticing it in the "Unassigned" count and
+ * deciding by hand (new territory, new agent, or a manual override).
+ * Agents with NO territory set (open access) are intentionally excluded
+ * from this pool — they're the "assign anything to me manually" case, not
+ * a catch-all for every unmatched lead, which would defeat the point of
+ * giving other agents a territory at all.
+ */
+export async function autoAssignByTerritory(partnerId: string, importBatch?: string): Promise<number> {
+  const agents = await listActivePartnerStaff(partnerId, "Telecaller");
+  const territoried = agents.filter((a) => a.assignedStates.length > 0 || a.assignedCities.length > 0);
+  if (territoried.length === 0) return 0;
+
+  const unassigned = await prisma.lead.findMany({
+    where: { partnerId, assignedToId: null, ...(importBatch ? { importBatch } : {}) },
+    select: { id: true, state: true, city: true },
+    orderBy: { createdAt: "asc" },
+  });
+  if (unassigned.length === 0) return 0;
+
+  // Round-robin cursor per distinct set of matching agent ids, so e.g. two
+  // agents both covering "Karnataka" alternate between just the two of
+  // them regardless of how many other agents/territories exist.
+  const cursors = new Map<string, number>();
+  const updates: { id: string; assignedToId: string }[] = [];
+
+  for (const lead of unassigned) {
+    const matches = territoried.filter(
+      (a) =>
+        (lead.state && a.assignedStates.includes(lead.state)) || (lead.city && a.assignedCities.includes(lead.city))
+    );
+    if (matches.length === 0) continue;
+    const matchKey = matches
+      .map((a) => a.id)
+      .sort()
+      .join(",");
+    const cursor = cursors.get(matchKey) ?? 0;
+    updates.push({ id: lead.id, assignedToId: matches[cursor % matches.length].id });
+    cursors.set(matchKey, cursor + 1);
+  }
+
+  if (updates.length === 0) return 0;
+  await prisma.$transaction(
+    updates.map((u) => prisma.lead.update({ where: { id: u.id }, data: { assignedToId: u.assignedToId } }))
+  );
+  return updates.length;
 }
 
 export async function updateLeadStatus(id: string, partnerId: string, status: LeadStatus): Promise<void> {

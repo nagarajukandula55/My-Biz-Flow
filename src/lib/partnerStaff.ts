@@ -31,6 +31,10 @@ export type PartnerStaffRecord = {
   status: string;
   mustChangePassword: boolean;
   loginId: string | null;
+  /** Telecalling-only territory gate — empty means no restriction. See
+   * prisma/schema.prisma's PartnerStaff.assignedStates doc comment. */
+  assignedStates: string[];
+  assignedCities: string[];
   createdAt: Date;
   updatedAt: Date;
 };
@@ -46,11 +50,17 @@ function toRecord(row: {
   status: string;
   mustChangePassword: boolean;
   loginId: string | null;
+  assignedStates: unknown;
+  assignedCities: unknown;
   createdAt: Date;
   updatedAt: Date;
 }): PartnerStaffRecord {
-  const { passwordHash: _passwordHash, ...rest } = row;
-  return rest;
+  const { passwordHash: _passwordHash, assignedStates, assignedCities, ...rest } = row;
+  return {
+    ...rest,
+    assignedStates: Array.isArray(assignedStates) ? (assignedStates as string[]) : [],
+    assignedCities: Array.isArray(assignedCities) ? (assignedCities as string[]) : [],
+  };
 }
 
 export async function listPartnerStaff(partnerId: string): Promise<PartnerStaffRecord[]> {
@@ -91,6 +101,9 @@ export type CreatePartnerStaffInput = {
   /** Set for Telecaller agents (see nextAgentLoginId) — the login credential
    * used instead of email. Omitted/undefined for every other role today. */
   loginId?: string;
+  /** Telecaller-only territory gate at creation time — see PartnerStaff.assignedStates doc comment. */
+  assignedStates?: string[];
+  assignedCities?: string[];
 };
 
 /** Creates a staff account with a freshly generated password (shown once to the owner, never stored/retrievable again). */
@@ -108,6 +121,8 @@ export async function createPartnerStaff(
       passwordHash,
       role: input.role,
       loginId: input.loginId || null,
+      assignedStates: input.assignedStates ?? [],
+      assignedCities: input.assignedCities ?? [],
     },
   });
   return { staff: toRecord(row), password };
@@ -135,6 +150,21 @@ export async function updatePartnerStaff(
       role: input.role,
       status: input.status,
     },
+  });
+}
+
+/** Sets a Telecaller's territory (states/cities) — separate from
+ * updatePartnerStaff since it's the Telecalling module's own concern, not
+ * part of the generic name/email/phone/role/status edit. Empty arrays mean
+ * "no restriction" (see PartnerStaff.assignedStates doc comment). */
+export async function setAgentTerritory(
+  partnerId: string,
+  staffId: string,
+  territory: { assignedStates: string[]; assignedCities: string[] }
+): Promise<void> {
+  await prisma.partnerStaff.updateMany({
+    where: { id: staffId, partnerId },
+    data: { assignedStates: territory.assignedStates, assignedCities: territory.assignedCities },
   });
 }
 

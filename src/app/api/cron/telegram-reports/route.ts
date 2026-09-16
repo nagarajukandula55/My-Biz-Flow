@@ -61,7 +61,7 @@ export async function GET(request: Request) {
     }
 
     const { current, prior, changePct } = await computePartnerReportComparison(settings.partnerId, frequency as ReportFrequency, now);
-    const message = businessReportMessage({
+    const message = await businessReportMessage({
       partnerBusinessName: partner.businessName,
       frequency: frequency as ReportFrequency,
       revenue: formatInr(current.revenue),

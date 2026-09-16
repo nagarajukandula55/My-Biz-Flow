@@ -1,156 +1,158 @@
 /**
- * Telegram message CONTENT templates — plain functions returning message
- * text only, no fetch()/API call here (that lives in src/lib/telegram.ts's
- * sendPartnerTelegramAlert/sendWorkorderTelegramAlert/
+ * Telegram message CONTENT builders — plain async functions returning
+ * message text only, no fetch()/API call here (that lives in
+ * src/lib/telegram.ts's sendPartnerTelegramAlert/sendWorkorderTelegramAlert/
  * sendPartnerTelegramReport, called from action sites and from
- * /api/cron/telegram-reports for the scheduled digest). Delivery still
- * needs a real bot token (TELEGRAM_BOT_TOKEN) configured on the deployment.
+ * /api/cron/telegram-reports for the scheduled digest, and from
+ * src/app/api/telegram/webhook/route.ts for command-triggered sends).
+ * Delivery still needs a real bot token (TELEGRAM_BOT_TOKEN) configured on
+ * the deployment.
  *
- * Adapted from AN-CRM's real Telegram templates (src/core/telegram/
- * vendorMessageTypes.ts's VENDOR_TELEGRAM_MESSAGE_TYPES catalog +
- * src/lib/telegramReport.ts's boxed-card report format), rewritten for My
- * Biz Flow's own occasions and branding — not pasted verbatim. Agreement/
- * e-signature-related trigger types are out of scope and skipped.
- *
- * Two families, matching AN-CRM's own split:
- *   - Notification templates: one-off event alerts (ops/staff-facing,
- *     routed to an internal Telegram group/DM, NOT the partner's customer).
- *   - Report templates: the boxed-card periodic business-summary digest.
- *
- * HTML formatting below (<b>, <pre>) matches Telegram's own supported
- * parse_mode="HTML" subset, same as AN-CRM's sendTelegramMessage() calls,
- * so this text can be sent as-is once a bot is wired up.
+ * Each builder below loads its template body from
+ * telegramTemplatesData.ts (a Prisma-backed admin override, falling back to
+ * the code default in telegramTemplateDefs.ts — that file is the canonical
+ * catalog of every template key/command/variables/default text) and fills
+ * in {{token}} placeholders with the live values passed in. Editing a
+ * template's wording is a My Biz Flow Admin action (a separate
+ * repo/deployment — see src/app/admin/(protected)/telegram/page.tsx there);
+ * this file only ever reads.
  */
+import { getTelegramTemplateBody, renderTelegramTemplate } from "@/lib/telegramTemplatesData";
 
-function card(emoji: string, title: string, rows: { label: string; value: string }[], footer?: string): string {
-  const lines = [`${emoji} <b>${title}</b>`, "", "<pre>"];
-  for (const r of rows) lines.push(`${r.label.padEnd(16)} ${r.value}`);
-  lines.push("</pre>");
-  if (footer) lines.push("", footer);
-  return lines.join("\n");
-}
-
-// ---------------------------------------------------------------------------
-// Notification templates — one-off ops/staff-facing event alerts.
-// ---------------------------------------------------------------------------
-
-/** New Service Centre workorder created — equivalent of AN-CRM's NEW_WORKORDER type. */
-export function newWorkorderCreatedMessage(opts: {
+/** New Service Centre workorder created. */
+export async function newWorkorderCreatedMessage(opts: {
   partnerBusinessName: string;
   workorderNumber: string;
   customerName: string;
-}): string {
-  return card("🆕", `${opts.partnerBusinessName} — New Workorder`, [
-    { label: "Workorder", value: opts.workorderNumber },
-    { label: "Customer", value: opts.customerName },
-  ]);
+}): Promise<string> {
+  const body = await getTelegramTemplateBody("new_workorder");
+  return renderTelegramTemplate(body, {
+    businessName: opts.partnerBusinessName,
+    workorderNumber: opts.workorderNumber,
+    customerName: opts.customerName,
+  });
 }
 
-/** A workorder was closed/invoiced — equivalent of AN-CRM's WORKORDER_CLOSED type. */
-export function workorderClosedMessage(opts: {
+/** A workorder was closed/invoiced. */
+export async function workorderClosedMessage(opts: {
   partnerBusinessName: string;
   workorderNumber: string;
   amount: string;
-}): string {
-  return card("✅", `${opts.partnerBusinessName} — Workorder Closed`, [
-    { label: "Workorder", value: opts.workorderNumber },
-    { label: "Invoiced", value: opts.amount },
-  ]);
+}): Promise<string> {
+  const body = await getTelegramTemplateBody("workorder_closed");
+  return renderTelegramTemplate(body, {
+    businessName: opts.partnerBusinessName,
+    workorderNumber: opts.workorderNumber,
+    amount: opts.amount,
+  });
 }
 
-/** A workorder was cancelled — equivalent of AN-CRM's WORKORDER_CANCELLED type. */
-export function workorderCancelledMessage(opts: {
+/** A workorder was cancelled. */
+export async function workorderCancelledMessage(opts: {
   partnerBusinessName: string;
   workorderNumber: string;
   reason?: string;
-}): string {
-  return card("🚫", `${opts.partnerBusinessName} — Workorder Cancelled`, [
-    { label: "Workorder", value: opts.workorderNumber },
-    ...(opts.reason ? [{ label: "Reason", value: opts.reason }] : []),
-  ]);
+}): Promise<string> {
+  const body = await getTelegramTemplateBody("workorder_cancelled");
+  return renderTelegramTemplate(body, {
+    businessName: opts.partnerBusinessName,
+    workorderNumber: opts.workorderNumber,
+    reason: opts.reason ?? "—",
+  });
 }
 
-/** A subscription payment was confirmed — equivalent of AN-CRM's PAYMENT_RECEIVED type. */
-export function paymentReceivedMessage(opts: {
+/** A subscription payment was confirmed. */
+export async function paymentReceivedMessage(opts: {
   partnerBusinessName: string;
   amount: string;
   planName?: string;
-}): string {
-  return card("💰", `${opts.partnerBusinessName} — Payment Received`, [
-    { label: "Amount", value: opts.amount },
-    ...(opts.planName ? [{ label: "Plan", value: opts.planName }] : []),
-  ]);
+}): Promise<string> {
+  const body = await getTelegramTemplateBody("payment_received");
+  return renderTelegramTemplate(body, {
+    businessName: opts.partnerBusinessName,
+    amount: opts.amount,
+    planName: opts.planName ?? "—",
+  });
 }
 
-/** A subscription invoice is due/overdue — equivalent of AN-CRM's PAYMENT_DUE type. */
-export function paymentDueMessage(opts: {
+/** A subscription invoice is due/overdue. */
+export async function paymentDueMessage(opts: {
   partnerBusinessName: string;
   amount: string;
   dueDate: string;
-}): string {
-  return card("⏰", `${opts.partnerBusinessName} — Payment Due`, [
-    { label: "Amount", value: opts.amount },
-    { label: "Due", value: opts.dueDate },
-  ]);
+}): Promise<string> {
+  const body = await getTelegramTemplateBody("payment_due");
+  return renderTelegramTemplate(body, {
+    businessName: opts.partnerBusinessName,
+    amount: opts.amount,
+    dueDate: opts.dueDate,
+  });
 }
 
-/** Trial or paid subscription is about to expire — equivalent of AN-CRM's SUBSCRIPTION_EXPIRY type. */
-export function subscriptionExpiringMessage(opts: {
+/** Trial or paid subscription is about to expire. */
+export async function subscriptionExpiringMessage(opts: {
   partnerBusinessName: string;
   expiresOn: string;
   planName?: string;
-}): string {
-  return card("⚠️", `${opts.partnerBusinessName} — Subscription Expiring`, [
-    { label: "Expires", value: opts.expiresOn },
-    ...(opts.planName ? [{ label: "Plan", value: opts.planName }] : []),
-  ]);
+}): Promise<string> {
+  const body = await getTelegramTemplateBody("subscription_expiring");
+  return renderTelegramTemplate(body, {
+    businessName: opts.partnerBusinessName,
+    expiresOn: opts.expiresOn,
+    planName: opts.planName ?? "—",
+  });
 }
 
-/** A material/part fell below its reorder threshold — equivalent of AN-CRM's LOW_STOCK type. */
-export function lowStockAlertMessage(opts: {
+/** A material/part fell below its reorder threshold. */
+export async function lowStockAlertMessage(opts: {
   partnerBusinessName: string;
   itemName: string;
   quantityRemaining: number;
   reorderThreshold: number;
-}): string {
-  return card("📉", `${opts.partnerBusinessName} — Low Stock`, [
-    { label: "Item", value: opts.itemName },
-    { label: "Remaining", value: String(opts.quantityRemaining) },
-    { label: "Threshold", value: String(opts.reorderThreshold) },
-  ]);
+}): Promise<string> {
+  const body = await getTelegramTemplateBody("low_stock");
+  return renderTelegramTemplate(body, {
+    businessName: opts.partnerBusinessName,
+    itemName: opts.itemName,
+    quantityRemaining: String(opts.quantityRemaining),
+    reorderThreshold: String(opts.reorderThreshold),
+  });
 }
 
-/** A new partner application was submitted — the ops-facing counterpart of sendPartnerApplicationReceivedEmail. */
-export function newPartnerApplicationMessage(opts: {
+/** A new partner application was submitted — ops-facing. */
+export async function newPartnerApplicationMessage(opts: {
   businessName: string;
   partnerTypeName: string;
-}): string {
-  return card("📋", "New Partner Application", [
-    { label: "Business", value: opts.businessName },
-    { label: "Partner type", value: opts.partnerTypeName },
-  ]);
+}): Promise<string> {
+  const body = await getTelegramTemplateBody("new_partner_application");
+  return renderTelegramTemplate(body, {
+    businessName: opts.businessName,
+    partnerTypeName: opts.partnerTypeName,
+  });
 }
 
-/** One-off announcement or manual message sent by staff — equivalent of AN-CRM's GENERAL_ANNOUNCEMENT type. */
-export function generalAnnouncementMessage(text: string): string {
-  return `📢 <b>Announcement</b>\n\n${text}`;
+/** One-off announcement or manual message sent by staff. */
+export async function generalAnnouncementMessage(text: string): Promise<string> {
+  const body = await getTelegramTemplateBody("general_announcement");
+  return renderTelegramTemplate(body, { text });
 }
-
-// ---------------------------------------------------------------------------
-// Report templates — periodic boxed-card business-summary digest, matching
-// AN-CRM's buildReportMessage() layout (src/lib/telegramReport.ts).
-// ---------------------------------------------------------------------------
 
 export type ReportFrequency = "DAILY" | "WEEKLY" | "MONTHLY";
 
-const REPORT_META: Record<ReportFrequency, { emoji: string; label: string; tableTitle: string }> = {
-  DAILY: { emoji: "📊", label: "Daily Report", tableTitle: "Today" },
-  WEEKLY: { emoji: "📈", label: "Weekly Report", tableTitle: "This Week" },
-  MONTHLY: { emoji: "🗓️", label: "Monthly Report", tableTitle: "This Month" },
+const REPORT_TEMPLATE_KEY: Record<ReportFrequency, string> = {
+  DAILY: "report_daily",
+  WEEKLY: "report_weekly",
+  MONTHLY: "report_monthly",
+};
+
+const REPORT_PERIOD_LABEL: Record<ReportFrequency, string> = {
+  DAILY: "today",
+  WEEKLY: "this week",
+  MONTHLY: "this month",
 };
 
 /** Periodic revenue/activity business-summary digest for a partner's ops group/DM. */
-export function businessReportMessage(opts: {
+export async function businessReportMessage(opts: {
   partnerBusinessName: string;
   frequency: ReportFrequency;
   revenue: string;
@@ -160,18 +162,36 @@ export function businessReportMessage(opts: {
   workorderCount: number;
   priorWorkorderCount: number;
   changePct: string;
-}): string {
-  const meta = REPORT_META[opts.frequency];
+}): Promise<string> {
+  const body = await getTelegramTemplateBody(REPORT_TEMPLATE_KEY[opts.frequency]);
   const changeUp = opts.changePct !== "n/a" && Number(opts.changePct.replace("%", "")) >= 0;
-  return card(
-    meta.emoji,
-    `${opts.partnerBusinessName} — ${meta.label}`,
-    [
-      { label: "Revenue", value: `${opts.revenue} (prior ${opts.priorRevenue})` },
-      { label: "Invoices", value: `${opts.invoiceCount} (prior ${opts.priorInvoiceCount})` },
-      { label: "Workorders", value: `${opts.workorderCount} (prior ${opts.priorWorkorderCount})` },
-      { label: "Change", value: opts.changePct },
-    ],
-    `${changeUp ? "✅" : "⚠️"} Revenue ${changeUp ? "up" : "down"} vs prior ${meta.tableTitle.toLowerCase()}`
-  );
+  return renderTelegramTemplate(body, {
+    businessName: opts.partnerBusinessName,
+    revenue: opts.revenue,
+    priorRevenue: opts.priorRevenue,
+    invoiceCount: String(opts.invoiceCount),
+    priorInvoiceCount: String(opts.priorInvoiceCount),
+    workorderCount: String(opts.workorderCount),
+    priorWorkorderCount: String(opts.priorWorkorderCount),
+    changePct: opts.changePct,
+    trendLine: `${changeUp ? "✅" : "⚠️"} Revenue ${changeUp ? "up" : "down"} vs prior ${REPORT_PERIOD_LABEL[opts.frequency]}`,
+  });
+}
+
+/** Sent automatically when a chat completes the /start deep-link connect flow. */
+export async function connectConfirmationMessage(slotLabel: string): Promise<string> {
+  const body = await getTelegramTemplateBody("connect_confirmation");
+  return renderTelegramTemplate(body, { slotLabel });
+}
+
+/** The "Send Test Message" button, and the /test bot command. */
+export async function testMessageText(businessName: string): Promise<string> {
+  const body = await getTelegramTemplateBody("test_message");
+  return renderTelegramTemplate(body, { businessName });
+}
+
+/** The /help bot command's reply. */
+export async function helpMessageText(commandList: string): Promise<string> {
+  const body = await getTelegramTemplateBody("help");
+  return renderTelegramTemplate(body, { commandList });
 }
