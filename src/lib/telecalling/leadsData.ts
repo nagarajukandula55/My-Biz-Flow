@@ -9,8 +9,23 @@
 import { prisma } from "@/lib/prisma";
 import { assertPartnerScope } from "@/lib/tenant";
 
-export const LEAD_STATUSES = ["New", "Contacted", "Interested", "Converted", "Lost", "DoNotCall"] as const;
+export const LEAD_STATUSES = [
+  "New",
+  "Contacted",
+  "Interested",
+  "FollowUpRequired",
+  "Accepted",
+  "Closed",
+  "Lost",
+  "DoNotCall",
+] as const;
 export type LeadStatus = (typeof LEAD_STATUSES)[number];
+
+/** Statuses that mean "this lead is done" — filtered out of an agent's
+ * active call queue (listLeadsForAgent) and shown instead under the
+ * queue's "Closed" tab (see QueueClient.tsx), so a working list only ever
+ * shows leads that still need action. */
+export const TERMINAL_LEAD_STATUSES = ["Accepted", "Closed", "Lost", "DoNotCall"] as const;
 
 export type LeadRecord = {
   id: string;
@@ -107,12 +122,24 @@ export async function listLeadsForPartner(partnerId: string, filter?: LeadFilter
   return rows.map(toRecord);
 }
 
-/** A Telecaller's own queue — leads assigned to them, most-actionable first (New/Contacted before others). */
-export async function listLeadsForAgent(partnerId: string, agentId: string, filter?: LeadFilter): Promise<LeadRecord[]> {
+/** A Telecaller's own queue — leads assigned to them. `view: "active"` (default)
+ * excludes every TERMINAL_LEAD_STATUS so closed leads fall out of the working
+ * list automatically; `view: "closed"` shows only those, for the queue's
+ * separate "Closed" tab (reference/history, not a working list). */
+export async function listLeadsForAgent(
+  partnerId: string,
+  agentId: string,
+  options?: { view?: "active" | "closed"; filter?: LeadFilter }
+): Promise<LeadRecord[]> {
+  const view = options?.view ?? "active";
   const rows = await prisma.lead.findMany({
-    where: { ...buildWhere(partnerId, filter), assignedToId: agentId, status: { notIn: ["Converted", "Lost", "DoNotCall"] } },
+    where: {
+      ...buildWhere(partnerId, options?.filter),
+      assignedToId: agentId,
+      status: view === "closed" ? { in: [...TERMINAL_LEAD_STATUSES] } : { notIn: [...TERMINAL_LEAD_STATUSES] },
+    },
     include: INCLUDE,
-    orderBy: { createdAt: "asc" },
+    orderBy: { createdAt: view === "closed" ? "desc" : "asc" },
   });
   return rows.map(toRecord);
 }

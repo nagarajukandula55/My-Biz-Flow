@@ -23,7 +23,13 @@ registerPage({
 
 export const dynamic = "force-dynamic";
 
-export default async function QueuePage({ params }: { params: { partnerId: string } }) {
+export default async function QueuePage({
+  params,
+  searchParams,
+}: {
+  params: { partnerId: string };
+  searchParams: { view?: string };
+}) {
   const session = await getStaffSession();
   if (!session || session.partnerId !== params.partnerId) {
     redirect(`/partner/${params.partnerId}/telecalling/login`);
@@ -34,8 +40,10 @@ export default async function QueuePage({ params }: { params: { partnerId: strin
     redirect(`/partner/${params.partnerId}/telecalling/login`);
   }
 
+  const view = searchParams.view === "closed" ? "closed" : "active";
+
   const [leads, templates] = await Promise.all([
-    listLeadsForAgent(params.partnerId, session.staffId),
+    listLeadsForAgent(params.partnerId, session.staffId, { view }),
     listTemplates(params.partnerId),
   ]);
 
@@ -61,6 +69,7 @@ export default async function QueuePage({ params }: { params: { partnerId: strin
           <QueueClient
             partnerId={params.partnerId}
             agentId={session.staffId}
+            view={view}
             leads={leads.map((l) => ({ ...l, createdAt: l.createdAt.toISOString(), updatedAt: l.updatedAt.toISOString() }))}
             templates={templates.map((t) => ({ id: t.id, name: t.name, channel: t.channel, category: t.category }))}
           />

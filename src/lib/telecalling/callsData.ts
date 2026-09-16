@@ -8,15 +8,26 @@ import { prisma } from "@/lib/prisma";
 import { assertPartnerScope } from "@/lib/tenant";
 import { updateLeadStatus, type LeadStatus } from "@/lib/telecalling/leadsData";
 
-export const CALL_OUTCOMES = ["Interested", "NotReachable", "Callback", "Converted", "DoNotCall", "WrongNumber"] as const;
+export const CALL_OUTCOMES = [
+  "Interested",
+  "NotReachable",
+  "FollowUpRequired",
+  "Accepted",
+  "Closed",
+  "DoNotCall",
+  "WrongNumber",
+] as const;
 export type CallOutcome = (typeof CALL_OUTCOMES)[number];
 
-/** Outcome -> the Lead.status it should advance to. */
+/** Outcome -> the Lead.status it should advance to. Interested/NotReachable/
+ * FollowUpRequired keep the lead in the agent's active queue; the rest are
+ * TERMINAL_LEAD_STATUSES (leadsData.ts) and move it to the queue's Closed tab. */
 const OUTCOME_TO_LEAD_STATUS: Record<CallOutcome, LeadStatus> = {
   Interested: "Interested",
   NotReachable: "Contacted",
-  Callback: "Contacted",
-  Converted: "Converted",
+  FollowUpRequired: "FollowUpRequired",
+  Accepted: "Accepted",
+  Closed: "Closed",
   DoNotCall: "DoNotCall",
   WrongNumber: "Lost",
 };

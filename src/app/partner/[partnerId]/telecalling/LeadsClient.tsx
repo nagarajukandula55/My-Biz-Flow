@@ -24,11 +24,13 @@ type Lead = {
 
 type Agent = { id: string; name: string };
 
-const STATUS_VARIANT: Record<string, "neutral" | "amber" | "success" | "danger" | "warning"> = {
+const STATUS_VARIANT: Record<string, "neutral" | "amber" | "success" | "danger" | "warning" | "teal"> = {
   New: "neutral",
   Contacted: "amber",
-  Interested: "success",
-  Converted: "success",
+  Interested: "teal",
+  FollowUpRequired: "amber",
+  Accepted: "success",
+  Closed: "neutral",
   Lost: "danger",
   DoNotCall: "danger",
 };
