@@ -122,30 +122,28 @@ export default async function PricingPage({
         </nav>
       </header>
 
-      <div className="relative overflow-hidden px-6 py-16 text-center">
-        <div aria-hidden className="mbf-glow-blob mbf-glow-blob--accent -top-24 -right-16 h-80 w-80" />
-        <div aria-hidden className="mbf-glow-blob mbf-glow-blob--teal top-32 -left-16 h-64 w-64" />
+      <div className="px-6 py-16 text-center">
         {selectedType ? (
           <>
-            <div className="relative z-10 mb-3 flex items-center justify-center gap-2 text-sm">
+            <div className="mb-3 flex items-center justify-center gap-2 text-sm">
               <Link href="/pricing" className="font-semibold text-accent hover:underline">
                 ← Change business type
               </Link>
             </div>
-            <h1 className="relative z-10 font-display text-3xl font-bold text-text sm:text-4xl">
-              Plans for <span className="mbf-gradient-text">{selectedType.id}</span>
+            <h1 className="font-display text-3xl font-bold text-text sm:text-4xl">
+              Plans for <span className="mbf-headline-mark">{selectedType.id}</span>
             </h1>
-            <p className="mbf-prose relative z-10 mx-auto mt-3 text-base text-text-muted">
+            <p className="mbf-prose mx-auto mt-3 text-base text-text-muted">
               {selectedType.description || "No-code stays no-code at every tier."} What changes as you grow is how
               many modules and seats you get — not whether the builder works.
             </p>
           </>
         ) : (
           <>
-            <h1 className="relative z-10 font-display text-3xl font-bold text-text sm:text-4xl">
-              Plans for <span className="mbf-gradient-text">every stage</span>
+            <h1 className="font-display text-3xl font-bold text-text sm:text-4xl">
+              Plans for <span className="mbf-headline-mark">every stage</span>
             </h1>
-            <p className="mbf-prose relative z-10 mx-auto mt-3 text-base text-text-muted">
+            <p className="mbf-prose mx-auto mt-3 text-base text-text-muted">
               No-code stays no-code at every tier. Pick the kind of business you run to see the modules, tiers, and
               pricing bundled for it.
             </p>

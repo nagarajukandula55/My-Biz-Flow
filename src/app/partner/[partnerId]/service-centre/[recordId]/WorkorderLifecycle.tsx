@@ -92,6 +92,98 @@ function stepDateFor(milestone: MilestoneStatus, history: StageHistoryEntry[], c
   return hit?.at;
 }
 
+/**
+ * Engineer/Collected-By name entry — a dropdown of the partner's Staff
+ * Names roster (Pro+) with an "Other" escape hatch to free text, instead
+ * of a free-text input with a datalist (which never constrains the value
+ * and silently offers no suggestions at all on Starter, where the roster
+ * is empty). Starter partners (no options) always get plain free text.
+ */
+function StaffNameField({
+  label,
+  required,
+  value,
+  onChange,
+  onCommit,
+  options,
+  freeText,
+  setFreeText,
+  placeholder,
+  className,
+  disabled,
+}: {
+  label: string;
+  required?: boolean;
+  value: string;
+  onChange: (v: string) => void;
+  /** Fires once a value is actually settled (blur, or a dropdown pick) — same moment the old onBlur-based persistence ran. */
+  onCommit?: () => void;
+  options: string[];
+  freeText: boolean;
+  setFreeText: (v: boolean) => void;
+  placeholder?: string;
+  className?: string;
+  disabled?: boolean;
+}) {
+  const showSelect = options.length > 0 && !freeText;
+  return (
+    <label className={`text-xs font-semibold uppercase tracking-wide text-text-muted ${className ?? ""}`}>
+      {label} {required && <span className="text-danger">*</span>}
+      {showSelect ? (
+        <select
+          required={required}
+          disabled={disabled}
+          value={value}
+          onChange={(e) => {
+            if (e.target.value === "__other__") {
+              setFreeText(true);
+              onChange("");
+              return;
+            }
+            onChange(e.target.value);
+            onCommit?.();
+          }}
+          className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm font-normal normal-case tracking-normal text-text disabled:opacity-60"
+        >
+          <option value="">Select…</option>
+          {options.map((name) => (
+            <option key={name} value={name}>
+              {name}
+            </option>
+          ))}
+          <option value="__other__">Other — type manually…</option>
+        </select>
+      ) : (
+        <>
+          <input
+            type="text"
+            required={required}
+            disabled={disabled}
+            value={value}
+            autoFocus={freeText}
+            onChange={(e) => onChange(e.target.value)}
+            onBlur={onCommit}
+            placeholder={placeholder}
+            className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm font-normal normal-case tracking-normal text-text disabled:opacity-60"
+          />
+          {options.length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                setFreeText(false);
+                onChange("");
+              }}
+              className="mt-1 text-xs font-semibold normal-case tracking-normal text-teal hover:underline"
+            >
+              &larr; Choose from list instead
+            </button>
+          )}
+        </>
+      )}
+    </label>
+  );
+}
+
 export function WorkorderLifecycle({
   partnerId,
   workorderId,
@@ -328,6 +420,12 @@ export function WorkorderLifecycle({
   // unit over, and a guessed answer to that is worse than no answer.
   const [engineer, setEngineer] = useState(engineerName ?? "");
   const [collectedBy, setCollectedBy] = useState(collectedByName ?? "");
+  // Both name fields render as a dropdown of the partner's Staff Names
+  // roster by default; a field flips to free text only when the operator
+  // explicitly picks "Other" (Starter has no roster, so it's always free
+  // text there — see StaffNameField below).
+  const [engineerFreeText, setEngineerFreeText] = useState(false);
+  const [collectedByFreeText, setCollectedByFreeText] = useState(false);
   const [hold, setHold] = useState(Boolean(onHold));
   const [holdModalOpen, setHoldModalOpen] = useState(false);
   const [holdReasonDraft, setHoldReasonDraft] = useState("");
@@ -944,6 +1042,12 @@ export function WorkorderLifecycle({
       );
       return;
     }
+    if (next === "Completed" && !engineer.trim()) {
+      setCloseBlockedMessage(
+        "Enter the Engineer / Serviced By name before marking the repair completed."
+      );
+      return;
+    }
     if (next === "Closed") {
       if (unresolvedSerials.length > 0) {
         setCloseBlockedMessage(
@@ -1412,8 +1516,7 @@ export function WorkorderLifecycle({
         </div>
 
         {/* Backs the "Part / service name" free-text input's typeahead — see
-            setPartLabel()'s comment. Suggestions only, same inert-when-empty
-            behaviour as the "wo-staff-names" datalist further down. */}
+            setPartLabel()'s comment. Suggestions only, inert when empty. */}
         <datalist id="wo-bom-materials">
           {bomMaterialsState.map((m) => (
             <option key={m.id} value={m.label} />
@@ -1770,19 +1873,17 @@ export function WorkorderLifecycle({
               className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm font-normal normal-case tracking-normal text-text disabled:opacity-60"
             />
           </label>
-          <label className="text-xs font-semibold uppercase tracking-wide text-text-muted">
-            Engineer Name <span className="font-normal normal-case text-text-muted">(prints on the closed job sheet)</span>
-            <input
-              type="text"
-              list="wo-staff-names"
-              value={engineer}
-              disabled={!editable}
-              onChange={(e) => setEngineer(e.target.value)}
-              onBlur={persistEngineerName}
-              placeholder="Who repaired this device"
-              className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm font-normal normal-case tracking-normal text-text disabled:opacity-60"
-            />
-          </label>
+          <StaffNameField
+            label="Engineer Name (prints on the closed job sheet)"
+            value={engineer}
+            onChange={setEngineer}
+            onCommit={persistEngineerName}
+            options={staffNameOptions}
+            freeText={engineerFreeText}
+            setFreeText={setEngineerFreeText}
+            placeholder="Who repaired this device"
+            disabled={!editable}
+          />
         </div>
       </div>
 
@@ -1808,6 +1909,37 @@ export function WorkorderLifecycle({
             className="mt-3 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text"
             rows={3}
           />
+        </div>
+      )}
+
+      {/* Read-only handover record — engineer/collected-by and payment mode
+          are captured in the Close Workorder modal (confirmClose) but were
+          never shown back anywhere once the workorder closed. */}
+      {stage === "Closed" && !cancelled && (
+        <div className="mt-6 rounded-md border border-border bg-bg-raised p-4">
+          <h2 className="font-display text-base font-bold text-text">Handover Record</h2>
+          <dl className="mt-3 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+            <div>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-text-muted">Engineer / Serviced By</dt>
+              <dd className="mt-0.5 text-text">{engineer || "—"}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-text-muted">Collected By</dt>
+              <dd className="mt-0.5 text-text">{collectedBy || "—"}</dd>
+            </div>
+            {!underWarranty && (
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-wide text-text-muted">Mode of Payment</dt>
+                <dd className="mt-0.5 text-text">{paymentMode || "—"}</dd>
+              </div>
+            )}
+            {handoverNotes && (
+              <div className="sm:col-span-2">
+                <dt className="text-xs font-semibold uppercase tracking-wide text-text-muted">Handover Notes</dt>
+                <dd className="mt-0.5 text-text">{handoverNotes}</dd>
+              </div>
+            )}
+          </dl>
         </div>
       )}
 
@@ -2177,38 +2309,30 @@ export function WorkorderLifecycle({
             </>
           )}
         </p>
-        {/* Suggestions come from the partner's own Staff Names roster when
-            they keep one (Pro+). A `list` pointing at an empty <datalist>
-            is inert, so a Starter partner simply gets a plain text box —
-            no separate code path, and nothing is ever auto-filled. */}
-        <datalist id="wo-staff-names">
-          {staffNameOptions.map((name) => (
-            <option key={name} value={name} />
-          ))}
-        </datalist>
+        {/* Options come from the partner's own Staff Names roster when they
+            keep one (Pro+) — a Starter partner (empty roster) gets a plain
+            required text box instead, via StaffNameField. */}
         <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <label className="text-xs font-semibold uppercase tracking-wide text-text-muted">
-            Engineer / Serviced By <span className="text-danger">*</span>
-            <input
-              type="text"
-              list="wo-staff-names"
-              value={engineer}
-              onChange={(e) => setEngineer(e.target.value)}
-              placeholder="Who actually repaired this"
-              className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm font-normal normal-case tracking-normal text-text"
-            />
-          </label>
-          <label className="text-xs font-semibold uppercase tracking-wide text-text-muted">
-            Collected By <span className="text-danger">*</span>
-            <input
-              type="text"
-              list="wo-staff-names"
-              value={collectedBy}
-              onChange={(e) => setCollectedBy(e.target.value)}
-              placeholder="Who handed it over / collected payment"
-              className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm font-normal normal-case tracking-normal text-text"
-            />
-          </label>
+          <StaffNameField
+            label="Engineer / Serviced By"
+            required
+            value={engineer}
+            onChange={setEngineer}
+            options={staffNameOptions}
+            freeText={engineerFreeText}
+            setFreeText={setEngineerFreeText}
+            placeholder="Who actually repaired this"
+          />
+          <StaffNameField
+            label="Collected By"
+            required
+            value={collectedBy}
+            onChange={setCollectedBy}
+            options={staffNameOptions}
+            freeText={collectedByFreeText}
+            setFreeText={setCollectedByFreeText}
+            placeholder="Who handed it over / collected payment"
+          />
           {/* Payment, captured in this same close step now instead of a
               later separate "Create Invoice" modal — the invoice is
               generated atomically with the close (see confirmClose), using

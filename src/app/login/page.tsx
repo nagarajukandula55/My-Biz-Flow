@@ -22,9 +22,31 @@ export default function LoginPage({
   searchParams: { error?: string; reset?: string };
 }) {
   return (
-    <div className="flex min-h-screen w-full items-center justify-center bg-bg px-6">
+    <div className="flex min-h-screen w-full bg-bg">
+      {/* Left: brand/context panel, real product mechanics instead of
+          decoration -- dropped on small screens where there's no room. */}
+      <div className="hidden w-[38%] flex-col justify-between bg-sidebar-bg px-10 py-10 text-sidebar-text lg:flex">
+        <Link href="/" className="flex items-center gap-2">
+          <BrandLogo height={28} />
+        </Link>
+        <div>
+          <p className="font-display text-2xl font-bold text-white">One platform.</p>
+          <p className="mt-1 font-display text-2xl font-bold text-white">Every business you run.</p>
+          <ul className="mt-6 space-y-2.5 text-sm text-sidebar-text-dim">
+            {["POS", "Service Centre workorders", "Billing & GST invoicing", "Inventory", "HRMS", "Clinic"].map((m) => (
+              <li key={m} className="flex items-center gap-2">
+                <span className="h-1 w-1 rounded-full bg-teal" />
+                {m}
+              </li>
+            ))}
+          </ul>
+        </div>
+        <p className="text-xs text-sidebar-text-dim">&copy; {new Date().getFullYear()} My Biz Flow</p>
+      </div>
+
+      <div className="flex flex-1 items-center justify-center px-6 py-12">
       <div className="w-full max-w-sm rounded-lg border border-border bg-bg-raised p-8">
-        <Link href="/" className="mb-6 flex items-center gap-2">
+        <Link href="/" className="mb-6 flex items-center gap-2 lg:hidden">
           <BrandLogo height={32} />
         </Link>
         <h1 className="font-display text-xl font-bold text-text">Sign in</h1>
@@ -51,18 +73,22 @@ export default function LoginPage({
         <p className="mt-2 text-sm text-text-muted">Sign in with your Partner ID or registered contact number.</p>
 
         <form action={signInAsPartner} className="mt-6 flex flex-col gap-3">
-          <label className="text-xs font-semibold uppercase tracking-wide text-text-muted">
-            Partner ID or Contact Number
+          <label className="text-sm font-medium text-text">
+            <span className="flex items-center gap-2">
+              Partner ID or Contact Number
+              <span className="rounded bg-bg-sunken px-1.5 py-0.5 font-mono text-[10px] text-text-muted">
+                VND#### / 98xxxxxxxx
+              </span>
+            </span>
             <input
               type="text"
               name="identifier"
-              placeholder="VND0001 or 98xxxxxxxx"
               required
               autoFocus
               className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text outline-none focus:border-teal"
             />
           </label>
-          <label className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+          <label className="text-sm font-medium text-text">
             Password
             <input
               type="password"
@@ -92,6 +118,7 @@ export default function LoginPage({
             Track a repair without an account
           </Link>
         </p>
+      </div>
       </div>
     </div>
   );

@@ -208,6 +208,12 @@ export function RecordForm({ fields: allFields, initialValues, submitLabel, onSu
   // Which field's `addNewModal` is currently open, if any — a nested
   // RecordForm for "quickly add a catalog entry without losing this form".
   const [addNewModalKey, setAddNewModalKey] = useState<string | null>(null);
+  // Fields a suggestions list backs (Brand/Model/Logged By/etc.) render as a
+  // real <select> dropdown of the existing catalog by default; a field key
+  // lands in this set only once its value is free-typed (via "Other — type
+  // manually") or already holds a value the catalog doesn't have, so a
+  // pre-filled edit form with an off-catalog value still shows correctly.
+  const [freeTextKeys, setFreeTextKeys] = useState<Record<string, boolean>>({});
   const router = useRouter();
   // Stable id linking the primary submit button (rendered in a sticky bar
   // ABOVE the form, so it stays visible without scrolling a long form) back
@@ -340,6 +346,8 @@ export function RecordForm({ fields: allFields, initialValues, submitLabel, onSu
       {renderInput(field, values[field.key], setValue, {
         parentValue: field.parentKey ? String(values[field.parentKey] ?? "") : undefined,
         cityOptions,
+        freeTextKeys,
+        setFreeTextKeys,
       })}
       {field.help && <p className="mt-1 text-[11px] font-normal normal-case text-text-muted">{field.help}</p>}
       {lookupHint && lookup?.watchKey === field.key && (
@@ -471,7 +479,12 @@ function renderInput(
   field: FormFieldDef,
   value: unknown,
   setValue: (key: string, value: unknown) => void,
-  ctx: { parentValue?: string; cityOptions: string[] } = { cityOptions: [] }
+  ctx: {
+    parentValue?: string;
+    cityOptions: string[];
+    freeTextKeys: Record<string, boolean>;
+    setFreeTextKeys: (update: (prev: Record<string, boolean>) => Record<string, boolean>) => void;
+  }
 ) {
   const baseClass =
     "w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text outline-none focus:border-teal";
@@ -770,29 +783,66 @@ function renderInput(
       const suggestions = field.suggestionsByParent
         ? (ctx.parentValue ? field.suggestionsByParent[ctx.parentValue] ?? [] : [])
         : field.suggestions;
-      const listId = suggestions?.length ? `${field.key}-suggestions` : undefined;
+      const currentValue = String(value ?? "");
+      const isFreeText = ctx.freeTextKeys[field.key] || (!!currentValue && !!suggestions?.length && !suggestions.includes(currentValue));
+
+      if (suggestions?.length && !isFreeText) {
+        return (
+          <select
+            id={field.key}
+            className={baseClass}
+            value={currentValue}
+            required={field.required}
+            disabled={!!field.suggestionsByParent && !ctx.parentValue}
+            onChange={(e) => {
+              if (e.target.value === "__other__") {
+                ctx.setFreeTextKeys((prev) => ({ ...prev, [field.key]: true }));
+                setValue(field.key, "");
+                return;
+              }
+              setValue(field.key, e.target.value);
+            }}
+          >
+            <option value="">
+              {field.suggestionsByParent && !ctx.parentValue ? "Pick a brand first" : "Select…"}
+            </option>
+            {suggestions.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+            <option value="__other__">Other — type manually…</option>
+          </select>
+        );
+      }
+
       return (
         <>
           <input
             id={field.key}
             type="text"
-            list={listId}
             className={baseClass}
-            value={String(value ?? "")}
+            value={currentValue}
             placeholder={
               field.suggestionsByParent && !ctx.parentValue
                 ? "Pick a brand first"
                 : field.placeholder
             }
             required={field.required}
+            autoFocus={ctx.freeTextKeys[field.key]}
             onChange={(e) => setValue(field.key, e.target.value)}
           />
-          {listId && (
-            <datalist id={listId}>
-              {suggestions?.map((s) => (
-                <option key={s} value={s} />
-              ))}
-            </datalist>
+          {!!suggestions?.length && (
+            <button
+              type="button"
+              onClick={() => {
+                ctx.setFreeTextKeys((prev) => ({ ...prev, [field.key]: false }));
+                setValue(field.key, "");
+              }}
+              className="mt-1 text-xs font-semibold text-teal hover:underline"
+            >
+              &larr; Choose from list instead
+            </button>
           )}
         </>
       );

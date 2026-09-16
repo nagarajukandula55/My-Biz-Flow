@@ -45,6 +45,7 @@ export function ServiceCentreInvoiceDocument({
   workorderNumber,
   status,
   paymentMode,
+  collectedByName,
   customerName,
   customerPhone,
   customerGstin,
@@ -76,6 +77,8 @@ export function ServiceCentreInvoiceDocument({
   workorderNumber?: string;
   status?: string;
   paymentMode?: string;
+  /** Free-text name of whoever collected payment / handed the unit over — mirrors AN-CRM's `paymentCollectedByName`. */
+  collectedByName?: string;
   customerName: string;
   customerPhone?: string;
   /** Present => the job was billed to a GST-registered party, i.e. B2B. */
@@ -229,19 +232,23 @@ export function ServiceCentreInvoiceDocument({
           <div>{safe(customerFullAddress)}</div>
           {isB2B && <div>GSTIN: {safe(customerGstin)}</div>}
         </div>
-        {hasDevice ? (
-          <div className="ric-box">
-            <div className="ric-sectionTitle">DEVICE</div>
-            <div>{[brand, model].filter(Boolean).join(" ") || "—"}</div>
-            <div>IMEI/Serial: {safe(imeiOrSerial)}</div>
-          </div>
-        ) : (
-          <div className="ric-box">
-            <div className="ric-sectionTitle">PAYMENT</div>
-            <div>Status: {safe(status)}</div>
-            {paymentMode && <div>Mode: {safe(paymentMode)}</div>}
-          </div>
-        )}
+        <div className="ric-box">
+          {hasDevice && (
+            <>
+              <div className="ric-sectionTitle">DEVICE</div>
+              <div>{[brand, model].filter(Boolean).join(" ") || "—"}</div>
+              <div>IMEI/Serial: {safe(imeiOrSerial)}</div>
+            </>
+          )}
+          {/* Payment/handover details -- previously only shown when the
+              record had no device, so it never rendered on an actual
+              Service Centre repair invoice (brand/model/IMEI are almost
+              always present). Now always shown alongside device info. */}
+          <div className="ric-sectionTitle" style={hasDevice ? { marginTop: "0.5em" } : undefined}>PAYMENT</div>
+          <div>Status: {safe(status)}</div>
+          <div>Mode: {paymentMode ? safe(paymentMode) : "—"}</div>
+          {collectedByName && <div>Received By: {safe(collectedByName)}</div>}
+        </div>
       </div>
 
       <div className="ric-productHeader">PRODUCT / SERVICE DETAILS</div>

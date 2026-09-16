@@ -1,6 +1,5 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { Sparkles } from "lucide-react";
 import { BrandLogo } from "@/components/BrandLogo";
 import { registerPage } from "@/lib/designer/registry";
 import { listActivePartnerTypes } from "@/lib/designer/partnerTypesData";
@@ -181,21 +180,13 @@ export default async function RootPage({
         </nav>
       </header>
 
-      <section className="relative overflow-hidden px-6 py-20 text-center">
-        <div aria-hidden className="mbf-glow-blob mbf-glow-blob--accent -top-32 -right-24 h-96 w-96" />
-        <div aria-hidden className="mbf-glow-blob mbf-glow-blob--teal top-40 -left-24 h-80 w-80" />
-
-        <div className="relative z-10 mx-auto mb-6 inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3.5 py-1.5 text-xs font-semibold text-accent">
-          <Sparkles className="h-3.5 w-3.5" />
-          Built for Service Centres
-        </div>
-
+      <section className="px-6 py-20 text-center">
         {isServiceCentre ? (
           <>
-            <h1 className="relative z-10 mx-auto max-w-3xl font-display text-4xl font-extrabold text-text sm:text-5xl">
-              Run your <span className="mbf-gradient-text">service centre</span> from one screen.
+            <h1 className="mx-auto max-w-3xl font-display text-4xl font-extrabold text-text sm:text-5xl">
+              Run your <span className="mbf-headline-mark">service centre</span> from one screen.
             </h1>
-            <p className="mbf-prose relative z-10 mx-auto mt-5 text-lg leading-relaxed text-text-muted">
+            <p className="mbf-prose mx-auto mt-5 text-lg leading-relaxed text-text-muted">
               My Biz Flow's Service Centre module takes a repair from intake to invoice without switching tools —
               log the fault, move the workorder through its lifecycle, and bill it out with
               GST-compliant invoicing that deducts the parts used straight from Inventory.
@@ -203,10 +194,10 @@ export default async function RootPage({
           </>
         ) : (
           <>
-            <h1 className="relative z-10 mx-auto max-w-3xl font-display text-4xl font-extrabold text-text sm:text-5xl">
-              One platform. <span className="mbf-gradient-text">Every business you run.</span>
+            <h1 className="mx-auto max-w-3xl font-display text-4xl font-extrabold text-text sm:text-5xl">
+              One platform. <span className="mbf-headline-mark">Every business you run.</span>
             </h1>
-            <p className="mbf-prose relative z-10 mx-auto mt-5 text-lg leading-relaxed text-text-muted">
+            <p className="mbf-prose mx-auto mt-5 text-lg leading-relaxed text-text-muted">
               My Biz Flow is a modular, no-code, multi-vertical business/CRM platform. Instead of shipping a separate
               product per industry, every business runs on one shared metadata engine — modules, fields, pipelines,
               and dashboards are all config-driven. Mix and match POS, Service Centre, Billing, Clinic, HRMS, and
@@ -214,7 +205,21 @@ export default async function RootPage({
             </p>
           </>
         )}
-        <div className="relative z-10 mt-8 flex items-center justify-center gap-4">
+
+        {/* Concrete workorder lifecycle, in place of a generic icon badge --
+            this is a real product mechanic, not decoration. */}
+        <div className="mx-auto mt-8 flex max-w-2xl flex-wrap items-center justify-center gap-x-2 gap-y-3">
+          {["Created", "In Progress", "Completed", "Closed"].map((stage, i, arr) => (
+            <div key={stage} className="flex items-center gap-2">
+              <span className="rounded-full border border-border bg-bg-raised px-3 py-1 text-xs font-semibold text-text-muted">
+                {stage}
+              </span>
+              {i < arr.length - 1 && <span className="text-text-muted">→</span>}
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-8 flex items-center justify-center gap-4">
           <Link href={isServiceCentre ? "/signup?type=service-centre" : "/signup"} className="btn-accent mbf-cta-glow">
             Register your business
           </Link>
@@ -363,10 +368,9 @@ export default async function RootPage({
         </div>
       </section>
 
-      <section className="relative overflow-hidden border-t border-border px-6 py-16 text-center">
-        <div aria-hidden className="mbf-glow-blob mbf-glow-blob--success bottom-0 left-1/2 h-64 w-64 -translate-x-1/2" />
-        <h2 className="relative z-10 font-display text-2xl font-bold text-text">Ready to set up your business?</h2>
-        <div className="relative z-10 mt-6 flex items-center justify-center gap-4">
+      <section className="border-t border-border bg-bg-raised px-6 py-16 text-center">
+        <h2 className="font-display text-2xl font-bold text-text">Ready to set up your business?</h2>
+        <div className="mt-6 flex items-center justify-center gap-4">
           <Link href="/signup" className="btn-accent mbf-cta-glow">
             Register your business
           </Link>

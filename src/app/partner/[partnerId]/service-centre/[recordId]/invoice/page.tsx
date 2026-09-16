@@ -86,6 +86,7 @@ export default async function ServiceCentreInvoicePage({
       // Only what was actually collected at handover — an uncollected job
       // prints an em dash rather than a guessed payment mode.
       paymentMode={String(record["paymentMode"] ?? "")}
+      collectedByName={record["collectedByName"] ? String(record["collectedByName"]) : undefined}
       customerName={String(record["customer"] ?? "Walk-in Customer")}
       customerPhone={String(record["customerPhone"] ?? "")}
       customerGstin={String(record["customerGstin"] ?? "")}
