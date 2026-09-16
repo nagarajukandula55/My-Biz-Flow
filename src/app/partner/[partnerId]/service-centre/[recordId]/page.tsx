@@ -120,6 +120,8 @@ export default async function ServiceCentreDetailPage({
           loggedBy={typeof record["loggedBy"] === "string" ? (record["loggedBy"] as string) : undefined}
           remark={typeof record["remark"] === "string" ? (record["remark"] as string) : undefined}
           engineerRemark={typeof record["engineerRemark"] === "string" ? (record["engineerRemark"] as string) : undefined}
+          solutionId={typeof record["solutionId"] === "string" ? (record["solutionId"] as string) : undefined}
+          solutionLabel={typeof record["solutionLabel"] === "string" ? (record["solutionLabel"] as string) : undefined}
           initialStage={lifecycle.stage}
           initialPartLines={lifecycle.partLines}
           initialServiceLines={lifecycle.serviceLines}

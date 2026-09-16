@@ -103,6 +103,8 @@ export function WorkorderLifecycle({
   loggedBy,
   remark,
   engineerRemark,
+  solutionId,
+  solutionLabel,
   initialStage,
   initialPartLines,
   initialServiceLines,
@@ -157,6 +159,15 @@ export function WorkorderLifecycle({
    * schema/model change, just a prop threaded through from the record.
    */
   engineerRemark?: string;
+  /**
+   * The diagnosed Solution — a plain top-level record field (same
+   * untyped-JSON-blob pattern as engineerRemark above), NOT derived from
+   * or stored on any ServiceLine. Deliberately not billable: it's a
+   * diagnosis label only, per explicit direction that a Solution pick
+   * must never itself become a priced line item.
+   */
+  solutionId?: string;
+  solutionLabel?: string;
   initialStage: WorkorderStage;
   initialPartLines: PartLine[];
   initialServiceLines: ServiceLine[];
@@ -300,11 +311,10 @@ export function WorkorderLifecycle({
   const [handoverNotes, setHandoverNotes] = useState(initialHandoverNotes ?? "");
   const [remarkText, setRemarkText] = useState(remark ?? "");
   const [engineerRemarkText, setEngineerRemarkText] = useState(engineerRemark ?? "");
-  // Which Solution the "Solution" dropdown on the Engineer Remark & Solution
-  // card currently has picked — separate from the modal-driven "+ Add
-  // Service/Labour Charge" picker above, but both ultimately call the same
-  // addSolution() mutation below.
-  const [solutionSelectValue, setSolutionSelectValue] = useState("");
+  // The diagnosed Solution — plain workorder fields, not a ServiceLine
+  // (see selectSolution()'s doc comment).
+  const [solutionSelectValue, setSolutionSelectValue] = useState(solutionId ?? "");
+  const [selectedSolutionLabel, setSelectedSolutionLabel] = useState(solutionLabel ?? "");
   // Tax Apply — on by default (matching AN-CRM), forced off for an
   // in-warranty job (already non-chargeable throughout), otherwise a plain
   // UI toggle over the same live tax preview the totals footer already
@@ -572,24 +582,19 @@ export function WorkorderLifecycle({
     persist({ partLines });
   }
 
-  function addSolution(option: SearchSelectOption) {
-    // A Solution is just a name/category label, not a price list — no
-    // per-solution charge is stored or read here. Pre-fills from Settings
-    // > Config's plain default labour charge (same as a blank "+ Add
-    // Service/Labour Charge" row), fully editable on the line afterwards.
-    const next: ServiceLine[] = [
-      ...serviceLines,
-      {
-        id: `SL-${Date.now()}`,
-        solutionId: option.value,
-        solutionLabel: option.label,
-        laborCharge: partnerDefaultLaborCharge ?? 0,
-        qty: 1,
-        taxRate: 18,
-      },
-    ];
-    setServiceLines(next);
-    persist({ serviceLines: next });
+  /**
+   * The diagnosed Solution is a plain field on the workorder itself — NOT
+   * a billable line item. Previously picking one pushed a priced
+   * ServiceLine (qty/rate/tax) straight into the Parts & Service Lines
+   * table, so a diagnosis-only pick silently became a chargeable row on
+   * the invoice. If an actual labour charge needs billing for the repair,
+   * that's still added separately via "+ Add Service/Labour Charge"
+   * (addBlankServiceLine below), unaffected by this.
+   */
+  function selectSolution(option: SearchSelectOption) {
+    setSolutionSelectValue(option.value);
+    setSelectedSolutionLabel(option.label);
+    persist({ solutionId: option.value, solutionLabel: option.label });
   }
 
   /**
@@ -835,7 +840,7 @@ export function WorkorderLifecycle({
     }
     const option: SearchSelectOption = { value: result?.id ?? title, label: result?.label ?? title };
     setSolutionOptionsState((prev) => [...prev, option]);
-    setSolutionSelectValue(option.value);
+    selectSolution(option);
     setAddSolutionOpen(false);
   }
 
@@ -931,8 +936,9 @@ export function WorkorderLifecycle({
     }
     // Mirrors assertLegalStageTransition's server-side Solution check
     // (actions.ts) — the engineer must select a Solution before the repair
-    // can be marked completed.
-    if (next === "Completed" && !serviceLines.some((line) => !!line.solutionId)) {
+    // can be marked completed. Solution is a plain workorder field, not a
+    // ServiceLine (see selectSolution()'s doc comment).
+    if (next === "Completed" && !solutionSelectValue) {
       setCloseBlockedMessage(
         "Select a Solution before marking the repair completed — the fault diagnosis/solution is required."
       );
@@ -1041,11 +1047,6 @@ export function WorkorderLifecycle({
     persist({ engineerName: engineer.trim() || undefined });
   }
 
-  /** "Solution" dropdown + "+ Add Solution" button on the Engineer Remark &
-   * Solution card — a second entry point to the exact same addSolution()
-   * mutation the modal-driven "+ Add Service/Labour Charge" button above
-   * already uses, just picked from an inline <select> instead of the
-   * search modal, matching AN-CRM's own layout for this card. */
   // Primary stage-progress action's label — same rule advanceStage() itself
   // gates against (estimate approval / non-empty lines / unresolved
   // serials), surfaced as the header's primary button (the only place it
@@ -1069,6 +1070,8 @@ export function WorkorderLifecycle({
         handoverNotes,
         remark: remarkText,
         engineerRemark: engineerRemarkText,
+        solutionId: solutionSelectValue,
+        solutionLabel: selectedSolutionLabel,
         engineerName: engineer.trim() || undefined,
       },
       "Saved."
@@ -1669,8 +1672,9 @@ export function WorkorderLifecycle({
 
       {/* Engineer Remark & Solution — second card, directly below Parts &
           Service Lines, matching AN-CRM's job-sheet layout exactly: a
-          plain Engineer Remark field, a Solution dropdown + Add button
-          (same addSolution() mutation as the modal above), a separate
+          plain Engineer Remark field, a Solution dropdown (selectSolution
+          — a plain diagnosis field, not a billable line item) + Add
+          button (for creating a new Solution catalog entry), a separate
           Remark field, and Engineer Name with its own close-time helper
           text — editable here too, not only inside the Close Workorder
           modal further down. */}
@@ -1714,20 +1718,23 @@ export function WorkorderLifecycle({
                 value={solutionSelectValue}
                 disabled={!editable}
                 onChange={(e) => {
-                  // Picking an existing Solution here commits it
-                  // immediately (pushes a ServiceLine with solutionId set)
-                  // -- previously this only stored the pick in a bare
-                  // string and required a separate "+ Add Solution" click
-                  // to actually register it, so a user who selected a
-                  // Solution and went straight to "Mark Completed" still
-                  // hit the "Select a Solution" gate with nothing to show
-                  // for it. "+ Add Solution" is now only for creating a
-                  // brand-new Solution catalog entry, not for confirming
-                  // an existing selection.
+                  // Picking an existing Solution commits it immediately as
+                  // a plain workorder field (selectSolution) -- NOT a
+                  // billable ServiceLine. Previously this only stored the
+                  // pick in a bare string and required a separate "+ Add
+                  // Solution" click to register it (and that registration
+                  // wrongly created a priced line item). "+ Add Solution"
+                  // is now only for creating a brand-new Solution catalog
+                  // entry, not for confirming an existing selection.
                   const value = e.target.value;
-                  setSolutionSelectValue(value);
+                  if (!value) {
+                    setSolutionSelectValue("");
+                    setSelectedSolutionLabel("");
+                    persist({ solutionId: "", solutionLabel: "" });
+                    return;
+                  }
                   const option = solutionOptionsState.find((o) => o.value === value);
-                  if (option) addSolution(option);
+                  if (option) selectSolution(option);
                 }}
                 className="w-full rounded-md border border-border bg-bg px-2 py-2 text-sm font-normal normal-case tracking-normal text-text disabled:opacity-60"
               >

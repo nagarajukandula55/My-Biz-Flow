@@ -112,13 +112,10 @@ function assertLegalStageTransition(
 
     // A repair can't be marked completed without a diagnosed fault
     // solution — the engineer must select one (WorkorderLifecycle.tsx's
-    // "Solution" dropdown, which writes into a service line's
-    // solutionId/solutionLabel via addSolution()) before closing out the
-    // repair, same as the reference app's Solution requirement.
-    const hasSolution = serviceLines.some(
-      (line) => !!(line as { solutionId?: string }).solutionId
-    );
-    if (!hasSolution) {
+    // "Solution" dropdown). This is a plain field on the workorder record
+    // itself (solutionId/solutionLabel), NOT stored on a ServiceLine —
+    // a diagnosis is not a billable line item.
+    if (!existing["solutionId"]) {
       throw new Error(
         "Select a Solution before marking the repair completed — the fault diagnosis/solution is required."
       );
