@@ -28,6 +28,13 @@ export const dynamic = "force-dynamic";
 export default async function PartnerDashboardPage({ params }: { params: { partnerId: string } }) {
   const enabledSlugs = await getVisibleModuleSlugs(params.partnerId);
   const modules = await getVisibleModules(params.partnerId);
+  // getVisibleModules() silently drops any slug getModule() can't resolve
+  // (e.g. a stale/renamed module still referenced by a PartnerType or
+  // access key) — so `modules` can be SHORTER than `enabledSlugs`, and
+  // indexing both by the same position (modules[i]) mislabels or throws
+  // once they diverge. Look modules up by slug instead, so a dropped
+  // module never shifts anything else.
+  const moduleBySlug = new Map(modules.map((m) => [m.slug, m]));
   const hasServiceCentre = enabledSlugs.includes("service-centre");
   const [stats, scOverview] = await Promise.all([
     Promise.all(enabledSlugs.map((slug) => computeModuleStat(params.partnerId, slug))),
@@ -95,7 +102,7 @@ export default async function PartnerDashboardPage({ params }: { params: { partn
           )}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {enabledSlugs.map((slug, i) => {
-              const mod = modules[i];
+              const mod = moduleBySlug.get(slug);
               const stat = stats[i];
               const value =
                 stat.currencySum !== undefined

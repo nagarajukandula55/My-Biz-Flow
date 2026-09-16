@@ -1046,13 +1046,6 @@ export function WorkorderLifecycle({
    * mutation the modal-driven "+ Add Service/Labour Charge" button above
    * already uses, just picked from an inline <select> instead of the
    * search modal, matching AN-CRM's own layout for this card. */
-  function addSelectedSolution() {
-    const option = solutionOptionsState.find((o) => o.value === solutionSelectValue);
-    if (!option) return;
-    addSolution(option);
-    setSolutionSelectValue("");
-  }
-
   // Primary stage-progress action's label — same rule advanceStage() itself
   // gates against (estimate approval / non-empty lines / unresolved
   // serials), surfaced as the header's primary button (the only place it
@@ -1720,7 +1713,22 @@ export function WorkorderLifecycle({
               <select
                 value={solutionSelectValue}
                 disabled={!editable}
-                onChange={(e) => setSolutionSelectValue(e.target.value)}
+                onChange={(e) => {
+                  // Picking an existing Solution here commits it
+                  // immediately (pushes a ServiceLine with solutionId set)
+                  // -- previously this only stored the pick in a bare
+                  // string and required a separate "+ Add Solution" click
+                  // to actually register it, so a user who selected a
+                  // Solution and went straight to "Mark Completed" still
+                  // hit the "Select a Solution" gate with nothing to show
+                  // for it. "+ Add Solution" is now only for creating a
+                  // brand-new Solution catalog entry, not for confirming
+                  // an existing selection.
+                  const value = e.target.value;
+                  setSolutionSelectValue(value);
+                  const option = solutionOptionsState.find((o) => o.value === value);
+                  if (option) addSolution(option);
+                }}
                 className="w-full rounded-md border border-border bg-bg px-2 py-2 text-sm font-normal normal-case tracking-normal text-text disabled:opacity-60"
               >
                 <option value="">Select a Solution…</option>
@@ -1733,19 +1741,11 @@ export function WorkorderLifecycle({
               <button
                 type="button"
                 className="btn-outline shrink-0"
-                disabled={!editable}
+                disabled={!editable || !addSolutionAction}
                 onClick={() => {
-                  // With something picked, just add it as a line. With
-                  // nothing to pick (or the catalog is empty), the same
-                  // button opens the quick-add modal instead of sitting
-                  // there disabled with no way forward.
-                  if (solutionSelectValue) {
-                    addSelectedSolution();
-                  } else if (addSolutionAction) {
-                    setNewSolutionTitle("");
-                    setAddSolutionError(null);
-                    setAddSolutionOpen(true);
-                  }
+                  setNewSolutionTitle("");
+                  setAddSolutionError(null);
+                  setAddSolutionOpen(true);
                 }}
               >
                 + Add Solution
