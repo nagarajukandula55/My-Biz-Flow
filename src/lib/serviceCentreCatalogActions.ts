@@ -127,3 +127,22 @@ export async function createServiceCentreBomMaterialInlineAction(
   revalidatePath(`/partner/${partnerId}/inventory/bom`);
   return { id: String(record.id), label: String(record["description"] ?? record.id) };
 }
+
+/**
+ * Staff Names is Pro+ (service-centre.staff-names.create in DEFAULT_PAGE_TIERS)
+ * — this inline variant lets the Close Workorder / handover name pickers add
+ * a new roster entry without leaving the workorder, same reasoning as the
+ * Brand/Model inline actions above.
+ */
+export async function createServiceCentreStaffNameInlineAction(
+  partnerId: string,
+  values: Record<string, unknown>
+): Promise<InlineCreateResult> {
+  await assertPageTierAccess(partnerId, "service-centre.staff-names.create");
+  const record = await createBusinessRecord(partnerId, "service-centre-staff-names", {
+    status: "Active",
+    ...values,
+  });
+  revalidatePath(`/partner/${partnerId}/service-centre/staff-names`);
+  return { id: String(record.id), label: String(record["name"] ?? record.id) };
+}

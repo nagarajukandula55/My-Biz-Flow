@@ -111,6 +111,7 @@ function StaffNameField({
   placeholder,
   className,
   disabled,
+  onAddNew,
 }: {
   label: string;
   required?: boolean;
@@ -124,11 +125,26 @@ function StaffNameField({
   placeholder?: string;
   className?: string;
   disabled?: boolean;
+  /** Opens the "+ Add Staff Name" modal — omitted entirely on a partner below Pro (see addStaffNameAction). */
+  onAddNew?: () => void;
 }) {
   const showSelect = options.length > 0 && !freeText;
   return (
     <label className={`text-xs font-semibold uppercase tracking-wide text-text-muted ${className ?? ""}`}>
-      {label} {required && <span className="text-danger">*</span>}
+      <span className="flex items-center justify-between gap-2">
+        <span>
+          {label} {required && <span className="text-danger">*</span>}
+        </span>
+        {onAddNew && (
+          <button
+            type="button"
+            onClick={onAddNew}
+            className="font-semibold normal-case tracking-normal text-teal hover:underline"
+          >
+            + Add new
+          </button>
+        )}
+      </span>
       {showSelect ? (
         <select
           required={required}
@@ -229,6 +245,7 @@ export function WorkorderLifecycle({
   addModelAction,
   addBomMaterialAction,
   addSolutionAction,
+  addStaffNameAction,
 }: {
   partnerId: string;
   workorderId: string;
@@ -344,6 +361,8 @@ export function WorkorderLifecycle({
   addBomMaterialAction?: (values: Record<string, unknown>) => Promise<{ error?: string; id?: string; label?: string }>;
   /** Bound server action for quick-adding a new Solution to this partner's catalog directly from the "no Solutions yet" empty state — Solutions has no tier gate, so this is always provided (unlike addBrandAction/addModelAction/addBomMaterialAction). */
   addSolutionAction?: (values: Record<string, unknown>) => Promise<{ error?: string; id?: string; label?: string }>;
+  /** Bound, tier-checked (service-centre.staff-names.create, Pro+) server action for quick-adding a new roster entry right from the Engineer/Collected By dropdowns — omitted entirely on a partner below Pro, same as addBrandAction/addModelAction. */
+  addStaffNameAction?: (values: Record<string, unknown>) => Promise<{ error?: string; id?: string; label?: string }>;
 }) {
   const [stage, setStage] = useState<WorkorderStage>(initialStage);
   const [partLines, setPartLines] = useState<PartLine[]>(initialPartLines);
@@ -355,6 +374,15 @@ export function WorkorderLifecycle({
   // immediately selectable in the SAME picker session without a refetch.
   const [brandOptionsState, setBrandOptionsState] = useState(brandOptions);
   const [modelOptionsState, setModelOptionsState] = useState(modelOptions);
+  // Same pattern for the Staff Names roster — the "+ Add Staff Name"
+  // quick-add modal below appends here the moment it succeeds, so the new
+  // name is immediately selectable in the Engineer/Collected By dropdowns.
+  const [staffNameOptionsState, setStaffNameOptionsState] = useState(staffNameOptions);
+  const [addStaffNameOpen, setAddStaffNameOpen] = useState(false);
+  const [addStaffNameTarget, setAddStaffNameTarget] = useState<"engineer" | "collectedBy" | null>(null);
+  const [newStaffNameDraft, setNewStaffNameDraft] = useState("");
+  const [addStaffNameError, setAddStaffNameError] = useState<string | null>(null);
+  const [addStaffNamePending, setAddStaffNamePending] = useState(false);
   // Same pattern for BOM materials — the "+ Add New Part to BOM" quick-add
   // modal below appends here the moment it succeeds, so the new material's
   // "No materials found" warning banner clears immediately without a refetch.
@@ -798,6 +826,31 @@ export function WorkorderLifecycle({
     setAddModelOpen(true);
   }
 
+  function openAddStaffName(target: "engineer" | "collectedBy") {
+    setAddStaffNameTarget(target);
+    setNewStaffNameDraft("");
+    setAddStaffNameError(null);
+    setAddStaffNameOpen(true);
+  }
+
+  async function submitAddStaffName() {
+    const name = newStaffNameDraft.trim();
+    if (!name || !addStaffNameAction) return;
+    setAddStaffNamePending(true);
+    setAddStaffNameError(null);
+    const result = await addStaffNameAction({ name });
+    setAddStaffNamePending(false);
+    if (result?.error) {
+      setAddStaffNameError(result.error);
+      return;
+    }
+    const addedName = result?.label ?? name;
+    setStaffNameOptionsState((prev) => (prev.includes(addedName) ? prev : [...prev, addedName].sort()));
+    if (addStaffNameTarget === "engineer") setEngineer(addedName);
+    else if (addStaffNameTarget === "collectedBy") setCollectedBy(addedName);
+    setAddStaffNameOpen(false);
+  }
+
   async function submitAddCatalog() {
     const name = newCatalogName.trim();
     if (!name) return;
@@ -1072,14 +1125,11 @@ export function WorkorderLifecycle({
   }
 
   /**
-   * Both names are mandatory at close, mirroring the reference app's close
-   * route (its `engineerName` body field and `paymentCollectedByName`).
-   * Handing a repaired unit back with no record of who repaired it and no
-   * record of who released it is exactly the gap these two fields exist to
-   * shut, so the button is disabled until both are filled and the action is
-   * guarded again here rather than trusting the disabled state.
+   * Engineer is already mandatory earlier, at Mark Completed (advanceStage's
+   * own gate) — Close Workorder only re-requires Collected By, the name of
+   * whoever actually released the unit / took the payment at handover.
    */
-  const handoverNamesMissing = !engineer.trim() || !collectedBy.trim();
+  const handoverNamesMissing = !collectedBy.trim();
 
   /**
    * Close + invoice, atomically, as one confirm action — the invoice used
@@ -1096,7 +1146,7 @@ export function WorkorderLifecycle({
    */
   function confirmClose() {
     if (handoverNamesMissing) {
-      setActionError("Engineer / Serviced By and Collected By are both required before a workorder can be closed.");
+      setActionError("Collected By is required before a workorder can be closed.");
       return;
     }
     const collected = !underWarranty;
@@ -1872,11 +1922,12 @@ export function WorkorderLifecycle({
             value={engineer}
             onChange={setEngineer}
             onCommit={persistEngineerName}
-            options={staffNameOptions}
+            options={staffNameOptionsState}
             freeText={engineerFreeText}
             setFreeText={setEngineerFreeText}
             placeholder="Who repaired this device"
             disabled={!editable}
+            onAddNew={addStaffNameAction ? () => openAddStaffName("engineer") : undefined}
           />
         </div>
       </div>
@@ -2293,8 +2344,8 @@ export function WorkorderLifecycle({
         }
       >
         <p className="text-sm text-text-muted">
-          All serialized parts are accounted for. Record who did the work and who handed the unit over, then close
-          this workorder. Both names are required.
+          All serialized parts are accounted for. Confirm who did the work, then record who handed the unit over
+          and how payment was taken before closing this workorder.
           {!underWarranty && (
             <>
               {" "}Chargeable lines total <span className="font-semibold text-text">₹{estimateTotal}</span> before
@@ -2306,25 +2357,28 @@ export function WorkorderLifecycle({
             keep one (Pro+) — a Starter partner (empty roster) gets a plain
             required text box instead, via StaffNameField. */}
         <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {/* Engineer is already mandatory earlier, at Mark Completed — shown
+              here for a final check/correction only, not re-required. */}
           <StaffNameField
             label="Engineer / Serviced By"
-            required
             value={engineer}
             onChange={setEngineer}
-            options={staffNameOptions}
+            options={staffNameOptionsState}
             freeText={engineerFreeText}
             setFreeText={setEngineerFreeText}
             placeholder="Who actually repaired this"
+            onAddNew={addStaffNameAction ? () => openAddStaffName("engineer") : undefined}
           />
           <StaffNameField
             label="Collected By"
             required
             value={collectedBy}
             onChange={setCollectedBy}
-            options={staffNameOptions}
+            options={staffNameOptionsState}
             freeText={collectedByFreeText}
             setFreeText={setCollectedByFreeText}
             placeholder="Who handed it over / collected payment"
+            onAddNew={addStaffNameAction ? () => openAddStaffName("collectedBy") : undefined}
           />
           {/* Payment, captured in this same close step now instead of a
               later separate "Create Invoice" modal — the invoice is
@@ -2351,11 +2405,42 @@ export function WorkorderLifecycle({
             </label>
           )}
         </div>
-        {staffNameOptions.length === 0 && (
+        {staffNameOptionsState.length === 0 && (
           <p className="mt-2 text-xs text-text-muted">
             Type each name in full. Keeping a reusable Staff Names list (so these become pickable) is a Pro feature.
           </p>
         )}
+      </Modal>
+      {/* "+ Add Staff Name" quick-add — Pro+ only (addStaffNameAction is
+          omitted entirely below Pro), mirrors the Add Brand/Model modal
+          pattern above but with just the one required field. */}
+      <Modal open={addStaffNameOpen} onClose={() => setAddStaffNameOpen(false)} title="Add Staff Name" size="sm">
+        <div className="space-y-3">
+          <label className="text-xs font-medium text-text-muted">
+            Name
+            <input
+              autoFocus
+              value={newStaffNameDraft}
+              onChange={(e) => setNewStaffNameDraft(e.target.value)}
+              className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text outline-none focus:border-accent"
+              placeholder="e.g. Suresh M."
+            />
+          </label>
+          {addStaffNameError && <p className="text-sm text-danger">{addStaffNameError}</p>}
+          <div className="flex justify-end gap-2">
+            <button type="button" className="btn-outline" onClick={() => setAddStaffNameOpen(false)}>
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="btn-accent"
+              disabled={!newStaffNameDraft.trim() || addStaffNamePending}
+              onClick={submitAddStaffName}
+            >
+              {addStaffNamePending ? "Saving…" : "Save"}
+            </button>
+          </div>
+        </div>
       </Modal>
       {/* Cancellation — same Modal + confirm pattern as Mark Part Pending /
           Close Workorder above, with a mandatory reason. */}

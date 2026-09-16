@@ -19,6 +19,7 @@ import {
   createServiceCentreModelInlineAction,
   createServiceCentreBomMaterialInlineAction,
   createServiceCentreSolutionInlineAction,
+  createServiceCentreStaffNameInlineAction,
 } from "@/lib/serviceCentreCatalogActions";
 
 registerPage({
@@ -93,10 +94,11 @@ export default async function ServiceCentreDetailPage({
   // BOM materials are Pro+ gated exactly the same way — the "+ Add New
   // Part to BOM" quick-add modal must not even render for a Starter
   // partner, matching the standalone /inventory/bom/new page's own gate.
-  const [brandsTier, modelsTier, bomTier] = await Promise.all([
+  const [brandsTier, modelsTier, bomTier, staffNamesTier] = await Promise.all([
     getPageTierAccess(params.partnerId, "service-centre.brands.create"),
     getPageTierAccess(params.partnerId, "service-centre.models.create"),
     getPageTierAccess(params.partnerId, "inventory.bom.create"),
+    getPageTierAccess(params.partnerId, "service-centre.staff-names.create"),
   ]);
 
   return (
@@ -154,6 +156,9 @@ export default async function ServiceCentreDetailPage({
           addModelAction={modelsTier.allowed ? createServiceCentreModelInlineAction.bind(null, params.partnerId) : undefined}
           addBomMaterialAction={bomTier.allowed ? createServiceCentreBomMaterialInlineAction.bind(null, params.partnerId) : undefined}
           addSolutionAction={createServiceCentreSolutionInlineAction.bind(null, params.partnerId)}
+          addStaffNameAction={
+            staffNamesTier.allowed ? createServiceCentreStaffNameInlineAction.bind(null, params.partnerId) : undefined
+          }
         />
 
         {/* Everything below is secondary detail, not a second page header —
