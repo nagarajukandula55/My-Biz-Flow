@@ -243,10 +243,6 @@ export async function BillingInvoiceDocument({
             <div className="mt-6 flex items-start justify-between gap-6">
               <div className="rounded-md bg-bg-sunken px-4 py-3">
                 <div className="flex items-center gap-2">
-                  {logoDataUrl && (
-                    // eslint-disable-next-line @next/next/no-img-element -- a data: URL, not a file next/image can optimise.
-                    <img src={logoDataUrl} alt={`${partnerName} logo`} className="h-6 max-w-[6rem] rounded bg-white object-contain p-0.5" />
-                  )}
                   <div className="font-display text-base font-bold text-text">{partnerName}</div>
                 </div>
                 {partnerAddress && <div className="mt-1 whitespace-pre-line text-xs text-text-muted">{partnerAddress}</div>}

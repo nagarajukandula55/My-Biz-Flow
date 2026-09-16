@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { getDocumentTemplate } from "@/lib/designer/documentTemplates";
 import { getPartner, resolveDocumentTerms } from "@/lib/partnerData";
 import { getBusinessRecord, getBusinessRecordSequenceIndexFiltered } from "@/lib/businessRecords";
+import { formatDate } from "@/lib/format";
 import { ServiceCentreInvoiceDocument } from "./ServiceCentreInvoiceDocument";
 
 registerPage({
@@ -59,7 +60,12 @@ export default async function ServiceCentreInvoicePage({
       partnerState={partner?.state ?? ""}
       partnerPincode={partner?.pincode ?? ""}
       invoiceNumber={invoiceNumber}
-      invoiceDate={String(record["receivedDate"] ?? new Date().toISOString())}
+      // Invoice date = handover date (when the customer actually received
+      // the device/invoice), not receivedDate (intake) — same fix as
+      // createInvoiceFromWorkorderAction in actions.ts, but this document
+      // is a separate live-rendered print view, not read from the
+      // persisted Billing record, so it needed its own fix.
+      invoiceDate={formatDate(String(record["handedOverAt"] ?? record["receivedDate"] ?? new Date().toISOString()))}
       workorderNumber={String(record["id"] ?? "")}
       status={String(record["status"] ?? "")}
       // Only what was actually collected at handover — an uncollected job

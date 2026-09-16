@@ -109,6 +109,20 @@ function assertLegalStageTransition(
         "This workorder has no parts or service lines — add at least one before marking the repair completed."
       );
     }
+
+    // A repair can't be marked completed without a diagnosed fault
+    // solution — the engineer must select one (WorkorderLifecycle.tsx's
+    // "Solution" dropdown, which writes into a service line's
+    // solutionId/solutionLabel via addSolution()) before closing out the
+    // repair, same as the reference app's Solution requirement.
+    const hasSolution = serviceLines.some(
+      (line) => !!(line as { solutionId?: string }).solutionId
+    );
+    if (!hasSolution) {
+      throw new Error(
+        "Select a Solution before marking the repair completed — the fault diagnosis/solution is required."
+      );
+    }
   }
 
   if (nextStage === "Closed") {
@@ -260,7 +274,14 @@ export async function createInvoiceFromWorkorderAction(
     : 0;
   const amountPaid = underWarranty ? totalAmount : collectedAmount;
   const amountDue = totalAmount - amountPaid;
-  const issueDate = new Date().toISOString().slice(0, 10);
+  // Invoice date = handover date, not invoice-record-creation time — the
+  // customer receives/pays at handover (confirmClose stamps handedOverAt
+  // just before this runs), while this action can itself run slightly
+  // later (or via Retry Invoice Creation, much later) than the actual
+  // handover moment.
+  const issueDate = (
+    (record["handedOverAt"] as string | undefined) ?? new Date().toISOString()
+  ).slice(0, 10);
 
   const invoice = await createBusinessRecord(partnerId, "billing", {
     customer: record["customer"] ?? "",

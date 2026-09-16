@@ -200,13 +200,7 @@ export function ServiceCentreInvoiceDocument({
 
       <div className="ric-header">
         <div className="ric-companyCard">
-          <div className="ric-companyName">
-            {logoDataUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={logoDataUrl} alt="" style={{ height: 24, marginRight: 8, verticalAlign: "middle", objectFit: "contain" }} />
-            )}
-            {safe(partnerName)}
-          </div>
+          <div className="ric-companyName">{safe(partnerName)}</div>
           <div>{safe(companyAddress)}</div>
           {partnerGstin && <div>GSTIN: {partnerGstin}</div>}
           {partnerPhone && <div>Phone: {partnerPhone}</div>}

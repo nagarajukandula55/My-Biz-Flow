@@ -106,10 +106,6 @@ export async function ServiceCentreJobCardDocument({
           </div>
 
           <div className="mb-6 flex items-start gap-3">
-            {logoUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={logoUrl} alt="" className="h-14 max-w-[160px] object-contain" />
-            )}
             <div>
               <p className="mb-1 text-[10px] uppercase tracking-wide text-gray-400">SC Details</p>
               <p className="font-semibold">{companyName}</p>

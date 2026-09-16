@@ -13,6 +13,11 @@ export function formatDate(value: string): string {
     day: "2-digit",
     month: "short",
     year: "numeric",
+    // Without an explicit timeZone, Intl.DateTimeFormat renders in the
+    // server's local zone (UTC in production), not IST — dates near
+    // midnight IST could shift by a day. All timestamps in this app are
+    // for an India-based business, so pin this explicitly.
+    timeZone: "Asia/Kolkata",
   }).format(d);
 }
 
@@ -33,5 +38,9 @@ export function formatDateTime(value: string): string {
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+    // See formatDate() above — without this, times render in the
+    // server's local zone (UTC in production) instead of IST, off by
+    // 5:30 hours from what actually happened.
+    timeZone: "Asia/Kolkata",
   }).format(d);
 }

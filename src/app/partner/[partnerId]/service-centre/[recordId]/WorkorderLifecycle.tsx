@@ -929,6 +929,15 @@ export function WorkorderLifecycle({
       );
       return;
     }
+    // Mirrors assertLegalStageTransition's server-side Solution check
+    // (actions.ts) — the engineer must select a Solution before the repair
+    // can be marked completed.
+    if (next === "Completed" && !serviceLines.some((line) => !!line.solutionId)) {
+      setCloseBlockedMessage(
+        "Select a Solution before marking the repair completed — the fault diagnosis/solution is required."
+      );
+      return;
+    }
     if (next === "Closed") {
       if (unresolvedSerials.length > 0) {
         setCloseBlockedMessage(
@@ -1172,6 +1181,32 @@ export function WorkorderLifecycle({
           <PrintPopupLink href={`/partner/${partnerId}/service-centre/${workorderId}/service-record`} className="btn-outline">
             Service record
           </PrintPopupLink>
+          {/* Retry Invoice Creation / Sales Invoice — moved up from a
+              "Stage actions" row that used to sit near the bottom of the
+              page, below Handover & Close and above Activity. All
+              workorder actions belong together at the top right, not
+              scattered further down the page. */}
+          {stage === "Closed" && !cancelled && !invoice && (
+            <button
+              type="button"
+              className="btn-outline"
+              onClick={() => {
+                setActionError(null);
+                createInvoice();
+              }}
+            >
+              Retry Invoice Creation
+            </button>
+          )}
+          {stage === "Closed" && invoice && (
+            <button
+              type="button"
+              className="btn-outline"
+              onClick={() => openPrintPopup(`/partner/${partnerId}/service-centre/${workorderId}/invoice`)}
+            >
+              Sales Invoice
+            </button>
+          )}
           {/* No generic "Edit" action on this page, deliberately — once a
               workorder is created it is never edited wholesale. Every field
               that can legitimately change afterwards (brand/model, parts &
@@ -1768,55 +1803,6 @@ export function WorkorderLifecycle({
           />
         </div>
       )}
-
-      {/* Stage actions — the primary stage-advance button ("Start
-          Progress"/"Mark Completed"/"Handover & Close"), "Print Job Card",
-          and "Cancel Workorder" that used to sit here were exact duplicates
-          of the header's primary stage-action button, "Print Workorder",
-          and "Cancel Job Sheet" respectively (same handlers: advanceStage,
-          the same /document print route, and the same cancel modal) — a
-          leftover bottom action row from before the header was unified.
-          Removed; only the actions with no header equivalent remain. */}
-      <div className="mt-6 flex flex-wrap items-center gap-3">
-        {/* The priced quote the customer approves. Only offered once there's
-            something to price, and never for a warranty job — a
-            non-chargeable repair has no estimate to approve. */}
-        {!underWarranty && !cancelled && (serviceLines.length > 0 || partLines.length > 0) && (
-          <button
-            type="button"
-            className="btn-outline"
-            onClick={() => openPrintPopup(`/partner/${partnerId}/service-centre/${workorderId}/estimate`)}
-          >
-            Print Estimate
-          </button>
-        )}
-        {/* Failure-recovery only: the invoice is created atomically with
-            Close (see confirmClose). This only appears for a workorder
-            that is already Closed but has no invoice yet — i.e. the
-            create-invoice call inside confirmClose errored — so it can't
-            be used as a general "create invoice whenever" button. */}
-        {stage === "Closed" && !cancelled && !invoice && (
-          <button
-            type="button"
-            className="btn-outline"
-            onClick={() => {
-              setActionError(null);
-              createInvoice();
-            }}
-          >
-            Retry Invoice Creation
-          </button>
-        )}
-        {stage === "Closed" && invoice && (
-          <button
-            type="button"
-            className="btn-outline"
-            onClick={() => openPrintPopup(`/partner/${partnerId}/service-centre/${workorderId}/invoice`)}
-          >
-            Sales Invoice
-          </button>
-        )}
-      </div>
 
       <SearchSelectModal
         open={brandPickerOpen}

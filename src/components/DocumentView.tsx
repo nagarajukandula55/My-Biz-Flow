@@ -150,10 +150,6 @@ export async function DocumentView({
         <div className="rounded-lg border border-border bg-bg-raised p-10 shadow-sm print:rounded-none print:border-0 print:shadow-none">
           <div className="flex items-center justify-between border-b border-border pb-6">
             <div className="flex items-center gap-2.5">
-              {logoDataUrl && (
-                // eslint-disable-next-line @next/next/no-img-element -- a data: URL, not a file next/image can optimise.
-                <img src={logoDataUrl} alt={`${partnerName} logo`} className="h-7 max-w-[7rem] rounded bg-white object-contain p-0.5" />
-              )}
               <span className="font-display text-lg font-extrabold text-text">{partnerName}</span>
             </div>
             <div className="text-right">
