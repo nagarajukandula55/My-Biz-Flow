@@ -435,9 +435,7 @@ export function WorkorderLifecycle({
   const [cancelled, setCancelled] = useState(Boolean(cancelledAt));
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [cancelReasonDraft, setCancelReasonDraft] = useState("");
-  const [paymentCollected, setPaymentCollected] = useState(false);
   const [paymentMode, setPaymentMode] = useState<string>(initialPaymentMode ?? PAYMENT_MODES[0]);
-  const [paymentAmount, setPaymentAmount] = useState<string>("");
   const [actionError, setActionError] = useState<string | null>(null);
   // Every stage transition here is a client-side startTransition + patch —
   // there's no redirect to land a ?created=1-style banner on, so a real
@@ -982,13 +980,13 @@ export function WorkorderLifecycle({
    * this is safe even if it somehow fires twice.
    */
   function createInvoice() {
-    const amount = paymentAmount.trim() === "" ? undefined : Math.max(0, Number(paymentAmount) || 0);
+    const collected = !underWarranty;
     run(
       () =>
         createInvoiceFromWorkorderAction(partnerId, workorderId, {
-          collected: paymentCollected,
-          mode: paymentCollected ? paymentMode : undefined,
-          amount: paymentCollected ? amount : undefined,
+          collected,
+          mode: collected ? paymentMode : undefined,
+          amount: undefined,
         }),
       () => {
         setInvoice("pending"); // optimistic; page revalidation fills in the real id on next load
@@ -1058,11 +1056,8 @@ export function WorkorderLifecycle({
       // Payment is now captured in the same modal as the close confirmation
       // (invoice creation happens atomically with handover — see
       // confirmClose) rather than as a later, separate "Create Invoice"
-      // step. Seed the same defaults the old standalone button used:
-      // payment assumed collected for a chargeable job, skipped entirely
-      // for a warranty job.
-      setPaymentCollected(!underWarranty);
-      setPaymentAmount("");
+      // step. A chargeable job is always treated as paid in full at
+      // handover; a warranty job has nothing to collect.
       setConfirmCloseOpen(true);
       return;
     }
@@ -1104,8 +1099,7 @@ export function WorkorderLifecycle({
       setActionError("Engineer / Serviced By and Collected By are both required before a workorder can be closed.");
       return;
     }
-    const collected = underWarranty ? false : paymentCollected;
-    const amount = paymentAmount.trim() === "" ? undefined : Math.max(0, Number(paymentAmount) || 0);
+    const collected = !underWarranty;
     setConfirmCloseOpen(false);
     run(
       async () => {
@@ -1122,7 +1116,7 @@ export function WorkorderLifecycle({
           await createInvoiceFromWorkorderAction(partnerId, workorderId, {
             collected,
             mode: collected ? paymentMode : undefined,
-            amount: collected ? amount : undefined,
+            amount: undefined,
           });
           setInvoice("pending"); // optimistic; page revalidation fills in the real id on next load
         } catch {
@@ -2304,8 +2298,7 @@ export function WorkorderLifecycle({
           {!underWarranty && (
             <>
               {" "}Chargeable lines total <span className="font-semibold text-text">₹{estimateTotal}</span> before
-              GST — the invoice is generated the moment this workorder closes, so record the payment now if the
-              customer settled at handover.
+              GST — the invoice is generated the moment this workorder closes, treated as paid in full at handover.
             </>
           )}
         </p>
@@ -2335,50 +2328,27 @@ export function WorkorderLifecycle({
           />
           {/* Payment, captured in this same close step now instead of a
               later separate "Create Invoice" modal — the invoice is
-              generated atomically with the close (see confirmClose), using
-              these same paymentCollected/paymentMode/paymentAmount values.
-              Nothing to collect on a warranty job, so the whole payment
-              section is skipped for one, same as createInvoice's rule. */}
+              generated atomically with the close (see confirmClose). A
+              chargeable job is always treated as paid in full at handover
+              (amount comes from the invoice total itself, not a typed
+              figure) — Mode of Payment is the only thing to record. Nothing
+              to collect on a warranty job, so the whole section is skipped
+              for one, same as createInvoice's rule. */}
           {!underWarranty && (
-            <>
-              <label className="text-xs font-semibold uppercase tracking-wide text-text-muted">
-                Mode of Payment
-                <select
-                  value={paymentMode}
-                  onChange={(e) => setPaymentMode(e.target.value)}
-                  className="mt-1 w-full rounded-md border border-border bg-bg px-2 py-1.5 text-sm font-normal normal-case tracking-normal text-text"
-                >
-                  {PAYMENT_MODES.map((mode) => (
-                    <option key={mode} value={mode}>
-                      {mode}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-text-muted">
-                <input
-                  type="checkbox"
-                  checked={paymentCollected}
-                  onChange={(e) => setPaymentCollected(e.target.checked)}
-                  className="h-4 w-4 rounded border-border"
-                />
-                Payment collected at handover
-              </label>
-              {paymentCollected && (
-                <label className="text-xs font-semibold uppercase tracking-wide text-text-muted sm:col-span-2">
-                  Amount Collected (₹)
-                  <input
-                    type="number"
-                    min={0}
-                    step={1}
-                    value={paymentAmount}
-                    onChange={(e) => setPaymentAmount(e.target.value)}
-                    placeholder="Full invoice total"
-                    className="mt-1 w-full rounded-md border border-border bg-bg px-2 py-1.5 text-sm font-normal normal-case tracking-normal tabular-nums text-text"
-                  />
-                </label>
-              )}
-            </>
+            <label className="text-xs font-semibold uppercase tracking-wide text-text-muted sm:col-span-2">
+              Mode of Payment
+              <select
+                value={paymentMode}
+                onChange={(e) => setPaymentMode(e.target.value)}
+                className="mt-1 w-full rounded-md border border-border bg-bg px-2 py-1.5 text-sm font-normal normal-case tracking-normal text-text"
+              >
+                {PAYMENT_MODES.map((mode) => (
+                  <option key={mode} value={mode}>
+                    {mode}
+                  </option>
+                ))}
+              </select>
+            </label>
           )}
         </div>
         {staffNameOptions.length === 0 && (
