@@ -65,6 +65,8 @@ export const MODULES: ModuleDefinition[] = [
   { slug: "marketplace", label: "Marketplace / Partner Aggregator", description: "Multiple partners under one umbrella — coordinates with central-api's own vendor concept, does not duplicate it.", taxonomy: "cross-cutting" },
 
   { slug: "field-force", label: "Field Force", description: "A full home-services booking system: priced service catalog, customer bookings, dispatch of skilled/unskilled engineers by service and pincode, payment collection, and ratings.", taxonomy: "cross-cutting" },
+
+  { slug: "telecalling", label: "Telecalling / Tele-marketing", description: "Bulk-upload a contact list, assign it to telecaller agents, click-to-call from the app to the phone's dialer, and trigger SMS/WhatsApp template messages (welcome, product links) per contact.", taxonomy: "cross-cutting" },
 ];
 
 /**
@@ -205,6 +207,11 @@ export const MODULE_SUB_NAV: Record<string, PartnerNavSubItem[]> = {
     { key: "field-force.onboard", label: "Onboard Engineer", href: "field-force/onboard" },
     { key: "field-force.allocations", label: "Job Allocation", href: "field-force/allocations" },
     { key: "field-force.admin", label: "Admin", href: "field-force/admin" },
+  ],
+  telecalling: [
+    { key: "telecalling.leads", label: "Leads", href: "telecalling" },
+    { key: "telecalling.agents", label: "Agents", href: "telecalling/agents" },
+    { key: "telecalling.templates", label: "Message Templates", href: "telecalling/templates" },
   ],
   billing: [
     { key: "billing.list", label: "Invoices", href: "billing" },

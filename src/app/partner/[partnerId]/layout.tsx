@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { Sidebar } from "@/components/Sidebar";
 import { SupportWidget } from "@/components/SupportWidget";
 import { buildPartnerAdminNavGroups } from "@/lib/designer/partnerAdminNav";
@@ -7,6 +8,23 @@ import { requirePartnerSessionForPage } from "@/lib/requirePartnerSession";
 import { computeAlerts } from "@/lib/alerts";
 import { getPartner } from "@/lib/partnerData";
 import { env } from "@/lib/env";
+
+/**
+ * Routes reachable with NO session at all — the Telecalling staff login and
+ * its forced first-login password-change page. These can't go through
+ * requirePartnerSessionForPage (that's exactly what they exist to satisfy),
+ * so PartnerLayout skips the gate entirely for them, before it ever runs.
+ */
+const STAFF_AUTH_ROUTE_SUFFIXES = ["/telecalling/login", "/telecalling/change-password"];
+
+/**
+ * Per-role home path a staff session lands on when it tries to reach a page
+ * outside the module its role belongs to (see PageSession's "staff" doc
+ * comment in requirePartnerSession.ts). Only Telecaller is wired up today.
+ */
+const STAFF_ROLE_ALLOWED_PREFIX: Record<string, string> = {
+  Telecaller: "/telecalling",
+};
 
 /**
  * Print-style document routes — the printable Job Card/Estimate/Service
@@ -51,12 +69,36 @@ export default async function PartnerLayout({
   children: ReactNode;
   params: { partnerId: string };
 }) {
-  await requirePartnerSessionForPage(params.partnerId);
+  const pathname = headers().get("x-pathname");
+
+  if (STAFF_AUTH_ROUTE_SUFFIXES.some((suffix) => pathname?.endsWith(suffix))) {
+    return <>{children}</>;
+  }
+
+  const session = await requirePartnerSessionForPage(params.partnerId);
 
   // Print-style document pages render on their own, chrome-free — see
   // PRINT_ROUTE_SUFFIXES above. Skip the nav-building/alerts work too,
   // since none of it is used when the Sidebar itself isn't rendered.
-  if (isPrintRoute(headers().get("x-pathname"))) {
+  if (isPrintRoute(pathname)) {
+    return <>{children}</>;
+  }
+
+  if (session.kind === "staff") {
+    const allowedPrefix = STAFF_ROLE_ALLOWED_PREFIX[session.role];
+    const modulePath = `/partner/${params.partnerId}${allowedPrefix ?? ""}`;
+    if (!allowedPrefix || !pathname?.startsWith(modulePath)) {
+      // Unknown/unwired role, or trying to reach a page outside their own
+      // module — a staff session grants no access anywhere else (see
+      // PageSession's doc comment), so send them back to the one place
+      // they're allowed rather than rendering a 500 from some other
+      // module's data layer.
+      redirect(allowedPrefix ? `${modulePath}/queue` : "/login");
+    }
+    // No owner Sidebar for a staff session — every other module's pages
+    // are unreachable to them anyway (see above), so the full business nav
+    // would just be a list of dead links plus a data-shape leak (module
+    // names/labels) to someone who is not the business owner.
     return <>{children}</>;
   }
 

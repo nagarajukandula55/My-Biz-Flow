@@ -461,6 +461,9 @@ model PartnerStaff {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
+  assignedLeads Lead[]
+  calls         Call[]
+
   @@unique([partnerId, email])
   @@index([partnerId])
   @@map("partner_staff")
@@ -862,4 +865,100 @@ model BookingPayment {
 
   @@index([bookingId])
   @@map("booking_payments")
+}
+
+// --- Telecalling module: bulk-uploaded contact lists worked by ---
+// --- PartnerStaff agents (role "Telecaller") who place calls via the  ---
+// --- device dialer (tel: link, no telephony vendor) and trigger      ---
+// --- SMS/WhatsApp template messages — see src/lib/telecalling/.      ---
+
+/// One uploaded/entered contact to be called. importBatch groups rows from
+/// the same CSV upload (or "Manual" for one-off adds) for filtering/reporting.
+model Lead {
+  id           String    @id @default(cuid())
+  partnerId    String
+  name         String
+  phone        String
+  email        String?
+  source       String?
+  state        String?
+  city         String?
+  importBatch  String    @default("Manual")
+  /// New | Contacted | Interested | Converted | Lost | DoNotCall
+  status       String    @default("New")
+  assignedToId String?
+  assignedTo   PartnerStaff? @relation(fields: [assignedToId], references: [id])
+  notes        String?   @db.Text
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  calls    Call[]
+  messages MessageLog[]
+
+  @@index([partnerId])
+  @@index([assignedToId])
+  @@index([partnerId, status])
+  @@map("leads")
+}
+
+/// One logged call attempt against a Lead. The call itself happens on the
+/// agent's own phone (tel: click-to-call, no CDR/recording available) — this
+/// row is the agent's own disposition record of what happened.
+model Call {
+  id         String    @id @default(cuid())
+  leadId     String
+  lead       Lead      @relation(fields: [leadId], references: [id])
+  partnerId  String
+  agentId    String
+  agent      PartnerStaff @relation(fields: [agentId], references: [id])
+  /// Interested | NotReachable | Callback | Converted | DoNotCall | WrongNumber
+  outcome    String
+  notes      String?   @db.Text
+  callbackAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([leadId])
+  @@index([partnerId])
+  @@map("calls")
+}
+
+/// A reusable SMS/WhatsApp message body an agent can trigger for a Lead —
+/// {{name}}/{{link}} placeholders filled in at send time (src/lib/telecalling/messaging.ts).
+model MessageTemplate {
+  id        String   @id @default(cuid())
+  partnerId String
+  name      String
+  /// "sms" | "whatsapp"
+  channel   String
+  /// Welcome | ProductInfo | FollowUp | General
+  category  String   @default("General")
+  body      String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  logs MessageLog[]
+
+  @@unique([partnerId, name])
+  @@index([partnerId])
+  @@map("message_templates")
+}
+
+/// Audit trail of every triggered message — one row per send attempt.
+model MessageLog {
+  id         String   @id @default(cuid())
+  leadId     String
+  lead       Lead     @relation(fields: [leadId], references: [id])
+  templateId String?
+  template   MessageTemplate? @relation(fields: [templateId], references: [id])
+  partnerId  String
+  channel    String
+  body       String   @db.Text
+  /// sent | failed | not-configured
+  status     String   @default("sent")
+  sentById   String?
+  createdAt  DateTime @default(now())
+
+  @@index([leadId])
+  @@index([partnerId])
+  @@map("message_logs")
 }

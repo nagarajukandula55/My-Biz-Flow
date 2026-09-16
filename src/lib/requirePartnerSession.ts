@@ -22,7 +22,7 @@
  */
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { PARTNER_SESSION_COOKIE, verifyPartnerSessionToken } from "@/lib/partnerSession";
+import { PARTNER_SESSION_COOKIE, verifyPartnerSessionToken, STAFF_SESSION_COOKIE, verifyStaffSessionToken, type StaffSessionClaims } from "@/lib/partnerSession";
 import { ADMIN_COOKIE_NAME, isValidAdminCookie } from "@/lib/adminAuth";
 
 export class PartnerAuthorizationError extends Error {
@@ -35,6 +35,12 @@ export class PartnerAuthorizationError extends Error {
 /** Reads the signed-in partner id from the session cookie, or undefined if not signed in. */
 export async function getSessionPartnerId(): Promise<string | undefined> {
   return verifyPartnerSessionToken(cookies().get(PARTNER_SESSION_COOKIE)?.value);
+}
+
+/** Reads the signed-in PartnerStaff session (see src/lib/telecalling/agentAuth.ts, the first
+ * feature to actually issue this cookie), or undefined if not signed in as staff. */
+export async function getStaffSession(): Promise<StaffSessionClaims | undefined> {
+  return verifyStaffSessionToken(cookies().get(STAFF_SESSION_COOKIE)?.value);
 }
 
 /**
@@ -73,12 +79,33 @@ export async function requireSessionPartnerId(partnerId: string): Promise<string
  * platform-wide elevated role elsewhere in this app (the Designer, partner
  * type configs, etc.), not a new privilege escalation.
  */
-export async function requirePartnerSessionForPage(partnerId: string): Promise<void> {
+export type PageSession =
+  | { kind: "owner" }
+  | { kind: "admin" }
+  /** A PartnerStaff account (currently only issued to the Telecalling module's
+   * "Telecaller" role — see src/lib/telecalling/agentAuth.ts). Unlike the owner
+   * session, this does NOT grant access to every page under this partner —
+   * PartnerLayout restricts a staff session to the module matching its role,
+   * since none of the other modules' data-access functions check staff
+   * identity/role at all (only requireSessionPartnerId, which staff sessions
+   * deliberately fail, since they are a different principal from the owner). */
+  | { kind: "staff"; staffId: string; role: string };
+
+export async function requirePartnerSessionForPage(partnerId: string): Promise<PageSession> {
   const sessionPartnerId = await getSessionPartnerId();
-  if (sessionPartnerId === partnerId) return;
+  if (sessionPartnerId === partnerId) return { kind: "owner" };
 
   const adminCookie = cookies().get(ADMIN_COOKIE_NAME)?.value;
-  if (await isValidAdminCookie(adminCookie)) return;
+  if (await isValidAdminCookie(adminCookie)) return { kind: "admin" };
+
+  const staffSession = await getStaffSession();
+  if (staffSession && staffSession.partnerId === partnerId) {
+    const { getPartnerStaff } = await import("@/lib/partnerStaff");
+    const staff = await getPartnerStaff(partnerId, staffSession.staffId);
+    if (staff && staff.status === "Active") {
+      return { kind: "staff", staffId: staff.id, role: staff.role };
+    }
+  }
 
   redirect("/login");
 }

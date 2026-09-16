@@ -15,7 +15,7 @@ import { hashPassword, verifyPassword, generatePassword } from "@/lib/passwords"
  * full custom-role/permission-matrix system. "Owner" is reserved for the
  * Partner's own account context conceptually, but a staff row can also be
  * created with it if the business wants a second full-access login. */
-export const PARTNER_STAFF_ROLES = ["Owner", "Manager", "Technician", "FrontDesk"] as const;
+export const PARTNER_STAFF_ROLES = ["Owner", "Manager", "Technician", "FrontDesk", "Telecaller"] as const;
 export type PartnerStaffRole = (typeof PARTNER_STAFF_ROLES)[number];
 
 export type PartnerStaffRecord = {

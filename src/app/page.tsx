@@ -304,6 +304,29 @@ export default async function RootPage({
 
       <section className="border-t border-border px-6 py-16">
         <div className="mx-auto max-w-5xl">
+          <p className="text-center text-xs font-semibold uppercase tracking-widest text-accent">Coming soon</p>
+          <h2 className="mt-2 text-center font-display text-2xl font-bold text-text">Telecalling / Call Centre module</h2>
+          <p className="mbf-prose mx-auto mt-2 max-w-2xl text-center text-base text-text-muted">
+            Upload a contact list, assign it to your telecalling team, click-to-call straight from the app, and trigger
+            SMS/WhatsApp messages (welcome, product links, follow-ups) — all in one place. Currently in internal rollout;
+            public signup opens soon.
+          </p>
+          <div className="mx-auto mt-8 max-w-md">
+            <div className="mbf-glass-card flex items-center justify-between gap-4 p-5">
+              <div>
+                <h3 className="font-display text-base font-bold text-text">Telecalling / Call Centre</h3>
+                <p className="mt-1 text-sm text-text-muted">Leads, click-to-call, SMS/WhatsApp templates, call dispositions.</p>
+              </div>
+              <span className="shrink-0 rounded-full bg-accent-soft px-3 py-1 text-xs font-semibold text-accent">
+                Coming Soon
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="border-t border-border px-6 py-16">
+        <div className="mx-auto max-w-5xl">
           <h2 className="text-center font-display text-2xl font-bold text-text">See it in action</h2>
           <p className="mbf-prose mx-auto mt-2 text-center text-base text-text-muted">
             Screenshots of the real running app — coming in a follow-up pass.
