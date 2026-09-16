@@ -3,10 +3,12 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { Sidebar } from "@/components/Sidebar";
 import { SupportWidget } from "@/components/SupportWidget";
+import { PendingActionsBanner } from "@/components/PendingActionsBanner";
 import { buildPartnerAdminNavGroups } from "@/lib/designer/partnerAdminNav";
 import { requirePartnerSessionForPage } from "@/lib/requirePartnerSession";
 import { computeAlerts } from "@/lib/alerts";
 import { getPartner } from "@/lib/partnerData";
+import { getTelegramSettings } from "@/lib/telegram";
 import { env } from "@/lib/env";
 
 /**
@@ -102,13 +104,14 @@ export default async function PartnerLayout({
     return <>{children}</>;
   }
 
-  const [navGroups, alerts, partner] = await Promise.all([
+  const [navGroups, alerts, partner, telegramSettings] = await Promise.all([
     buildPartnerAdminNavGroups(params.partnerId),
     // Alerts are computed here rather than in each page so the bell's count is
     // correct on every partner screen, and recomputed on each server render
     // rather than cached — see src/lib/alerts.ts for why nothing is stored.
     computeAlerts(params.partnerId),
     getPartner(params.partnerId),
+    getTelegramSettings(params.partnerId),
   ]);
   return (
     <div className="flex min-h-screen w-full">
@@ -119,7 +122,17 @@ export default async function PartnerLayout({
         logoDataUrl={partner?.logoDataUrl ?? null}
         partnerName={partner?.businessName ?? null}
       />
-      {children}
+      <div className="flex min-w-0 flex-1 flex-col">
+        {partner && (
+          <PendingActionsBanner
+            partnerId={params.partnerId}
+            subscriptionStatus={partner.subscriptionStatus}
+            trialEndAt={partner.trialEndAt}
+            telegramConnected={!!(telegramSettings.chatId || telegramSettings.groupChatId)}
+          />
+        )}
+        {children}
+      </div>
       <SupportWidget partnerId={params.partnerId} whatsappNumber={env.platformSupportWhatsappNumber()} />
     </div>
   );
