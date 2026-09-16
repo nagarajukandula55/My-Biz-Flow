@@ -30,21 +30,36 @@ export default async function ServiceCentreInvoicePage({
   const record = await getBusinessRecord(params.partnerId, "service-centre", params.recordId);
   if (!record) notFound();
   const partner = await getPartner(params.partnerId);
-  // Same B2B/B2C split as Billing's own invoice document (see
-  // billing/[recordId]/document/page.tsx): a real customer GSTIN makes it
-  // B2B (prefix INV), otherwise B2C (prefix BILL) — each with its own
-  // independent, gap-free sequence rather than one shared counter.
+
+  // The real invoice number is assigned ONCE, atomically, at actual
+  // invoice-creation time (createInvoiceFromWorkorderAction in actions.ts,
+  // via the persisted NumberingCounter — getNextNumber) and stored on the
+  // linked Billing record. Read it from there. The live
+  // getBusinessRecordSequenceIndexFiltered recompute below is kept ONLY as
+  // a fallback for invoices created before this fix (no stored
+  // invoiceNumber yet) — it counts workorder rows, not invoices actually
+  // issued, which is why numbers looked wrong/unstable (e.g. a partner's
+  // first real invoice printing as "...-0013"). Never call getNextNumber
+  // here: merely viewing/reprinting this page must not consume/advance
+  // the counter.
+  const linkedInvoice = record["invoiceId"]
+    ? await getBusinessRecord(params.partnerId, "billing", String(record["invoiceId"]))
+    : null;
   const isB2B = Boolean(String(record["customerGstin"] ?? "").trim());
-  const numberingDocType = isB2B ? "service-centre.invoice.b2b" : "service-centre.invoice.b2c";
-  const numberingDefaults = isB2B ? { prefix: "INV" } : { prefix: "BILL" };
-  const sequenceIndex = await getBusinessRecordSequenceIndexFiltered(
-    params.partnerId,
-    "service-centre",
-    params.recordId,
-    (data) => Boolean(String(data["customerGstin"] ?? "").trim()) === isB2B
-  );
-  const scheme = await getEffectiveScheme(numberingDocType, params.partnerId, numberingDefaults);
-  const invoiceNumber = formatNumber(scheme, scheme.sequenceStart + sequenceIndex);
+  let invoiceNumber = linkedInvoice?.["invoiceNumber"] ? String(linkedInvoice["invoiceNumber"]) : undefined;
+  if (!invoiceNumber) {
+    // Shared scope with Billing's own invoices — see actions.ts.
+    const numberingDocType = isB2B ? "invoice.b2b" : "invoice.b2c";
+    const numberingDefaults = isB2B ? { prefix: "INV" } : { prefix: "BILL" };
+    const sequenceIndex = await getBusinessRecordSequenceIndexFiltered(
+      params.partnerId,
+      "service-centre",
+      params.recordId,
+      (data) => Boolean(String(data["customerGstin"] ?? "").trim()) === isB2B
+    );
+    const scheme = await getEffectiveScheme(numberingDocType, params.partnerId, numberingDefaults);
+    invoiceNumber = formatNumber(scheme, scheme.sequenceStart + sequenceIndex);
+  }
   const lines = await buildServiceCentreLines(params.partnerId, record);
   const customTemplate = await getDocumentTemplate("service-centre.invoice");
 

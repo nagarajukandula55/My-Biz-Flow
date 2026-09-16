@@ -41,17 +41,29 @@ export const DEFAULT_SCHEME: NumberingScheme = {
 
 /** The document types that currently have a document page — see DESIGN_SYSTEM.md §5. */
 export const NUMBERED_DOCUMENT_TYPES = [
-  { id: "billing.document", label: "Invoice (Billing)" },
-  { id: "billing.invoice.b2c", label: "B2C Invoice (Billing)" },
-  { id: "billing.invoice.b2b", label: "B2B Invoice (Billing)" },
-  { id: "service-centre.document", label: "Job Card (Service Centre)" },
+  // A single shared sequence per B2C/B2B, used by EVERY invoice
+  // regardless of where it was created (Billing's own "New Invoice" form
+  // OR a Service Centre workorder's Close/Handover) — previously these
+  // were two entirely separate scopes ("billing.invoice.b2c" and
+  // "service-centre.invoice.b2c"), so an invoice created from a
+  // workorder and one created directly in Billing could both print as
+  // e.g. "BILL-...-0001" at the same time: two different invoices, same
+  // number. One shared key per B2C/B2B fixes that at the root.
+  { id: "invoice.b2c", label: "B2C Sales Invoice (Billing + Service Centre)" },
+  { id: "invoice.b2b", label: "B2B Sales Invoice (Billing + Service Centre)" },
+  // "service-centre.document" (Job Card) deliberately removed from this
+  // list — the Job Card print page (service-centre/[recordId]/document/
+  // page.tsx) never reads a numbering scheme at all; its printed "RO No."
+  // is always the workorder's own id (service-centre.workorder below), by
+  // design (see that page's comment). Offering a numbering scheme here
+  // that has zero effect on anything printed was pure confusion — it
+  // showed a Settings section a partner could edit (and that defaulted to
+  // a nonsensical inherited "INV" prefix, since nothing seeds Job Card
+  // with its own sensible default) with no way to ever see it take effect.
   { id: "service-centre.workorder", label: "Workorder / Job ID (Service Centre)" },
   { id: "service-centre.brand", label: "Brand Code (Service Centre)" },
   { id: "service-centre.model", label: "Model Code (Service Centre)" },
   { id: "inventory.bom-material", label: "Material Code (BOM)" },
-  { id: "service-centre.invoice", label: "Sales Invoice (Service Centre)" },
-  { id: "service-centre.invoice.b2c", label: "B2C Sales Invoice (Service Centre)" },
-  { id: "service-centre.invoice.b2b", label: "B2B Sales Invoice (Service Centre)" },
   { id: "pos.document", label: "Receipt (POS)" },
   { id: "amc-field-service.document", label: "Service Report (AMC/Field Service)" },
   { id: "legal.document", label: "Engagement Letter (Legal)" },

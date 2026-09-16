@@ -257,6 +257,27 @@ export async function createInvoiceFromWorkorderAction(
   const taxAmount = invoiceLines.reduce((sum, l) => sum + l.quantity * l.rate * (l.gstRate / 100), 0);
   const totalAmount = subtotal + taxAmount;
 
+  // Assign the real invoice number ONCE, here, at actual invoice-creation
+  // time — via the same atomic, persisted NumberingCounter every other
+  // numbered document type uses (getNextNumber). Previously no number was
+  // ever stored on the Billing record at all: the printed Sales Invoice
+  // page recomputed a number on every render by counting this partner's
+  // B2C/B2B workorder rows live (getBusinessRecordSequenceIndexFiltered),
+  // which counts EVERY workorder ever created (invoiced or not, even
+  // cancelled-but-not-deleted ones) rather than invoices actually issued —
+  // that's why a partner's first real invoice could print as e.g.
+  // "BILL-...-0013" instead of "...-0001", and why the number wasn't even
+  // stable (it could shift if an earlier workorder was later deleted).
+  // Shared scope with Billing's own direct "New Invoice" form
+  // (businessRecordActions.ts) — "invoice.b2c"/"invoice.b2b", NOT a
+  // Service-Centre-only key — so both origins draw from the same
+  // per-partner sequence and can never hand out the same number twice.
+  const isB2B = Boolean(String(record["customerGstin"] ?? "").trim());
+  const numberingDocType = isB2B ? "invoice.b2b" : "invoice.b2c";
+  const numberingDefaults = isB2B ? { prefix: "INV" } : { prefix: "BILL" };
+  const { getNextNumber } = await import("@/lib/designer/numbering");
+  const invoiceNumber = await getNextNumber(numberingDocType, partnerId, numberingDefaults);
+
   const partsSummary = lifecycle.partLines
     .filter((p) => !p.pending)
     .map((p) => `${p.materialLabel} x${p.qty} (₹${(p.unitPrice || 0) * (p.qty || 1)})`);
@@ -284,6 +305,7 @@ export async function createInvoiceFromWorkorderAction(
   ).slice(0, 10);
 
   const invoice = await createBusinessRecord(partnerId, "billing", {
+    invoiceNumber,
     customer: record["customer"] ?? "",
     // Carried over from the workorder's intake block so the Billing
     // invoice knows who it's billed to (and whether it's B2B) instead of

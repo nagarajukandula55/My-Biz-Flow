@@ -12,6 +12,22 @@ export async function createBusinessRecordAction(
   moduleSlug: string,
   values: Record<string, unknown>
 ) {
+  // Assign the real invoice number ONCE, here, at actual creation time —
+  // via the same atomic, persisted NumberingCounter (getNextNumber) and
+  // the SAME "invoice.b2c"/"invoice.b2b" scope a Service-Centre-workorder-
+  // originated invoice uses (see service-centre/[recordId]/actions.ts,
+  // createInvoiceFromWorkorderAction), so both origins draw from one
+  // shared per-partner sequence and never hand out the same number twice.
+  // Previously nothing stored a number at all: the printed document page
+  // recomputed one live by counting "billing" rows on every render.
+  if (moduleSlug === "billing" && !values["invoiceNumber"]) {
+    const { getNextNumber } = await import("@/lib/designer/numbering");
+    const isB2B = Boolean(String(values["customerGstin"] ?? "").trim());
+    const numberingDocType = isB2B ? "invoice.b2b" : "invoice.b2c";
+    const numberingDefaults = isB2B ? { prefix: "INV" } : { prefix: "BILL" };
+    values = { ...values, invoiceNumber: await getNextNumber(numberingDocType, partnerId, numberingDefaults) };
+  }
+
   const record = await createBusinessRecord(partnerId, moduleSlug, values);
 
   if (moduleSlug === "billing") {
