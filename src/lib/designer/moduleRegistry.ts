@@ -67,7 +67,6 @@ export async function buildPartnerNavGroups(visibleSlugs?: string[]): Promise<Pa
         subItems: MODULE_SUB_NAV[m.slug] ?? [
           { key: `${m.slug}.list`, label: "All records", href: m.slug },
           { key: `${m.slug}.new`, label: "+ New", href: `${m.slug}/new` },
-          { key: `${m.slug}.admin`, label: "Admin", href: `${m.slug}/admin` },
         ],
       };
     });

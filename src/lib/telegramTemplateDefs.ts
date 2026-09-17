@@ -147,6 +147,18 @@ export const TELEGRAM_TEMPLATE_DEFS: TelegramTemplateDef[] = [
       "🗓️ <b>{{businessName}} — Monthly Report</b>\n\n<pre>\nRevenue          {{revenue}} (prior {{priorRevenue}})\nInvoices         {{invoiceCount}} (prior {{priorInvoiceCount}})\nWorkorders       {{workorderCount}} (prior {{priorWorkorderCount}})\nChange           {{changePct}}\n</pre>\n\n{{trendLine}}",
   },
   {
+    key: "customer_data_otp",
+    label: "Customer data access — verification code",
+    group: "System",
+    // Not a real bot command like every other row here — this is only ever
+    // sent app-side (requestCustomerDataOtp, src/lib/customerDataAccess.ts)
+    // when a partner clicks "Send code" on the Customers page, never on
+    // demand from within the chat itself.
+    command: "(sent from the app, not a chat command)",
+    variables: ["code"],
+    defaultBody: "🔒 <b>Customer data access code</b>\n\n<pre>\n{{code}}\n</pre>\n\nEnter this in the app to view/export your Customer database. Expires in 5 minutes. Didn't request this? Ignore it.",
+  },
+  {
     key: "connect_confirmation",
     label: "Chat connected confirmation",
     group: "System",

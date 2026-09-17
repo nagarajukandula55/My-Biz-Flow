@@ -59,9 +59,31 @@ export const billingLineItems: Record<string, LineItem[]> = {
   ],
 };
 
+/**
+ * Where an invoice originated from — stamped once at record-creation time
+ * by each of the three places a "billing" BusinessRecord gets created
+ * (createInvoiceFromWorkorderAction for Service Centre, the POS checkout
+ * action, and createBusinessRecordAction's generic path for a directly
+ * created/manual Billing invoice — see businessRecordActions.ts). Kept as
+ * a real, filterable field rather than derived after the fact from the
+ * presence of sourceWorkorderId/sourcePosSaleId, so the Invoices list can
+ * filter on it directly via listBusinessRecordsPaginated's exact-match
+ * JSON filters. Invoices created before this field existed simply have no
+ * value here and won't match a Source filter — same as any other field
+ * added after data already existed.
+ */
+export const INVOICE_SOURCE_OPTIONS = ["Service Centre", "POS Sale", "Direct"] as const;
+
+const INVOICE_SOURCE_VARIANT: Record<string, StatusVariant> = {
+  "Service Centre": "teal",
+  "POS Sale": "success",
+  "Direct": "neutral",
+};
+
 export const billingColumns: Column[] = [
   { key: "id", label: "Invoice Number", type: "text" },
   { key: "customer", label: "Customer", type: "relation-link" },
+  { key: "invoiceSource", label: "Source", type: "select-chip", chipVariantMap: INVOICE_SOURCE_VARIANT },
   { key: "issueDate", label: "Issue Date", type: "date" },
   { key: "dueDate", label: "Due Date", type: "date" },
   { key: "lineItemsSummary", label: "Line Items", type: "text" },
@@ -153,6 +175,7 @@ export const billingFormFields: FormFieldDef[] = [
   { key: "amountDue", label: "Amount Due", type: "currency", required: false, placeholder: "Auto = Total − Amount Paid; kept editable for manual adjustments" },
   { key: "paymentStatus", label: "Payment Status", type: "select", required: true, options: ["Draft","Sent","Paid","Overdue","Partially Paid"] },
   { key: "paymentMode", label: "Payment Mode", type: "select", required: false, options: [...PAYMENT_MODE_OPTIONS] },
+  { key: "invoiceSource", label: "Source", type: "select", required: false, options: [...INVOICE_SOURCE_OPTIONS] },
 ];
 
 export function getBillingRecord(recordId: string): Row {
@@ -200,6 +223,7 @@ export function getBillingDetailFields(record: Row): RecordField[] {
     { label: "Amount Due", value: r["amountDue"], type: "currency" },
     { label: "Payment Status", value: r["paymentStatus"], type: "select", chipVariant: STATUS_VARIANT[String(r["paymentStatus"])] ?? "neutral" },
     { label: "Payment Mode", value: r["paymentMode"], type: "select", chipVariant: STATUS_VARIANT[String(r["paymentMode"])] ?? "neutral" },
+    ...(r["invoiceSource"] ? [{ label: "Source", value: r["invoiceSource"], type: "select" as const }] : []),
     ...(r["notes"] ? [{ label: "Notes", value: r["notes"], type: "text" as const }] : []),
     ...(r["terms"] ? [{ label: "Terms & Conditions", value: r["terms"], type: "text" as const }] : []),
   ];

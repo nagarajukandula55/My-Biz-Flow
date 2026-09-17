@@ -60,6 +60,7 @@ export async function GET(request: Request) {
         paymentStatus: "Draft",
         paymentMode: "Bank Transfer",
         items: template["items"],
+        invoiceSource: "Direct",
       });
       createdCount += 1;
 

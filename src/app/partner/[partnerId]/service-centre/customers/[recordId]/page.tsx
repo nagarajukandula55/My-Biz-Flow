@@ -11,6 +11,8 @@ import {
 } from "@/lib/sample-data/service-centre-customers";
 import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
 import { getBusinessRecord } from "@/lib/businessRecords";
+import { isCustomerDataUnlocked } from "@/lib/customerDataAccess";
+import { CustomerDataOtpGate } from "../CustomerDataOtpGate";
 
 registerPage({
   id: "service-centre.customers.detail",
@@ -36,6 +38,15 @@ export default async function ScCustomerDetailPage({
   params: { partnerId: string; recordId: string };
   searchParams?: { created?: string; updated?: string };
 }) {
+  const unlocked = await isCustomerDataUnlocked(params.partnerId);
+  if (!unlocked) {
+    return (
+      <AppShell topbarTitle="Customers">
+        <CustomerDataOtpGate partnerId={params.partnerId} />
+      </AppShell>
+    );
+  }
+
   const record = await getBusinessRecord(params.partnerId, "service-centre-customers", params.recordId);
   if (!record) notFound();
   const fields = await applyCustomizationsToDetailFields(

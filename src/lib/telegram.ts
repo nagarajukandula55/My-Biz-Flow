@@ -45,7 +45,11 @@ export type TelegramRoutingMap = Partial<Record<TelegramAlertType, AlertDestinat
 export type TelegramSettingsRecord = {
   partnerId: string;
   chatId: string | null;
+  /** Friendly display name for `chatId`, captured at connect time — see
+   * TelegramSettings.chatTitle in prisma/schema.prisma. */
+  chatTitle: string | null;
   groupChatId: string | null;
+  groupChatTitle: string | null;
   enabledTypes: TelegramAlertType[];
   routing: TelegramRoutingMap;
   reportFrequency: TelegramReportFrequency;
@@ -67,7 +71,9 @@ export async function getTelegramSettings(partnerId: string): Promise<TelegramSe
   return {
     partnerId,
     chatId: row?.chatId ?? null,
+    chatTitle: row?.chatTitle ?? null,
     groupChatId: row?.groupChatId ?? null,
+    groupChatTitle: row?.groupChatTitle ?? null,
     enabledTypes: (row?.enabledTypes as TelegramAlertType[] | undefined) ?? [],
     routing: (row?.routing as TelegramRoutingMap | undefined) ?? {},
     reportFrequency: (row?.reportFrequency as TelegramReportFrequency | undefined) ?? "NONE",
@@ -81,7 +87,9 @@ export async function listPartnersWithReportsEnabled(): Promise<TelegramSettings
   return rows.map((row) => ({
     partnerId: row.partnerId,
     chatId: row.chatId,
+    chatTitle: row.chatTitle ?? null,
     groupChatId: row.groupChatId,
+    groupChatTitle: row.groupChatTitle ?? null,
     enabledTypes: (row.enabledTypes as TelegramAlertType[] | undefined) ?? [],
     routing: (row.routing as TelegramRoutingMap | undefined) ?? {},
     reportFrequency: (row.reportFrequency as TelegramReportFrequency | undefined) ?? "NONE",
@@ -94,15 +102,39 @@ export async function saveTelegramSettings(
   chatId: string,
   enabledTypes: TelegramAlertType[],
   reportFrequency: TelegramReportFrequency,
-  extra?: { groupChatId?: string; routing?: TelegramRoutingMap }
+  extra?: {
+    groupChatId?: string;
+    routing?: TelegramRoutingMap;
+    /** Undefined = leave whatever title is currently stored untouched
+     * (unless `chatId` itself is changing — see below); null/"" = clear it;
+     * a string = set it. */
+    chatTitle?: string | null;
+    groupChatTitle?: string | null;
+  }
 ): Promise<void> {
   const existing = await getTelegramSettings(partnerId);
   const groupChatId = extra?.groupChatId !== undefined ? extra.groupChatId : existing.groupChatId ?? "";
   const routing = extra?.routing !== undefined ? extra.routing : existing.routing;
+  // A title is only ever meaningful for the exact chat it was captured for —
+  // if the chat id itself is changing (a manual edit, a fresh connect, or a
+  // disconnect clearing it to "") and no explicit title was passed for that
+  // change, drop the stale title rather than let it stick to a different chat.
+  const chatTitle = extra?.chatTitle !== undefined
+    ? extra.chatTitle
+    : chatId !== (existing.chatId ?? "") ? null : existing.chatTitle;
+  const groupChatTitle = extra?.groupChatTitle !== undefined
+    ? extra.groupChatTitle
+    : groupChatId !== (existing.groupChatId ?? "") ? null : existing.groupChatTitle;
   await prisma.telegramSettings.upsert({
     where: { partnerId },
-    create: { partnerId, chatId: chatId || null, groupChatId: groupChatId || null, enabledTypes, routing, reportFrequency },
-    update: { chatId: chatId || null, groupChatId: groupChatId || null, enabledTypes, routing, reportFrequency },
+    create: {
+      partnerId, chatId: chatId || null, groupChatId: groupChatId || null, enabledTypes, routing, reportFrequency,
+      chatTitle: chatTitle || null, groupChatTitle: groupChatTitle || null,
+    },
+    update: {
+      chatId: chatId || null, groupChatId: groupChatId || null, enabledTypes, routing, reportFrequency,
+      chatTitle: chatTitle || null, groupChatTitle: groupChatTitle || null,
+    },
   });
 }
 
@@ -242,25 +274,84 @@ async function sendTelegramAlertInternal(
       // Telegram's sendMessage response carries the sent message's own
       // message_id (result.message_id) — this is what a reply's
       // reply_to_message.message_id will echo back, so it's the only real
-      // key for mapping a future reply to `workorderId`.
-      let sentMessageId: number | null = null;
+      // key for mapping a future reply to `workorderId`. Previously this
+      // block unconditionally recorded sent: true regardless of what the Bot
+      // API actually returned, so a real delivery failure (bot blocked, chat
+      // deleted, etc. — Telegram returns `ok: false` + a `description`) was
+      // silently logged as a success. Fixed to reflect `body.ok` and capture
+      // `description` as the reason, which getRecentTelegramConnectionIssue()
+      // below relies on to surface an actionable "reconnect Telegram" notice.
+      let body: { ok?: boolean; result?: { message_id?: number }; description?: string } | null = null;
       try {
-        const body = (await res.json()) as { ok?: boolean; result?: { message_id?: number } };
-        if (body.ok && typeof body.result?.message_id === "number") {
-          sentMessageId = body.result.message_id;
-        }
+        body = await res.json();
       } catch {
-        // Response body wasn't valid JSON — still record the send attempt below.
+        // Response body wasn't valid JSON — fall through to the failure branch below.
       }
-      await recordTelegramLog({
-        partnerId, type, message, chatId, sent: true, reason: null,
-        messageId: sentMessageId, workorderId,
-      });
+      if (body?.ok) {
+        const sentMessageId = typeof body.result?.message_id === "number" ? body.result.message_id : null;
+        await recordTelegramLog({
+          partnerId, type, message, chatId, sent: true, reason: null,
+          messageId: sentMessageId, workorderId,
+        });
+      } else {
+        const reason = body?.description || `Telegram API error (status ${res.status})`;
+        await recordTelegramLog({ partnerId, type, message, chatId, sent: false, reason, workorderId });
+      }
     } catch (err) {
       console.error("[telegram] send failed:", err);
       await recordTelegramLog({ partnerId, type, message, chatId, sent: false, reason: "send failed", workorderId });
     }
   }
+}
+
+/** Reasons recordTelegramLog can carry that reflect a partner-fixable
+ * connection problem (the chat rejected/blocked the bot, was deleted, etc.)
+ * rather than a deployment-level or per-type configuration state — those
+ * ("no chat id configured", "alert type disabled", the missing-bot-token
+ * message) aren't things a partner can act on by reconnecting Telegram. */
+function isConnectionFailureReason(reason: string | null): boolean {
+  if (!reason) return false;
+  if (reason === "no chat id configured" || reason === "alert type disabled") return false;
+  if (reason.startsWith("not configured")) return false;
+  return true;
+}
+
+export type TelegramConnectionIssue = {
+  /** How many of the most recent send attempts (walking back from newest,
+   * stopping at the first successful send) failed for a connection reason. */
+  count: number;
+  reason: string;
+  chatId: string | null;
+};
+
+/**
+ * Module-agnostic (TelegramSettings/TelegramLogEntry aren't scoped to
+ * Service Centre specifically) check for whether a partner's most recent
+ * Telegram sends have been failing for a reason they can actually fix by
+ * reconnecting — e.g. the bot was blocked, the chat/group was deleted, or a
+ * send otherwise failed outright. Backs the actionable notification banner
+ * on the Telegram Alerts page (replacing the old raw activity-log section).
+ * Returns null when there's nothing actionable to show: no recent attempts,
+ * fewer than 2 consecutive connection-reason failures, or the most recent
+ * attempt already succeeded.
+ */
+export async function getRecentTelegramConnectionIssue(partnerId: string, sampleSize = 5): Promise<TelegramConnectionIssue | null> {
+  const recent = await getTelegramLog(partnerId, sampleSize);
+  let count = 0;
+  let reason: string | null = null;
+  let chatId: string | null = null;
+  for (const entry of recent) {
+    if (entry.sent) break;
+    if (isConnectionFailureReason(entry.reason)) {
+      count += 1;
+      if (!reason) {
+        reason = entry.reason;
+        chatId = entry.chatId;
+      }
+    }
+  }
+  if (count < 2 || !reason) return null;
+  return { count, reason, chatId };
 }
 
 /** Generic alert send — not tied to a specific workorder. Kept for occasions
@@ -459,17 +550,26 @@ export function parseStartPayload(payload: string): { partnerId: string; slot: T
  * reportFrequency/other chat slot the partner already had configured (or
  * the defaults, for a brand-new connection).
  */
-export async function connectTelegramChat(partnerId: string, chatId: string, slot: TelegramChatSlot = "personal"): Promise<void> {
+export async function connectTelegramChat(
+  partnerId: string,
+  chatId: string,
+  slot: TelegramChatSlot = "personal",
+  /** Friendly display name captured from Telegram's own chat data on this
+   * `/start` — see the webhook route's deriveChatDisplayName(). */
+  title?: string | null
+): Promise<void> {
   const existing = await getTelegramSettings(partnerId);
   if (slot === "group") {
     await saveTelegramSettings(partnerId, existing.chatId ?? "", existing.enabledTypes, existing.reportFrequency, {
       groupChatId: chatId,
       routing: existing.routing,
+      groupChatTitle: title ?? null,
     });
   } else {
     await saveTelegramSettings(partnerId, chatId, existing.enabledTypes, existing.reportFrequency, {
       groupChatId: existing.groupChatId ?? "",
       routing: existing.routing,
+      chatTitle: title ?? null,
     });
   }
 }

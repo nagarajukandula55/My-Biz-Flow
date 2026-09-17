@@ -2,7 +2,7 @@ import { AppShell } from "@/components/AppShell";
 import { registerPage } from "@/lib/designer/registry";
 import {
   getTelegramSettings,
-  getTelegramLog,
+  getRecentTelegramConnectionIssue,
   buildTelegramConnectLink,
   TELEGRAM_ALERT_TYPES,
   TELEGRAM_REPORT_FREQUENCIES,
@@ -22,7 +22,7 @@ registerPage({
   superAdminOnly: false,
   customizableRegions: [],
   explanation:
-    "Per-partner Telegram alert setup — two independently-connectable chats (a personal DM and a group chat), each with its own QR-code deep link that captures the chat id automatically via the bot's webhook (no manual entry needed); per-alert-type routing between personal/group/both; which alert occasions to send; an automatic report digest frequency (DAILY/WEEKLY/MONTHLY, actually sent by /api/cron/telegram-reports — real per-partner revenue/invoice/workorder data, never shared across partners); a Send Test Message button; and a real send-attempt log (TelegramLogEntry) including two-way reply threading on the new-workorder alert. Settings/log are real and persisted; actual delivery needs a real bot token + registered webhook (TELEGRAM_BOT_TOKEN / TELEGRAM_BOT_USERNAME / TELEGRAM_WEBHOOK_SECRET) — see src/lib/telegram.ts and src/app/api/telegram/webhook/route.ts.",
+    "Per-partner Telegram alert setup — two independently-connectable chats (a personal DM and a group chat), each with its own QR-code deep link that captures the chat id AND a friendly display name automatically via the bot's webhook (no manual entry needed); once connected, a slot shows that name + Disconnect instead of the QR/link again. Per-alert-type routing between personal/group/both; which alert occasions to send; an automatic report digest frequency (DAILY/WEEKLY/MONTHLY, actually sent by /api/cron/telegram-reports — real per-partner revenue/invoice/workorder data, never shared across partners); a Send Test Message button. Send attempts are still recorded to TelegramLogEntry (including two-way reply threading on the new-workorder alert) for the Super Admin side (a separate app), but this partner-facing page surfaces that history only as an actionable banner when recent sends are failing for a fixable reason (bot blocked, chat deleted, etc.), not as a raw log. Settings are real and persisted; actual delivery needs a real bot token + registered webhook (TELEGRAM_BOT_TOKEN / TELEGRAM_BOT_USERNAME / TELEGRAM_WEBHOOK_SECRET) — see src/lib/telegram.ts and src/app/api/telegram/webhook/route.ts.",
   sourceFile: "src/app/partner/[partnerId]/service-centre/telegram/page.tsx",
 });
 
@@ -42,9 +42,9 @@ const DESTINATION_LABELS: Record<AlertDestination, string> = {
 };
 
 export default async function TelegramAlertsPage({ params }: { params: { partnerId: string } }) {
-  const [settings, log] = await Promise.all([
+  const [settings, connectionIssue] = await Promise.all([
     getTelegramSettings(params.partnerId),
-    getTelegramLog(params.partnerId),
+    getRecentTelegramConnectionIssue(params.partnerId),
   ]);
   const botConfigured = Boolean(env.telegramBotToken());
   const personalConnectLink = buildTelegramConnectLink(params.partnerId, "personal");
@@ -58,6 +58,7 @@ export default async function TelegramAlertsPage({ params }: { params: { partner
     slot: "personal" | "group";
     label: string;
     chatId: string | null;
+    chatTitle: string | null;
     connectLink: string | null;
     qr: string | null;
     hint: string;
@@ -66,6 +67,7 @@ export default async function TelegramAlertsPage({ params }: { params: { partner
       slot: "personal",
       label: "Personal chat (DM)",
       chatId: settings.chatId,
+      chatTitle: settings.chatTitle,
       connectLink: personalConnectLink,
       qr: personalQr,
       hint: "Scan with your phone's camera, or tap the link — hitting Start captures this chat automatically.",
@@ -74,6 +76,7 @@ export default async function TelegramAlertsPage({ params }: { params: { partner
       slot: "group",
       label: "Group chat",
       chatId: settings.groupChatId,
+      chatTitle: settings.groupChatTitle,
       connectLink: groupConnectLink,
       qr: groupQr,
       hint: "Add the bot to your group first, then have anyone in the group scan or tap this to connect the group.",
@@ -91,6 +94,13 @@ export default async function TelegramAlertsPage({ params }: { params: { partner
           alert right there in the chat to log that reply against the workorder it's about.
         </p>
 
+        {connectionIssue && (
+          <NoticeCard tone="danger" title="⚠️ Your Telegram alerts aren't getting through">
+            Your last {connectionIssue.count} alert{connectionIssue.count === 1 ? "" : "s"} failed to send —{" "}
+            {connectionIssue.reason}. Reconnect your Telegram chat below to start receiving alerts again.
+          </NoticeCard>
+        )}
+
         {anyChatConnected ? (
           <NoticeCard tone="success" title="✅ Telegram is connected">
             {bothChatsConnected
@@ -103,12 +113,11 @@ export default async function TelegramAlertsPage({ params }: { params: { partner
           </NoticeCard>
         ) : (
           <NoticeCard tone="warning" title="No Telegram bot is connected on this deployment">
-            Your settings below will still save, and test/alert attempts will be recorded in the activity log, but no
-            messages will actually send until a bot token is configured.
+            Your settings below will still save, but no messages will actually send until a bot token is configured.
           </NoticeCard>
         )}
 
-        {chatSlots.map(({ slot, label, chatId, connectLink, qr, hint }) => {
+        {chatSlots.map(({ slot, label, chatId, chatTitle, connectLink, qr, hint }) => {
           const connected = Boolean(chatId);
           return (
             <div key={slot} className="rounded-lg border border-border bg-bg-raised p-4">
@@ -118,7 +127,14 @@ export default async function TelegramAlertsPage({ params }: { params: { partner
                   <div className="mt-1 text-sm text-text">
                     {connected ? (
                       <>
-                        <span className="text-success">Connected</span> — chat <span className="tabular-nums">{chatId}</span>
+                        <span className="text-success">Connected</span> —{" "}
+                        {chatTitle ? (
+                          <span>{chatTitle}</span>
+                        ) : (
+                          <>
+                            chat <span className="tabular-nums">{chatId}</span>
+                          </>
+                        )}
                       </>
                     ) : (
                       <span className="text-text-muted">Not connected</span>
@@ -271,37 +287,10 @@ export default async function TelegramAlertsPage({ params }: { params: { partner
             Send Test Message
           </button>
           <p className="mt-2 text-xs text-text-muted">
-            Sends a test alert to every chat you've connected (personal and group) and records the result below —
-            useful to confirm your settings are saved correctly.
+            Sends a test alert to every chat you've connected (personal and group) — useful to confirm your settings
+            are saved correctly.
           </p>
         </form>
-
-        <div className="rounded-lg border border-border bg-bg-raised p-4">
-          <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">Recent activity</div>
-          {log.length === 0 ? (
-            <p className="mt-2 text-sm text-text-muted">No alerts attempted yet.</p>
-          ) : (
-            <ul className="mt-2 space-y-2">
-              {log.map((entry) => (
-                <li key={entry.id} className="flex items-start justify-between gap-3 border-b border-border pb-2 text-sm last:border-b-0 last:pb-0">
-                  <div>
-                    <div className="text-text">{entry.type}</div>
-                    <div className="text-xs text-text-muted">{new Date(entry.createdAt).toLocaleString()}</div>
-                  </div>
-                  <span
-                    className={
-                      entry.sent
-                        ? "shrink-0 rounded-md bg-success-soft px-2 py-0.5 text-xs text-success"
-                        : "shrink-0 rounded-md bg-warning-soft px-2 py-0.5 text-xs text-warning"
-                    }
-                  >
-                    {entry.sent ? "Sent" : entry.reason ?? "Not sent"}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
       </div>
     </AppShell>
   );

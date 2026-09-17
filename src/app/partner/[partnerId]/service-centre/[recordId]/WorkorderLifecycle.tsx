@@ -1433,24 +1433,23 @@ export function WorkorderLifecycle({
       </div>
 
       {/* Customer & Device — one curated summary card, matching AN-CRM's
-          single "Customer & Device" card (Customer / Phone / Device /
-          IMEI-Serial, then Fault Reported + Logged By below). Everything
-          else about the customer (company/GSTIN/address/city/state/
-          pincode) stays in the "More details" section further down the
-          page rather than duplicating a whole second field grid here.
-          Brand/Model keep their existing picker behaviour — clicking the
-          Device row opens the same Brand/Model SearchSelectModals as
-          before, just inline in this card instead of two raw boxes. */}
+          single "Customer & Device" card. Per product-owner request, the
+          Customer Contact No., Logged By, and IMEI/Serial No. fields are no
+          longer shown on this summary card (they're still collected at
+          intake/edit and still appear on the printable job card / service
+          record documents). Everything else about the customer
+          (company/GSTIN/address/city/state/pincode) stays in the "More
+          details" section further down the page rather than duplicating a
+          whole second field grid here. Brand/Model keep their existing
+          picker behaviour — clicking the Device row opens the same
+          Brand/Model SearchSelectModals as before, just inline in this
+          card instead of two raw boxes. */}
       <div className="mt-4 rounded-md border border-border bg-bg-raised p-4">
         <h2 className="font-display text-base font-bold text-text">Customer &amp; Device</h2>
         <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">Customer</div>
             <div className="mt-0.5 text-sm text-text">{customerName || "—"}</div>
-          </div>
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">Phone</div>
-            <div className="mt-0.5 text-sm text-text">{customerPhone || "—"}</div>
           </div>
           <div>
             <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">Device</div>
@@ -1472,19 +1471,11 @@ export function WorkorderLifecycle({
               </span>
             </button>
           </div>
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">IMEI / Serial</div>
-            <div className="mt-0.5 text-sm text-text">{imeiOrSerialNumber || "—"}</div>
-          </div>
         </div>
         <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">Fault Reported</div>
             <div className="mt-0.5 text-sm text-text">{faultDescription || "—"}</div>
-          </div>
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">Logged by (CCO)</div>
-            <div className="mt-0.5 text-sm text-text">{loggedBy || "—"}</div>
           </div>
         </div>
       </div>

@@ -78,6 +78,7 @@ export async function completeSaleAction(partnerId: string, input: CompleteSaleI
     paymentStatus: "Paid",
     paymentMode: input.tenders[0]?.method,
     sourcePosSaleId: sale.id,
+    invoiceSource: "POS Sale",
   });
 
   await updateBusinessRecord(partnerId, "pos", String(sale.id), { ...sale, invoiceId: invoice.id });

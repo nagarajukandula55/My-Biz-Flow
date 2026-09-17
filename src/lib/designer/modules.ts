@@ -125,7 +125,6 @@ export const MODULE_SUB_NAV: Record<string, PartnerNavSubItem[]> = {
   pos: [
     { key: "pos.list", label: "Sales", href: "pos" },
     { key: "pos.checkout", label: "+ New Sale", href: "pos/checkout" },
-    { key: "pos.admin", label: "Admin", href: "pos/admin" },
   ],
   inventory: [
     { key: "inventory.bom", label: "Material Catalog (BOM)", href: "inventory/bom" },
@@ -134,7 +133,6 @@ export const MODULE_SUB_NAV: Record<string, PartnerNavSubItem[]> = {
     { key: "inventory.stock-adjustments", label: "Stock Adjustments", href: "inventory/stock-adjustments" },
     { key: "inventory.return-orders", label: "Return Orders", href: "inventory/return-orders" },
     { key: "inventory.part-orders", label: "Part Orders", href: "inventory/part-orders" },
-    { key: "inventory.admin", label: "Admin", href: "inventory/admin" },
   ],
   // Suggested Basic/Pro/Ultimate split for Super Admin to configure in
   // PartnerType.planTierByPage (/admin/partner-types) — config-only
@@ -198,7 +196,6 @@ export const MODULE_SUB_NAV: Record<string, PartnerNavSubItem[]> = {
     { key: "accounting-gst.generate", label: "Generate Return", href: "accounting-gst/generate" },
     { key: "accounting-gst.hsn-summary", label: "HSN-wise Summary", href: "accounting-gst/hsn-summary" },
     { key: "accounting-gst.itc", label: "ITC Register", href: "accounting-gst/itc" },
-    { key: "accounting-gst.admin", label: "Admin", href: "accounting-gst/admin" },
   ],
   "field-force": [
     { key: "field-force.bookings", label: "Bookings", href: "field-force/bookings" },
@@ -206,7 +203,6 @@ export const MODULE_SUB_NAV: Record<string, PartnerNavSubItem[]> = {
     { key: "field-force.list", label: "Engineers", href: "field-force" },
     { key: "field-force.onboard", label: "Onboard Engineer", href: "field-force/onboard" },
     { key: "field-force.allocations", label: "Job Allocation", href: "field-force/allocations" },
-    { key: "field-force.admin", label: "Admin", href: "field-force/admin" },
   ],
   telecalling: [
     { key: "telecalling.leads", label: "Leads", href: "telecalling" },
@@ -229,7 +225,6 @@ export const MODULE_SUB_NAV: Record<string, PartnerNavSubItem[]> = {
     { key: "billing.expenses", label: "Expenses", href: "billing/expenses" },
     { key: "billing.reports", label: "Reports", href: "billing/reports" },
     { key: "billing.recurring", label: "Recurring Invoices", href: "billing/recurring" },
-    { key: "billing.admin", label: "Admin", href: "billing/admin" },
   ],
 };
 

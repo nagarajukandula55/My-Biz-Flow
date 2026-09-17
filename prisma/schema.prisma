@@ -699,6 +699,16 @@ model TelegramSettings {
   /// buildTelegramConnectLink(partnerId, "group") in src/lib/telegram.ts).
   /// Either, both, or neither may be set at a time.
   groupChatId      String?
+  /// Friendly display name captured from Telegram's own chat data at
+  /// connect time (chat.title for a group, else first/last name or
+  /// @username for a personal DM — see the webhook route's `/start`
+  /// handler) — lets the settings page show "Connected — Nagaraju" instead
+  /// of a raw numeric chat id. Cleared automatically whenever chatId
+  /// changes to a different value (see saveTelegramSettings), since an old
+  /// title would otherwise stick to a new, unrelated chat.
+  chatTitle        String?
+  /// Same as `chatTitle`, for `groupChatId`.
+  groupChatTitle   String?
   enabledTypes     Json      @default("[]")
   /// Per-alert-type routing: which of the two connected chats
   /// (personal/group/both) each TELEGRAM_ALERT_TYPES key is delivered to.
@@ -1021,4 +1031,21 @@ model MessageLog {
   @@index([leadId])
   @@index([partnerId])
   @@map("message_logs")
+}
+
+/// One-time Telegram-delivered verification code gating a partner's own
+/// Customer database (viewing the list/detail, or exporting it) — customer
+/// contact data is private, so unlocking it takes more than just being
+/// logged in as the partner. One row per partner (upserted on each new
+/// request); `verifiedUntil` is the actual unlock — see
+/// src/lib/customerDataAccess.ts.
+model CustomerDataAccessOtp {
+  partnerId     String    @id
+  codeHash      String
+  expiresAt     DateTime
+  attempts      Int       @default(0)
+  verifiedUntil DateTime?
+  updatedAt     DateTime  @updatedAt
+
+  @@map("customer_data_access_otps")
 }

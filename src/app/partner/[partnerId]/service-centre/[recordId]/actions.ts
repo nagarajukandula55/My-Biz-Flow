@@ -361,6 +361,7 @@ export async function createInvoiceFromWorkorderAction(
     paymentStatus: amountDue <= 0 ? "Paid" : amountPaid > 0 ? "Partially Paid" : "Draft",
     paymentMode: collected ? payment?.mode : undefined,
     sourceWorkorderId: workorderId,
+    invoiceSource: "Service Centre",
   });
 
   // Mirror the Billing > Payments record the manual form would have

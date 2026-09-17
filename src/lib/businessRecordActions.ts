@@ -28,6 +28,17 @@ export async function createBusinessRecordAction(
     values = { ...values, invoiceNumber: await getNextNumber(numberingDocType, partnerId, numberingDefaults) };
   }
 
+  // Stamp the invoice's origin for the Source filter on the Invoices list
+  // (billing/page.tsx). This generic action is bound to a Billing invoice
+  // only for a directly/manually created one — Service Centre's
+  // createInvoiceFromWorkorderAction and the POS checkout action each
+  // create their "billing" record via createBusinessRecord directly, with
+  // their own "Service Centre"/"POS Sale" invoiceSource, bypassing this
+  // function entirely — so "Direct" is correct whenever this path sets it.
+  if (moduleSlug === "billing" && !values["invoiceSource"]) {
+    values = { ...values, invoiceSource: "Direct" };
+  }
+
   const record = await createBusinessRecord(partnerId, moduleSlug, values);
 
   if (moduleSlug === "billing") {

@@ -132,7 +132,22 @@ async function handleTemplateCommand(chatId: string, text: string): Promise<bool
  */
 
 type TelegramUser = { id: number; is_bot?: boolean; username?: string };
-type TelegramChat = { id: number };
+/** `title` is set for a group/supergroup chat; `first_name`/`last_name`/
+ * `username` are set for a private (DM) chat — see deriveChatDisplayName(). */
+type TelegramChat = { id: number; type?: string; title?: string; username?: string; first_name?: string; last_name?: string };
+
+/** Best-effort friendly name for a connected chat, captured straight from
+ * Telegram's own chat object on `/start` so the settings page can show
+ * "Connected — Nagaraju" / "Connected — Support Group" instead of a raw
+ * numeric chat id. Returns null when nothing nameable is present. */
+function deriveChatDisplayName(chat: TelegramChat): string | null {
+  if (chat.title) return chat.title;
+  const fullName = [chat.first_name, chat.last_name].filter(Boolean).join(" ").trim();
+  if (fullName) return fullName;
+  if (chat.username) return `@${chat.username}`;
+  return null;
+}
+
 type TelegramMessage = {
   message_id: number;
   chat: TelegramChat;
@@ -200,7 +215,7 @@ export async function POST(request: Request) {
       await sendTelegramReply(message.chat.id, "This connect link isn't valid — please use the link on your Telegram Alerts page again.");
       return NextResponse.json({ ok: true });
     }
-    await connectTelegramChat(partnerId, chatId, slot);
+    await connectTelegramChat(partnerId, chatId, slot, deriveChatDisplayName(message.chat));
     const slotLabel = slot === "group" ? "group chat" : "personal chat";
     await sendTelegramReply(message.chat.id, await connectConfirmationMessage(slotLabel));
     return NextResponse.json({ ok: true });

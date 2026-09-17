@@ -1,6 +1,7 @@
 import { AppShell } from "@/components/AppShell";
 import { registerPage } from "@/lib/designer/registry";
 import { HelpAccordion } from "./HelpAccordion";
+import { env } from "@/lib/env";
 
 registerPage({
   id: "platform.partner-help",
@@ -128,6 +129,15 @@ const HELP_SECTIONS: HelpSection[] = [
 
 export default function HelpPage({ params }: { params: { partnerId: string } }) {
   void params;
+  const telegramBotUsername = env.telegramBotUsername();
+  const telegramChatLink = telegramBotUsername ? `https://t.me/${telegramBotUsername}` : null;
+  const whatsappNumber = env.platformSupportWhatsappNumber();
+  const whatsappChatLink = whatsappNumber
+    ? `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
+        "Hi, I have a question about my My Biz Flow account."
+      )}`
+    : null;
+
   return (
     <AppShell topbarTitle="Help & Tutorials">
       <div>
@@ -136,6 +146,27 @@ export default function HelpPage({ params }: { params: { partnerId: string } }) 
           Written guides covering how each part of My Biz Flow actually works. Click a question to
           expand its answer.
         </p>
+
+        {(telegramChatLink || whatsappChatLink) && (
+          <div className="mt-4 rounded-lg border border-border bg-bg-raised p-4">
+            <h2 className="font-display text-sm font-bold text-text">Still stuck? Chat with us</h2>
+            <p className="mt-1 max-w-[65ch] text-sm text-text-muted">
+              Prefer talking to a person? Reach My Biz Flow support directly.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {telegramChatLink && (
+                <a href={telegramChatLink} target="_blank" rel="noopener noreferrer" className="btn-accent">
+                  Chat with us on Telegram
+                </a>
+              )}
+              {whatsappChatLink && (
+                <a href={whatsappChatLink} target="_blank" rel="noopener noreferrer" className="btn-outline">
+                  Chat with us on WhatsApp
+                </a>
+              )}
+            </div>
+          </div>
+        )}
 
         <HelpAccordion sections={HELP_SECTIONS} />
       </div>

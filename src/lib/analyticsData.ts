@@ -41,15 +41,6 @@ export async function computeModuleStat(
   return { count: rows.length, currencySum: sum };
 }
 
-export async function getRecordsByModuleBarData(partnerId: string, moduleSlugs: string[]): Promise<BarPoint[]> {
-  return Promise.all(
-    moduleSlugs.map(async (slug) => ({
-      category: (await getModule(slug))?.label ?? slug,
-      value: (await computeModuleStat(partnerId, slug)).count,
-    }))
-  );
-}
-
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 /** Last 7 days of Billing totalAmount, bucketed by the record's creation day. */
@@ -212,6 +203,67 @@ export async function getServiceCentreOverview(partnerId: string): Promise<Servi
     closedThisMonth,
     revenueThisMonth,
   };
+}
+
+/**
+ * Today / This Week (Sunday-start) / This Month / This Year revenue —
+ * same "money actually collected" definition as every other revenue figure
+ * in this file (amountPaid if present, else totalAmount when
+ * paymentStatus === "Paid"). All four are derived from one shared query
+ * (every Billing record created since the start of this year) rather than
+ * four separate round-trips, since the year range already covers every
+ * other bucket.
+ */
+export interface RevenueBreakdown {
+  today: number;
+  thisWeek: number;
+  thisMonth: number;
+  thisYear: number;
+}
+
+export async function getRevenueBreakdown(partnerId: string): Promise<RevenueBreakdown> {
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfWeek = new Date(startOfToday);
+  startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const startOfYear = new Date(now.getFullYear(), 0, 1);
+
+  const rows = await prisma.businessRecord.findMany({
+    where: { partnerId, moduleSlug: "billing", createdAt: { gte: startOfYear } },
+    select: { data: true, createdAt: true },
+  });
+
+  let today = 0;
+  let thisWeek = 0;
+  let thisMonth = 0;
+  let thisYear = 0;
+  for (const r of rows) {
+    const data = r.data as Record<string, unknown>;
+    let amount = 0;
+    if (typeof data.amountPaid === "number") amount = data.amountPaid;
+    else if (data.paymentStatus === "Paid" && typeof data.totalAmount === "number") amount = data.totalAmount;
+    if (amount === 0) continue;
+    thisYear += amount;
+    if (r.createdAt >= startOfMonth) thisMonth += amount;
+    if (r.createdAt >= startOfWeek) thisWeek += amount;
+    if (r.createdAt >= startOfToday) today += amount;
+  }
+
+  return { today, thisWeek, thisMonth, thisYear };
+}
+
+/**
+ * Telecalling call-attempt count this month — the "calls" business stat the
+ * partner dashboard shows for partners with the Telecalling module enabled
+ * (src/lib/telecalling/callsData.ts's Call model, one row per logged call
+ * attempt). Only meaningful when Telecalling is enabled, so the dashboard
+ * only queries/shows this when that module is visible for the partner.
+ */
+export async function getCallsThisMonth(partnerId: string): Promise<number> {
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  return prisma.call.count({ where: { partnerId, createdAt: { gte: startOfMonth } } });
 }
 
 export const recentActivityColumns = [

@@ -37,7 +37,8 @@ export const dynamic = "force-dynamic";
 type SearchParams = {
   page?: string;
   paymentStatus?: string;
-  customer?: string;
+  paymentMode?: string;
+  invoiceSource?: string;
   from?: string;
   to?: string;
   q?: string;
@@ -65,13 +66,13 @@ export default async function BillingPage({
   const mod = await getModule("billing");
   const columns = await applyCustomizations("billing.list", billingColumns);
 
-  const { paymentStatus, customer, from, to, q } = searchParams;
+  const { paymentStatus, paymentMode, invoiceSource, from, to, q } = searchParams;
   const page = Math.max(1, Number(searchParams.page) || 1);
 
   const [{ rows, total, totalPages, pageSize }, allRows] = await Promise.all([
     listBusinessRecordsPaginated(params.partnerId, "billing", {
       page,
-      filters: { paymentStatus, customer },
+      filters: { paymentStatus, paymentMode, invoiceSource },
       dateRange: { field: "issueDate", from, to },
       search: q ? { query: q, fields: SEARCH_FIELDS } : undefined,
     }),
@@ -79,24 +80,41 @@ export default async function BillingPage({
   ]);
 
   // Summary cards, computed from the full unfiltered set — invoices created
-  // directly from Billing AND ones Service Centre stamps on workorder close
-  // (createInvoiceFromWorkorderAction — same "billing" moduleSlug, same
-  // table, no field that would exclude them from this query) both count.
+  // directly from Billing AND ones Service Centre/POS stamp on workorder
+  // close / sale completion (same "billing" moduleSlug, same table, no
+  // field that would exclude them from this query) all count.
+  //
+  // "Collected" and "Overdue" use the same amountPaid-first "money actually
+  // collected" convention as src/lib/analyticsData.ts (getAnalyticsSummary,
+  // getRevenueBySource) — not a naive sum of totalAmount over
+  // paymentStatus === "Paid" rows, which previously undercounted revenue
+  // already collected against Partially Paid invoices and could disagree
+  // with the Analytics page's own numbers for the same partner.
   const totalInvoiced = allRows.reduce((sum, r) => sum + (Number(r["totalAmount"]) || 0), 0);
-  const paidRows = allRows.filter((r) => r["paymentStatus"] === "Paid");
+  const collectedTotal = allRows.reduce((sum, r) => {
+    if (typeof r["amountPaid"] === "number") return sum + (r["amountPaid"] as number);
+    if (r["paymentStatus"] === "Paid" && typeof r["totalAmount"] === "number") return sum + (r["totalAmount"] as number);
+    return sum;
+  }, 0);
+  const collectedCount = allRows.filter((r) => (Number(r["amountPaid"]) || 0) > 0 || r["paymentStatus"] === "Paid").length;
   const overdueRows = allRows.filter((r) => r["paymentStatus"] === "Overdue");
   const draftRows = allRows.filter((r) => r["paymentStatus"] === "Draft");
-  const paidTotal = paidRows.reduce((sum, r) => sum + (Number(r["totalAmount"]) || 0), 0);
-  const overdueTotal = overdueRows.reduce((sum, r) => sum + (Number(r["totalAmount"]) || 0), 0);
+  const overdueTotal = overdueRows.reduce((sum, r) => {
+    if (typeof r["amountDue"] === "number") return sum + (r["amountDue"] as number);
+    const total = Number(r["totalAmount"]) || 0;
+    const paid = Number(r["amountPaid"]) || 0;
+    return sum + Math.max(0, total - paid);
+  }, 0);
 
   const rangeStart = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const rangeEnd = Math.min(total, page * pageSize);
 
   const distinct = (key: string) => Array.from(new Set(allRows.map((r) => String(r[key] ?? "")).filter(Boolean)));
   const paymentStatusOptions = distinct("paymentStatus");
-  const customerOptions = distinct("customer");
+  const paymentModeOptions = distinct("paymentMode");
+  const invoiceSourceOptions = distinct("invoiceSource");
 
-  const hasActiveFilters = Boolean(q || paymentStatus || customer || from || to);
+  const hasActiveFilters = Boolean(q || paymentStatus || paymentMode || invoiceSource || from || to);
 
   return (
     <AppShell
@@ -111,16 +129,18 @@ export default async function BillingPage({
         <p className="text-sm text-text-muted">{mod?.description}</p>
 
         {/*
-          Total Invoiced / Paid / Overdue / Draft — computed from the same
-          unfiltered set as the filter dropdowns below, so these numbers
-          never disagree with what's actually filterable. Mirrors the
+          Total Invoiced / Collected / Overdue / Draft — computed from the
+          same unfiltered set as the filter dropdowns below, so these
+          numbers never disagree with what's actually filterable, and
+          "Collected" uses the same amountPaid-first revenue convention as
+          the Analytics page so the two never disagree either. Mirrors the
           Open/Closed/Cancelled/Part Pending stat-card row on the Service
           Centre list (src/app/partner/[partnerId]/service-centre/page.tsx).
         */}
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <StatCard label="Total Invoiced" value={formatCurrencyINR(totalInvoiced)} sub={`${allRows.length} invoice(s)`} />
-          <StatCard label="Paid" value={formatCurrencyINR(paidTotal)} sub={`${paidRows.length} invoice(s)`} />
-          <StatCard label="Overdue" value={formatCurrencyINR(overdueTotal)} sub={`${overdueRows.length} invoice(s)`} />
+          <StatCard label="Collected" value={formatCurrencyINR(collectedTotal)} sub={`${collectedCount} invoice(s) paid in full or part`} />
+          <StatCard label="Overdue (Balance Due)" value={formatCurrencyINR(overdueTotal)} sub={`${overdueRows.length} invoice(s)`} />
           <StatCard label="Draft" value={String(draftRows.length)} sub="not yet sent" />
         </div>
 
@@ -136,7 +156,8 @@ export default async function BillingPage({
             />
           </div>
           <FilterSelect label="Payment Status" name="paymentStatus" value={paymentStatus} options={paymentStatusOptions} />
-          <FilterSelect label="Customer" name="customer" value={customer} options={customerOptions} />
+          <FilterSelect label="Payment Mode" name="paymentMode" value={paymentMode} options={paymentModeOptions} />
+          <FilterSelect label="Source" name="invoiceSource" value={invoiceSource} options={invoiceSourceOptions} />
           <div>
             <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-text-muted">From</label>
             <input type="date" name="from" defaultValue={from ?? ""} className="rounded-md border border-border bg-bg px-3 py-1.5 text-sm text-text" />

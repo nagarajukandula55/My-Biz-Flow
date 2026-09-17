@@ -7,7 +7,6 @@ import { getVisibleModuleSlugs } from "@/lib/designer/entitlements";
 import { formatCurrencyINR } from "@/lib/format";
 import {
   getRevenueTrend,
-  getRecordsByModuleBarData,
   getWorkorderStatusBreakdown,
   recentActivityColumns,
   getRecentActivity,
@@ -32,7 +31,6 @@ registerPage({
   superAdminOnly: false,
   customizableRegions: [
     { key: "revenue-trend-chart", label: "Revenue trend (line chart)" },
-    { key: "records-by-module-chart", label: "Records by module (bar chart)" },
     { key: "status-breakdown-chart", label: "Status breakdown (pie chart)" },
     { key: "period-comparison-chart", label: "Daily/Weekly/Monthly/Yearly year-on-date comparison" },
     { key: "revenue-by-source-chart", label: "Revenue by source (pie chart)" },
@@ -45,16 +43,9 @@ registerPage({
     { key: "average-tat-card", label: "Average turnaround time — closed workorders (Service Centre)" },
   ],
   explanation:
-    "A common page every Partner has (like Settings) — same structure, different data. This is also the Designer's showcase for every chart type: line (trend), bar (comparison), pie (composition), a DataTable (raw rows), and DashboardWidget summaries all together. Modules are first narrowed to this partner's active access keys (getVisibleModuleSlugs, src/lib/designer/entitlements.ts), then charts are filtered again through filterByAccessibleModules() using the viewer's Role -> Access Groups -> module chain (src/lib/rbac.ts) — the filtering logic is real, its input (getDemoViewerRole) is a stopgap until partner-user sessions exist. The top summary row (Total Revenue, This Month, Invoices, Total/Open/Closed Workorders — getAnalyticsSummary in analyticsData.ts) reuses computeDisplayStatus() from sample-data/service-centre.ts for its Open/Closed Workorder counts — the SAME milestone computation the Workorders list page's own stat cards use — so the two pages can never disagree. Also includes a 6-month combined Revenue+Workorders trend line chart (getSixMonthTrend), a Daily/Weekly/Monthly/Yearly year-on-date comparison (this period vs. the same period one calendar year earlier, for both revenue and workorder volume — getPeriodComparison in analyticsData.ts), plus Revenue-by-Source (grouped by Billing paymentMode, the one real cross-record field this app has for 'where the money came in through') and Invoice Status breakdown pies.",
+    "A common page every Partner has (like Settings) — same structure, different data. This is also the Designer's showcase for every chart type: line (trend), bar (Service Centre top brands), pie (composition), a DataTable (raw rows), and DashboardWidget summaries all together — all business-facing (revenue, invoices, workorders, calls-adjacent activity), with no widget showcasing the platform's own module/access-group plumbing to a partner. Modules are first narrowed to this partner's active access keys (getVisibleModuleSlugs, src/lib/designer/entitlements.ts), then charts are filtered again through filterByAccessibleModules() using the viewer's Role -> Access Groups -> module chain (src/lib/rbac.ts) — the filtering logic is real, its input (getDemoViewerRole) is a stopgap until partner-user sessions exist. The top summary row (Total Revenue, This Month, Invoices, Total/Open/Closed Workorders — getAnalyticsSummary in analyticsData.ts) reuses computeDisplayStatus() from sample-data/service-centre.ts for its Open/Closed Workorder counts — the SAME milestone computation the Workorders list page's own stat cards use — so the two pages can never disagree. Also includes a 6-month combined Revenue+Workorders trend line chart (getSixMonthTrend), a Daily/Weekly/Monthly/Yearly year-on-date comparison (this period vs. the same period one calendar year earlier, for both revenue and workorder volume — getPeriodComparison in analyticsData.ts), plus Revenue-by-Source (grouped by Billing paymentMode, the one real cross-record field this app has for 'where the money came in through') and Invoice Status breakdown pies.",
   sourceFile: "src/app/partner/[partnerId]/analytics/page.tsx",
 });
-
-// Partner-facing page — a partner has no reason to see internal role/access-group
-// plumbing ("Enabled modules" / "Accessible to this role" counts). Hidden the same
-// way Settings' module grid was (SHOW_ENABLED_MODULES there): the underlying
-// getVisibleModuleSlugs/getAccessibleModuleSlugs data and the chart-scoping logic
-// that depends on it are untouched — this only stops rendering the two widgets.
-const SHOW_ROLE_ACCESS_WIDGETS = false;
 
 type ScopedChart = { id: string; moduleSlug: string };
 const SCOPED_CHARTS: ScopedChart[] = [
@@ -81,7 +72,6 @@ export default async function AnalyticsPage({ params }: { params: { partnerId: s
 
   const visibleModules = enabledModules.filter((slug) => accessibleModules.includes(slug));
   const [
-    barData,
     revenueTrend,
     workorderStatusBreakdown,
     recentActivityRows,
@@ -91,7 +81,6 @@ export default async function AnalyticsPage({ params }: { params: { partnerId: s
     summary,
     sixMonthTrend,
   ] = await Promise.all([
-    getRecordsByModuleBarData(params.partnerId, visibleModules),
     getRevenueTrend(params.partnerId),
     getWorkorderStatusBreakdown(params.partnerId),
     getRecentActivity(params.partnerId, visibleModules),
@@ -141,13 +130,6 @@ export default async function AnalyticsPage({ params }: { params: { partnerId: s
           <DashboardWidget label="Closed Workorders" value={String(summary.closedWorkorders)} />
         </div>
 
-        {SHOW_ROLE_ACCESS_WIDGETS && (
-          <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <DashboardWidget label="Enabled modules" value={String(enabledModules.length)} />
-            <DashboardWidget label="Accessible to this role" value={String(accessibleModules.length)} />
-          </div>
-        )}
-
         <div className="mt-6">
           <ComboTrendCard
             title="Revenue & Workorders Trend (last 6 months)"
@@ -171,11 +153,6 @@ export default async function AnalyticsPage({ params }: { params: { partnerId: s
               format="currency"
             />
           )}
-          <BarChartCard
-            title="Records by module"
-            subtitle="Enabled modules this role can see"
-            data={barData}
-          />
           {showStatusBreakdown && (
             <PieChartCard
               title="Workorder status breakdown"
