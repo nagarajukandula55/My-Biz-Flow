@@ -1,0 +1,57 @@
+name: Scheduled jobs
+
+# Replaces Vercel Cron (vercel.json's "crons" removed) — we rely on GitHub
+# Actions for scheduling instead. Each job just hits the same authenticated
+# cron endpoint Vercel Cron used to call, with the same CRON_SECRET bearer
+# token (set as a repo secret: Settings -> Secrets and variables -> Actions).
+on:
+  schedule:
+    # Billing recurring invoices — daily 03:00 UTC (was vercel.json "0 3 * * *")
+    - cron: "0 3 * * *"
+    # Telegram daily/weekly/monthly partner reports — daily 9:00 PM IST = 15:30 UTC.
+    # Runs every day; shouldSendReportToday() (src/lib/telegramReportData.ts)
+    # decides per-partner whether today is actually a send day for their
+    # frequency: DAILY every day, WEEKLY only Saturday, MONTHLY only the
+    # last calendar day of the month — all evaluated in server time (UTC),
+    # which is still the same calendar day as 9 PM IST.
+    - cron: "30 15 * * *"
+    # Trial-expiry Telegram warnings — daily 9:30 PM IST = 16:00 UTC
+    - cron: "0 16 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  billing-recurring-invoices:
+    if: github.event.schedule == '0 3 * * *' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger billing-recurring-invoices
+        run: |
+          curl -sf -X GET "${APP_URL}/api/cron/billing-recurring-invoices" \
+            -H "Authorization: Bearer ${CRON_SECRET}"
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+
+  telegram-reports:
+    if: github.event.schedule == '30 15 * * *' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger telegram-reports (daily/weekly/monthly partner digests)
+        run: |
+          curl -sf -X GET "${APP_URL}/api/cron/telegram-reports" \
+            -H "Authorization: Bearer ${CRON_SECRET}"
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+
+  subscription-expiry-check:
+    if: github.event.schedule == '0 16 * * *' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger subscription-expiry-check (trial-expiry Telegram warnings)
+        run: |
+          curl -sf -X GET "${APP_URL}/api/cron/subscription-expiry-check" \
+            -H "Authorization: Bearer ${CRON_SECRET}"
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}

@@ -9,3 +9,8 @@
 export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://mybizflow.in";
 
 export const SITE_NAME = "My Biz Flow";
+
+/** Lives here (not src/lib/email.ts) so lib modules that need it — like
+ * emailTemplatesData.ts's commonEmailTokens() — don't create a circular
+ * import with email.ts, which itself imports FROM emailTemplatesData.ts. */
+export const SUPPORT_EMAIL = "support@mybizflow.in";

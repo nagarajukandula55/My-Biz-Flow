@@ -262,10 +262,10 @@ model Partner {
   /// --- Bank details (for payouts/settlement; display + record only) ---
   /// Deliberately stored as plain nullable columns matching AN-CRM's four
   /// fields. Nothing debits these — there is no payout engine wired up.
-  bankAccountName    String?
-  bankName           String?
-  bankAccountNumber  String?
-  bankIfsc           String?
+  bankAccountName   String?
+  bankName          String?
+  bankAccountNumber String?
+  bankIfsc          String?
 
   /// Subscription lifecycle: "Trial" | "Active" | "PastDue" | "Cancelled".
   /// Set to "Trial" automatically on signup with a 7-day trialEndAt; a
@@ -446,19 +446,19 @@ model PartnerStaff {
   id        String @id @default(cuid())
   partnerId String
 
-  name  String
+  name               String
   /// Optional now (was required) — Telecaller agents log in with loginId
   /// below instead of email, and don't necessarily have a work email to give.
   /// Still required for every role that predates this (Owner/Manager/
   /// Technician/FrontDesk created before this column existed keep theirs).
-  email        String?
-  phone        String?
-  passwordHash String
+  email              String?
+  phone              String?
+  passwordHash       String
   /// "Owner" | "Manager" | "Technician" | "FrontDesk" | "Telecaller" — a
   /// plain string, not an AN-CRM-style per-action permission matrix
   /// (documented fast-follow).
-  role   String @default("Technician")
-  status String @default("Active") // Active | Suspended
+  role               String   @default("Technician")
+  status             String   @default("Active") // Active | Suspended
   /// True until the staff member completes their first forced password
   /// change — same convention as Partner.mustChangePassword; set when the
   /// Partner owner creates the account with a generated password.
@@ -477,8 +477,8 @@ model PartnerStaff {
   /// sees every lead exactly as before. Unused for every other role. See
   /// src/lib/telecalling/leadsData.ts's territory filtering and
   /// autoAssignByTerritory().
-  assignedStates Json @default("[]")
-  assignedCities Json @default("[]")
+  assignedStates     Json     @default("[]")
+  assignedCities     Json     @default("[]")
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
@@ -692,14 +692,14 @@ model FieldForceSettings {
 /// send no-ops with a console log, exactly like src/lib/sms.ts does without
 /// SMS_API_KEY. Nothing here fabricates a bot connection.
 model TelegramSettings {
-  partnerId String @id
-  chatId    String?
+  partnerId        String    @id
+  chatId           String?
   /// The partner's group chat id — connected independently of `chatId`
   /// (the personal/DM chat) via its own deep-link slot (see
   /// buildTelegramConnectLink(partnerId, "group") in src/lib/telegram.ts).
   /// Either, both, or neither may be set at a time.
-  groupChatId String?
-  enabledTypes Json @default("[]")
+  groupChatId      String?
+  enabledTypes     Json      @default("[]")
   /// Per-alert-type routing: which of the two connected chats
   /// (personal/group/both) each TELEGRAM_ALERT_TYPES key is delivered to.
   /// Keyed by TelegramAlertType, valued "personal" | "group" | "both" — see
@@ -707,19 +707,19 @@ model TelegramSettings {
   /// defaults to "both" (send to whichever of chatId/groupChatId is set),
   /// matching this app's Json-column precedent for flexible per-type config
   /// (Partner.productDomains).
-  routing Json @default("{}")
+  routing          Json      @default("{}")
   /// Automatic periodic business-summary digest cadence, matching AN-CRM's
   /// VendorProfile.telegramReportFrequency (DAILY/WEEKLY/MONTHLY/NONE) —
   /// see src/lib/telegramTemplates.ts's businessReportMessage(). Actually
   /// sent by /api/cron/telegram-reports (see that route + lastReportSentAt
   /// below for the idempotency guard) once a bot token is configured.
-  reportFrequency String   @default("NONE")
+  reportFrequency  String    @default("NONE")
   /// When the last scheduled digest was sent (or attempted, if no bot token
   /// is configured) — the cron's idempotency guard, since Vercel Cron does
   /// not guarantee exactly-once delivery and this route may run more than
   /// once on the same calendar day/week/month.
   lastReportSentAt DateTime?
-  updatedAt       DateTime @updatedAt
+  updatedAt        DateTime  @updatedAt
 
   @@map("telegram_settings")
 }
@@ -728,21 +728,21 @@ model TelegramSettings {
 /// bot token exists yet, so the settings page can show recent activity.
 /// Mirrors AN-CRM's TelegramLog model (src/models/TelegramLog.ts).
 model TelegramLogEntry {
-  id        String   @id
-  partnerId String
-  type      String
-  message   String   @db.Text
-  chatId    String?
-  sent      Boolean  @default(false)
-  reason    String?
-  createdAt DateTime @default(now())
+  id          String   @id
+  partnerId   String
+  type        String
+  message     String   @db.Text
+  chatId      String?
+  sent        Boolean  @default(false)
+  reason      String?
+  createdAt   DateTime @default(now())
   /// The Bot API's own id for the message actually sent (Telegram's
   /// sendMessage response), captured only when `sent` is true. Together with
   /// chatId this is the reply-threading key: an incoming Telegram message
   /// whose `reply_to_message.message_id` matches this row is a reply to
   /// THIS alert — see findWorkorderByReplyMessageId() in src/lib/telegram.ts
   /// and the webhook route that calls it.
-  messageId Int?
+  messageId   Int?
   /// Which Service Centre workorder this alert was about, when sent via
   /// sendWorkorderTelegramAlert() rather than the generic
   /// sendPartnerTelegramAlert() — null for occasions that aren't yet
@@ -770,6 +770,29 @@ model TelegramMessageTemplate {
   updatedAt DateTime @updatedAt
 
   @@map("telegram_message_templates")
+}
+
+/// Admin-editable override for a transactional email's copy — same pattern
+/// as TelegramMessageTemplate above (key + override fields + updatedAt, code
+/// default in src/lib/emailTemplateDefs.ts used when no row exists here).
+/// Structural pieces (info-box rows, button URLs) stay code-driven since
+/// they carry real data (amounts, order numbers) rather than wording; only
+/// subject/heading/body/footNote — the parts an admin would actually want
+/// to reword — are stored here.
+model EmailTemplate {
+  key        String   @id
+  subject    String
+  heading    String
+  body       String   @db.Text
+  footNote   String?  @db.Text
+  /// "text" (default): body is plain text, \n\n-separated paragraphs,
+  /// auto-wrapped into <p> blocks. "html": body is used verbatim as raw
+  /// HTML (still {{token}}-filled) — lets an admin hand-craft layout/markup
+  /// beyond the plain-paragraph default when they need to.
+  bodyFormat String   @default("text")
+  updatedAt  DateTime @updatedAt
+
+  @@map("email_templates")
 }
 
 /// The platform's own commission on a Booking — a single global row
@@ -912,7 +935,7 @@ model BookingPayment {
 /// One uploaded/entered contact to be called. importBatch groups rows from
 /// the same CSV upload (or "Manual" for one-off adds) for filtering/reporting.
 model Lead {
-  id           String    @id @default(cuid())
+  id           String        @id @default(cuid())
   partnerId    String
   name         String
   phone        String
@@ -920,14 +943,14 @@ model Lead {
   source       String?
   state        String?
   city         String?
-  importBatch  String    @default("Manual")
+  importBatch  String        @default("Manual")
   /// New | Contacted | Interested | Converted | Lost | DoNotCall
-  status       String    @default("New")
+  status       String        @default("New")
   assignedToId String?
   assignedTo   PartnerStaff? @relation(fields: [assignedToId], references: [id])
-  notes        String?   @db.Text
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  notes        String?       @db.Text
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 
   calls    Call[]
   messages MessageLog[]
@@ -942,17 +965,17 @@ model Lead {
 /// agent's own phone (tel: click-to-call, no CDR/recording available) — this
 /// row is the agent's own disposition record of what happened.
 model Call {
-  id         String    @id @default(cuid())
+  id         String       @id @default(cuid())
   leadId     String
-  lead       Lead      @relation(fields: [leadId], references: [id])
+  lead       Lead         @relation(fields: [leadId], references: [id])
   partnerId  String
   agentId    String
   agent      PartnerStaff @relation(fields: [agentId], references: [id])
   /// Interested | NotReachable | Callback | Converted | DoNotCall | WrongNumber
   outcome    String
-  notes      String?   @db.Text
+  notes      String?      @db.Text
   callbackAt DateTime?
-  createdAt  DateTime  @default(now())
+  createdAt  DateTime     @default(now())
 
   @@index([leadId])
   @@index([partnerId])
@@ -982,18 +1005,18 @@ model MessageTemplate {
 
 /// Audit trail of every triggered message — one row per send attempt.
 model MessageLog {
-  id         String   @id @default(cuid())
+  id         String           @id @default(cuid())
   leadId     String
-  lead       Lead     @relation(fields: [leadId], references: [id])
+  lead       Lead             @relation(fields: [leadId], references: [id])
   templateId String?
   template   MessageTemplate? @relation(fields: [templateId], references: [id])
   partnerId  String
   channel    String
-  body       String   @db.Text
+  body       String           @db.Text
   /// sent | failed | not-configured
-  status     String   @default("sent")
+  status     String           @default("sent")
   sentById   String?
-  createdAt  DateTime @default(now())
+  createdAt  DateTime         @default(now())
 
   @@index([leadId])
   @@index([partnerId])

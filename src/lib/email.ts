@@ -25,9 +25,30 @@
  */
 import { Resend } from "resend";
 import { env } from "@/lib/env";
-import { SITE_NAME, SITE_URL } from "@/lib/seo";
+import { SITE_NAME, SITE_URL, SUPPORT_EMAIL } from "@/lib/seo";
+import { getEmailTemplate, renderEmailTemplate } from "@/lib/emailTemplatesData";
 
-export const SUPPORT_EMAIL = "support@mybizflow.in";
+export { SUPPORT_EMAIL };
+
+/**
+ * Renders a template's {{token}}-filled body into html + a plain-text
+ * fallback. In "text" mode (the default), \n\n-separated paragraphs become
+ * <p> blocks and the text version is the same paragraphs joined. In "html"
+ * mode the body is used verbatim as the html (an admin-authored fragment,
+ * still token-filled) and the text version strips tags for the plain-text
+ * part of the email.
+ */
+export function renderTemplateParagraphs(body: string, vars: Record<string, string>, format: "text" | "html" = "text"): { html: string; text: string } {
+  const filled = renderEmailTemplate(body, vars);
+  if (format === "html") {
+    return { html: filled, text: filled.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() };
+  }
+  const paragraphs = filled.split(/\n\n+/).filter(Boolean);
+  return {
+    html: paragraphs.map((p) => `<p style="margin:0 0 16px;">${p.replace(/\n/g, "<br/>")}</p>`).join(""),
+    text: paragraphs.join("\n\n"),
+  };
+}
 
 type SendEmailInput = {
   to: string;
@@ -120,19 +141,69 @@ export function emailInfoBox(rows: { label: string; value: string }[]): string {
 /**
  * Password-reset link email — the equivalent of AN-CRM's FORGOT_PASSWORD
  * occasion (src/services/email/resend.service.ts's sendPasswordResetEmail
- * there), adapted for My Biz Flow's own branding and kept deliberately
- * minimal (no admin-editable-template layer exists here yet).
+ * there), adapted for My Biz Flow's own branding. Subject/heading/body are
+ * admin-editable (src/lib/emailTemplateDefs.ts key "password_reset").
  */
 export async function sendPasswordResetEmail({ to, resetUrl }: { to: string; resetUrl: string }): Promise<{ sent: boolean }> {
-  const subject = `Reset your ${SITE_NAME} password`;
+  const tpl = await getEmailTemplate("password_reset");
+  const vars = { siteName: SITE_NAME, supportEmail: SUPPORT_EMAIL };
+  const subject = renderEmailTemplate(tpl.subject, vars);
+  const heading = renderEmailTemplate(tpl.heading, vars);
+  const { html: bodyHtml, text: bodyText } = renderTemplateParagraphs(tpl.body, vars, tpl.bodyFormat);
   const html = emailShell(`
-    <h1 style="font-size:18px;font-weight:700;color:#111827;margin:0 0 12px;">Reset your password</h1>
-    <p style="margin:0 0 20px;">We received a request to reset the password on your ${SITE_NAME} partner account.</p>
+    <h1 style="font-size:18px;font-weight:700;color:#111827;margin:0 0 12px;">${heading}</h1>
+    ${bodyHtml}
     <div style="text-align:center;margin:0 0 20px;">${emailButton("Reset password", resetUrl)}</div>
-    <p style="margin:0 0 8px;font-size:13px;color:#6b7280;">This link expires in 30 minutes. If you didn't request this, you can safely ignore this email — your password won't be changed.</p>
     <p style="margin:0;font-size:12px;color:#9ca3af;word-break:break-all;">Or paste this link into your browser: ${resetUrl}</p>
   `);
-  const text = `Reset your ${SITE_NAME} password\n\nWe received a request to reset the password on your ${SITE_NAME} partner account.\n\nReset link (expires in 30 minutes): ${resetUrl}\n\nIf you didn't request this, you can safely ignore this email — your password won't be changed.\n\nNeed help? Contact ${SUPPORT_EMAIL}.`;
+  const text = `${subject}\n\n${bodyText}\n\nReset link: ${resetUrl}\n\nNeed help? Contact ${SUPPORT_EMAIL}.`;
+
+  return sendEmail({ to, subject, html, text });
+}
+
+/**
+ * Platform subscription payment receipt — sent by My Biz Flow ITSELF to a
+ * partner when their subscription payment is recorded (there is no live
+ * payment gateway; a Super Admin marks a partner Active/records payment in
+ * the Admin app's Subscribers editor, which calls this via
+ * /api/admin/send-partner-email). Distinct from sendInvoiceEmail
+ * (src/lib/email/partnerEmails.ts), which is a PARTNER's own invoice to
+ * THEIR customer — this one is platform-to-partner billing, the only kind
+ * of "invoice between My Biz Flow and a partner" this app sends.
+ */
+export async function sendPlatformSubscriptionPaymentEmail({
+  to,
+  businessName,
+  planName,
+  amount,
+  billingCycle,
+  invoiceNumber,
+}: {
+  to: string;
+  businessName: string;
+  planName: string;
+  amount: string;
+  billingCycle: string;
+  invoiceNumber: string;
+}): Promise<{ sent: boolean }> {
+  const tpl = await getEmailTemplate("platform_subscription_payment");
+  const vars = { siteName: SITE_NAME, supportEmail: SUPPORT_EMAIL, businessName, planName, amount, billingCycle, invoiceNumber };
+  const subject = renderEmailTemplate(tpl.subject, vars);
+  const heading = renderEmailTemplate(tpl.heading, vars);
+  const { html: bodyHtml, text: bodyText } = renderTemplateParagraphs(tpl.body, vars, tpl.bodyFormat);
+  const footNote = tpl.footNote ? renderEmailTemplate(tpl.footNote, vars) : "";
+  const html = emailShell(`
+    <h1 style="font-size:18px;font-weight:700;color:#111827;margin:0 0 12px;">${heading}</h1>
+    ${bodyHtml}
+    ${emailInfoBox([
+      { label: "Invoice number", value: invoiceNumber },
+      { label: "Plan", value: planName },
+      { label: "Billing cycle", value: billingCycle },
+      { label: "Amount", value: amount },
+    ])}
+    ${footNote ? `<p style="margin:0;font-size:13px;color:#6b7280;">${footNote}</p>` : ""}
+  `);
+  const text = `${subject}\n\n${bodyText}\n\nInvoice number: ${invoiceNumber}\nPlan: ${planName}\nBilling cycle: ${billingCycle}\nAmount: ${amount}\n\n${footNote}`;
 
   return sendEmail({ to, subject, html, text });
 }
@@ -146,7 +217,8 @@ export async function sendPasswordResetEmail({ to, resetUrl }: { to: string; res
  * AN-CRM's own WELCOME_REGISTRATION occasion, never the password itself —
  * the visitor is auto-signed-in straight into a forced "set your
  * password" screen right after registering (see signup/actions.ts), so
- * there's no temporary password to relay by email at all.
+ * there's no temporary password to relay by email at all. Subject/heading/
+ * body are admin-editable (key "partner_welcome").
  */
 export async function sendPartnerWelcomeEmail({
   to,
@@ -158,17 +230,18 @@ export async function sendPartnerWelcomeEmail({
   partnerId: string;
 }): Promise<{ sent: boolean }> {
   const loginUrl = `${SITE_URL}/login`;
-  const subject = `Welcome to ${SITE_NAME} — your account is ready`;
+  const tpl = await getEmailTemplate("partner_welcome");
+  const vars = { siteName: SITE_NAME, businessName, partnerId };
+  const subject = renderEmailTemplate(tpl.subject, vars);
+  const heading = renderEmailTemplate(tpl.heading, vars);
+  const { html: bodyHtml, text: bodyText } = renderTemplateParagraphs(tpl.body, vars, tpl.bodyFormat);
   const html = emailShell(`
-    <h1 style="font-size:18px;font-weight:700;color:#111827;margin:0 0 12px;">Welcome, ${businessName}</h1>
-    <p style="margin:0 0 16px;">Your ${SITE_NAME} partner account has been created and is ready to use.</p>
-    <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;background:#f9fafb;border-radius:8px;margin:0 0 20px;">
-      <tr><td style="padding:14px 16px;font-size:13px;color:#374151;"><strong>Partner ID:</strong> ${partnerId}</td></tr>
-    </table>
-    <p style="margin:0 0 16px;">You're already signed in on this device and were taken straight to set your own password. Use your Partner ID above to sign in from any other device.</p>
+    <h1 style="font-size:18px;font-weight:700;color:#111827;margin:0 0 12px;">${heading}</h1>
+    ${emailInfoBox([{ label: "Partner ID", value: partnerId }])}
+    ${bodyHtml}
     <div style="text-align:center;margin:0 0 20px;">${emailButton("Sign in", loginUrl)}</div>
   `);
-  const text = `Welcome to ${SITE_NAME}, ${businessName}!\n\nYour partner account is ready.\n\nPartner ID: ${partnerId}\n\nYou're already signed in on this device and were taken straight to set your own password. Use your Partner ID above to sign in from any other device: ${loginUrl}\n\nNeed help? Contact ${SUPPORT_EMAIL}.`;
+  const text = `${subject}\n\nPartner ID: ${partnerId}\n\n${bodyText}\n\nSign in: ${loginUrl}\n\nNeed help? Contact ${SUPPORT_EMAIL}.`;
 
   return sendEmail({ to, subject, html, text });
 }

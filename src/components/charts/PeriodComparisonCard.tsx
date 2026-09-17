@@ -29,10 +29,16 @@ const GRANULARITIES: { key: PeriodGranularity; label: string }[] = [
  * Daily/Weekly/Monthly/Yearly tab below is a client-side view toggle over
  * data already on the page, not a client fetch.
  */
+const GRANULARITY_KEY: Record<PeriodGranularity, keyof PeriodComparison> = {
+  DAY: "daily",
+  WEEK: "weekly",
+  MONTH: "monthly",
+  YEAR: "yearly",
+};
+
 export function PeriodComparisonCard({ data }: { data: PeriodComparison }) {
   const [granularity, setGranularity] = useState<PeriodGranularity>("MONTH");
-  const key = granularity.toLowerCase() as "daily" | "weekly" | "monthly" | "yearly";
-  const buckets = data[key];
+  const buckets = data[GRANULARITY_KEY[granularity]];
 
   const revenueData = buckets.map((b) => ({
     label: b.label,

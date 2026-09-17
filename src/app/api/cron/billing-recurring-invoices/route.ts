@@ -6,6 +6,7 @@ import { listPartners } from "@/lib/partnerData";
 import { listBusinessRecords, getBusinessRecord, createBusinessRecord, updateBusinessRecord } from "@/lib/businessRecords";
 import { advanceNextRunDate, type RecurringFrequency } from "@/lib/sample-data/billing-recurring";
 import { notifyCentralApiBillingInvoice } from "@/lib/centralApi";
+import { sendRawTelegramMessage } from "@/lib/telegram";
 
 /**
  * Vercel Cron entry point (schedule it in vercel.json, e.g. daily) — for
@@ -91,6 +92,16 @@ export async function GET(request: Request) {
         `failed to sync to AN-Accounting after retries — timestamp=${new Date().toISOString()} ` +
         `failures=${JSON.stringify(centralApiSyncFailures)}. Re-push these manually once resolved.`,
     );
+    // Site-administration alert -> the admin/ops group (TELEGRAM_OPS_CHAT_ID),
+    // never a partner's own chat — this is a platform integration failure,
+    // not something any partner needs to see or act on.
+    const opsChatId = env.telegramOpsChatId();
+    if (opsChatId) {
+      await sendRawTelegramMessage(
+        opsChatId,
+        `⚠️ <b>Billing sync failure</b>\n\n<pre>\n${centralApiSyncFailures.length} of ${createdCount} recurring invoice(s) failed to sync to AN-Accounting.\n</pre>\nFailures: ${centralApiSyncFailures.map((f) => `${f.partnerId}/${f.invoiceId}`).join(", ")}\n\nRe-push these manually once resolved.`
+      );
+    }
   }
 
   return NextResponse.json({

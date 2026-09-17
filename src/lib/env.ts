@@ -58,9 +58,17 @@ export const env = {
   razorpayWebhookSecret: () => process.env.RAZORPAY_WEBHOOK_SECRET,
   /** Public key id, exposed to the browser for the Razorpay Checkout widget — same value as RAZORPAY_KEY_ID. */
   razorpayPublicKeyId: () => process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-  /** Optional bearer secret Vercel Cron sends as `Authorization: Bearer <value>` (set alongside the
-   * cron schedule in vercel.json). Unset means the route runs unauthenticated, e.g. in local dev. */
+  /** Optional bearer secret Vercel Cron (or the GitHub Actions workflow that has
+   * replaced it — see .github/workflows/cron.yml) sends as `Authorization: Bearer <value>`.
+   * Unset means the route runs unauthenticated, e.g. in local dev. */
   cronSecret: () => process.env.CRON_SECRET,
+  /** Bearer secret the separate My Biz Flow Admin app uses to call this app's
+   * /api/admin/* service routes server-to-server (e.g. triggering a partner-facing
+   * transactional email — see /api/admin/send-partner-email). Resend is only ever
+   * called from THIS app; the Admin app never sends partner-facing email directly,
+   * it only edits the templates (shared EmailTemplate table) and asks this app to
+   * send. Same shared-secret convention as TELEGRAM_WEBHOOK_SECRET/CRON_SECRET. */
+  adminServiceSecret: () => process.env.ADMIN_SERVICE_SECRET,
   /** SMS "ping" for Field Force job offers — optional, cost-free by default.
    * Unset means src/lib/sms.ts no-ops (logs only) instead of throwing, same
    * graceful-degradation posture as the Razorpay keys above. */
@@ -127,6 +135,15 @@ export const env = {
    * way Razorpay does). Unset means the webhook rejects every request — set this to any
    * random string and pass the SAME value as `secret_token` in the setWebhook call below. */
   telegramWebhookSecret: () => process.env.TELEGRAM_WEBHOOK_SECRET,
+  /** MY BIZ FLOW's OWN ops Telegram chat (a Super Admin's DM or an internal
+   * ops group with the bot added) — where platform-facing alerts go, e.g.
+   * "new_partner_application" (see telegramTemplateDefs.ts): nobody's own
+   * Partner.chatId applies since no Partner even exists for that event yet.
+   * Uses sendRawTelegramMessage() directly (src/lib/telegram.ts), bypassing
+   * per-partner TelegramSettings routing entirely. Unset means these ops
+   * alerts silently no-op, same graceful-degradation posture as every other
+   * Telegram send here. */
+  telegramOpsChatId: () => process.env.TELEGRAM_OPS_CHAT_ID,
   /** Platform Super Admin's own WhatsApp number for partners reaching MY BIZ FLOW support
    * (the support-ticket widget's "message us on WhatsApp" link — see
    * src/components/SupportWidget.tsx). NOT a partner's own supportHotline (that's the

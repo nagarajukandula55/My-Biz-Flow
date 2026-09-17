@@ -15,6 +15,8 @@ import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import { getPartner } from "@/lib/partnerData";
 import { notifyCentralApiBillingInvoice } from "@/lib/centralApi";
 import { buildServiceCentreLines } from "@/lib/serviceCentreLines";
+import { sendWorkorderTelegramAlert, sendPartnerTelegramAlert } from "@/lib/telegram";
+import { workorderClosedMessage, workorderCancelledMessage, lowStockAlertMessage } from "@/lib/telegramTemplates";
 
 /**
  * Shared lookup for every action below. Previously each action did
@@ -189,6 +191,7 @@ export async function deductInventoryForWorkorderAction(partnerId: string, worko
 
   const stockRecords = await listBusinessRecords(partnerId, "inventory-stock");
   const stockById = new Map(stockRecords.map((r) => [String(r["id"]), r]));
+  const partner = await getPartner(partnerId);
 
   for (const line of lifecycle.partLines) {
     if (line.pending) continue; // never fulfilled — nothing to deduct
@@ -196,8 +199,25 @@ export async function deductInventoryForWorkorderAction(partnerId: string, worko
     if (!stock) continue; // no matching stock record — best-effort, doesn't block the job
     const currentQty = Number(stock["quantityOnHand"] ?? 0);
     const newQty = Math.max(0, currentQty - (line.qty || 1));
+    const reorderLevel = Number(stock["reorderLevel"] ?? 0);
     await updateBusinessRecord(partnerId, "inventory-stock", line.materialId, { ...stock, quantityOnHand: newQty });
     stockById.set(line.materialId, { ...stock, quantityOnHand: newQty });
+
+    // Fire once, right as stock crosses the threshold — not on every
+    // subsequent deduction while it stays low, so this doesn't spam an
+    // alert per workorder for a part nobody's reordered yet.
+    if (partner && reorderLevel > 0 && currentQty > reorderLevel && newQty <= reorderLevel) {
+      await sendPartnerTelegramAlert(
+        partnerId,
+        "lowStock",
+        await lowStockAlertMessage({
+          partnerBusinessName: partner.businessName,
+          itemName: String(stock["itemName"] ?? stock["name"] ?? line.materialId),
+          quantityRemaining: newQty,
+          reorderThreshold: reorderLevel,
+        })
+      );
+    }
   }
 
   await updateBusinessRecord(partnerId, "service-centre", workorderId, { ...record, inventoryDeducted: true });
@@ -403,6 +423,20 @@ export async function createInvoiceFromWorkorderAction(
     paymentCollectedAmount: amountPaid,
     paymentCollectedAt: collected ? new Date().toISOString() : undefined,
   });
+
+  if (partner) {
+    await sendWorkorderTelegramAlert(
+      partnerId,
+      workorderId,
+      "workorderClosed",
+      await workorderClosedMessage({
+        partnerBusinessName: partner.businessName,
+        workorderNumber: workorderId,
+        amount: `₹${totalAmount.toLocaleString("en-IN")}`,
+      })
+    );
+  }
+
   revalidatePath(`/partner/${partnerId}/service-centre/${workorderId}`);
   revalidatePath(`/partner/${partnerId}/service-centre/${workorderId}/invoice`);
   revalidatePath(`/partner/${partnerId}/billing`);
@@ -445,6 +479,21 @@ export async function cancelWorkorderAction(
     holdSince: undefined,
     stageHistory: appendStageHistory(record, "Cancelled"),
   });
+
+  const partner = await getPartner(partnerId);
+  if (partner) {
+    await sendWorkorderTelegramAlert(
+      partnerId,
+      workorderId,
+      "workorderCancelled",
+      await workorderCancelledMessage({
+        partnerBusinessName: partner.businessName,
+        workorderNumber: workorderId,
+        reason: trimmedReason,
+      })
+    );
+  }
+
   revalidatePath(`/partner/${partnerId}/service-centre/${workorderId}`);
   revalidatePath(`/partner/${partnerId}/service-centre`);
 }
