@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 import { getPartner, updatePartnerSubscription } from "@/lib/partnerData";
 import { verifyPaymentSignature } from "@/lib/razorpay";
-import { computePartnerDueAmount } from "@/lib/subscriptionData";
+import { computePartnerDueAmount, cycleLabel } from "@/lib/subscriptionData";
 import { prisma } from "@/lib/prisma";
 import { notifyCentralApiSale } from "@/lib/centralApi";
 import { getSessionPartnerId } from "@/lib/requirePartnerSession";
+import { sendPlatformSubscriptionPaymentEmail } from "@/lib/email";
+import { sendPartnerTelegramAlert } from "@/lib/telegram";
+import { paymentReceivedMessage } from "@/lib/telegramTemplates";
 
 /**
  * Verifies a Checkout success callback's signature, then activates the
@@ -64,6 +67,25 @@ export async function POST(request: Request) {
         amount: due.amount,
         capturedAt,
       });
+
+      // Receipt to the partner — email + Telegram — only reached when THIS
+      // call is the one that actually inserted the payment row (the
+      // unique-constraint catch below skips it if the webhook already won
+      // the race), so a partner never gets two receipts for one payment.
+      const receiptVars = {
+        to: partner.businessEmail,
+        businessName: partner.businessName,
+        planName: due.planName,
+        amount: `₹${due.amount.toLocaleString("en-IN")}`,
+        billingCycle: cycleLabel(partner.billingCycle ?? ""),
+        invoiceNumber: `PLT-${razorpay_payment_id}`,
+      };
+      sendPlatformSubscriptionPaymentEmail(receiptVars).catch(() => {});
+      sendPartnerTelegramAlert(
+        partner.id,
+        "paymentReceived",
+        await paymentReceivedMessage({ partnerBusinessName: partner.businessName, amount: receiptVars.amount, planName: due.planName })
+      ).catch(() => {});
     } catch (err) {
       // Unique constraint violation means this payment was already
       // recorded (e.g. by the webhook) — not an error, just a no-op.

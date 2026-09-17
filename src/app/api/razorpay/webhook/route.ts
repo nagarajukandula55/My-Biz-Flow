@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
 import { getPartner, updatePartnerSubscription } from "@/lib/partnerData";
 import { verifyWebhookSignature } from "@/lib/razorpay";
-import { computePartnerDueAmount } from "@/lib/subscriptionData";
+import { computePartnerDueAmount, cycleLabel } from "@/lib/subscriptionData";
 import { prisma } from "@/lib/prisma";
 import { notifyCentralApiSale } from "@/lib/centralApi";
+import { sendPlatformSubscriptionPaymentEmail } from "@/lib/email";
+import { sendPartnerTelegramAlert } from "@/lib/telegram";
+import { paymentReceivedMessage } from "@/lib/telegramTemplates";
 
 /**
  * Optional: only fires if a webhook is registered in the Razorpay
@@ -62,6 +65,23 @@ export async function POST(request: Request) {
               amount: due.amount,
               capturedAt,
             });
+
+            // Same receipt as /api/razorpay/verify — only reached when THIS
+            // call wins the insert race, so no duplicate receipts.
+            const receiptVars = {
+              to: partner.businessEmail,
+              businessName: partner.businessName,
+              planName: due.planName,
+              amount: `₹${due.amount.toLocaleString("en-IN")}`,
+              billingCycle: cycleLabel(partner.billingCycle ?? ""),
+              invoiceNumber: `PLT-${paymentEntity.id}`,
+            };
+            sendPlatformSubscriptionPaymentEmail(receiptVars).catch(() => {});
+            sendPartnerTelegramAlert(
+              partner.id,
+              "paymentReceived",
+              await paymentReceivedMessage({ partnerBusinessName: partner.businessName, amount: receiptVars.amount, planName: due.planName })
+            ).catch(() => {});
           } catch (err) {
             const alreadyRecorded =
               err instanceof Error && "code" in err && (err as { code?: string }).code === "P2002";
