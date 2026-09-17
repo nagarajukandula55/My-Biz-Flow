@@ -87,10 +87,11 @@ export const env = {
    * Every OTHER invoice in this app (Service Centre, Billing module, etc.) is
    * issued by the partner to their own customer and must NOT show this name —
    * see AGENTS.md / the Service Centre & Billing scope notes.
-   * Defaults to "AN Group" per CLAUDE.md's references to the parent company —
-   * TODO(owner): confirm/replace with the exact registered legal name
-   * (e.g. "AN Group Pvt Ltd" / GSTIN-holding entity) before this is relied on
-   * for statutory documents. */
+   * Confirmed (2026-09-18, owner): "AN Group" is the correct legal/GSTIN-
+   * holding entity name; "My Biz Flow" is its registered brand/trade name
+   * on that same GST registration — the "My Biz Flow — a unit of AN Group"
+   * pattern this drives is a standard, compliant way to show a trade name
+   * alongside the GSTIN-holding legal name. */
   platformLegalEntityName: () => process.env.PLATFORM_LEGAL_ENTITY_NAME || "AN Group",
   /** Cloudinary — Service Centre before/after job photos, KYC docs, signed agreements
    * (beforePhotos/afterPhotos/kycDocRef/agreementDocRef fields in
