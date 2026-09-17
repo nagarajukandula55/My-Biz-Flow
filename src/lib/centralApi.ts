@@ -1,15 +1,6 @@
 import { env } from "@/lib/env";
 import type { PartnerRecord } from "@/lib/partnerData";
-
-/**
- * GST rate applied to subscription revenue reported to AN-Accounting.
- * 18% is the standard rate for SaaS/software services in India — but this
- * is a guess, not a verified fact about your actual GST registration or
- * how Plan.price is set (inclusive vs. exclusive of tax). Confirm the
- * correct treatment (possibly with a CA) and adjust this before relying on
- * the resulting GSTR-1/3B prep sheets in AN-Accounting.
- */
-const SUBSCRIPTION_GST_RATE_PERCENT = 18;
+import { SUBSCRIPTION_GST_RATE_PERCENT } from "@/lib/subscriptionData";
 
 /** Retry policy for transient failures talking to AN-Accounting. */
 const MAX_ATTEMPTS = 3;
@@ -161,9 +152,11 @@ export async function notifyCentralApiSale(
       lines: [
         {
           // AN-Accounting computes taxable-value * (1 + rate%) = line
-          // total, so `rate` here must be the pre-tax amount — back it
-          // out from the gross amount actually collected, so the
-          // invoice's grand total matches the real payment.
+          // total, so `rate` here must be the pre-tax amount. `payment.amount`
+          // is genuinely GST-inclusive now (computePartnerDueAmount adds GST
+          // on top of Plan.price, which is stored GST-exclusive — confirmed
+          // 2026-09-18), so backing it out here recovers the real taxable
+          // value rather than under-reporting it.
           description: `Subscription — ${planName} (${partner.billingCycle})`,
           quantity: 1,
           rate: Number((payment.amount / (1 + SUBSCRIPTION_GST_RATE_PERCENT / 100)).toFixed(2)),

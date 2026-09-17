@@ -25,6 +25,21 @@ export type BillingCycle = "Yearly" | "TwoYearly";
 export const BILLING_CYCLES: BillingCycle[] = ["Yearly", "TwoYearly"];
 
 /**
+ * GST on My Biz Flow's OWN subscription revenue (the platform's sale to a
+ * partner — never a partner's own customer-facing invoice, which is a
+ * separate, per-partner concern this file has nothing to do with).
+ * Confirmed, not a guess: My Biz Flow is an IT/SaaS platform service (SAC
+ * 9973/9983 — "licensing services for right to use software"/"IT support
+ * services"), which is standard-rated at 18% under GST, and Plan.price is
+ * stored EXCLUSIVE of GST (confirmed 2026-09-18) — so GST must be added on
+ * top of the discounted cycle price to arrive at the amount actually
+ * charged, not backed out of it. src/lib/centralApi.ts's
+ * SUBSCRIPTION_GST_RATE_PERCENT mirrors this exact value; keep them in sync
+ * if this ever changes.
+ */
+export const SUBSCRIPTION_GST_RATE_PERCENT = 18;
+
+/**
  * Months per cycle, and a discount off straight monthly*months for
  * committing longer. Both the cycle set and these discount percentages are
  * AN-CRM's real, currently-live values (see AN-CRM's
@@ -177,8 +192,16 @@ export function applyOfferDiscount(cyclePrice: number, offer: OfferRecord | unde
   return Math.round(cyclePrice * (1 - offer.discountValue / 100));
 }
 
-/** The rupee amount due for a partner's currently chosen plan+cycle+offer — used to create the Razorpay order. */
-export async function computePartnerDueAmount(partner: PartnerRecord): Promise<{ amount: number; planName: string } | undefined> {
+/**
+ * The rupee amount due for a partner's currently chosen plan+cycle+offer —
+ * used to create the Razorpay order (the actual amount charged) and to
+ * report the sale to AN-Accounting. `amount` is GST-INCLUSIVE (baseAmount +
+ * gstAmount) since Plan.price is GST-exclusive — this is the real total a
+ * partner is charged, not just the plan's own list price.
+ */
+export async function computePartnerDueAmount(
+  partner: PartnerRecord
+): Promise<{ amount: number; baseAmount: number; gstAmount: number; planName: string } | undefined> {
   if (!partner.planId || !partner.billingCycle) return undefined;
   // A legacy cycle (Monthly/Quarterly/HalfYearly) left on an older Partner
   // row from before Yearly/TwoYearly-only isn't priceable any more — return
@@ -190,8 +213,9 @@ export async function computePartnerDueAmount(partner: PartnerRecord): Promise<{
   const cycle = partner.billingCycle;
   const cyclePrice = computeCyclePrice(currentMonthlyRate(plan), cycle);
   const offer = partner.offerId ? await getOffer(partner.offerId) : undefined;
-  const amount = applyOfferDiscount(cyclePrice, offer, plan.id, cycle);
-  return { amount, planName: plan.name };
+  const baseAmount = applyOfferDiscount(cyclePrice, offer, plan.id, cycle);
+  const gstAmount = Math.round(baseAmount * (SUBSCRIPTION_GST_RATE_PERCENT / 100));
+  return { amount: baseAmount + gstAmount, baseAmount, gstAmount, planName: plan.name };
 }
 
 export type SubscriptionState = {

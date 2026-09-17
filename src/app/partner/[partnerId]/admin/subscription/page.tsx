@@ -125,6 +125,11 @@ export default async function PartnerSubscriptionPage({ params }: { params: { pa
               ).
               {offer ? ` Offer "${offer.name}" applied.` : ""}
             </p>
+            {due && (
+              <p className="mt-3 text-xs text-text-muted">
+                ₹{due.baseAmount.toLocaleString("en-IN")} + ₹{due.gstAmount.toLocaleString("en-IN")} GST (18%) = <strong className="text-text">₹{due.amount.toLocaleString("en-IN")}</strong>
+              </p>
+            )}
             <div className="mt-4 flex flex-wrap items-center gap-3">
               {due ? (
                 <RazorpayCheckoutButton
@@ -202,7 +207,7 @@ export default async function PartnerSubscriptionPage({ params }: { params: { pa
                             {BILLING_CYCLES.map((c) => (
                               <span key={c} className="block">
                                 {cycleLabel(c)}: ₹{computeCyclePrice(rate, c).toLocaleString("en-IN")}
-                                {" "}total ({CYCLE_DISCOUNT_PCT[c]}% off)
+                                {" "}total ({CYCLE_DISCOUNT_PCT[c]}% off) + 18% GST
                               </span>
                             ))}
                           </span>
