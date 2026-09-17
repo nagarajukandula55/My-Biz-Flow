@@ -158,6 +158,11 @@ export async function notifyCentralApiSale(
           // 2026-09-18), so backing it out here recovers the real taxable
           // value rather than under-reporting it.
           description: `Subscription — ${planName} (${partner.billingCycle})`,
+          // 997331: "Licensing services for the right to use computer
+          // software and databases" — the correct SAC code for a SaaS
+          // platform subscription (not a customized-development or IT
+          // support service, which have their own distinct SAC codes).
+          hsnCode: "997331",
           quantity: 1,
           rate: Number((payment.amount / (1 + SUBSCRIPTION_GST_RATE_PERCENT / 100)).toFixed(2)),
           gstRatePercent: SUBSCRIPTION_GST_RATE_PERCENT,
