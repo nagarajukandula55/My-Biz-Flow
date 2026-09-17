@@ -1,20 +1,36 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { LogoMark } from "@/components/LogoMark";
+import { BrandLogo } from "@/components/BrandLogo";
 import { StatusChip } from "@/components/StatusChip";
 import { registerPage } from "@/lib/designer/registry";
-import { listPublicPlans } from "@/lib/plansData";
+import { listPublicPlans, type PlanRecord } from "@/lib/plansData";
 import { getModule } from "@/lib/designer/moduleRegistry";
+import { listActivePartnerTypes, type PartnerTypeRecord, type PlanTier } from "@/lib/designer/partnerTypesData";
+// TIER_LABEL/tierForPlanIndex used to be defined inline here. They now live
+// in pageTiers.ts alongside DEFAULT_PAGE_TIERS, so the tier this page
+// ADVERTISES for a plan and the tier the runtime gate ENFORCES for that
+// same plan are computed by one function, not two copies that can drift.
+import { TIER_LABEL, tierForPlanIndex } from "@/lib/designer/pageTiers";
+import { MODULE_TIER_FEATURES } from "@/lib/designer/moduleTiers";
 import { SITE_URL, SITE_NAME } from "@/lib/seo";
+// Real Yearly/2-Year totals (35%/55% off, AN-CRM's actual live discounts --
+// see subscriptionData.ts) computed from each plan's monthly rate, so a
+// visitor sees the real amount they'd pay up front instead of only a
+// monthly base rate with billing-cycle math left implicit.
+import { BILLING_CYCLES, CYCLE_DISCOUNT_PCT, computeCyclePrice, currentMonthlyRate, isLaunchPricingActive, cycleLabel } from "@/lib/subscriptionData";
 
-// Reads live DB-backed module label overrides — must not be baked into a
-// static build.
+// Reads live DB-backed module label overrides / partner type + plan data —
+// must not be baked into a static build.
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Pricing",
   description:
-    "My Biz Flow plans for every stage — no-code stays no-code at every tier. What changes as you grow is how many modules, users, and locations you get.",
+    "My Biz Flow plans for every stage — no-code stays no-code at every tier. Pick your business type to see the modules, tiers, and pricing bundled for it.",
+  // Deliberately points at the base /pricing regardless of ?type= — the
+  // type-scoped views are a filtered presentation of the same plan data,
+  // not distinct content, so canonicalizing per-type would just create
+  // duplicate-content signal for no benefit.
   alternates: { canonical: "/pricing" },
 };
 
@@ -27,30 +43,59 @@ registerPage({
   superAdminOnly: false,
   customizableRegions: [],
   explanation:
-    "Public pricing page — plan cards reading live from the Plan Prisma table, the same source /admin/plans edits, so pricing can never drift out of sync. Each card links to /signup?plan=<planId>.",
+    "Public pricing page. With no ?type= param, shows a business-type chooser (same listActivePartnerTypes() source as /signup). With ?type=<id>, shows that PartnerType's bundled plans (planIds) filtered from the live Plan table, plus its planTierByPage-driven Basic/Pro/Ultimate feature breakdown pulled from moduleTiers.ts. Each plan card links to /subscribe/<planId>.",
   sourceFile: "src/app/pricing/page.tsx",
 });
 
-export default async function PricingPage() {
-  const PLANS = await listPublicPlans();
+
+
+function tierFeaturesForType(type: PartnerTypeRecord, tier: PlanTier): string[] {
+  const modules = type.defaultModules.length > 0 ? type.defaultModules : [];
+  const features: string[] = [];
+  for (const slug of modules) {
+    const tiers = MODULE_TIER_FEATURES[slug];
+    if (!tiers) continue;
+    features.push(...tiers[tier]);
+  }
+  return features;
+}
+
+export default async function PricingPage({
+  searchParams,
+}: {
+  searchParams: { type?: string };
+}) {
+  const partnerTypes = await listActivePartnerTypes();
+  const selectedType = searchParams.type
+    ? partnerTypes.find((t) => t.id === searchParams.type)
+    : undefined;
+
+  const ALL_PLANS = await listPublicPlans();
+  const PLANS: PlanRecord[] = selectedType
+    ? ALL_PLANS.filter((p) => selectedType.planIds.includes(p.id))
+    : ALL_PLANS;
+
   const allSlugs = Array.from(new Set(PLANS.flatMap((p) => p.includedModuleSlugs)));
   const moduleLabels = new Map(
     await Promise.all(allSlugs.map(async (slug) => [slug, (await getModule(slug))?.label ?? slug] as const))
   );
+
   // Product/Offer structured data straight from the same live Plan rows the
   // page renders below -- prices, billing cycle, and plan names here can
   // never drift out of sync with what's shown, so this stays accurate as an
-  // AI-answer-engine (GEO) source for "what does My Biz Flow cost."
+  // AI-answer-engine (GEO) source for "what does My Biz Flow cost." When a
+  // business type is selected, this narrows to exactly the plans shown for
+  // it rather than staying generic.
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Product",
-    name: `${SITE_NAME} plans`,
+    name: selectedType ? `${SITE_NAME} plans for ${selectedType.id}` : `${SITE_NAME} plans`,
     brand: { "@type": "Brand", name: SITE_NAME },
     offers: PLANS.map((plan) => ({
       "@type": "Offer",
       name: plan.name,
-      url: `${SITE_URL}/pricing`,
-      price: plan.price,
+      url: `${SITE_URL}/pricing${selectedType ? `?type=${encodeURIComponent(selectedType.id)}` : ""}`,
+      price: currentMonthlyRate(plan),
       priceCurrency: "INR",
       description: `Up to ${plan.maxUsers} users, ${plan.maxLocations} location${plan.maxLocations === 1 ? "" : "s"}, billed ${plan.billingCycle}.`,
     })),
@@ -65,53 +110,157 @@ export default async function PricingPage() {
       />
       <header className="flex items-center justify-between border-b border-border px-6 py-5">
         <Link href="/" className="flex items-center gap-2">
-          <LogoMark size={22} />
-          <span className="font-display text-base font-extrabold text-text">My Biz Flow</span>
+          <BrandLogo height={30} />
         </Link>
         <nav className="flex items-center gap-4 text-sm font-semibold">
           <Link href="/login" className="text-text-muted hover:text-text">
             Sign in
           </Link>
-          <Link href="/signup" className="btn-accent">
+          <Link href="/signup" className="btn-accent mbf-cta-glow">
             Get started
           </Link>
         </nav>
       </header>
 
       <div className="px-6 py-16 text-center">
-        <h1 className="font-display text-3xl font-bold text-text sm:text-4xl">Plans for every stage</h1>
-        <p className="mbf-prose mx-auto mt-3 text-base text-text-muted">
-          No-code stays no-code at every tier. What changes as you grow is how many modules and seats you get — not
-          whether the builder works.
-        </p>
+        {selectedType ? (
+          <>
+            <div className="mb-3 flex items-center justify-center gap-2 text-sm">
+              <Link href="/pricing" className="font-semibold text-accent hover:underline">
+                ← Change business type
+              </Link>
+            </div>
+            <h1 className="font-display text-3xl font-bold text-text sm:text-4xl">
+              Plans for <span className="mbf-headline-mark">{selectedType.id}</span>
+            </h1>
+            <p className="mbf-prose mx-auto mt-3 text-base text-text-muted">
+              {selectedType.description || "No-code stays no-code at every tier."} What changes as you grow is how
+              many modules and seats you get — not whether the builder works.
+            </p>
+          </>
+        ) : (
+          <>
+            <h1 className="font-display text-3xl font-bold text-text sm:text-4xl">
+              Plans for <span className="mbf-headline-mark">every stage</span>
+            </h1>
+            <p className="mbf-prose mx-auto mt-3 text-base text-text-muted">
+              No-code stays no-code at every tier. Pick the kind of business you run to see the modules, tiers, and
+              pricing bundled for it.
+            </p>
+          </>
+        )}
       </div>
 
-      {PLANS.length === 0 ? (
+      {selectedType?.id === "service-centre" && (
+        <section className="border-t border-border bg-bg-raised px-6 py-16">
+          <div className="mx-auto max-w-5xl">
+            <p className="text-center text-xs font-semibold uppercase tracking-widest text-accent">What you get</p>
+            <h2 className="mt-2 text-center font-display text-2xl font-bold text-text">
+              Everything a repair shop actually needs, in one screen
+            </h2>
+            <p className="mbf-prose mx-auto mt-2 text-center text-base text-text-muted">
+              Service Centre isn't a generic ticketing tool bent into shape — this is what it actually does, ready
+              the moment you sign up below.
+            </p>
+            <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              {[
+                {
+                  title: "Full workorder lifecycle",
+                  description:
+                    "Created → In Progress → Completed → Closed, with fault/symptom/solution details and brand/model on every job.",
+                },
+                {
+                  title: "Public repair tracking",
+                  description:
+                    "Every workorder gets a shareable tracking link — customers check status without an account or a phone call.",
+                },
+                {
+                  title: "Inventory-linked billing",
+                  description:
+                    "Close a workorder and it can generate a GST-compliant invoice from the parts and labour used, deducting stock from Inventory automatically.",
+                },
+                {
+                  title: "No-code, same as every module",
+                  description:
+                    "Fields, statuses, and catalogs are config-driven — a Super Admin can tailor Service Centre without custom development.",
+                },
+              ].map((f) => (
+                <div key={f.title} className="mbf-glass-card p-5">
+                  <h3 className="font-display text-base font-bold text-text">{f.title}</h3>
+                  <p className="mt-1.5 text-sm leading-relaxed text-text-muted">{f.description}</p>
+                </div>
+              ))}
+            </div>
+            <p className="mt-8 text-center text-sm font-semibold text-text-muted">Pick your plan below to get started ↓</p>
+          </div>
+        </section>
+      )}
+
+      {!selectedType ? (
+        partnerTypes.length === 0 ? (
+          <p className="mx-auto max-w-md rounded-lg border border-dashed border-border bg-bg-raised p-6 text-center text-sm text-text-muted">
+            No business types are available yet — check back soon.
+          </p>
+        ) : (
+          <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 px-6 pb-20 sm:grid-cols-3">
+            {partnerTypes.map((t) => (
+              <Link
+                key={t.id}
+                href={`/pricing?type=${encodeURIComponent(t.id)}`}
+                className="mbf-glass-card flex flex-col p-5"
+              >
+                <h2 className="font-display text-base font-bold text-text">{t.id}</h2>
+                <p className="mt-1 flex-1 text-sm text-text-muted">{t.description || "—"}</p>
+                <span className="mt-4 font-semibold text-accent">See plans →</span>
+              </Link>
+            ))}
+          </div>
+        )
+      ) : PLANS.length === 0 ? (
         <p className="mx-auto max-w-md rounded-lg border border-dashed border-border bg-bg-raised p-6 text-center text-sm text-text-muted">
-          No plans are published yet — check back soon.
+          No plans are published yet for this business type — check back soon.
         </p>
       ) : (
       <div className="mx-auto grid max-w-6xl grid-cols-1 gap-6 px-6 pb-20 sm:grid-cols-3">
-        {PLANS.map((plan, i) => (
+        {PLANS.map((plan, i) => {
+          const tier = tierForPlanIndex(i, PLANS.length);
+          const tierFeatures = tierFeaturesForType(selectedType, tier);
+          return (
           <div
             key={plan.id}
-            className={`flex flex-col rounded-lg border p-6 ${
-              i === 1 ? "border-accent bg-bg-raised shadow-lg" : "border-border bg-bg-raised"
-            }`}
+            className={`mbf-glass-card flex flex-col p-6 ${i === 1 ? "mbf-cta-glow border-accent/50" : ""}`}
           >
             {i === 1 && (
               <StatusChip label="Most popular" variant="amber" className="mb-3 w-fit" />
             )}
             <h2 className="font-display text-xl font-bold text-text">{plan.name}</h2>
+            <p className="mt-0.5 text-xs font-semibold uppercase tracking-wide text-text-muted">
+              {TIER_LABEL[tier]} tier
+            </p>
             <div className="mt-3 flex items-baseline gap-1">
               <span className="font-mono text-3xl font-bold tabular-nums text-text">
-                ₹{plan.price.toLocaleString("en-IN")}
+                ₹{currentMonthlyRate(plan).toLocaleString("en-IN")}
               </span>
-              <span className="text-sm text-text-muted">/ {plan.billingCycle}</span>
+              <span className="text-sm text-text-muted">/ month</span>
+              {isLaunchPricingActive() && plan.launchPrice != null && (
+                <span className="ml-1 font-mono text-sm text-text-muted line-through">
+                  ₹{plan.price.toLocaleString("en-IN")}
+                </span>
+              )}
             </div>
+            {isLaunchPricingActive() && plan.launchPrice != null && (
+              <p className="mt-0.5 text-xs font-semibold text-success">Launch pricing</p>
+            )}
             <p className="mt-2 text-sm text-text-muted">
               Up to {plan.maxUsers} users · {plan.maxLocations} location{plan.maxLocations === 1 ? "" : "s"}
             </p>
+            <div className="mt-2 space-y-0.5 text-xs text-text-muted">
+              {BILLING_CYCLES.map((c) => (
+                <div key={c}>
+                  {cycleLabel(c)}: <span className="font-semibold text-text">₹{computeCyclePrice(currentMonthlyRate(plan), c).toLocaleString("en-IN")}</span> total ({CYCLE_DISCOUNT_PCT[c]}% off)
+                </div>
+              ))}
+            </div>
 
             <div className="mt-5 flex-1">
               <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted">
@@ -125,15 +274,71 @@ export default async function PricingPage() {
                   </li>
                 ))}
               </ul>
+              {tierFeatures.length > 0 && (
+                <>
+                  <div className="mb-2 mt-4 text-xs font-semibold uppercase tracking-wide text-text-muted">
+                    What you get at {TIER_LABEL[tier]}
+                  </div>
+                  <ul className="space-y-1.5">
+                    {tierFeatures.map((feature) => (
+                      <li key={feature} className="flex items-center gap-2 text-sm text-text">
+                        <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-accent" />
+                        {feature}
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
             </div>
 
             <Link href={`/subscribe/${plan.id}`} className="btn-accent mt-6 w-full text-center">
               Choose {plan.name}
             </Link>
           </div>
-        ))}
+          );
+        })}
       </div>
+      )}
+
+      {selectedType && PLANS.length > 0 && (
+        <div className="mx-auto max-w-3xl px-6 pb-20">
+          <h2 className="font-display text-2xl font-bold text-text">Pricing FAQ</h2>
+          <dl className="mt-6 space-y-6">
+            {PRICING_FAQ.map((item) => (
+              <div key={item.q}>
+                <dt className="text-sm font-semibold text-text">{item.q}</dt>
+                <dd className="mt-1 text-sm text-text-muted">{item.a}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
       )}
     </div>
   );
 }
+
+/**
+ * Kept modest and specific to what this app actually does — no invented
+ * free-trial, refund, or promo-code claims (My Biz Flow has no trial or
+ * refund-policy page and no referral system yet, unlike AN-CRM's own
+ * pricing FAQ which references its 15-day trial and Cancellation Policy;
+ * see this task's report for what was deliberately left out and why).
+ */
+const PRICING_FAQ: { q: string; a: string }[] = [
+  {
+    q: "What changes between tiers?",
+    a: "The builder itself never changes — every tier is the same no-code platform. What changes is which modules are bundled (a higher tier adds inventory, billing documents, and full accounting/GST tooling on top of the base workflow) and how many users and locations you get.",
+  },
+  {
+    q: "Is GST included in the price shown?",
+    a: "Prices shown are the plan's base subscription rate. Once you're signed up, GST and non-GST invoicing is available from the Starter tier up — check your plan's included modules above for what's bundled.",
+  },
+  {
+    q: "Can I change plans later?",
+    a: "Yes — an admin can move a business to a different plan from Plan & Billing inside the partner portal at any time; the modules and seat limits update to match the new plan.",
+  },
+  {
+    q: "Are there per-user charges on top of the plan price?",
+    a: "No — each plan already includes a maximum user and location count shown on its card. There's no separate per-seat add-on.",
+  },
+];

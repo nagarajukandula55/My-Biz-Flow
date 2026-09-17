@@ -72,13 +72,28 @@ export async function clearPartnerScheme(partnerId: string, documentType: string
     });
 }
 
-/** Partner override if one exists, otherwise the Main scheme, otherwise the built-in default. */
-export async function getEffectiveScheme(documentType: string, partnerId?: string): Promise<NumberingScheme> {
+/**
+ * Partner override if one exists, otherwise the Main scheme, otherwise the
+ * built-in default.
+ *
+ * `defaults` only applies when NOTHING has been configured for the document
+ * type (no partner override, no Main scheme) — it lets a caller supply a
+ * sensible built-in for its own document type (e.g. a "WO" prefix for
+ * Service Centre workorder ids) instead of inheriting DEFAULT_SCHEME's
+ * invoice-shaped "INV". Omit it and behaviour is exactly as before.
+ */
+export async function getEffectiveScheme(
+  documentType: string,
+  partnerId?: string,
+  defaults?: Partial<NumberingScheme>
+): Promise<NumberingScheme> {
   if (partnerId) {
     const override = await getPartnerScheme(partnerId, documentType);
     if (override) return override;
   }
-  return getMainScheme(documentType);
+  const row = await prisma.numberingMainScheme.findUnique({ where: { documentType } });
+  if (row?.scheme) return row.scheme as unknown as NumberingScheme;
+  return defaults ? { ...DEFAULT_SCHEME, ...defaults } : DEFAULT_SCHEME;
 }
 
 /** Peek at what the NEXT number would look like without consuming it — for live preview UIs. */
@@ -96,8 +111,12 @@ export async function previewNextNumber(documentType: string, partnerId?: string
  * different, sequential numbers. Uses upsert-with-increment so concurrent
  * calls for the same scope are serialized by Postgres, not by app code.
  */
-export async function getNextNumber(documentType: string, partnerId?: string): Promise<string> {
-  const scheme = await getEffectiveScheme(documentType, partnerId);
+export async function getNextNumber(
+  documentType: string,
+  partnerId?: string,
+  defaults?: Partial<NumberingScheme>
+): Promise<string> {
+  const scheme = await getEffectiveScheme(documentType, partnerId, defaults);
   const key = scopeKey(documentType, partnerId);
 
   const row = await prisma.numberingCounter.upsert({

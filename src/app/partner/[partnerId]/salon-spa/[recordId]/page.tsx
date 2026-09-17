@@ -31,8 +31,10 @@ export const dynamic = "force-dynamic";
 
 export default async function SalonSpaDetailPage({
   params,
+  searchParams,
 }: {
   params: { partnerId: string; recordId: string };
+  searchParams?: { created?: string; updated?: string };
 }) {
   const mod = await getModule("salon-spa");
   const record = await getBusinessRecord(params.partnerId, "salon-spa", params.recordId);
@@ -57,6 +59,8 @@ export default async function SalonSpaDetailPage({
         <div className="mt-6">
         <RecordDetail
           fields={fields}
+          recordLabel={recordLabel}
+          searchParams={searchParams}
           timeline={timeline}
           related={salonSpaRelated}
           headerSlot={

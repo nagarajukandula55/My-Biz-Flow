@@ -1,8 +1,10 @@
 /**
  * Central place for reading required environment variables. Reads are
  * lazy (checked when the value is actually used, not at import time) —
- * CENTRAL_API_URL isn't wired to anything yet, so eager validation at
- * module load would crash every page before that feature even exists.
+ * a partner who never sets CENTRAL_API_URL/CENTRAL_API_KEY should still be
+ * able to use every other page; only the actual AN-Accounting sync calls
+ * (notifyCentralApiSale, notifyCentralApiBillingInvoice in centralApi.ts)
+ * throw, and they catch that themselves and no-op.
  * Once a variable is actually consumed somewhere, its getter here is the
  * only place that should read `process.env` directly for it — don't
  * reach for `process.env.X` ad hoc elsewhere, so there's exactly one
@@ -27,6 +29,19 @@ function requireEnv(name: string): string {
 
 export const env = {
   superAdminSecret: () => requireEnv("SUPER_ADMIN_SECRET"),
+  /** Optional parent-domain cookie scope (e.g. ".mybizflow.in") for the
+   * Super Admin session cookie — set on My Biz Flow Admin (which now owns
+   * the only real /admin/login) so the cookie it sets is also readable on
+   * this app's own domain, keeping the admin-can-view-any-partner bypass
+   * in requirePartnerSession.ts working across the two separate
+   * deployments. Unset (e.g. on localhost) means a host-only cookie, same
+   * as before. */
+  adminCookieDomain: () => process.env.ADMIN_COOKIE_DOMAIN || undefined,
+  /** Where the separate My Biz Flow Admin app is deployed — src/middleware.ts
+   * redirects any /admin/* request here now that this app has no admin
+   * pages of its own. Defaults to a placeholder subdomain; set
+   * ADMIN_APP_URL once the admin app has a real domain. */
+  adminAppUrl: () => process.env.ADMIN_APP_URL || "https://admin.mybizflow.in",
   /** Signing secret for the partner session JWT (src/lib/partnerSession.ts).
    * Required — there is no insecure fallback. Without this set, every
    * partner login/session-check throws rather than silently issuing an
@@ -43,9 +58,17 @@ export const env = {
   razorpayWebhookSecret: () => process.env.RAZORPAY_WEBHOOK_SECRET,
   /** Public key id, exposed to the browser for the Razorpay Checkout widget — same value as RAZORPAY_KEY_ID. */
   razorpayPublicKeyId: () => process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-  /** Optional bearer secret Vercel Cron sends as `Authorization: Bearer <value>` (set alongside the
-   * cron schedule in vercel.json). Unset means the route runs unauthenticated, e.g. in local dev. */
+  /** Optional bearer secret Vercel Cron (or the GitHub Actions workflow that has
+   * replaced it — see .github/workflows/cron.yml) sends as `Authorization: Bearer <value>`.
+   * Unset means the route runs unauthenticated, e.g. in local dev. */
   cronSecret: () => process.env.CRON_SECRET,
+  /** Bearer secret the separate My Biz Flow Admin app uses to call this app's
+   * /api/admin/* service routes server-to-server (e.g. triggering a partner-facing
+   * transactional email — see /api/admin/send-partner-email). Resend is only ever
+   * called from THIS app; the Admin app never sends partner-facing email directly,
+   * it only edits the templates (shared EmailTemplate table) and asks this app to
+   * send. Same shared-secret convention as TELEGRAM_WEBHOOK_SECRET/CRON_SECRET. */
+  adminServiceSecret: () => process.env.ADMIN_SERVICE_SECRET,
   /** SMS "ping" for Field Force job offers — optional, cost-free by default.
    * Unset means src/lib/sms.ts no-ops (logs only) instead of throwing, same
    * graceful-degradation posture as the Razorpay keys above. */
@@ -85,14 +108,48 @@ export const env = {
   vapidPublicKey: () => process.env.VAPID_PUBLIC_KEY,
   vapidPrivateKey: () => process.env.VAPID_PRIVATE_KEY,
   vapidSubject: () => process.env.VAPID_SUBJECT,
-  /** WhatsApp Business/Cloud API — NOT IMPLEMENTED YET, placeholder ahead of a future
-   * integration (customer-facing workorder/invoice alerts pushed over WhatsApp, per
-   * explicit direction "later we will integrate whatsapp messages push"). No WhatsApp SDK
-   * installed and no sending code exists; src/lib/telegramTemplates.ts-style message
-   * copy would pair with these once that follow-up happens. phoneNumberId/accessToken are
-   * from the Meta developer dashboard (WhatsApp > API Setup); verifyToken is an
-   * arbitrary secret you choose and register with Meta for webhook verification. */
+  /** WhatsApp Business/Cloud API — sending is implemented in src/lib/whatsapp.ts
+   * (used by the Telecalling module's template messages, src/lib/telecalling/messaging.ts),
+   * same graceful-degradation posture as sms.ts: unset means it logs instead of sending.
+   * phoneNumberId/accessToken are from the Meta developer dashboard (WhatsApp > API Setup);
+   * verifyToken is an arbitrary secret you choose and register with Meta for webhook
+   * verification (no inbound webhook route exists yet — outbound sending only so far). */
   whatsappBusinessPhoneNumberId: () => process.env.WHATSAPP_BUSINESS_PHONE_NUMBER_ID,
   whatsappAccessToken: () => process.env.WHATSAPP_ACCESS_TOKEN,
   whatsappVerifyToken: () => process.env.WHATSAPP_VERIFY_TOKEN,
+  /** Telegram bot token (see src/lib/telegram.ts) — per-partner chatId/alert-type settings
+   * are real and persisted (TelegramSettings), but actual delivery needs a real bot token,
+   * which isn't set up here yet; unset means sendPartnerTelegramAlert() logs instead of
+   * sending, same graceful-degradation posture as sms.ts. From @BotFather on Telegram. */
+  telegramBotToken: () => process.env.TELEGRAM_BOT_TOKEN,
+  /** Bot's own @username (no leading @), e.g. "MyBizFlowAlertsBot" — the token alone doesn't
+   * tell you the bot's handle, and the "Connect Telegram" deep link
+   * (https://t.me/<username>?start=<partnerId>) needs it. Set from @BotFather ("/mybots" ->
+   * your bot -> shows its @username). Unset means the Connect button on the Telegram Alerts
+   * page can't render a real link yet. */
+  telegramBotUsername: () => process.env.TELEGRAM_BOT_USERNAME,
+  /** Shared secret registered as `secret_token` on Telegram's setWebhook call — Telegram
+   * echoes it back as the `X-Telegram-Bot-Api-Secret-Token` header on every webhook POST
+   * (see src/app/api/telegram/webhook/route.ts), which is this route's ONLY verification
+   * that a request genuinely came from Telegram (Telegram doesn't sign webhook bodies the
+   * way Razorpay does). Unset means the webhook rejects every request — set this to any
+   * random string and pass the SAME value as `secret_token` in the setWebhook call below. */
+  telegramWebhookSecret: () => process.env.TELEGRAM_WEBHOOK_SECRET,
+  /** MY BIZ FLOW's OWN ops Telegram chat (a Super Admin's DM or an internal
+   * ops group with the bot added) — where platform-facing alerts go, e.g.
+   * "new_partner_application" (see telegramTemplateDefs.ts): nobody's own
+   * Partner.chatId applies since no Partner even exists for that event yet.
+   * Uses sendRawTelegramMessage() directly (src/lib/telegram.ts), bypassing
+   * per-partner TelegramSettings routing entirely. Unset means these ops
+   * alerts silently no-op, same graceful-degradation posture as every other
+   * Telegram send here. */
+  telegramOpsChatId: () => process.env.TELEGRAM_OPS_CHAT_ID,
+  /** Platform Super Admin's own WhatsApp number for partners reaching MY BIZ FLOW support
+   * (the support-ticket widget's "message us on WhatsApp" link — see
+   * src/components/SupportWidget.tsx). NOT a partner's own supportHotline (that's the
+   * partner's number shown to THEIR customers, stored per-partner on Partner.supportHotline) —
+   * this is the one platform-wide number partners message when they need help from us.
+   * Digits only, with country code, no "+" or spaces (e.g. "919876543210"), matching the
+   * wa.me deep-link format. Unset means the widget hides the WhatsApp button. */
+  platformSupportWhatsappNumber: () => process.env.PLATFORM_SUPPORT_WHATSAPP_NUMBER,
 };

@@ -1,5 +1,4 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { ADMIN_COOKIE_NAME, isValidAdminCookie } from "@/lib/adminAuth";
 import { env } from "@/lib/env";
 
 /**
@@ -14,13 +13,19 @@ import { env } from "@/lib/env";
  *    deployment never hits this — env.fieldForceStandalone() is false by
  *    default, so this whole block is a no-op there.
  *
- * 2. The Super Admin gate — see src/lib/adminAuth.ts for what this does and
- *    does not guarantee (shared secret, not real per-user auth). Matches:
- *      - anything under /admin (the platform Designer, etc.)
- *      - any module's admin/ subfolder: /partner/[partnerId]/<slug>/admin...
- *    The login page itself (/admin/login) must stay reachable without the
- *    cookie, or nobody could ever get in.
+ * 2. Every Super Admin surface (the platform Designer, Plans, Subscribers,
+ *    every module's admin/ subfolder, etc.) has moved to the separate
+ *    My Biz Flow Admin app/repo, which owns its own auth end to end — this
+ *    app no longer has any /admin/* route or module admin/ subfolder of
+ *    its own, so there is nothing left to gate here. Any stray link to
+ *    /admin/* just redirects to the admin app instead of 404ing.
  */
+function next(request: NextRequest): NextResponse {
+  const headers = new Headers(request.headers);
+  headers.set("x-pathname", request.nextUrl.pathname);
+  return NextResponse.next({ request: { headers } });
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -36,44 +41,18 @@ export async function middleware(request: NextRequest) {
     if (!allowed) {
       return NextResponse.redirect(new URL("/field-force-app", request.url));
     }
-    return NextResponse.next();
+    return next(request);
   }
 
-  const isAdminLogin = pathname === "/admin/login";
-  const isAdminRoute = pathname.startsWith("/admin");
-  const isModuleAdminRoute = /^\/partner\/[^/]+\/[^/]+\/admin(\/|$)/.test(pathname);
-
-  if (isAdminLogin || (!isAdminRoute && !isModuleAdminRoute)) {
-    return NextResponse.next();
+  if (pathname === "/admin" || pathname.startsWith("/admin/")) {
+    return NextResponse.redirect(new URL(pathname, env.adminAppUrl()));
   }
 
-  // A Super Admin can mark an otherwise-gated page public from
-  // /admin/settings — checked via a Node.js API route (this middleware
-  // runs on the Edge runtime, which cannot read the pageAccess store or
-  // import the full page registry directly; see /api/page-access).
-  try {
-    const accessCheck = await fetch(
-      new URL(`/api/page-access?path=${encodeURIComponent(pathname)}`, request.url)
-    );
-    if (accessCheck.ok) {
-      const { isPublic } = (await accessCheck.json()) as { isPublic: boolean };
-      if (isPublic) return NextResponse.next();
-    }
-  } catch {
-    // If the access-check call itself fails, fail closed (fall through to
-    // the cookie check) rather than accidentally exposing a gated page.
-  }
-
-  const cookie = request.cookies.get(ADMIN_COOKIE_NAME)?.value;
-  if (await isValidAdminCookie(cookie)) {
-    return NextResponse.next();
-  }
-
-  const loginUrl = new URL("/admin/login", request.url);
-  loginUrl.searchParams.set("next", pathname);
-  return NextResponse.redirect(loginUrl);
+  return next(request);
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|field-force-manifest.json|field-force-icon.svg).*)"],
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|field-force-manifest.json|field-force-icon.svg|telecalling-icon.svg).*)",
+  ],
 };

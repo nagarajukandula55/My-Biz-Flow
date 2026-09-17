@@ -29,8 +29,10 @@ export const dynamic = "force-dynamic";
 
 export default async function RestaurantPosDetailPage({
   params,
+  searchParams,
 }: {
   params: { partnerId: string; recordId: string };
+  searchParams?: { created?: string; updated?: string };
 }) {
   const mod = await getModule("restaurant-pos");
   const record = await getBusinessRecord(params.partnerId, "restaurant-pos", params.recordId);
@@ -80,6 +82,8 @@ export default async function RestaurantPosDetailPage({
 
         <RecordDetail
           fields={fields}
+          recordLabel={recordLabel}
+          searchParams={searchParams}
           timeline={timeline}
           related={restaurantPosRelated}
           headerSlot={

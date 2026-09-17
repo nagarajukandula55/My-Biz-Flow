@@ -4,10 +4,12 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronDown, LogOut } from "lucide-react";
-import { LogoMark } from "./LogoMark";
+import { BrandLogo } from "./BrandLogo";
 import { getIconComponent } from "@/lib/designer/icons";
 import { signOutAction } from "@/app/login/actions";
 import { ThemeToggle } from "./ThemeToggle";
+import { AlertsBell } from "./AlertsBell";
+import type { Alert } from "@/lib/alerts";
 
 export type NavDotVariant = "teal" | "amber" | "neutral";
 
@@ -16,6 +18,14 @@ export type NavSubItem = {
   label: string;
   /** Path segment(s) relative to /partner/[partnerId]/, e.g. "billing/new". */
   href: string;
+  /** Optional heading rendered above the first sub-item of each run sharing it. */
+  section?: string;
+  /**
+   * One extra level of nesting — a sub-item that is itself a group
+   * (e.g. "Masters" collecting Brands/Models/Solutions/etc.) rather than
+   * a single page. Rendered as a further-indented expand/collapse list.
+   */
+  subItems?: NavSubItem[];
 };
 
 export type NavItem = {
@@ -56,7 +66,29 @@ const ICON_CLASS: Record<NavDotVariant, string> = {
  * static server-computed flag, since one Sidebar instance now serves
  * every page in the partner section.
  */
-export function Sidebar({ partnerId, navGroups }: { partnerId: string; navGroups: NavGroup[] }) {
+export function Sidebar({
+  partnerId,
+  navGroups,
+  alerts,
+  logoDataUrl,
+  partnerName,
+}: {
+  partnerId: string;
+  navGroups: NavGroup[];
+  /** Server-computed in the partner layout (computeAlerts) — see AlertsBell. */
+  alerts: Alert[];
+  /**
+   * This partner's own uploaded logo (Settings > Business Details, stored
+   * as a `data:` URL — see src/lib/partnerData.ts's updatePartnerLogo).
+   * Null renders the app's own BrandLogo, same as before any partner has
+   * uploaded one.
+   */
+  logoDataUrl?: string | null;
+  /** This partner's own business name (Partner.businessName) — shown next
+   * to the logo so it's clear which business is currently signed in,
+   * since the same MyBizFlow app/branding is shared across every partner. */
+  partnerName?: string | null;
+}) {
   const pathname = usePathname();
 
   function hrefFor(relative: string) {
@@ -66,6 +98,12 @@ export function Sidebar({ partnerId, navGroups }: { partnerId: string; navGroups
   function isActive(relative: string) {
     const href = hrefFor(relative);
     return pathname === href || pathname === `${href}/`;
+  }
+
+  /** True when `sub` or any of its nested subItems is the current page. */
+  function subTreeActive(sub: NavSubItem): boolean {
+    if (isActive(sub.href)) return true;
+    return !!sub.subItems?.some((s) => subTreeActive(s));
   }
 
   // Groups start expanded; a user can collapse ones they don't need.
@@ -84,9 +122,21 @@ export function Sidebar({ partnerId, navGroups }: { partnerId: string; navGroups
 
   return (
     <aside className="sticky top-0 flex h-screen w-64 flex-shrink-0 flex-col bg-sidebar-bg print:hidden">
-      <div className="flex items-center gap-2 px-4 py-4">
-        <LogoMark size={18} />
-        <span className="font-display text-sm font-extrabold text-sidebar-text">My Biz Flow</span>
+      <div className="flex items-center justify-between gap-2 px-4 py-4">
+        <div className="flex min-w-0 items-center gap-2">
+          {logoDataUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element -- a data: URL, not a file next/image can optimise.
+            <img src={logoDataUrl} alt="Business logo" className="h-6 w-6 flex-shrink-0 rounded bg-white object-contain p-0.5" />
+          ) : (
+            <BrandLogo height={24} />
+          )}
+          {partnerName && (
+            <span className="truncate text-sm font-semibold text-sidebar-text" title={partnerName}>
+              {partnerName}
+            </span>
+          )}
+        </div>
+        <AlertsBell partnerId={partnerId} alerts={alerts} />
       </div>
 
       <nav className="flex-1 space-y-4 overflow-y-auto px-2.5 pb-4">
@@ -151,19 +201,75 @@ export function Sidebar({ partnerId, navGroups }: { partnerId: string; navGroups
                         </div>
                         {hasSubItems && isExpanded && (
                           <ul className="ml-4 mt-0.5 space-y-0.5 border-l border-sidebar-active/60 pl-3">
-                            {item.subItems!.map((sub) => {
+                            {item.subItems!.map((sub, subIndex) => {
                               const subHref = hrefFor(sub.href);
                               const active2 = isActive(sub.href);
+                              const hasNested = sub.subItems && sub.subItems.length > 0;
+                              const nestedActive = hasNested && sub.subItems!.some((s) => subTreeActive(s));
+                              const nestedExpanded = manuallyToggled[sub.key] ?? nestedActive;
+                              // One heading per RUN of consecutive sub-items
+                              // sharing a section — modules whose sub-items
+                              // carry no section render exactly as before.
+                              const prevSection = item.subItems![subIndex - 1]?.section;
+                              const showSection = !!sub.section && sub.section !== prevSection;
                               return (
                                 <li key={sub.key}>
-                                  <Link
-                                    href={subHref}
-                                    className={`block rounded-md px-2 py-1 text-[12px] font-medium ${
-                                      active2 ? "text-sidebar-text" : "text-sidebar-text-dim hover:text-sidebar-text"
-                                    }`}
-                                  >
-                                    {sub.label}
-                                  </Link>
+                                  {showSection && (
+                                    <p
+                                      className={`px-2 pb-0.5 text-[10px] font-semibold uppercase tracking-wide text-sidebar-text-dim ${
+                                        subIndex === 0 ? "" : "pt-2"
+                                      }`}
+                                    >
+                                      {sub.section}
+                                    </p>
+                                  )}
+                                  <div className="flex items-center gap-1">
+                                    <Link
+                                      href={subHref}
+                                      className={`block flex-1 rounded-md px-2 py-1 text-[12px] font-medium ${
+                                        active2 || nestedActive
+                                          ? "text-sidebar-text"
+                                          : "text-sidebar-text-dim hover:text-sidebar-text"
+                                      }`}
+                                    >
+                                      {sub.label}
+                                    </Link>
+                                    {hasNested && (
+                                      <button
+                                        type="button"
+                                        onClick={() => toggleItem(sub.key)}
+                                        aria-label={nestedExpanded ? "Collapse" : "Expand"}
+                                        className="rounded p-1 text-sidebar-text-dim hover:text-sidebar-text"
+                                      >
+                                        <ChevronDown
+                                          className={`h-3 w-3 transition-transform ${nestedExpanded ? "" : "-rotate-90"}`}
+                                          strokeWidth={2.5}
+                                        />
+                                      </button>
+                                    )}
+                                  </div>
+                                  {hasNested && nestedExpanded && (
+                                    <ul className="ml-3 mt-0.5 space-y-0.5 border-l border-sidebar-active/60 pl-3">
+                                      {sub.subItems!.map((nested) => {
+                                        const nestedHref = hrefFor(nested.href);
+                                        const nestedItemActive = isActive(nested.href);
+                                        return (
+                                          <li key={nested.key}>
+                                            <Link
+                                              href={nestedHref}
+                                              className={`block rounded-md px-2 py-1 text-[12px] font-medium ${
+                                                nestedItemActive
+                                                  ? "text-sidebar-text"
+                                                  : "text-sidebar-text-dim hover:text-sidebar-text"
+                                              }`}
+                                            >
+                                              {nested.label}
+                                            </Link>
+                                          </li>
+                                        );
+                                      })}
+                                    </ul>
+                                  )}
                                 </li>
                               );
                             })}

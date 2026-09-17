@@ -8,7 +8,7 @@ import {
   savePartnerSchemeAction,
   clearPartnerSchemeAction,
   fetchNextNumberAction,
-} from "@/app/admin/(protected)/numbering/actions";
+} from "@/lib/numberingActions";
 
 const SEPARATOR_OPTIONS: { value: Separator; label: string }[] = [
   { value: "-", label: "Hyphen ( - )" },
@@ -159,6 +159,26 @@ export function NumberingSchemeEditor({
             className="w-full rounded-md border border-border bg-bg px-2 py-1.5 text-sm text-text outline-none focus:border-accent"
           />
         </Field>
+      </div>
+
+      <div className="mt-3 border-t border-border pt-3">
+        <Field label="Custom token template (optional — overrides everything above)">
+          <input
+            value={scheme.template ?? ""}
+            onChange={(e) => update("template", e.target.value)}
+            placeholder="e.g. {prefix}{yyyy}{mm}{dd}{seq}"
+            className="w-full rounded-md border border-border bg-bg px-2 py-1.5 font-mono text-sm text-text outline-none focus:border-accent"
+          />
+        </Field>
+        <p className="mt-1.5 text-[11px] text-text-muted">
+          Tokens: <code className="font-mono">{"{prefix}"}</code> <code className="font-mono">{"{yyyy}"}</code>{" "}
+          <code className="font-mono">{"{yy}"}</code> <code className="font-mono">{"{mm}"}</code>{" "}
+          <code className="font-mono">{"{dd}"}</code> <code className="font-mono">{"{fy}"}</code>{" "}
+          <code className="font-mono">{"{seq}"}</code> <code className="font-mono">{"{suffix}"}</code> — e.g.{" "}
+          <code className="font-mono">{"{prefix}{yyyy}{mm}{dd}{seq}"}</code> gives{" "}
+          <code className="font-mono">WO202609150001</code>. Leave blank to use the prefix/separator/financial-year/
+          sequence/suffix fields above instead.
+        </p>
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-4 border-t border-border pt-4">

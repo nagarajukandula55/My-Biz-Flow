@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { INDIAN_STATES } from "@/lib/sample-data/geo";
+import { lookupPincodeViaApi } from "@/lib/geo/pincodeClient";
 
 /**
  * Pincode -> state/city lookup, backed by /api/pincode (India Post's
@@ -36,25 +37,18 @@ export function PincodeLookupFields({
     }
 
     setLoading(true);
-    try {
-      const res = await fetch(`/api/pincode?code=${value}`);
-      const data: { found: boolean; state?: string; cities?: string[] } = await res.json();
-      if (data.found && data.state && data.cities && data.cities.length > 0) {
-        setState(data.state);
-        setCityOptions(data.cities);
-        setCity(data.cities[0]);
-        setFound(true);
-        setManualFallback(false);
-      } else {
-        setFound(false);
-        setManualFallback(true);
-      }
-    } catch {
+    const data = await lookupPincodeViaApi(value);
+    if (data.found && data.state && data.cities?.length) {
+      setState(data.state);
+      setCityOptions(data.cities);
+      setCity(data.cities[0]);
+      setFound(true);
+      setManualFallback(false);
+    } else {
       setFound(false);
       setManualFallback(true);
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
   }
 
   return (

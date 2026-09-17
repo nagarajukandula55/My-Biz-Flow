@@ -36,7 +36,7 @@ export interface ModuleDefinition {
 export const MODULES: ModuleDefinition[] = [
   // --- Core four ---
   { slug: "pos", label: "POS", description: "Sales, store-exclusive point of sale.", taxonomy: "vertical" },
-  { slug: "service-centre", label: "Service Centre", description: "Workorders and billing for repair/service shops.", taxonomy: "vertical" },
+  { slug: "service-centre", label: "Manage SC", description: "Workorders and billing for repair/service shops.", taxonomy: "vertical" },
   { slug: "billing", label: "Billing", description: "Standalone invoicing and billing.", taxonomy: "vertical" },
   { slug: "brand", label: "Brand", description: "Multi-location / multi-partner hierarchy: Brand → Partners → Locations.", taxonomy: "brand" },
 
@@ -65,6 +65,8 @@ export const MODULES: ModuleDefinition[] = [
   { slug: "marketplace", label: "Marketplace / Partner Aggregator", description: "Multiple partners under one umbrella — coordinates with central-api's own vendor concept, does not duplicate it.", taxonomy: "cross-cutting" },
 
   { slug: "field-force", label: "Field Force", description: "A full home-services booking system: priced service catalog, customer bookings, dispatch of skilled/unskilled engineers by service and pincode, payment collection, and ratings.", taxonomy: "cross-cutting" },
+
+  { slug: "telecalling", label: "Telecalling / Tele-marketing", description: "Bulk-upload a contact list, assign it to telecaller agents, click-to-call from the app to the phone's dialer, and trigger SMS/WhatsApp template messages (welcome, product links) per contact.", taxonomy: "cross-cutting" },
 ];
 
 /**
@@ -113,7 +115,7 @@ export function taxonomyToNavDot(taxonomy: ModuleTaxonomy): NavDot {
  * one record list) lists its actual sub-pages here instead. Keyed by
  * module slug; a module without an entry falls back to the generic trio.
  */
-export const MODULE_SUB_NAV: Record<string, { key: string; label: string; href: string }[]> = {
+export const MODULE_SUB_NAV: Record<string, PartnerNavSubItem[]> = {
   // Suggested Basic/Pro/Ultimate split for Super Admin to configure in
   // PartnerType.planTierByPage (/admin/partner-types) — config-only
   // guidance, same as every module; nothing here runtime-enforces it.
@@ -138,20 +140,57 @@ export const MODULE_SUB_NAV: Record<string, { key: string; label: string; href: 
   // PartnerType.planTierByPage (/admin/partner-types) — config-only
   // guidance, same as every module; nothing here runtime-enforces it.
   // Basic: workorders list/create/detail — ring up a repair job and track
-  // its stage. Pro: brand/model/technician assignment, estimate approval,
+  // its stage. Pro: brand/model catalogs and the staff-name roster, estimate approval,
   // hold state — the accountability layer AN-CRM gates similarly behind
   // its higher plans. Ultimate: real Billing invoice creation on close.
+  // Sectioned (see PartnerNavSubItem.section) rather than one flat list,
+  // mirroring how the AN-CRM reference app groups its own service-centre
+  // nav (Workorders / Masters / Reports / Account) instead of stacking
+  // every page at one level. Only pages that actually exist in this
+  // module are listed — AN-CRM's vendor-accounting entries (Financial
+  // Statement / Ledger Book => billing/reports/contact-statement, Profit
+  // & Loss => billing/reports/profit-loss, Expenses => billing/expenses)
+  // live in MBF's separate `billing` module, which is gated by its own
+  // PartnerType.defaultModules entry and carries its own sidebar group,
+  // so they are deliberately NOT duplicated here.
   "service-centre": [
-    { key: "service-centre.list", label: "Workorders", href: "service-centre" },
-    { key: "service-centre.new", label: "+ New Workorder", href: "service-centre/new" },
-    { key: "service-centre.solutions", label: "Solutions", href: "service-centre/solutions" },
-    { key: "service-centre.fault-codes", label: "Fault Codes", href: "service-centre/fault-codes" },
-    { key: "service-centre.symptom-codes", label: "Symptom Codes", href: "service-centre/symptom-codes" },
-    { key: "service-centre.sc-profile", label: "SC Profiles", href: "service-centre/sc-profile" },
-    { key: "service-centre.brands", label: "Brands", href: "service-centre/brands" },
-    { key: "service-centre.models", label: "Models", href: "service-centre/models" },
-    { key: "service-centre.staff", label: "Staff", href: "service-centre/staff" },
-    { key: "service-centre.admin", label: "Admin", href: "service-centre/admin" },
+    { key: "service-centre.list", label: "Workorders", href: "service-centre", section: "Workorders" },
+    { key: "service-centre.new", label: "+ New Workorder", href: "service-centre/new", section: "Workorders" },
+    // Masters used to be five (six, with Staff Names) flat rows each
+    // repeating the "Masters" section heading — collapsed into one nested
+    // nav item instead, so the module's sub-nav reads as one section
+    // rather than a stack of top-level rows (Sidebar.tsx renders a second
+    // nesting level for a sub-item that itself carries subItems).
+    {
+      key: "service-centre.masters",
+      label: "Masters",
+      href: "service-centre/brands",
+      subItems: [
+        { key: "service-centre.brands", label: "Brands", href: "service-centre/brands" },
+        { key: "service-centre.models", label: "Models", href: "service-centre/models" },
+        { key: "service-centre.customers", label: "Customers", href: "service-centre/customers" },
+        { key: "service-centre.solutions", label: "Solutions", href: "service-centre/solutions" },
+        { key: "service-centre.fault-codes", label: "Fault Codes", href: "service-centre/fault-codes" },
+        { key: "service-centre.symptom-codes", label: "Symptom Codes", href: "service-centre/symptom-codes" },
+        // Names only — the source of the suggestion lists on a workorder's
+        // Logged By / Engineer / Collected By fields. Not a login and not
+        // an assignment roster; Service Centre has neither.
+        { key: "service-centre.staff-names", label: "Staff Names", href: "service-centre/staff-names" },
+      ],
+    },
+    // Analytics dropped from here — same partner-wide page already
+    // reachable from the Common group; keeping it here too just
+    // duplicated the link.
+    { key: "service-centre.reports", label: "Report Builder", href: "service-centre/reports", section: "Reports" },
+    // SC Profiles (AN-CRM's own vendor-onboarding-status tracking — not
+    // applicable from a partner's own logged-in view of their own
+    // business) and the Admin scaffold (an unimplemented,
+    // Super-Admin-only placeholder superseded by nothing since it never
+    // had real functionality) are both removed.
+    { key: "service-centre.sub-scs", label: "Sub-Centres", href: "service-centre/sub-scs", section: "Account" },
+    { key: "service-centre.payments", label: "Payments & Settlements", href: "service-centre/payments", section: "Account" },
+    { key: "service-centre.telegram", label: "Telegram Alerts", href: "service-centre/telegram", section: "Account" },
+    { key: "service-centre.referrals", label: "Referrals", href: "service-centre/referrals", section: "Account" },
   ],
   "accounting-gst": [
     { key: "accounting-gst.dashboard", label: "Dashboard", href: "accounting-gst/dashboard" },
@@ -169,13 +208,25 @@ export const MODULE_SUB_NAV: Record<string, { key: string; label: string; href: 
     { key: "field-force.allocations", label: "Job Allocation", href: "field-force/allocations" },
     { key: "field-force.admin", label: "Admin", href: "field-force/admin" },
   ],
+  telecalling: [
+    { key: "telecalling.leads", label: "Leads", href: "telecalling" },
+    { key: "telecalling.agents", label: "Agents", href: "telecalling/agents" },
+    { key: "telecalling.templates", label: "Message Templates", href: "telecalling/templates" },
+  ],
   billing: [
     { key: "billing.list", label: "Invoices", href: "billing" },
     { key: "billing.new", label: "+ New Invoice", href: "billing/new" },
-    { key: "billing.contacts", label: "Contacts", href: "billing/contacts" },
-    { key: "billing.items", label: "Items", href: "billing/items" },
     { key: "billing.payments", label: "Payments", href: "billing/payments" },
     { key: "billing.credit-notes", label: "Credit/Debit Notes", href: "billing/credit-notes" },
+    // The other three party-facing sales documents AN-CRM's shared
+    // SalesDocument model covers (Quotation / Delivery Challan / Proforma
+    // Invoice) — same contact + line-items + totals shape as an invoice,
+    // so they live in Billing next to Credit/Debit Notes rather than
+    // forking a second document tree inside Service Centre.
+    { key: "billing.quotations", label: "Quotations", href: "billing/quotations" },
+    { key: "billing.delivery-challans", label: "Delivery Challans", href: "billing/delivery-challans" },
+    { key: "billing.proforma-invoices", label: "Proforma Invoices", href: "billing/proforma-invoices" },
+    { key: "billing.expenses", label: "Expenses", href: "billing/expenses" },
     { key: "billing.reports", label: "Reports", href: "billing/reports" },
     { key: "billing.recurring", label: "Recurring Invoices", href: "billing/recurring" },
     { key: "billing.admin", label: "Admin", href: "billing/admin" },
@@ -187,6 +238,21 @@ export interface PartnerNavSubItem {
   label: string;
   /** Path segment(s) relative to /partner/[partnerId]/, e.g. "billing/new". */
   href: string;
+  /**
+   * Optional heading this sub-item sits under inside the module's expanded
+   * sub-list (Sidebar.tsx renders one small caps label per run of
+   * consecutive sub-items sharing a section). Purely presentational —
+   * a module whose sub-items carry no section renders as a flat list,
+   * exactly as before.
+   */
+  section?: string;
+  /**
+   * One extra level of nesting for a sub-item that is itself a group
+   * (e.g. "Masters" collecting Brands/Models/Solutions/Fault Codes/
+   * Symptom Codes/Staff Names) rather than a single page. Sidebar.tsx
+   * renders these as a second, further-indented expand/collapse list.
+   */
+  subItems?: PartnerNavSubItem[];
 }
 
 export interface PartnerNavGroup {

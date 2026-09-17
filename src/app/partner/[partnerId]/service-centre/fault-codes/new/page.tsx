@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/AppShell";
+import { renderTierGate } from "@/lib/pageTierGate";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { scFaultCodeFormFields } from "@/lib/sample-data/service-centre-fault-codes";
@@ -22,6 +23,9 @@ registerPage({
 });
 
 export default async function NewScFaultCodePage({ params }: { params: { partnerId: string } }) {
+  const tierGate = await renderTierGate(params.partnerId, "service-centre.fault-codes.create", "Fault Codes");
+  if (tierGate) return <AppShell topbarTitle={"New Fault Code"}>{tierGate}</AppShell>;
+
   const fields = await applyCustomizations("service-centre.fault-codes.create", scFaultCodeFormFields);
 
   return (

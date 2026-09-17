@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { LogoMark } from "@/components/LogoMark";
+import { BrandLogo } from "@/components/BrandLogo";
 import { registerPage } from "@/lib/designer/registry";
 import { listActivePartnerTypes } from "@/lib/designer/partnerTypesData";
 import { SITE_URL, SITE_NAME } from "@/lib/seo";
@@ -11,6 +11,9 @@ export const metadata: Metadata = {
   title: "No-Code Business Management Platform for Service Businesses",
   description:
     "My Biz Flow is a modular, no-code business/CRM platform: mix and match POS, Service Centre workorders, Billing, GST-compliant invoicing, Inventory, HRMS, Clinic, and more on one account — no custom development required.",
+  // Canonical stays the base "/" regardless of ?type= -- the Service Centre
+  // variant is a content branch of the same page/URL, not a distinct page,
+  // so a separate canonical would just create duplicate-content confusion.
   alternates: { canonical: "/" },
 };
 
@@ -42,6 +45,33 @@ const FAQS = [
   },
 ];
 
+// Service Centre (repair/workorder shop) specific FAQ content, folded into
+// the same FAQPage JSON-LD as FAQS when the Service Centre variant renders,
+// per the Service Centre module's real, verified capabilities (see
+// src/lib/sample-data/service-centre.ts and src/app/service-centre-track):
+// a Created -> In Progress -> Completed -> Closed workorder lifecycle,
+// fault/symptom/solution catalogs, inventory-linked stock deduction on
+// repair, GST invoicing generated from a closed workorder, and a public
+// no-login tracking page. Deliberately no e-signature/agreements or
+// multi-staff-login claims -- those aren't built.
+const SERVICE_CENTRE_FAQS = [
+  {
+    question: "What does the Service Centre module actually track?",
+    answer:
+      "Every workorder from intake to close: fault/symptom/solution details from a live catalog, brand/model selection, a Created → In Progress → Completed → Closed lifecycle, and the parts and labour line items tied to it.",
+  },
+  {
+    question: "Can customers check on their repair without logging in?",
+    answer:
+      "Yes — each workorder gets a public tracking link (no account needed) that shows its current stage, so a customer can check repair status without calling in.",
+  },
+  {
+    question: "Does closing a workorder handle billing and stock automatically?",
+    answer:
+      "Closing a workorder can generate a GST-compliant invoice directly from its parts and labour line items, and parts used are deducted from Inventory automatically — so billing and stock stay in sync with what was actually repaired.",
+  },
+];
+
 registerPage({
   id: "platform.home",
   moduleSlug: "platform",
@@ -61,15 +91,29 @@ const SCREENSHOTS: { name: string; alt: string }[] = [
   { name: "designer", alt: "The Super Admin Designer listing every registered page in the product" },
 ];
 
-export default async function RootPage() {
+export default async function RootPage({
+  searchParams,
+}: {
+  searchParams: { type?: string };
+}) {
   const partnerTypes = await listActivePartnerTypes();
+  // Service Centre variant triggers on an explicit ?type=service-centre
+  // (e.g. arriving from the pricing/signup business-type chooser), or when
+  // Service Centre is the only active business type configured at all --
+  // in which case the generic multi-vertical pitch would be misleading.
+  const isServiceCentre =
+    searchParams.type === "service-centre" ||
+    (partnerTypes.length === 1 && partnerTypes[0].id === "service-centre");
+  const faqs = isServiceCentre ? [...FAQS, ...SERVICE_CENTRE_FAQS] : FAQS;
 
   // Structured data for both classic search rich results and AI answer
   // engines (GEO) -- SoftwareApplication describes what the product is and
   // links to real pricing, Organization anchors the brand identity, and
   // FAQPage exposes the same Q&A pairs rendered below in a form these
   // engines can extract directly. Every claim here matches copy elsewhere
-  // on the page -- no invented stats, ratings, or user counts.
+  // on the page -- no invented stats, ratings, or user counts. Kept in
+  // sync with whichever variant (generic vs Service Centre) is actually
+  // rendered below.
   const jsonLd = [
     {
       "@context": "https://schema.org",
@@ -78,11 +122,12 @@ export default async function RootPage() {
       applicationCategory: "BusinessApplication",
       operatingSystem: "Web",
       url: SITE_URL,
-      description:
-        "Modular, no-code, multi-vertical business/CRM platform. Mix and match POS, Service Centre, Billing, Clinic, HRMS, Inventory, and more modules on one account.",
+      description: isServiceCentre
+        ? "No-code Service Centre / repair-shop platform: workorder lifecycle tracking, fault/symptom/solution catalogs, inventory-linked GST billing, and public no-login repair tracking, on the same modular My Biz Flow platform."
+        : "Modular, no-code, multi-vertical business/CRM platform. Mix and match POS, Service Centre, Billing, Clinic, HRMS, Inventory, and more modules on one account.",
       offers: {
         "@type": "Offer",
-        url: `${SITE_URL}/pricing`,
+        url: `${SITE_URL}/pricing${isServiceCentre ? "?type=service-centre" : ""}`,
         priceCurrency: "INR",
         category: "SaaS subscription",
       },
@@ -100,7 +145,7 @@ export default async function RootPage() {
     {
       "@context": "https://schema.org",
       "@type": "FAQPage",
-      mainEntity: FAQS.map((f) => ({
+      mainEntity: faqs.map((f) => ({
         "@type": "Question",
         name: f.question,
         acceptedAnswer: { "@type": "Answer", text: f.answer },
@@ -117,8 +162,7 @@ export default async function RootPage() {
       />
       <header className="flex items-center justify-between border-b border-border px-6 py-5">
         <div className="flex items-center gap-2">
-          <LogoMark size={22} />
-          <span className="font-display text-base font-extrabold text-text">My Biz Flow</span>
+          <BrandLogo height={36} />
         </div>
         <nav className="flex items-center gap-4 text-sm font-semibold">
           <Link href="/pricing" className="text-text-muted hover:text-text">
@@ -130,31 +174,111 @@ export default async function RootPage() {
           <Link href="/login" className="text-text-muted hover:text-text">
             Sign in
           </Link>
-          <Link href="/signup" className="btn-accent">
+          <Link href="/signup" className="btn-accent mbf-cta-glow">
             Get started
           </Link>
         </nav>
       </header>
 
       <section className="px-6 py-20 text-center">
-        <h1 className="mx-auto max-w-3xl font-display text-4xl font-extrabold text-text sm:text-5xl">
-          One platform. Every business you run.
-        </h1>
-        <p className="mbf-prose mx-auto mt-5 text-lg leading-relaxed text-text-muted">
-          My Biz Flow is a modular, no-code, multi-vertical business/CRM platform. Instead of shipping a separate
-          product per industry, every business runs on one shared metadata engine — modules, fields, pipelines, and
-          dashboards are all config-driven. Mix and match POS, Service Centre, Billing, Clinic, HRMS, and more on a
-          single account.
-        </p>
+        {isServiceCentre ? (
+          <>
+            <h1 className="mx-auto max-w-3xl font-display text-4xl font-extrabold text-text sm:text-5xl">
+              Run your <span className="mbf-headline-mark">service centre</span> from one screen.
+            </h1>
+            <p className="mbf-prose mx-auto mt-5 text-lg leading-relaxed text-text-muted">
+              My Biz Flow's Service Centre module takes a repair from intake to invoice without switching tools —
+              log the fault, move the workorder through its lifecycle, and bill it out with
+              GST-compliant invoicing that deducts the parts used straight from Inventory.
+            </p>
+          </>
+        ) : (
+          <>
+            <h1 className="mx-auto max-w-3xl font-display text-4xl font-extrabold text-text sm:text-5xl">
+              One platform. <span className="mbf-headline-mark">Every business you run.</span>
+            </h1>
+            <p className="mbf-prose mx-auto mt-5 text-lg leading-relaxed text-text-muted">
+              My Biz Flow is a modular, no-code, multi-vertical business/CRM platform. Instead of shipping a separate
+              product per industry, every business runs on one shared metadata engine — modules, fields, pipelines,
+              and dashboards are all config-driven. Mix and match POS, Service Centre, Billing, Clinic, HRMS, and
+              more on a single account.
+            </p>
+          </>
+        )}
+
+        {/* Concrete workorder lifecycle, in place of a generic icon badge --
+            this is a real product mechanic, not decoration. */}
+        <div className="mx-auto mt-8 flex max-w-2xl flex-wrap items-center justify-center gap-x-2 gap-y-3">
+          {["Created", "In Progress", "Completed", "Closed"].map((stage, i, arr) => (
+            <div key={stage} className="flex items-center gap-2">
+              <span className="rounded-full border border-border bg-bg-raised px-3 py-1 text-xs font-semibold text-text-muted">
+                {stage}
+              </span>
+              {i < arr.length - 1 && <span className="text-text-muted">→</span>}
+            </div>
+          ))}
+        </div>
+
         <div className="mt-8 flex items-center justify-center gap-4">
-          <Link href="/signup" className="btn-accent">
+          <Link href={isServiceCentre ? "/signup?type=service-centre" : "/signup"} className="btn-accent mbf-cta-glow">
             Register your business
           </Link>
-          <Link href="/pricing" className="btn-outline">
+          <Link href={isServiceCentre ? "/pricing?type=service-centre" : "/pricing"} className="btn-outline">
             See pricing
           </Link>
         </div>
       </section>
+
+      <section className="border-t border-border px-6 py-16">
+          <div className="mx-auto max-w-5xl">
+            <p className="text-center text-xs font-semibold uppercase tracking-widest text-accent">
+              {isServiceCentre ? "The module" : "Spotlight module"}
+            </p>
+            <h2 className="mt-2 text-center font-display text-2xl font-bold text-text">
+              Built around the real repair workflow
+            </h2>
+            <p className="mbf-prose mx-auto mt-2 text-center text-base text-text-muted">
+              Not a generic ticketing tool bent into shape — these are the actual capabilities of the Service Centre
+              module, ready the moment you sign up.
+            </p>
+            <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              {[
+                {
+                  title: "Full workorder lifecycle",
+                  description:
+                    "Created → In Progress → Completed → Closed, with fault/symptom/solution details and brand/model on every job.",
+                },
+                {
+                  title: "Public repair tracking",
+                  description:
+                    "Every workorder gets a shareable tracking link — customers check status without an account or a phone call.",
+                },
+                {
+                  title: "Inventory-linked billing",
+                  description:
+                    "Close a workorder and it can generate a GST-compliant invoice from the parts and labour used, deducting stock from Inventory automatically.",
+                },
+                {
+                  title: "No-code, same as every module",
+                  description:
+                    "Fields, statuses, and catalogs are config-driven — a Super Admin can tailor Service Centre without custom development.",
+                },
+              ].map((f) => (
+                <div key={f.title} className="mbf-glass-card p-5">
+                  <h3 className="font-display text-base font-bold text-text">{f.title}</h3>
+                  <p className="mt-1.5 text-sm leading-relaxed text-text-muted">{f.description}</p>
+                </div>
+              ))}
+            </div>
+            {!isServiceCentre && (
+              <div className="mt-8 text-center">
+                <Link href="/signup?type=service-centre" className="btn-accent mbf-cta-glow">
+                  Sign up as Service Centre
+                </Link>
+              </div>
+            )}
+          </div>
+        </section>
 
       <section className="border-t border-border px-6 py-16">
         <div className="mx-auto max-w-5xl">
@@ -170,10 +294,10 @@ export default async function RootPage() {
           ) : (
             <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-3">
               {partnerTypes.map((t) => (
-                <div key={t.id} className="flex flex-col rounded-lg border border-border bg-bg-raised p-5">
+                <div key={t.id} className="mbf-glass-card flex flex-col p-5">
                   <h3 className="font-display text-base font-bold text-text">{t.id}</h3>
                   <p className="mt-1 flex-1 text-sm text-text-muted">{t.description || "—"}</p>
-                  <Link href={`/signup?type=${encodeURIComponent(t.id)}`} className="btn-accent mt-4 text-center">
+                  <Link href={`/signup?type=${encodeURIComponent(t.id)}`} className="btn-accent mbf-cta-glow mt-4 text-center">
                     Sign up as {t.id}
                   </Link>
                 </div>
@@ -185,13 +309,36 @@ export default async function RootPage() {
 
       <section className="border-t border-border px-6 py-16">
         <div className="mx-auto max-w-5xl">
+          <p className="text-center text-xs font-semibold uppercase tracking-widest text-accent">Coming soon</p>
+          <h2 className="mt-2 text-center font-display text-2xl font-bold text-text">Telecalling / Call Centre module</h2>
+          <p className="mbf-prose mx-auto mt-2 max-w-2xl text-center text-base text-text-muted">
+            Upload a contact list, assign it to your telecalling team, click-to-call straight from the app, and trigger
+            SMS/WhatsApp messages (welcome, product links, follow-ups) — all in one place. Currently in internal rollout;
+            public signup opens soon.
+          </p>
+          <div className="mx-auto mt-8 max-w-md">
+            <div className="mbf-glass-card flex items-center justify-between gap-4 p-5">
+              <div>
+                <h3 className="font-display text-base font-bold text-text">Telecalling / Call Centre</h3>
+                <p className="mt-1 text-sm text-text-muted">Leads, click-to-call, SMS/WhatsApp templates, call dispositions.</p>
+              </div>
+              <span className="shrink-0 rounded-full bg-accent-soft px-3 py-1 text-xs font-semibold text-accent">
+                Coming Soon
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="border-t border-border px-6 py-16">
+        <div className="mx-auto max-w-5xl">
           <h2 className="text-center font-display text-2xl font-bold text-text">See it in action</h2>
           <p className="mbf-prose mx-auto mt-2 text-center text-base text-text-muted">
             Screenshots of the real running app — coming in a follow-up pass.
           </p>
           <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-3">
             {SCREENSHOTS.map((s) => (
-              <div key={s.name} className="overflow-hidden rounded-lg border border-border bg-bg-sunken">
+              <div key={s.name} className="mbf-glass-card overflow-hidden bg-bg-sunken">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={`/screenshots/${s.name}.png`}
@@ -211,7 +358,7 @@ export default async function RootPage() {
         <div className="mx-auto max-w-3xl">
           <h2 className="text-center font-display text-2xl font-bold text-text">Frequently asked questions</h2>
           <div className="mt-10 space-y-8">
-            {FAQS.map((faq) => (
+            {faqs.map((faq) => (
               <div key={faq.question}>
                 <h3 className="font-display text-base font-bold text-text">{faq.question}</h3>
                 <p className="mbf-prose mt-1.5 text-sm leading-relaxed text-text-muted">{faq.answer}</p>
@@ -221,10 +368,10 @@ export default async function RootPage() {
         </div>
       </section>
 
-      <section className="border-t border-border px-6 py-16 text-center">
+      <section className="border-t border-border bg-bg-raised px-6 py-16 text-center">
         <h2 className="font-display text-2xl font-bold text-text">Ready to set up your business?</h2>
         <div className="mt-6 flex items-center justify-center gap-4">
-          <Link href="/signup" className="btn-accent">
+          <Link href="/signup" className="btn-accent mbf-cta-glow">
             Register your business
           </Link>
           <Link href="/pricing" className="btn-outline">

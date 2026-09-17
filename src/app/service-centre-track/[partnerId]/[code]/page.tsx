@@ -9,7 +9,7 @@ import { formatDate } from "@/lib/format";
  * Public, unauthenticated Service Centre workorder tracker — equivalent to
  * AN-CRM's track-workorder public page (a customer looks up their job's
  * status by the workorder id/code they were given at intake, no login).
- * Read-only: shows milestone status, brand/model, assigned technician and
+ * Read-only: shows milestone status, brand/model, engineer/serviced-by and
  * a couple of key dates only — no pricing, no internal notes, no customer
  * contact details beyond what the workorder id itself implies.
  *
@@ -92,8 +92,8 @@ export default async function TrackWorkorderPage({
             <p className="mt-0.5 text-text">{record["receivedDate"] ? formatDate(String(record["receivedDate"])) : "—"}</p>
           </div>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Assigned Technician</p>
-            <p className="mt-0.5 text-text">{lifecycle.technicianName ?? "Unassigned"}</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Engineer / Serviced By</p>
+            <p className="mt-0.5 text-text">{lifecycle.engineerName ?? "—"}</p>
           </div>
         </div>
 

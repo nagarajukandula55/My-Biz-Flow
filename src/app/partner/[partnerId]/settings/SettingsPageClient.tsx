@@ -4,6 +4,21 @@ import { useState } from "react";
 import { RecordForm, type FormFieldDef } from "@/components/RecordForm";
 import { StatusChip } from "@/components/StatusChip";
 import { MODULES } from "@/lib/designer/modules";
+import { requestModuleAccessAction, saveBusinessDetailsAction } from "./actions";
+import { LogoUploadForm } from "./LogoUploadForm";
+// Data Export / Backup is hidden for now per product decision — the button,
+// its underlying Server Action and download route are untouched, just not
+// linked from the UI. Flip SHOW_DATA_BACKUP back to true (and re-add the
+// section below) to bring it back; nothing was deleted.
+import { DataBackupDownloadButton } from "./DataBackupDownloadButton";
+
+const SHOW_DATA_BACKUP = false;
+// "Enabled Modules" hidden from the partner-facing Settings page per direct
+// product decision — the request/approve flow underneath (
+// requestModuleAccessAction, /admin/access-keys review) is fully intact,
+// this only stops rendering the grid. Same pattern as SHOW_DATA_BACKUP
+// above; flip back to true to restore it, nothing was deleted.
+const SHOW_ENABLED_MODULES = false;
 
 const SETTINGS_FIELDS: FormFieldDef[] = [
   { key: "businessName", label: "Business Name", type: "text", required: true, placeholder: "e.g. Demo Retail Co." },
@@ -19,91 +34,115 @@ const SETTINGS_FIELDS: FormFieldDef[] = [
  * call the fs-based, override-aware buildPartnerAdminNavGroups(), which
  * cannot run in a Client Component — see modules.ts's header).
  */
-export function SettingsPageClient({ visibleModuleSlugs }: { visibleModuleSlugs: string[] }) {
-  const [logoName, setLogoName] = useState<string | null>(null);
-  // Reflects this partner's real ModuleAccessKey state (src/lib/designer/accessKeys.ts)
-  // at page load — toggling here is still a demo stub (does not persist), but the
-  // initial state is no longer a blanket "everything on".
+export function SettingsPageClient({
+  visibleModuleSlugs,
+  moduleStatuses,
+  partnerId,
+  businessDetails,
+}: {
+  visibleModuleSlugs: string[];
+  /** Real ModuleAccessKey state per module (src/lib/designer/accessKeys.ts) — "active", "requested" (pending Super Admin review), or absent (never requested / previously denied). */
+  moduleStatuses: Record<string, "active" | "requested" | "none">;
+  partnerId: string;
+  /** This partner's real stored Business Details fields + logo — prefills the form below and the Logo uploader. */
+  businessDetails: {
+    businessName: string;
+    address: string;
+    gstin: string;
+    timezone: string;
+    currency: string;
+    logoDataUrl: string | null;
+  };
+}) {
   const visibleSet = new Set(visibleModuleSlugs);
-  const [enabled, setEnabled] = useState<Record<string, boolean>>(
-    Object.fromEntries(MODULES.map((m) => [m.slug, visibleSet.has(m.slug)]))
-  );
   const [serializedInventory, setSerializedInventory] = useState(false);
 
   return (
     <div>
       <h1 className="font-display text-2xl font-bold text-text">Settings</h1>
       <p className="mt-1 text-sm text-text-muted">
-        Partner profile, branding, and enabled modules. Demo stubs throughout — no backend persistence yet.
+        Partner profile, branding, and enabled modules. Business Name/Address/GSTIN/Timezone/Currency and
+        Logo below, plus the Business Profile, Bank Details, Config and Numbering tabs further down, are
+        all real, persisted settings.
       </p>
 
       <div className="mt-6">
-        <RecordForm fields={SETTINGS_FIELDS} submitLabel="Save settings" />
+        <RecordForm
+          fields={SETTINGS_FIELDS}
+          submitLabel="Save settings"
+          initialValues={businessDetails}
+          action={saveBusinessDetailsAction.bind(null, partnerId)}
+        />
       </div>
 
-      <div className="mt-8 max-w-2xl">
-        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-text-muted">
-          Logo
-        </label>
-        <div className="flex items-center gap-4 rounded-md border border-border bg-bg p-4">
-          <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-md bg-bg-sunken text-xs text-text-muted">
-            {logoName ? "IMG" : "—"}
-          </div>
-          <div className="flex-1">
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => setLogoName(e.target.files?.[0]?.name ?? null)}
-              className="text-sm text-text-muted file:mr-3 file:rounded-md file:border-0 file:bg-accent file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-accent-contrast"
-            />
-            <p className="mt-1 text-xs text-text-muted">
-              {logoName ? `Selected: ${logoName} (demo — not actually uploaded anywhere)` : "No file uploaded yet — this input does not upload anywhere (demo stub)."}
-            </p>
+      <LogoUploadForm partnerId={partnerId} currentLogoDataUrl={businessDetails.logoDataUrl} />
+
+      {SHOW_ENABLED_MODULES && (
+        <div className="mt-8">
+          <h2 className="font-display text-lg font-bold text-text">Enabled Modules</h2>
+          <p className="mt-1 text-sm text-text-muted">
+            All 21 modules from the canonical registry, with this partner&apos;s real access state. A module
+            can no longer be turned on directly from here — request it instead, and a Super Admin approves or
+            denies the request from Access Keys.
+          </p>
+          <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {MODULES.map((m) => {
+              const status = moduleStatuses[m.slug] ?? "none";
+              return (
+                <div
+                  key={m.slug}
+                  className="flex items-center justify-between rounded-md border border-border bg-bg-raised px-3 py-2.5"
+                >
+                  <div>
+                    <div className="text-sm font-semibold text-text">{m.label}</div>
+                    <StatusChip
+                      label={m.taxonomy}
+                      variant={m.taxonomy === "vertical" ? "teal" : m.taxonomy === "brand" ? "amber" : "neutral"}
+                      className="mt-1"
+                    />
+                  </div>
+                  {status === "active" ? (
+                    <span className="shrink-0 rounded-md bg-success-soft px-2 py-1 text-xs font-semibold text-success">
+                      Active
+                    </span>
+                  ) : status === "requested" ? (
+                    <span className="shrink-0 rounded-md bg-warning-soft px-2 py-1 text-xs font-semibold text-warning">
+                      Requested
+                    </span>
+                  ) : (
+                    <form action={requestModuleAccessAction.bind(null, partnerId)}>
+                      <input type="hidden" name="moduleSlug" value={m.slug} />
+                      <button
+                        type="submit"
+                        className="shrink-0 rounded-md border border-border px-2 py-1 text-xs font-medium text-text hover:border-accent hover:text-accent"
+                      >
+                        Request access
+                      </button>
+                    </form>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
-      </div>
+      )}
 
-      <div className="mt-8">
-        <h2 className="font-display text-lg font-bold text-text">Enabled Modules</h2>
-        <p className="mt-1 text-sm text-text-muted">
-          All 21 modules from the canonical registry, shown with a toggle pre-set from this partner&apos;s
-          real access-key state (Super Admin issues/revokes these from Access Keys). Toggling here is still
-          a visual-only demo stub — it does not persist a change back.
-        </p>
-        <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {MODULES.map((m) => (
-            <div
-              key={m.slug}
-              className="flex items-center justify-between rounded-md border border-border bg-bg-raised px-3 py-2.5"
-            >
-              <div>
-                <div className="text-sm font-semibold text-text">{m.label}</div>
-                <StatusChip
-                  label={m.taxonomy}
-                  variant={m.taxonomy === "vertical" ? "teal" : m.taxonomy === "brand" ? "amber" : "neutral"}
-                  className="mt-1"
-                />
-              </div>
-              <button
-                type="button"
-                onClick={() => setEnabled((prev) => ({ ...prev, [m.slug]: !prev[m.slug] }))}
-                className={`h-6 w-11 flex-shrink-0 rounded-full transition-colors ${
-                  enabled[m.slug] ? "bg-accent" : "bg-bg-sunken"
-                }`}
-                aria-pressed={enabled[m.slug]}
-              >
-                <span
-                  className={`block h-5 w-5 rounded-full bg-bg-raised shadow transition-transform ${
-                    enabled[m.slug] ? "translate-x-5" : "translate-x-0.5"
-                  }`}
-                />
-              </button>
-            </div>
-          ))}
+      {SHOW_DATA_BACKUP && (
+        <div className="mt-8 max-w-2xl">
+          <h2 className="font-display text-lg font-bold text-text">Data Export / Backup</h2>
+          <p className="mt-1 text-sm text-text-muted">
+            Download every record you own across all modules (POS, Billing, Service Centre, Inventory, and
+            the rest) as a single JSON file — a local copy for your own records, independent of this app.
+            Your database itself already has automatic point-in-time backups on the hosting side; this is a
+            personal export, not a substitute for that.
+          </p>
+          <div className="mt-4">
+            <DataBackupDownloadButton partnerId={partnerId} />
+          </div>
         </div>
-      </div>
+      )}
 
-      {enabled["inventory"] && (
+      {visibleSet.has("inventory") && (
         <div className="mt-8 max-w-2xl">
           <h2 className="font-display text-lg font-bold text-text">Serialized Inventory</h2>
           <p className="mt-1 text-sm text-text-muted">

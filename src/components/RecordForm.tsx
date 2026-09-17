@@ -1,6 +1,10 @@
 "use client";
 
-import { useState, useTransition, type FormEvent } from "react";
+import { Fragment, useId, useRef, useState, useTransition, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
+import { INDIAN_STATES } from "@/lib/sample-data/geo";
+import { lookupPincodeViaApi } from "@/lib/geo/pincodeClient";
+import { Modal } from "./Modal";
 
 export type FormFieldType =
   | "text"
@@ -23,13 +27,108 @@ export type FormFieldType =
   | "rating"
   | "file";
 
+export type RecordFormAction = (
+  values: Record<string, unknown>
+) => Promise<void | { error?: string; id?: string; label?: string }>;
+
 export type FormFieldDef = {
   key: string;
   label: string;
   type: FormFieldType;
   required?: boolean;
+  /**
+   * Stored VALUES for a select/multi-select. Deliberately still a plain
+   * string[] so the Designer's option-override merge (applyCustomizations,
+   * which types its generic as `options?: string[]`) keeps working
+   * unchanged; display text that differs from the stored value goes in
+   * `optionLabels` instead of turning this into an object array.
+   */
   options?: string[];
+  /** value -> human label, for options whose stored code isn't readable ("OOW" -> "Out of Warranty (OOW)"). */
+  optionLabels?: Record<string, string>;
+  /**
+   * value -> <optgroup> heading, for a select whose options span more than
+   * one meaningful set — e.g. the workorder's Device Type when a partner
+   * deals in both Electronics and Automobiles, where a flat 60-entry list
+   * would be unreadable. Groups render in first-appearance order of
+   * `options`; any option with no entry here renders ungrouped, before the
+   * groups. Kept as a value->heading map (rather than nesting `options`)
+   * for the same reason as optionLabels: the Designer's option-override
+   * merge types `options` as a plain string[].
+   */
+  optionGroups?: Record<string, string>;
   placeholder?: string;
+  /**
+   * Section heading this field belongs under. Fields are rendered in the
+   * order given and a heading is emitted whenever the section changes —
+   * matching the grouped intake layout (Customer / Address / Device /
+   * Issue) rather than one long flat column of inputs.
+   */
+  section?: string;
+  /**
+   * Free-text field backed by a `<datalist>` of existing values — type
+   * anything, or pick a known one. Used for Brand/Model/"Logged by", where
+   * the catalog is a suggestion, not a closed set.
+   */
+  suggestions?: string[];
+  /** Renders a small "+ <label>" link beside the field, to the page that creates a new catalog entry. */
+  addNew?: { label: string; href: string };
+  /**
+   * Same "+ <label>" trigger as `addNew`, but opens an inline modal (a
+   * small nested RecordForm) instead of navigating to a separate page —
+   * for a quick "add and keep going" catalog entry (Brand/Model) the way
+   * AN-CRM's own "+" buttons work, rather than losing the workorder the
+   * operator is mid-way through filling in. Takes priority over `addNew`
+   * when both are set. On a successful create, the modal closes and the
+   * page refreshes so the new entry is immediately selectable/suggested.
+   */
+  addNewModal?: {
+    label: string;
+    title: string;
+    fields: FormFieldDef[];
+    action: RecordFormAction;
+    submitLabel?: string;
+  };
+  /** Helper text rendered under the input. */
+  help?: string;
+  /**
+   * Hide this field on a CREATE render (`<RecordForm mode="create">`), while
+   * keeping it on the edit form. For lifecycle/outcome fields that the
+   * system or a later stage sets — a workorder's Status, its SLA date, its
+   * actual cost — which have no meaning at intake and only pad the form.
+   *
+   * Additive and opt-in: a field with no `createHidden` renders everywhere,
+   * so every other module's form is unchanged.
+   */
+  createHidden?: boolean;
+  /**
+   * Which column this field's SECTION belongs in, when the form is rendered
+   * with `layout="columns"`. Ignored entirely in the default single-column
+   * layout. Set it on every field of a section (they're grouped by section,
+   * and the first field's value wins).
+   */
+  column?: 1 | 2;
+  /**
+   * Opts this field into the shared pincode -> state/city resolution (the
+   * same /api/pincode path the signup form uses, see lib/geo/pincodeClient):
+   *  - "pincode": on a complete 6-digit value, resolves and fills the
+   *    sibling state/city fields.
+   *  - "state": renders as a fixed INDIAN_STATES select, so a stored state
+   *    is always a canonical name (the CGST/SGST-vs-IGST split depends on
+   *    it) rather than free-typed "karnataka"/"KTK".
+   *  - "city": a select of the resolved districts when a lookup succeeded,
+   *    free text otherwise.
+   */
+  addressRole?: "pincode" | "state" | "city";
+  /**
+   * Makes this field's suggestions depend on another field's current value
+   * — Model suggestions scoped to the selected Brand. `parentKey` names the
+   * controlling field; `suggestionsByParent` maps that field's value to the
+   * suggestion list. Changing the parent clears this field. Purely
+   * client-side off a prop; no fetch.
+   */
+  parentKey?: string;
+  suggestionsByParent?: Record<string, string[]>;
 };
 
 type RecordFormProps = {
@@ -43,7 +142,32 @@ type RecordFormProps = {
    * receives the form's values directly. When provided, this replaces
    * the demo-stub submit entirely; onSubmitDemo is ignored.
    */
-  action?: (values: Record<string, unknown>) => Promise<void>;
+  action?: RecordFormAction;
+  /**
+   * "create" drops every field marked `createHidden`. Anything else (the
+   * default) renders the full field set, so edit pages and every other
+   * module are untouched.
+   */
+  mode?: "create" | "edit";
+  /**
+   * "columns" renders each section as a bordered card in a 2-column grid,
+   * placing a section by its fields' `column`. Default is the original
+   * single `max-w-2xl` flowing column — this is opt-in per form.
+   */
+  layout?: "single" | "columns";
+  /**
+   * Optional prefill-on-type hook: whenever the field named by `watchKey`
+   * changes, `run` (a bound Server Action) is called with its value and
+   * any non-empty fields it returns are merged into the form — used by
+   * Service Centre intake to prefill a returning customer from their
+   * phone number. Fields the user has already typed into are never
+   * overwritten. Same client/server split as the signup flow's
+   * PincodeLookupFields; no client-side data fetching beyond this.
+   */
+  lookup?: {
+    watchKey: string;
+    run: (value: string) => Promise<(Record<string, unknown> & { source?: string }) | null>;
+  };
 };
 
 /**
@@ -55,7 +179,10 @@ type RecordFormProps = {
  * submission falls back to the original client-side demo stub (logs the
  * values, shows "Saved (demo)") for anything not yet migrated.
  */
-export function RecordForm({ fields, initialValues, submitLabel, onSubmitDemo, action }: RecordFormProps) {
+export function RecordForm({ fields: allFields, initialValues, submitLabel, onSubmitDemo, action, lookup, mode, layout }: RecordFormProps) {
+  // A create render drops lifecycle/outcome fields; every other render (and
+  // every field with no flag) is unchanged.
+  const fields = mode === "create" ? allFields.filter((f) => !f.createHidden) : allFields;
   const [values, setValues] = useState<Record<string, unknown>>(() => {
     const base: Record<string, unknown> = {};
     for (const f of fields) {
@@ -68,16 +195,114 @@ export function RecordForm({ fields, initialValues, submitLabel, onSubmitDemo, a
   const [saved, setSaved] = useState(false);
   const [pending, startTransition] = useTransition();
 
+  const [lookupHint, setLookupHint] = useState<string | null>(null);
+  // Guards against re-running the same lookup on every keystroke that
+  // leaves the watched value unchanged (e.g. formatting characters).
+  const lastLookedUp = useRef<string | null>(null);
+
+  const [formError, setFormError] = useState<string | null>(null);
+  // Districts returned by the last successful pincode lookup, for the
+  // sibling "city" field. Empty until one succeeds -> City stays free text.
+  const [cityOptions, setCityOptions] = useState<string[]>([]);
+
+  // Which field's `addNewModal` is currently open, if any — a nested
+  // RecordForm for "quickly add a catalog entry without losing this form".
+  const [addNewModalKey, setAddNewModalKey] = useState<string | null>(null);
+  // Fields a suggestions list backs (Brand/Model/Logged By/etc.) render as a
+  // real <select> dropdown of the existing catalog by default; a field key
+  // lands in this set only once its value is free-typed (via "Other — type
+  // manually") or already holds a value the catalog doesn't have, so a
+  // pre-filled edit form with an off-catalog value still shows correctly.
+  const [freeTextKeys, setFreeTextKeys] = useState<Record<string, boolean>>({});
+  const router = useRouter();
+  // Stable id linking the primary submit button (rendered in a sticky bar
+  // ABOVE the form, so it stays visible without scrolling a long form) back
+  // to the actual <form> element below it — a plain `form="<id>"` attribute
+  // on a <button> outside a <form> still submits it natively, no JS wiring
+  // needed. The original bottom button (in `footer`) is kept too, as a
+  // safety net for mobile / long-form usability, so this is an addition,
+  // not a relocation.
+  const formId = useId();
+
+  const pincodeKey = fields.find((f) => f.addressRole === "pincode")?.key;
+  const stateKey = fields.find((f) => f.addressRole === "state")?.key;
+  const cityKey = fields.find((f) => f.addressRole === "city")?.key;
+
   function setValue(key: string, value: unknown) {
-    setValues((prev) => ({ ...prev, [key]: value }));
+    setValues((prev) => {
+      const next = { ...prev, [key]: value };
+      // Changing a controlling field (Brand) invalidates whatever was
+      // picked under the old one (Model).
+      for (const f of fields) {
+        if (f.parentKey === key && next[f.key]) next[f.key] = "";
+      }
+      return next;
+    });
     setSaved(false);
+    setFormError(null);
+    if (lookup && key === lookup.watchKey) runLookup(String(value ?? ""));
+    if (pincodeKey && key === pincodeKey) runPincode(String(value ?? ""));
+  }
+
+  function runPincode(raw: string) {
+    const code = raw.replace(/\D/g, "");
+    if (code.length !== 6) {
+      setCityOptions([]);
+      return;
+    }
+    void lookupPincodeViaApi(code).then((res) => {
+      if (!res.found || !res.state) {
+        // Manual fallback: State is a fixed select regardless, City free text.
+        setCityOptions([]);
+        return;
+      }
+      setCityOptions(res.cities ?? []);
+      setValues((prev) => {
+        const next = { ...prev };
+        if (stateKey) next[stateKey] = res.state as string;
+        if (cityKey && !String(prev[cityKey] ?? "").trim()) next[cityKey] = res.cities?.[0] ?? "";
+        return next;
+      });
+    });
+  }
+
+  function runLookup(raw: string) {
+    if (!lookup) return;
+    if (raw === lastLookedUp.current) return;
+    lastLookedUp.current = raw;
+    setLookupHint(null);
+    void lookup
+      .run(raw)
+      .then((match) => {
+        if (!match || lastLookedUp.current !== raw) return;
+        const { source, ...prefill } = match;
+        setValues((prev) => {
+          const next = { ...prev };
+          for (const [k, v] of Object.entries(prefill)) {
+            // Never clobber what the user already typed, and never write
+            // an empty value over a filled one.
+            if (v === undefined || v === null || v === "") continue;
+            if (next[k] !== undefined && next[k] !== "") continue;
+            next[k] = v;
+          }
+          return next;
+        });
+        setLookupHint(source ? `Existing customer found (${source}) — details prefilled.` : "Existing record found — details prefilled.");
+      })
+      .catch(() => {
+        // Best-effort: a failed lookup must never block manual entry.
+      });
   }
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (action) {
+      setFormError(null);
       startTransition(async () => {
-        await action(values);
+        // A successful action redirects and never returns; a rejected one
+        // hands back `{ error }` for display above the submit button.
+        const result = await action(values);
+        if (result && typeof result === "object" && result.error) setFormError(result.error);
       });
       return;
     }
@@ -87,47 +312,222 @@ export function RecordForm({ fields, initialValues, submitLabel, onSubmitDemo, a
     setSaved(true);
   }
 
-  return (
-    <form onSubmit={handleSubmit} className="w-full max-w-2xl space-y-5">
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-        {fields.map((field) => (
-          <div
-            key={field.key}
-            className={field.type === "textarea" ? "sm:col-span-2" : ""}
+  const renderField = (field: FormFieldDef) => (
+    <div key={field.key} className={field.type === "textarea" ? "sm:col-span-2" : ""}>
+      <label
+        htmlFor={field.key}
+        className="mb-1.5 flex items-baseline justify-between gap-2 text-xs font-semibold uppercase tracking-wide text-text-muted"
+      >
+        <span>
+          {field.label}
+          {field.required && <span className="ml-1 text-danger">*</span>}
+        </span>
+        {field.addNewModal ? (
+          <button
+            type="button"
+            onClick={() => setAddNewModalKey(field.key)}
+            className="font-semibold normal-case tracking-normal text-teal hover:underline"
           >
-            <label
-              htmlFor={field.key}
-              className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-text-muted"
+            + {field.addNewModal.label}
+          </button>
+        ) : (
+          field.addNew && (
+            <a
+              href={field.addNew.href}
+              target="_blank"
+              rel="noreferrer"
+              className="font-semibold normal-case tracking-normal text-teal hover:underline"
             >
-              {field.label}
-              {field.required && <span className="ml-1 text-danger">*</span>}
-            </label>
-            {renderInput(field, values[field.key], setValue)}
-          </div>
-        ))}
-      </div>
+              + {field.addNew.label}
+            </a>
+          )
+        )}
+      </label>
+      {renderInput(field, values[field.key], setValue, {
+        parentValue: field.parentKey ? String(values[field.parentKey] ?? "") : undefined,
+        cityOptions,
+        freeTextKeys,
+        setFreeTextKeys,
+      })}
+      {field.help && <p className="mt-1 text-[11px] font-normal normal-case text-text-muted">{field.help}</p>}
+      {lookupHint && lookup?.watchKey === field.key && (
+        <p className="mt-1 text-[11px] font-normal normal-case text-teal">{lookupHint}</p>
+      )}
+    </div>
+  );
 
+  const footer = (
+    <>
+      {formError && (
+        <p className="rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-sm font-semibold text-danger">
+          {formError}
+        </p>
+      )}
       <div className="flex items-center gap-3 pt-2">
         <button type="submit" className="btn-accent" disabled={pending}>
           {pending ? "Saving…" : submitLabel}
         </button>
         {saved && !action && (
-          <span className="text-sm font-semibold text-success">
-            Saved (demo — no backend yet)
-          </span>
+          <span className="text-sm font-semibold text-success">Saved (demo — no backend yet)</span>
         )}
       </div>
-    </form>
+    </>
+  );
+
+  // Primary submit trigger, rendered ABOVE the form content in a sticky bar
+  // so it's visible immediately — no scrolling to the bottom of a long
+  // form to find "Create Workorder"/"Save". Submits the <form> below via
+  // the `form` attribute (formId) even though it lives outside its DOM
+  // subtree. Purely a visual relocation of the trigger; handleSubmit and
+  // all field/validation logic are unchanged.
+  const topActionBar = (
+    <div className="sticky top-0 z-10 -mx-1 mb-4 flex items-center justify-end gap-3 bg-bg px-1 py-2">
+      {saved && !action && (
+        <span className="text-sm font-semibold text-success">Saved (demo — no backend yet)</span>
+      )}
+      <button type="submit" form={formId} className="btn-accent" disabled={pending}>
+        {pending ? "Saving…" : submitLabel}
+      </button>
+    </div>
+  );
+
+  const activeAddNewModal = fields.find((f) => f.key === addNewModalKey)?.addNewModal;
+  const addNewModalNode = activeAddNewModal && (
+    <Modal open onClose={() => setAddNewModalKey(null)} title={activeAddNewModal.title} size="md">
+      <RecordForm
+        fields={activeAddNewModal.fields}
+        submitLabel={activeAddNewModal.submitLabel ?? "Save"}
+        action={async (vals) => {
+          const result = await activeAddNewModal.action(vals);
+          if (!result || !("error" in (result as object)) || !(result as { error?: string }).error) {
+            const label = (result as { label?: string } | void)?.label;
+            if (addNewModalKey && label) setValue(addNewModalKey, label);
+            setAddNewModalKey(null);
+            router.refresh();
+          }
+          return result;
+        }}
+      />
+    </Modal>
+  );
+
+  if (layout === "columns") {
+    // Sections, in the order they first appear, split across two columns by
+    // their declared `column` — matching the reference intake screen's
+    // Customer+Address / Device+Issue arrangement.
+    const sections: { name: string; column: 1 | 2; fields: FormFieldDef[] }[] = [];
+    for (const field of fields) {
+      const name = field.section ?? "";
+      const last = sections[sections.length - 1];
+      if (last && last.name === name) last.fields.push(field);
+      else sections.push({ name, column: field.column ?? 1, fields: [field] });
+    }
+    const columnOf = (n: 1 | 2) => sections.filter((s) => s.column === n);
+    const renderColumn = (n: 1 | 2) => (
+      <div className="space-y-4">
+        {columnOf(n).map((s) => (
+          <div key={s.name} className="rounded-md border border-border bg-bg-raised p-4">
+            {s.name && <h2 className="mb-3 font-display text-sm font-bold text-text">{s.name}</h2>}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">{s.fields.map(renderField)}</div>
+          </div>
+        ))}
+      </div>
+    );
+    return (
+      <>
+        {topActionBar}
+        <form id={formId} onSubmit={handleSubmit} className="w-full space-y-5">
+          <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+            {renderColumn(1)}
+            {renderColumn(2)}
+          </div>
+          {footer}
+        </form>
+        {addNewModalNode}
+      </>
+    );
+  }
+
+  return (
+    <>
+      {topActionBar}
+      <form id={formId} onSubmit={handleSubmit} className="w-full max-w-2xl space-y-5">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+          {fields.map((field, i) => {
+            const prevSection = i === 0 ? undefined : fields[i - 1].section;
+            const showSection = Boolean(field.section) && field.section !== prevSection;
+            return (
+              <Fragment key={field.key}>
+                {showSection && (
+                  <h2 className="mt-2 border-b border-border pb-1.5 font-display text-sm font-bold text-text sm:col-span-2">
+                    {field.section}
+                  </h2>
+                )}
+                {renderField(field)}
+              </Fragment>
+            );
+          })}
+        </div>
+        {footer}
+      </form>
+      {addNewModalNode}
+    </>
   );
 }
 
 function renderInput(
   field: FormFieldDef,
   value: unknown,
-  setValue: (key: string, value: unknown) => void
+  setValue: (key: string, value: unknown) => void,
+  ctx: {
+    parentValue?: string;
+    cityOptions: string[];
+    freeTextKeys: Record<string, boolean>;
+    setFreeTextKeys: (update: (prev: Record<string, boolean>) => Record<string, boolean>) => void;
+  }
 ) {
   const baseClass =
     "w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text outline-none focus:border-teal";
+
+  // --- Address roles: one canonical state value, city from the resolved
+  // districts when the pincode lookup found any. Same behaviour and same
+  // fallbacks as the signup form's PincodeLookupFields.
+  if (field.addressRole === "state") {
+    return (
+      <select
+        id={field.key}
+        className={baseClass}
+        value={String(value ?? "")}
+        required={field.required}
+        onChange={(e) => setValue(field.key, e.target.value)}
+      >
+        <option value="">Select state</option>
+        {INDIAN_STATES.map((s) => (
+          <option key={s} value={s}>
+            {s}
+          </option>
+        ))}
+      </select>
+    );
+  }
+  if (field.addressRole === "city" && ctx.cityOptions.length > 0) {
+    return (
+      <select
+        id={field.key}
+        className={baseClass}
+        value={String(value ?? "")}
+        required={field.required}
+        onChange={(e) => setValue(field.key, e.target.value)}
+      >
+        <option value="">Select city</option>
+        {ctx.cityOptions.map((c) => (
+          <option key={c} value={c}>
+            {c}
+          </option>
+        ))}
+      </select>
+    );
+  }
 
   switch (field.type) {
     case "textarea":
@@ -154,7 +554,24 @@ function renderInput(
           {value ? "Yes" : "No"}
         </label>
       );
-    case "select":
+    case "select": {
+      const opts = field.options ?? [];
+      const groups = field.optionGroups;
+      // Ungrouped options first, then each group in the order its first
+      // member appears in `options`.
+      const ungrouped = groups ? opts.filter((o) => !groups[o]) : opts;
+      const groupOrder: string[] = [];
+      if (groups) {
+        for (const o of opts) {
+          const g = groups[o];
+          if (g && !groupOrder.includes(g)) groupOrder.push(g);
+        }
+      }
+      const renderOption = (opt: string) => (
+        <option key={opt} value={opt}>
+          {field.optionLabels?.[opt] ?? opt}
+        </option>
+      );
       return (
         <select
           id={field.key}
@@ -166,13 +583,15 @@ function renderInput(
           <option value="" disabled>
             Select {field.label.toLowerCase()}
           </option>
-          {field.options?.map((opt) => (
-            <option key={opt} value={opt}>
-              {opt}
-            </option>
+          {ungrouped.map(renderOption)}
+          {groupOrder.map((g) => (
+            <optgroup key={g} label={g}>
+              {opts.filter((o) => groups?.[o] === g).map(renderOption)}
+            </optgroup>
           ))}
         </select>
       );
+    }
     case "multi-select": {
       const selected = Array.isArray(value) ? (value as string[]) : [];
       return (
@@ -354,17 +773,79 @@ function renderInput(
       );
     case "relation":
     case "text":
-    default:
+    default: {
+      // A `suggestions` list makes this a combobox: the existing catalog
+      // entries are offered, but anything can still be typed — a device
+      // brand/model that isn't in the catalog yet must never block intake.
+      // When the field is scoped to a parent (Model under Brand), only the
+      // entries under the CURRENT parent value are offered — filtered
+      // in-browser from a map passed down as a prop, no fetch.
+      const suggestions = field.suggestionsByParent
+        ? (ctx.parentValue ? field.suggestionsByParent[ctx.parentValue] ?? [] : [])
+        : field.suggestions;
+      const currentValue = String(value ?? "");
+      const isFreeText = ctx.freeTextKeys[field.key] || (!!currentValue && !!suggestions?.length && !suggestions.includes(currentValue));
+
+      if (suggestions?.length && !isFreeText) {
+        return (
+          <select
+            id={field.key}
+            className={baseClass}
+            value={currentValue}
+            required={field.required}
+            disabled={!!field.suggestionsByParent && !ctx.parentValue}
+            onChange={(e) => {
+              if (e.target.value === "__other__") {
+                ctx.setFreeTextKeys((prev) => ({ ...prev, [field.key]: true }));
+                setValue(field.key, "");
+                return;
+              }
+              setValue(field.key, e.target.value);
+            }}
+          >
+            <option value="">
+              {field.suggestionsByParent && !ctx.parentValue ? "Pick a brand first" : "Select…"}
+            </option>
+            {suggestions.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+            <option value="__other__">Other — type manually…</option>
+          </select>
+        );
+      }
+
       return (
-        <input
-          id={field.key}
-          type="text"
-          className={baseClass}
-          value={String(value ?? "")}
-          placeholder={field.placeholder}
-          required={field.required}
-          onChange={(e) => setValue(field.key, e.target.value)}
-        />
+        <>
+          <input
+            id={field.key}
+            type="text"
+            className={baseClass}
+            value={currentValue}
+            placeholder={
+              field.suggestionsByParent && !ctx.parentValue
+                ? "Pick a brand first"
+                : field.placeholder
+            }
+            required={field.required}
+            autoFocus={ctx.freeTextKeys[field.key]}
+            onChange={(e) => setValue(field.key, e.target.value)}
+          />
+          {!!suggestions?.length && (
+            <button
+              type="button"
+              onClick={() => {
+                ctx.setFreeTextKeys((prev) => ({ ...prev, [field.key]: false }));
+                setValue(field.key, "");
+              }}
+              className="mt-1 text-xs font-semibold text-teal hover:underline"
+            >
+              &larr; Choose from list instead
+            </button>
+          )}
+        </>
       );
+    }
   }
 }

@@ -12,7 +12,14 @@
 import { prisma } from "@/lib/prisma";
 import { randomBytes } from "crypto";
 
-export type AccessKeyStatus = "active" | "revoked";
+/**
+ * "requested" is a partner-initiated pending state: the partner asked for a
+ * module from Settings (requestAccessKey below) but no Super Admin has
+ * approved it yet — assertModuleAccess/getPartnerEntitlements both treat it
+ * exactly like "no key", so nothing becomes reachable just by requesting.
+ * Approving one is just issueAccessKey() as usual (flips it to "active").
+ */
+export type AccessKeyStatus = "active" | "revoked" | "requested";
 
 export type ModuleAccessKeyRecord = {
   id: string;
@@ -73,6 +80,31 @@ export async function revokeAccessKey(partnerId: string, moduleSlug: string): Pr
   await prisma.moduleAccessKey.update({
     where: { partnerId_moduleSlug: { partnerId, moduleSlug } },
     data: { status: "revoked", revokedAt: new Date() },
+  });
+}
+
+/**
+ * Partner self-service entry point — replaces the old "toggle it on
+ * yourself" demo stub on /partner/<id>/settings. Records a pending request
+ * for Super Admin review (visible on /admin/access-keys) instead of
+ * granting anything: the row's `key` is a placeholder (never a real,
+ * usable secret) until a Super Admin actually approves it via
+ * issueAccessKey, which overwrites both the key and the status. A no-op if
+ * this partner already holds an active key, or already has a pending
+ * request, for this module.
+ */
+export async function requestAccessKey(
+  partnerId: string,
+  moduleSlug: string,
+  note?: string
+): Promise<ModuleAccessKeyRecord> {
+  const existing = await getAccessKey(partnerId, moduleSlug);
+  if (existing?.status === "active" || existing?.status === "requested") return existing;
+  const placeholderKey = `PENDING-${moduleSlug.toUpperCase()}-${randomBytes(6).toString("hex").toUpperCase()}`;
+  return prisma.moduleAccessKey.upsert({
+    where: { partnerId_moduleSlug: { partnerId, moduleSlug } },
+    create: { partnerId, moduleSlug, key: placeholderKey, status: "requested", note },
+    update: { key: placeholderKey, status: "requested", revokedAt: null, note },
   });
 }
 

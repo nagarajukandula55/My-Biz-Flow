@@ -4,6 +4,11 @@ import { registerPage } from "@/lib/designer/registry";
 import { listActivePartnerTypes } from "@/lib/designer/partnerTypesData";
 import { PincodeLookupFields } from "./PincodeLookupFields";
 import { registerBusiness } from "./actions";
+import {
+  PRODUCT_DOMAINS,
+  PRODUCT_DOMAIN_DESCRIPTIONS,
+  PRODUCT_DOMAIN_LABELS,
+} from "@/lib/catalog/productDomains";
 
 export const dynamic = "force-dynamic";
 
@@ -16,14 +21,14 @@ registerPage({
   superAdminOnly: false,
   customizableRegions: [],
   explanation:
-    "Public 'Register your business' flow, full-page layout (not a centered card). Partner Type is the only thing the partner picks/sees (modules, Roles, and plan tiers stay Super-Admin-configured, never shown here) — everything else is business details needed for invoicing plus a login contact number. No password field: one is generated and shown once on /signup/success (or held for approval on /signup/pending if the type requires it), forcing a change on first login.",
+    "Public 'Register your business' flow, full-page layout (not a centered card). Partner Type is the only thing the partner picks/sees (modules, Roles, and plan tiers stay Super-Admin-configured, never shown here) — everything else is business details needed for invoicing plus a login contact number, and the product domain(s) the business deals in (Electronics and/or Automobiles — a multi-select that shapes the Device Type/Brand/Model catalog the Service Centre module later offers them; editable afterwards from Settings). No password field: one is generated internally (never shown), and the new partner is signed straight into a real session and redirected to /change-password?welcome=1 to set their own (or held for approval on /signup/pending if the type requires it).",
   sourceFile: "src/app/signup/page.tsx",
 });
 
 export default async function SignupPage({
   searchParams,
 }: {
-  searchParams: { type?: string; error?: string };
+  searchParams: { type?: string; error?: string; ref?: string };
 }) {
   const partnerTypes = await listActivePartnerTypes();
   const selected = partnerTypes.find((t) => t.id === searchParams.type) ?? partnerTypes[0];
@@ -139,6 +144,39 @@ export default async function SignupPage({
               </div>
 
               <div>
+                <h2 className="font-display text-base font-bold text-text">What do you deal in?</h2>
+                <p className="mt-1 text-xs text-text-muted">
+                  Pick everything that applies — you can service more than one. This decides which device
+                  types, brands and models you&apos;re offered when booking a job in, and you can change it
+                  later from Settings.
+                </p>
+                <div className="mt-4 grid max-w-xl grid-cols-1 gap-3 sm:grid-cols-2">
+                  {PRODUCT_DOMAINS.map((domain) => (
+                    <label
+                      key={domain}
+                      className="flex cursor-pointer gap-3 rounded-md border border-border bg-bg-raised p-3"
+                    >
+                      <input
+                        type="checkbox"
+                        name="productDomains"
+                        value={domain}
+                        defaultChecked={domain === "ELECTRONICS"}
+                        className="mt-0.5 h-4 w-4 flex-shrink-0 rounded border-border accent-current text-teal"
+                      />
+                      <span>
+                        <span className="block text-sm font-semibold text-text">
+                          {PRODUCT_DOMAIN_LABELS[domain]}
+                        </span>
+                        <span className="mt-0.5 block text-xs text-text-muted">
+                          {PRODUCT_DOMAIN_DESCRIPTIONS[domain]}
+                        </span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div>
                 <h2 className="font-display text-base font-bold text-text">Login</h2>
                 <p className="mt-1 text-xs text-text-muted">
                   This number is what you&apos;ll sign in with, alongside your Partner ID. OTP verification is
@@ -155,6 +193,19 @@ export default async function SignupPage({
                     />
                   </label>
                 </div>
+              </div>
+
+              <div className="max-w-sm">
+                <label className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+                  Referral code (optional)
+                  <input
+                    type="text"
+                    name="referralCode"
+                    defaultValue={searchParams.ref ?? ""}
+                    placeholder="REF-SC0001"
+                    className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm normal-case text-text outline-none focus:border-teal"
+                  />
+                </label>
               </div>
 
               <button type="submit" className="btn-accent w-full sm:w-auto">

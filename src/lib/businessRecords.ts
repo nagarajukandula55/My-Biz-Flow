@@ -6,21 +6,43 @@
  * — this layer just persists/scopes/looks it up, it doesn't know or care
  * about per-module field shape.
  */
+import { safeCache as cache } from "@/lib/safeCache";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 import type { Row } from "@/components/DataTable";
 
-function toRow(row: { recordKey: string; data: unknown }): Row {
-  return { ...(row.data as Record<string, unknown>), id: row.recordKey };
+function toRow(row: { recordKey: string; data: unknown; createdAt: Date }): Row {
+  // `recordCreatedAt` is the real, immutable DB insert timestamp (full
+  // date+time) — always placed AFTER the data spread so it wins over any
+  // stray same-named copy that got persisted into the JSON blob by an
+  // earlier `{...existing, ...patch}` write-back (see updateBusinessRecord).
+  // Added so callers have a genuine full-precision "when was this record
+  // actually created" moment to use for TAT/timeline purposes, instead of
+  // relying on a user-entered, date-only field like `receivedDate` (which
+  // has no time-of-day component at all).
+  return { ...(row.data as Record<string, unknown>), id: row.recordKey, recordCreatedAt: row.createdAt.toISOString() };
 }
 
-export async function listBusinessRecords(partnerId: string, moduleSlug: string): Promise<Row[]> {
+/**
+ * Wrapped in React's cache() — several pages/functions call
+ * listBusinessRecords(partnerId, moduleSlug) for the SAME moduleSlug more
+ * than once within one request (e.g. the Analytics page: getAnalyticsSummary,
+ * getWorkorderStatusBreakdown, getTopBrandsByWorkorderCount, getAverageTat,
+ * getRevenueBySource and getInvoiceStatusBreakdown in analyticsData.ts all
+ * read the same full unfiltered "service-centre"/"billing" table for the
+ * same partner on the same render). Dedup is per-request only, same as
+ * getPartner() — no cross-request staleness risk.
+ */
+export const listBusinessRecords = cache(async function listBusinessRecords(
+  partnerId: string,
+  moduleSlug: string
+): Promise<Row[]> {
   const rows = await prisma.businessRecord.findMany({
     where: { partnerId, moduleSlug },
     orderBy: { createdAt: "desc" },
   });
   return rows.map(toRow);
-}
+});
 
 /** Default page size for `listBusinessRecordsPaginated` — one place to change it consistently. */
 export const DEFAULT_BUSINESS_RECORD_PAGE_SIZE = 25;
@@ -138,15 +160,43 @@ export async function getBusinessRecordsByKeys(
   return new Map(rows.map((row) => [row.recordKey, toRow(row)]));
 }
 
-/** Creates a record. If values.id is unset, generates one from the module slug + a short random suffix. */
+/**
+ * Modules whose "auto-generated if left empty" id should be a real,
+ * sequential, per-partner number (via the same NumberingCounter scheme
+ * Workorders/Invoices use — src/lib/designer/numbering.ts) instead of a
+ * random suffix. Random ids were fine as an opaque key, but the catalogs
+ * below are shown to and referenced by the partner (a Brand Code, Model
+ * Code, or Material Code on a printed document/report), so they should
+ * read as a real, incrementing sequence — never colliding with another
+ * partner's catalog since the counter is scoped by partnerId, and never
+ * reusing a number within one partner's own catalog either.
+ */
+const NUMBERED_MODULE_SLUGS: Record<string, string> = {
+  "service-centre-brands": "service-centre.brand",
+  "service-centre-models": "service-centre.model",
+  "inventory-bom": "inventory.bom-material",
+};
+
+/** Creates a record. If values.id is unset, generates one — a real per-partner sequence for catalog modules (see NUMBERED_MODULE_SLUGS), a short random suffix for everything else. */
 export async function createBusinessRecord(
   partnerId: string,
   moduleSlug: string,
   values: Record<string, unknown>
 ): Promise<Row> {
-  const recordKey =
-    (values.id as string | undefined)?.trim() ||
-    `${moduleSlug.toUpperCase().slice(0, 3)}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+  let recordKey = (values.id as string | undefined)?.trim();
+  if (!recordKey) {
+    const documentType = NUMBERED_MODULE_SLUGS[moduleSlug];
+    if (documentType) {
+      const { getNextNumber } = await import("@/lib/designer/numbering");
+      recordKey = await getNextNumber(documentType, partnerId, {
+        prefix: moduleSlug === "inventory-bom" ? "MAT" : moduleSlug === "service-centre-brands" ? "BRD" : "MDL",
+        sequenceDigits: 4,
+        financialYearFormat: "none",
+      });
+    } else {
+      recordKey = `${moduleSlug.toUpperCase().slice(0, 3)}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+    }
+  }
   const data = { ...values, id: recordKey };
   const row = await prisma.businessRecord.create({
     data: { partnerId, moduleSlug, recordKey, data },
@@ -179,6 +229,31 @@ export async function getBusinessRecordSequenceIndex(
     select: { recordKey: true },
   });
   const index = rows.findIndex((r) => r.recordKey === recordKey);
+  return index >= 0 ? index : 0;
+}
+
+/**
+ * Same 0-based, oldest-first position as getBusinessRecordSequenceIndex,
+ * but scoped to only the peers matching `filterFn` — e.g. only this
+ * partner's B2B invoices, or only its B2C ones — so B2B and B2C invoices
+ * (Billing and Service Centre alike) get their own independent, gap-free
+ * numbering sequence instead of interleaving in one shared count. `data`
+ * is the record's own field bag (same shape `getBusinessRecord` returns
+ * minus `id`), so `filterFn` can check e.g. `Boolean(data.customerGstin)`.
+ */
+export async function getBusinessRecordSequenceIndexFiltered(
+  partnerId: string,
+  moduleSlug: string,
+  recordKey: string,
+  filterFn: (data: Record<string, unknown>) => boolean
+): Promise<number> {
+  const rows = await prisma.businessRecord.findMany({
+    where: { partnerId, moduleSlug },
+    orderBy: { createdAt: "asc" },
+    select: { recordKey: true, data: true },
+  });
+  const filtered = rows.filter((r) => filterFn(r.data as Record<string, unknown>));
+  const index = filtered.findIndex((r) => r.recordKey === recordKey);
   return index >= 0 ? index : 0;
 }
 

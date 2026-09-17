@@ -29,8 +29,10 @@ export const dynamic = "force-dynamic";
 
 export default async function AccountingGstDetailPage({
   params,
+  searchParams,
 }: {
   params: { partnerId: string; recordId: string };
+  searchParams?: { created?: string; updated?: string };
 }) {
   const mod = await getModule("accounting-gst");
   const record = await getBusinessRecord(params.partnerId, "accounting-gst", params.recordId);
@@ -45,6 +47,8 @@ export default async function AccountingGstDetailPage({
 
         <RecordDetail
           fields={fields}
+          recordLabel={recordLabel}
+          searchParams={searchParams}
           timeline={timeline}
           related={accountingGstRelated}
           headerSlot={

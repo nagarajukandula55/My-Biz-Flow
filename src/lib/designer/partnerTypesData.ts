@@ -7,6 +7,7 @@
  * (src/lib/plansData.ts) it bundles for actual billing (planIds, added
  * 2026-08-08) — a separate concern from the page split above.
  */
+import { safeCache as cache } from "@/lib/safeCache";
 import { prisma } from "@/lib/prisma";
 
 export type PlanTier = "basic" | "pro" | "ultimate";
@@ -62,10 +63,18 @@ export async function listActivePartnerTypes(): Promise<PartnerTypeRecord[]> {
   return rows.map(toRecord);
 }
 
-export async function getPartnerType(id: string): Promise<PartnerTypeRecord | undefined> {
+/**
+ * Wrapped in React's cache() — called once per getVisibleModuleSlugs()
+ * resolution (nav-building, entitlements.ts) AND again by getPageTierAccess
+ * (tenant.ts) for the same partnerType within the same request (e.g. the
+ * Service Centre detail page's tier gate runs after the layout's own nav
+ * build already resolved the same PartnerType row). Dedup is per-request
+ * only, same as getPartner().
+ */
+export const getPartnerType = cache(async function getPartnerType(id: string): Promise<PartnerTypeRecord | undefined> {
   const row = await prisma.partnerType.findUnique({ where: { id } });
   return row ? toRecord(row) : undefined;
-}
+});
 
 export type PartnerTypeInput = {
   description: string;

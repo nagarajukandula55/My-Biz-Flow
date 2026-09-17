@@ -17,6 +17,16 @@ export function PieChartCard({
   subtitle?: string;
   data: PieSlice[];
 }) {
+  if (data.length === 0) {
+    return (
+      <ChartCard title={title} subtitle={subtitle}>
+        <div className="flex h-full items-center justify-center text-sm text-text-muted">
+          No data yet
+        </div>
+      </ChartCard>
+    );
+  }
+
   return (
     <ChartCard title={title} subtitle={subtitle}>
       <ResponsiveContainer width="100%" height="100%">

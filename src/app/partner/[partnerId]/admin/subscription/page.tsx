@@ -10,13 +10,23 @@ import {
   getSubscriptionState,
   getOffer,
   computePartnerDueAmount,
+  computeCyclePrice,
+  currentMonthlyRate,
+  isLaunchPricingActive,
+  LAUNCH_PRICING_CUTOVER,
   BILLING_CYCLES,
+  CYCLE_DISCOUNT_PCT,
   cycleLabel,
-  type BillingCycle,
 } from "@/lib/subscriptionData";
 import { chooseSubscriptionAction } from "./actions";
 import { RazorpayCheckoutButton } from "@/components/RazorpayCheckoutButton";
+import { NoticeCard } from "@/components/NoticeCard";
 import { env } from "@/lib/env";
+// Real per-tier feature bullets (verbatim from AN-CRM's own plan
+// definitions, see this file's own comment) and the tier-vs-price index
+// this app already uses on /pricing -- reused here so the Subscription
+// page's plan picker shows the same real features, not invented copy.
+import { TIER_FEATURES, tierForPlanIndex } from "@/lib/designer/pageTiers";
 
 /** My Biz Flow is the seller on this one document — see src/lib/env.ts. */
 const PLATFORM_BILLING_HEADER = `My Biz Flow — a unit of ${env.platformLegalEntityName()}`;
@@ -96,12 +106,12 @@ export default async function PartnerSubscriptionPage({ params }: { params: { pa
         </div>
 
         {partner.subscriptionStatus === "Active" && partner.planId && partner.billingCycle && (
-          <div className="mt-6 rounded-lg border border-border bg-bg-raised p-5">
-            <h2 className="font-display text-base font-bold text-text">Your active plan</h2>
-            <p className="mt-2 text-sm text-text">
+          <div className="mt-6">
+            <NoticeCard tone="success" title="✅ Your plan is active">
               {allPlans.find((p) => p.id === partner.planId)?.name ?? partner.planId} —{" "}
-              {cycleLabel(partner.billingCycle as BillingCycle)}
-            </p>
+              {cycleLabel(partner.billingCycle)}
+              {offer ? ` — offer "${offer.name}" applied` : ""}
+            </NoticeCard>
           </div>
         )}
 
@@ -111,10 +121,11 @@ export default async function PartnerSubscriptionPage({ params }: { params: { pa
             <h2 className="font-display text-base font-bold text-text">Payment pending</h2>
             <p className="mt-2 text-sm text-text-muted">
               You&apos;ve chosen {allPlans.find((p) => p.id === partner.planId)?.name ?? partner.planId} (
-              {cycleLabel((partner.billingCycle as BillingCycle) ?? "Monthly")}).
+              {cycleLabel(partner.billingCycle ?? "")}
+              ).
               {offer ? ` Offer "${offer.name}" applied.` : ""}
             </p>
-            <div className="mt-4">
+            <div className="mt-4 flex flex-wrap items-center gap-3">
               {due ? (
                 <RazorpayCheckoutButton
                   partnerId={partner.id}
@@ -128,17 +139,28 @@ export default async function PartnerSubscriptionPage({ params }: { params: { pa
               ) : (
                 <p className="text-xs text-text-muted">Could not compute an amount due — contact us to complete payment.</p>
               )}
+              <a href="#change-plan" className="text-xs font-semibold text-accent underline underline-offset-2">
+                Change plan
+              </a>
             </div>
+            <p className="mt-2 text-xs text-text-muted">
+              Closed the payment window without paying? Pick a different plan or billing cycle below any time before
+              trying again.
+            </p>
           </div>
         )}
 
-        {(partner.subscriptionStatus === "Trial" || subState.isTrialExpired) && (
-          <div className="mt-6 rounded-lg border border-border bg-bg-raised p-5">
-            <h2 className="font-display text-base font-bold text-text">Choose a plan to continue</h2>
+        {(partner.subscriptionStatus === "Trial" || subState.isTrialExpired || partner.subscriptionStatus === "PastDue") && (
+          <div id="change-plan" className="mt-6 rounded-lg border border-border bg-bg-raised p-5">
+            <h2 className="font-display text-base font-bold text-text">
+              {partner.subscriptionStatus === "PastDue" ? "Change plan" : "Choose a plan to continue"}
+            </h2>
             <p className="mt-1 text-sm text-text-muted">
-              {subState.isTrialExpired
-                ? "Your trial has ended — choose a plan and billing cycle to keep using My Biz Flow."
-                : "You're currently on a free trial. Choose a plan and billing cycle any time to convert early."}
+              {partner.subscriptionStatus === "PastDue"
+                ? "Pick a different plan or billing cycle — this replaces your current pending choice."
+                : subState.isTrialExpired
+                  ? "Your trial has ended — choose a plan and billing cycle to keep using My Biz Flow."
+                  : "You're currently on a free trial. Choose a plan and billing cycle any time to convert early."}
             </p>
 
             {bundledPlans.length === 0 ? (
@@ -147,38 +169,74 @@ export default async function PartnerSubscriptionPage({ params }: { params: { pa
               </p>
             ) : (
               <form action={action} className="mt-4 space-y-4">
+                {isLaunchPricingActive() && (
+                  <p className="text-xs font-semibold text-success">
+                    Launch pricing is live — the discounted rates below apply until{" "}
+                    {LAUNCH_PRICING_CUTOVER.toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}.
+                  </p>
+                )}
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                  {bundledPlans.map((p) => (
-                    <label
-                      key={p.id}
-                      className="flex cursor-pointer items-start gap-2 rounded-md border border-border bg-bg p-3 text-sm text-text"
-                    >
-                      <input type="radio" name="planId" value={p.id} required className="mt-0.5 h-4 w-4 accent-accent" />
-                      <span>
-                        <span className="block font-semibold">{p.name}</span>
-                        <span className="block text-xs text-text-muted">₹{p.price.toLocaleString("en-IN")}/mo base</span>
-                      </span>
-                    </label>
-                  ))}
+                  {bundledPlans.map((p, i) => {
+                    const tier = tierForPlanIndex(i, bundledPlans.length);
+                    const features = TIER_FEATURES[tier];
+                    const rate = currentMonthlyRate(p);
+                    const onLaunchRate = rate !== p.price;
+                    return (
+                      <label
+                        key={p.id}
+                        className="flex cursor-pointer items-start gap-2 rounded-md border border-border bg-bg p-3 text-sm text-text"
+                      >
+                        <input type="radio" name="planId" value={p.id} required className="mt-0.5 h-4 w-4 accent-accent" />
+                        <span>
+                          <span className="block font-semibold">{p.name}</span>
+                          <span className="block text-xs text-text-muted">
+                            ₹{rate.toLocaleString("en-IN")}/mo base
+                            {onLaunchRate && (
+                              <>
+                                {" "}
+                                <span className="line-through">₹{p.price.toLocaleString("en-IN")}</span> launch price
+                              </>
+                            )}
+                          </span>
+                          <span className="mt-1.5 block space-y-0.5 text-xs text-text-muted">
+                            {BILLING_CYCLES.map((c) => (
+                              <span key={c} className="block">
+                                {cycleLabel(c)}: ₹{computeCyclePrice(rate, c).toLocaleString("en-IN")}
+                                {" "}total ({CYCLE_DISCOUNT_PCT[c]}% off)
+                              </span>
+                            ))}
+                          </span>
+                          <ul className="mt-2 space-y-1">
+                            {features.map((feature) => (
+                              <li key={feature} className="flex items-start gap-1.5 text-xs text-text">
+                                <span className="mt-1 h-1 w-1 flex-shrink-0 rounded-full bg-accent" />
+                                {feature}
+                              </li>
+                            ))}
+                          </ul>
+                        </span>
+                      </label>
+                    );
+                  })}
                 </div>
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div className="grid grid-cols-2 gap-3">
                   {BILLING_CYCLES.map((c) => (
                     <label
                       key={c}
                       className="flex cursor-pointer items-center gap-2 rounded-md border border-border bg-bg p-3 text-sm text-text"
                     >
                       <input type="radio" name="billingCycle" value={c} required className="h-4 w-4 accent-accent" />
-                      {cycleLabel(c)}
+                      {cycleLabel(c)} ({CYCLE_DISCOUNT_PCT[c]}% off)
                     </label>
                   ))}
                 </div>
                 <p className="text-xs text-text-muted">
-                  Pricing shown is monthly base — quarterly/half-yearly/yearly cycles carry a built-in discount for
-                  committing longer, applied at checkout
-                  {offer ? `, plus your active offer "${offer.name}"` : ""}.
+                  Yearly and 2-Year totals shown above already include the discount — that&apos;s the real amount
+                  charged, not the plan&apos;s monthly rate multiplied out
+                  {offer ? `, plus your active offer "${offer.name}" applied at checkout` : ""}.
                 </p>
                 <button type="submit" className="btn-accent">
-                  Choose plan
+                  {partner.subscriptionStatus === "PastDue" ? "Update plan choice" : "Choose plan"}
                 </button>
               </form>
             )}

@@ -181,6 +181,20 @@ model Partner {
   state              String
   pincode            String
   gstin              String?
+  /// IANA timezone, e.g. "Asia/Kolkata" — editable from Settings' Business
+  /// Details block. Purely a label today (no scheduling/report logic reads
+  /// it yet), same status as `currency` below.
+  timezone           String  @default("Asia/Kolkata")
+  /// Display currency code shown on Settings; actual money formatting
+  /// elsewhere in the app is hardcoded to INR (see formatCurrencyINR) —
+  /// this does not yet drive that, same caveat as `timezone`.
+  currency           String  @default("INR")
+  /// Partner-uploaded logo, stored as a `data:` URL. There is no
+  /// file-storage/S3 pipeline anywhere in this app yet, so this is the
+  /// minimal real option rather than inventing one — see Settings'
+  /// Business Details block. Shown in the partner's own sidebar header
+  /// and printed documents when set; null renders the app's own logo.
+  logoDataUrl        String? @db.Text
   businessEmail      String
   businessContact    String
   loginContact       String  @unique
@@ -191,6 +205,68 @@ model Partner {
   mustChangePassword Boolean @default(true)
   status             String  @default("Active")
 
+  /// --- Business profile (editable by the partner from /partner/<id>/settings) ---
+  /// Signup only ever collected the bare minimum needed to create an
+  /// account; these are the remaining business-detail fields AN-CRM's own
+  /// vendor profile page collects (src/app/vendor/profile/page.tsx), so a
+  /// partner can complete their profile after the fact. All nullable —
+  /// every existing Partner row predates them and none are required to
+  /// operate the account.
+  contactPerson      String?
+  pan                String?
+  businessCategory   String?
+  /// Which product domain(s) this partner deals in — a JSON string array of
+  /// ProductDomain codes, e.g. ["ELECTRONICS"] or ["ELECTRONICS","AUTOMOBILE"]
+  /// (src/lib/catalog/productDomains.ts, which also carries the reasoning
+  /// for why this is a Partner-level field rather than a second
+  /// PartnerType). Chosen at signup, editable afterwards from
+  /// /partner/<id>/settings. Drives which Device Type categories and which
+  /// Brand/Model catalog rows the Service Centre module offers. Empty for
+  /// every row that predates the column, which reads as ELECTRONICS-only —
+  /// what the module has always been.
+  productDomains     Json    @default("[]")
+  /// Free-text terms printed on the partner's own quotes/invoices — the
+  /// GENERAL default. Each of the per-document-type overrides below falls
+  /// back to this when blank, and a document whose specific override AND
+  /// this general field are both blank prints no terms block at all (rather
+  /// than empty boilerplate). Same fallback rule as AN-CRM's
+  /// Business.termsAndConditions (src/models/Business.ts).
+  serviceTerms       String? @db.Text
+  /// --- Per-document-type Terms & Conditions overrides ---
+  /// One per printable Service Centre document, each falling back to
+  /// serviceTerms above. Kept as separate nullable columns rather than a
+  /// JSON blob so the fallback is a plain `?? serviceTerms` at the point of
+  /// render and nothing has to parse/defend against a malformed shape.
+  workorderTerms     String? @db.Text
+  estimateTerms      String? @db.Text
+  invoiceTerms       String? @db.Text
+  serviceRecordTerms String? @db.Text
+  /// Default labour charge, in WHOLE RUPEES (this app stores money in
+  /// rupees, not paise — see Plan.price and ServiceLine.laborCharge, both
+  /// plain rupee amounts). Used to pre-fill the labour figure on a new
+  /// workorder service line. Null/0 means "no default" — the field is left
+  /// blank rather than pre-filled with a zero that reads as a real quote.
+  defaultLaborCharge Int?
+  /// The partner's own UPI VPA, e.g. "yourshop@okhdfcbank". Printed on the
+  /// Sales Invoice as a scannable UPI payment QR (src/lib/upiQr.ts). There
+  /// is no gateway, webhook or reconciliation behind it: the customer scans
+  /// and pays the partner directly, and matching the payment against the
+  /// invoice stays manual.
+  upiId              String?
+  /// e.g. "Mon-Sat, 9:30am - 7:00pm"
+  serviceHours       String?
+  /// A public support number, distinct from businessContact (the number we
+  /// reach the partner on).
+  supportHotline     String?
+
+  /// --- Bank details (for payouts/settlement; display + record only) ---
+  /// Deliberately stored as plain nullable columns matching AN-CRM's four
+  /// fields. Nothing debits these — there is no payout engine wired up.
+  bankAccountName   String?
+  bankName          String?
+  bankAccountNumber String?
+  bankIfsc          String?
+
   /// Subscription lifecycle: "Trial" | "Active" | "PastDue" | "Cancelled".
   /// Set to "Trial" automatically on signup with a 7-day trialEndAt; a
   /// Super Admin can freely override status/dates/plan/cycle from
@@ -200,15 +276,28 @@ model Partner {
   subscriptionStatus String    @default("Trial")
   trialStartAt       DateTime?
   trialEndAt         DateTime?
-  /// "Monthly" | "Quarterly" | "HalfYearly" | "Yearly" — chosen when the
-  /// partner converts off trial; null while still on trial.
+  /// "Yearly" | "TwoYearly" — chosen when the partner converts off trial;
+  /// null while still on trial. Only these two cycles are offered (see
+  /// BILLING_CYCLES in src/lib/subscriptionData.ts).
   billingCycle       String?
   planId             String?
   offerId            String?
 
+  /// Referral tracking: the Partner id (e.g. "SC0001") of whoever referred
+  /// this partner, captured from the optional referral code entered at
+  /// /signup. Null for organic signups. There is no self-referral (the code
+  /// can only name an already-existing partner) and no rewards/credit
+  /// ledger attached — this column records WHO referred WHOM only; issuing
+  /// an actual reward is real money movement and deliberately left as a
+  /// separate follow-up. Referral codes themselves aren't stored: they are
+  /// derived deterministically from the partner id (see
+  /// src/lib/referrals.ts), so there is nothing to generate or keep unique.
+  referredByPartnerId String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([referredByPartnerId])
   @@map("partners")
 }
 
@@ -241,6 +330,8 @@ model Plan {
   id                  String   @id
   name                String
   price               Int
+  /// Bare-minimum introductory monthly rate, active until subscriptionData.ts's LAUNCH_PRICING_CUTOVER (matches AN-CRM's src/core/pricing/plans.ts launchPriceINR/LAUNCH_PRICING_CUTOVER exactly) -- after which `price` applies automatically, no admin action needed. Null on a plan means no launch discount (use `price` from day one).
+  launchPrice         Int?
   billingCycle        String
   includedModuleSlugs Json     @default("[]")
   maxUsers            Int
@@ -309,6 +400,11 @@ model PartnerSignupRequest {
   businessContact String
   loginContact    String
   passwordHash    String
+  /// Carried through from the signup form so an approval-gated signup
+  /// doesn't silently lose the domains the applicant picked — copied onto
+  /// the Partner row by createPartnerFromRequest(). Same shape as
+  /// Partner.productDomains.
+  productDomains  Json     @default("[]")
   status          String   @default("Pending")
   createdAt       DateTime @default(now())
 
@@ -350,22 +446,47 @@ model PartnerStaff {
   id        String @id @default(cuid())
   partnerId String
 
-  name         String
-  email        String
-  phone        String?
-  passwordHash String
-  /// "Owner" | "Manager" | "Technician" | "FrontDesk" — a plain string, not
-  /// an AN-CRM-style per-action permission matrix (documented fast-follow).
-  role   String @default("Technician")
-  status String @default("Active") // Active | Suspended
+  name               String
+  /// Optional now (was required) — Telecaller agents log in with loginId
+  /// below instead of email, and don't necessarily have a work email to give.
+  /// Still required for every role that predates this (Owner/Manager/
+  /// Technician/FrontDesk created before this column existed keep theirs).
+  email              String?
+  phone              String?
+  passwordHash       String
+  /// "Owner" | "Manager" | "Technician" | "FrontDesk" | "Telecaller" — a
+  /// plain string, not an AN-CRM-style per-action permission matrix
+  /// (documented fast-follow).
+  role               String   @default("Technician")
+  status             String   @default("Active") // Active | Suspended
   /// True until the staff member completes their first forced password
   /// change — same convention as Partner.mustChangePassword; set when the
   /// Partner owner creates the account with a generated password.
   mustChangePassword Boolean  @default(true)
+  /// Short generated login id (e.g. "AGT001"), unique per partner — the
+  /// Telecalling module's own login credential instead of email, since an
+  /// agent shouldn't need a real email address just to sign in and it's
+  /// easier to read back over the phone than one. Nullable/unused for every
+  /// other role today. See src/lib/telecalling/agentAuth.ts.
+  loginId            String?
+  /// Telecalling-only territory gate: the states/cities (Lead.state/
+  /// Lead.city, both plain free-text as typed on a lead's CSV import — no
+  /// canonical state/city master list exists yet) this Telecaller may see
+  /// and be auto-assigned. Empty array on both means "no restriction" — an
+  /// agent created before this feature, or explicitly given open access,
+  /// sees every lead exactly as before. Unused for every other role. See
+  /// src/lib/telecalling/leadsData.ts's territory filtering and
+  /// autoAssignByTerritory().
+  assignedStates     Json     @default("[]")
+  assignedCities     Json     @default("[]")
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
+  assignedLeads Lead[]
+  calls         Call[]
+
   @@unique([partnerId, email])
+  @@unique([partnerId, loginId])
   @@index([partnerId])
   @@map("partner_staff")
 }
@@ -556,6 +677,124 @@ model FieldForceSettings {
   @@map("field_force_settings")
 }
 
+/// Per-partner Telegram alert setup — the same shape as FieldForceSettings
+/// above (one row per partner, partnerId as the primary key, all-optional
+/// toggles), which is this app's established per-partner-settings pattern.
+///
+/// chatId is the partner's OWN Telegram chat/group id (they get it from
+/// @userinfobot or by adding a bot to their group). enabledTypes is the
+/// list of alert-occasion keys (see TELEGRAM_ALERT_TYPES in
+/// src/lib/telegram.ts, which map 1:1 onto the message-copy functions in
+/// src/lib/telegramTemplates.ts) the partner wants delivered there.
+///
+/// NOTE: settings here are real and honoured by sendPartnerTelegramAlert(),
+/// but actual delivery needs a real bot: with no TELEGRAM_BOT_TOKEN set the
+/// send no-ops with a console log, exactly like src/lib/sms.ts does without
+/// SMS_API_KEY. Nothing here fabricates a bot connection.
+model TelegramSettings {
+  partnerId        String    @id
+  chatId           String?
+  /// The partner's group chat id — connected independently of `chatId`
+  /// (the personal/DM chat) via its own deep-link slot (see
+  /// buildTelegramConnectLink(partnerId, "group") in src/lib/telegram.ts).
+  /// Either, both, or neither may be set at a time.
+  groupChatId      String?
+  enabledTypes     Json      @default("[]")
+  /// Per-alert-type routing: which of the two connected chats
+  /// (personal/group/both) each TELEGRAM_ALERT_TYPES key is delivered to.
+  /// Keyed by TelegramAlertType, valued "personal" | "group" | "both" — see
+  /// TelegramRoutingMap in src/lib/telegram.ts. A type with no entry here
+  /// defaults to "both" (send to whichever of chatId/groupChatId is set),
+  /// matching this app's Json-column precedent for flexible per-type config
+  /// (Partner.productDomains).
+  routing          Json      @default("{}")
+  /// Automatic periodic business-summary digest cadence, matching AN-CRM's
+  /// VendorProfile.telegramReportFrequency (DAILY/WEEKLY/MONTHLY/NONE) —
+  /// see src/lib/telegramTemplates.ts's businessReportMessage(). Actually
+  /// sent by /api/cron/telegram-reports (see that route + lastReportSentAt
+  /// below for the idempotency guard) once a bot token is configured.
+  reportFrequency  String    @default("NONE")
+  /// When the last scheduled digest was sent (or attempted, if no bot token
+  /// is configured) — the cron's idempotency guard, since Vercel Cron does
+  /// not guarantee exactly-once delivery and this route may run more than
+  /// once on the same calendar day/week/month.
+  lastReportSentAt DateTime?
+  updatedAt        DateTime  @updatedAt
+
+  @@map("telegram_settings")
+}
+
+/// Audit trail of every attempted Telegram alert send — real even though no
+/// bot token exists yet, so the settings page can show recent activity.
+/// Mirrors AN-CRM's TelegramLog model (src/models/TelegramLog.ts).
+model TelegramLogEntry {
+  id          String   @id
+  partnerId   String
+  type        String
+  message     String   @db.Text
+  chatId      String?
+  sent        Boolean  @default(false)
+  reason      String?
+  createdAt   DateTime @default(now())
+  /// The Bot API's own id for the message actually sent (Telegram's
+  /// sendMessage response), captured only when `sent` is true. Together with
+  /// chatId this is the reply-threading key: an incoming Telegram message
+  /// whose `reply_to_message.message_id` matches this row is a reply to
+  /// THIS alert — see findWorkorderByReplyMessageId() in src/lib/telegram.ts
+  /// and the webhook route that calls it.
+  messageId   Int?
+  /// Which Service Centre workorder this alert was about, when sent via
+  /// sendWorkorderTelegramAlert() rather than the generic
+  /// sendPartnerTelegramAlert() — null for occasions that aren't yet
+  /// workorder-aware (see src/lib/telegram.ts).
+  workorderId String?
+
+  @@index([partnerId, createdAt])
+  /// Reply-threading lookup: given the chatId + message_id a reply came in
+  /// on, find the one log row (and therefore workorder) that message_id was
+  /// originally sent for.
+  @@index([chatId, messageId])
+  @@map("telegram_log_entries")
+}
+
+/// Admin-editable override for a Telegram message template's body text —
+/// keyed by the template's canonical key (see src/lib/telegramTemplateDefs.ts,
+/// duplicated in My Biz Flow Admin where the edit UI lives). No row for a
+/// key means the hardcoded defaultBody in that file is used — same
+/// "DB overrides a code default" convention as ModuleAppearance/
+/// PageCustomization. Global/platform-wide, not partner-scoped: these are
+/// the platform's own wording, not something a partner customizes.
+model TelegramMessageTemplate {
+  key       String   @id
+  body      String   @db.Text
+  updatedAt DateTime @updatedAt
+
+  @@map("telegram_message_templates")
+}
+
+/// Admin-editable override for a transactional email's copy — same pattern
+/// as TelegramMessageTemplate above (key + override fields + updatedAt, code
+/// default in src/lib/emailTemplateDefs.ts used when no row exists here).
+/// Structural pieces (info-box rows, button URLs) stay code-driven since
+/// they carry real data (amounts, order numbers) rather than wording; only
+/// subject/heading/body/footNote — the parts an admin would actually want
+/// to reword — are stored here.
+model EmailTemplate {
+  key        String   @id
+  subject    String
+  heading    String
+  body       String   @db.Text
+  footNote   String?  @db.Text
+  /// "text" (default): body is plain text, \n\n-separated paragraphs,
+  /// auto-wrapped into <p> blocks. "html": body is used verbatim as raw
+  /// HTML (still {{token}}-filled) — lets an admin hand-craft layout/markup
+  /// beyond the plain-paragraph default when they need to.
+  bodyFormat String   @default("text")
+  updatedAt  DateTime @updatedAt
+
+  @@map("email_templates")
+}
+
 /// The platform's own commission on a Booking — a single global row
 /// (Super-Admin-only, same "platform-level, not partner-scoped" posture as
 /// Plan/Offer), not yet automatically collected/paid out (see
@@ -686,4 +925,100 @@ model BookingPayment {
 
   @@index([bookingId])
   @@map("booking_payments")
+}
+
+// --- Telecalling module: bulk-uploaded contact lists worked by ---
+// --- PartnerStaff agents (role "Telecaller") who place calls via the  ---
+// --- device dialer (tel: link, no telephony vendor) and trigger      ---
+// --- SMS/WhatsApp template messages — see src/lib/telecalling/.      ---
+
+/// One uploaded/entered contact to be called. importBatch groups rows from
+/// the same CSV upload (or "Manual" for one-off adds) for filtering/reporting.
+model Lead {
+  id           String        @id @default(cuid())
+  partnerId    String
+  name         String
+  phone        String
+  email        String?
+  source       String?
+  state        String?
+  city         String?
+  importBatch  String        @default("Manual")
+  /// New | Contacted | Interested | Converted | Lost | DoNotCall
+  status       String        @default("New")
+  assignedToId String?
+  assignedTo   PartnerStaff? @relation(fields: [assignedToId], references: [id])
+  notes        String?       @db.Text
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  calls    Call[]
+  messages MessageLog[]
+
+  @@index([partnerId])
+  @@index([assignedToId])
+  @@index([partnerId, status])
+  @@map("leads")
+}
+
+/// One logged call attempt against a Lead. The call itself happens on the
+/// agent's own phone (tel: click-to-call, no CDR/recording available) — this
+/// row is the agent's own disposition record of what happened.
+model Call {
+  id         String       @id @default(cuid())
+  leadId     String
+  lead       Lead         @relation(fields: [leadId], references: [id])
+  partnerId  String
+  agentId    String
+  agent      PartnerStaff @relation(fields: [agentId], references: [id])
+  /// Interested | NotReachable | Callback | Converted | DoNotCall | WrongNumber
+  outcome    String
+  notes      String?      @db.Text
+  callbackAt DateTime?
+  createdAt  DateTime     @default(now())
+
+  @@index([leadId])
+  @@index([partnerId])
+  @@map("calls")
+}
+
+/// A reusable SMS/WhatsApp message body an agent can trigger for a Lead —
+/// {{name}}/{{link}} placeholders filled in at send time (src/lib/telecalling/messaging.ts).
+model MessageTemplate {
+  id        String   @id @default(cuid())
+  partnerId String
+  name      String
+  /// "sms" | "whatsapp"
+  channel   String
+  /// Welcome | ProductInfo | FollowUp | General
+  category  String   @default("General")
+  body      String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  logs MessageLog[]
+
+  @@unique([partnerId, name])
+  @@index([partnerId])
+  @@map("message_templates")
+}
+
+/// Audit trail of every triggered message — one row per send attempt.
+model MessageLog {
+  id         String           @id @default(cuid())
+  leadId     String
+  lead       Lead             @relation(fields: [leadId], references: [id])
+  templateId String?
+  template   MessageTemplate? @relation(fields: [templateId], references: [id])
+  partnerId  String
+  channel    String
+  body       String           @db.Text
+  /// sent | failed | not-configured
+  status     String           @default("sent")
+  sentById   String?
+  createdAt  DateTime         @default(now())
+
+  @@index([leadId])
+  @@index([partnerId])
+  @@map("message_logs")
 }

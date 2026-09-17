@@ -6,7 +6,10 @@
  * src/lib/sample-data/users.ts's header comment). Scoped to one partnerId;
  * unique on (partnerId, email) so the same email can be staff at two
  * different partners without conflict, mirroring Field Force's Provider
- * uniqueness convention ([partnerId, phone]).
+ * uniqueness convention ([partnerId, phone]). loginId is a second, separate
+ * unique-per-partner identifier (also nullable) — the Telecalling module's
+ * agents log in with THIS instead of email; see
+ * src/lib/telecalling/agentAuth.ts and nextAgentLoginId() below.
  */
 import { prisma } from "@/lib/prisma";
 import { hashPassword, verifyPassword, generatePassword } from "@/lib/passwords";
@@ -15,18 +18,23 @@ import { hashPassword, verifyPassword, generatePassword } from "@/lib/passwords"
  * full custom-role/permission-matrix system. "Owner" is reserved for the
  * Partner's own account context conceptually, but a staff row can also be
  * created with it if the business wants a second full-access login. */
-export const PARTNER_STAFF_ROLES = ["Owner", "Manager", "Technician", "FrontDesk"] as const;
+export const PARTNER_STAFF_ROLES = ["Owner", "Manager", "Technician", "FrontDesk", "Telecaller"] as const;
 export type PartnerStaffRole = (typeof PARTNER_STAFF_ROLES)[number];
 
 export type PartnerStaffRecord = {
   id: string;
   partnerId: string;
   name: string;
-  email: string;
+  email: string | null;
   phone: string | null;
   role: string;
   status: string;
   mustChangePassword: boolean;
+  loginId: string | null;
+  /** Telecalling-only territory gate — empty means no restriction. See
+   * prisma/schema.prisma's PartnerStaff.assignedStates doc comment. */
+  assignedStates: string[];
+  assignedCities: string[];
   createdAt: Date;
   updatedAt: Date;
 };
@@ -35,17 +43,24 @@ function toRecord(row: {
   id: string;
   partnerId: string;
   name: string;
-  email: string;
+  email: string | null;
   phone: string | null;
   passwordHash: string;
   role: string;
   status: string;
   mustChangePassword: boolean;
+  loginId: string | null;
+  assignedStates: unknown;
+  assignedCities: unknown;
   createdAt: Date;
   updatedAt: Date;
 }): PartnerStaffRecord {
-  const { passwordHash: _passwordHash, ...rest } = row;
-  return rest;
+  const { passwordHash: _passwordHash, assignedStates, assignedCities, ...rest } = row;
+  return {
+    ...rest,
+    assignedStates: Array.isArray(assignedStates) ? (assignedStates as string[]) : [],
+    assignedCities: Array.isArray(assignedCities) ? (assignedCities as string[]) : [],
+  };
 }
 
 export async function listPartnerStaff(partnerId: string): Promise<PartnerStaffRecord[]> {
@@ -67,12 +82,28 @@ export async function getPartnerStaff(partnerId: string, staffId: string): Promi
   return row ? toRecord(row) : undefined;
 }
 
+/** Next sequential login id for a role within one partner — "AGT001", "AGT002", ...
+ * Same counting convention as Partner.id's own prefix sequence
+ * (src/lib/partnerData.ts's nextPartnerId): counts existing rows of this
+ * role for this partner and pads +1. A deleted-then-recreated agent can
+ * reuse a freed number, same accepted limitation as that other sequence. */
+export async function nextAgentLoginId(partnerId: string, role: string, prefix = "AGT"): Promise<string> {
+  const count = await prisma.partnerStaff.count({ where: { partnerId, role } });
+  return `${prefix}${String(count + 1).padStart(3, "0")}`;
+}
+
 export type CreatePartnerStaffInput = {
   partnerId: string;
   name: string;
-  email: string;
+  email?: string;
   phone?: string;
   role: string;
+  /** Set for Telecaller agents (see nextAgentLoginId) — the login credential
+   * used instead of email. Omitted/undefined for every other role today. */
+  loginId?: string;
+  /** Telecaller-only territory gate at creation time — see PartnerStaff.assignedStates doc comment. */
+  assignedStates?: string[];
+  assignedCities?: string[];
 };
 
 /** Creates a staff account with a freshly generated password (shown once to the owner, never stored/retrievable again). */
@@ -85,10 +116,13 @@ export async function createPartnerStaff(
     data: {
       partnerId: input.partnerId,
       name: input.name,
-      email: input.email,
+      email: input.email || null,
       phone: input.phone || null,
       passwordHash,
       role: input.role,
+      loginId: input.loginId || null,
+      assignedStates: input.assignedStates ?? [],
+      assignedCities: input.assignedCities ?? [],
     },
   });
   return { staff: toRecord(row), password };
@@ -96,7 +130,7 @@ export async function createPartnerStaff(
 
 export type UpdatePartnerStaffInput = {
   name: string;
-  email: string;
+  email?: string;
   phone?: string;
   role: string;
   status: string;
@@ -111,11 +145,26 @@ export async function updatePartnerStaff(
     where: { id: staffId, partnerId },
     data: {
       name: input.name,
-      email: input.email,
+      email: input.email || null,
       phone: input.phone || null,
       role: input.role,
       status: input.status,
     },
+  });
+}
+
+/** Sets a Telecaller's territory (states/cities) — separate from
+ * updatePartnerStaff since it's the Telecalling module's own concern, not
+ * part of the generic name/email/phone/role/status edit. Empty arrays mean
+ * "no restriction" (see PartnerStaff.assignedStates doc comment). */
+export async function setAgentTerritory(
+  partnerId: string,
+  staffId: string,
+  territory: { assignedStates: string[]; assignedCities: string[] }
+): Promise<void> {
+  await prisma.partnerStaff.updateMany({
+    where: { id: staffId, partnerId },
+    data: { assignedStates: territory.assignedStates, assignedCities: territory.assignedCities },
   });
 }
 
@@ -144,6 +193,19 @@ export async function findPartnerStaffByEmail(
   email: string
 ): Promise<PartnerStaffRecord | undefined> {
   const row = await prisma.partnerStaff.findFirst({ where: { partnerId, email: email.trim() } });
+  return row ? toRecord(row) : undefined;
+}
+
+/** Looks a staff member up by (partnerId, loginId) — the Telecalling module's
+ * own agent login, case-insensitive since agents will retype this from memory
+ * or a sticky note, not copy-paste it. */
+export async function findPartnerStaffByLoginId(
+  partnerId: string,
+  loginId: string
+): Promise<PartnerStaffRecord | undefined> {
+  const row = await prisma.partnerStaff.findFirst({
+    where: { partnerId, loginId: { equals: loginId.trim(), mode: "insensitive" } },
+  });
   return row ? toRecord(row) : undefined;
 }
 

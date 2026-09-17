@@ -5,6 +5,7 @@ import { CreditNoteForm } from "@/components/CreditNoteForm";
 import type { LineItem } from "@/lib/sample-data/billing";
 import { getBusinessRecord, listBusinessRecords } from "@/lib/businessRecords";
 import { updateBusinessRecordAction } from "@/lib/businessRecordActions";
+import { getLineItemCatalogOptions } from "@/lib/lineItemCatalog";
 
 registerPage({
   id: "billing.credit-notes.edit",
@@ -26,19 +27,12 @@ export default async function EditCreditNotePage({ params }: { params: { partner
   const record = await getBusinessRecord(params.partnerId, "billing-credit-notes", params.recordId);
   if (!record) notFound();
   const items = (record["items"] as LineItem[] | undefined) ?? [];
-  const [contacts, catalogItems, invoices] = await Promise.all([
+  const [contacts, itemOptions, invoices] = await Promise.all([
     listBusinessRecords(params.partnerId, "billing-contacts"),
-    listBusinessRecords(params.partnerId, "billing-items"),
+    getLineItemCatalogOptions(params.partnerId),
     listBusinessRecords(params.partnerId, "billing"),
   ]);
   const contactOptions = contacts.map((c) => ({ id: String(c["id"]), label: String(c["name"] ?? c["id"]), gstin: c["gstin"] ? String(c["gstin"]) : undefined }));
-  const itemOptions = catalogItems.map((it) => ({
-    id: String(it["id"]),
-    label: String(it["name"] ?? it["id"]),
-    unit: String(it["unit"] ?? "pcs"),
-    unitPrice: Number(it["rate"] ?? 0),
-    taxRate: Number(it["taxRate"] ?? 0),
-  }));
   const invoiceOptions = invoices.map((inv) => String(inv["id"]));
 
   return (

@@ -18,6 +18,13 @@ registerPage({
 
 export const dynamic = "force-dynamic";
 
+function inRange(date: string, from?: string, to?: string): boolean {
+  if (!date) return true;
+  if (from && date < from) return false;
+  if (to && date > to) return false;
+  return true;
+}
+
 const TAX_COLUMNS: Column[] = [
   { key: "taxRate", label: "GST Rate", type: "text" },
   { key: "invoiceCount", label: "Invoices", type: "text" },
@@ -25,11 +32,19 @@ const TAX_COLUMNS: Column[] = [
   { key: "taxCollected", label: "Tax Collected", type: "currency" },
 ];
 
-export default async function TaxSummaryPage({ params }: { params: { partnerId: string } }) {
+export default async function TaxSummaryPage({
+  params,
+  searchParams,
+}: {
+  params: { partnerId: string };
+  searchParams?: { from?: string; to?: string };
+}) {
+  const { from, to } = searchParams ?? {};
   const invoices = await listBusinessRecords(params.partnerId, "billing");
 
   const byRate = new Map<number, { taxableValue: number; taxCollected: number; invoiceIds: Set<string> }>();
   for (const inv of invoices) {
+    if (!inRange(String(inv["issueDate"] ?? ""), from, to)) continue;
     const items = (inv["items"] as LineItem[] | undefined) ?? [];
     for (const item of items) {
       const rate = item.taxRate ?? 0;
@@ -55,7 +70,31 @@ export default async function TaxSummaryPage({ params }: { params: { partnerId: 
   return (
     <AppShell topbarTitle="Tax Summary">
       <div>
-        <p className="text-sm text-text-muted">GST rate-wise taxable value and tax collected across all invoices.</p>
+        <form method="get" className="flex flex-wrap items-end gap-3">
+          <label className="block">
+            <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-text-muted">From</span>
+            <input
+              type="date"
+              name="from"
+              defaultValue={from ?? ""}
+              className="rounded-md border border-border bg-bg px-3 py-2 text-sm font-mono text-text outline-none focus:border-teal"
+            />
+          </label>
+          <label className="block">
+            <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-text-muted">To</span>
+            <input
+              type="date"
+              name="to"
+              defaultValue={to ?? ""}
+              className="rounded-md border border-border bg-bg px-3 py-2 text-sm font-mono text-text outline-none focus:border-teal"
+            />
+          </label>
+          <button type="submit" className="btn-outline">Apply</button>
+          {(from || to) && (
+            <a href={`/partner/${params.partnerId}/billing/reports/tax-summary`} className="btn-outline">Clear</a>
+          )}
+        </form>
+        <p className="mt-4 text-sm text-text-muted">GST rate-wise taxable value and tax collected across invoices in this date range.</p>
         <div className="mt-4">
           <DataTable columns={TAX_COLUMNS} rows={rows} />
         </div>

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { GlobalActionBanner } from "./GlobalActionBanner";
 
 // Re-exported for the handful of pages that still import nav types from
 // here — the sidebar itself now lives in src/components/Sidebar.tsx,
@@ -24,6 +25,7 @@ export function AppShell({ topbarTitle, topbarActions, children }: AppShellProps
         <h1 className="font-display text-base font-bold text-text">{topbarTitle}</h1>
         {topbarActions}
       </header>
+      <GlobalActionBanner />
       <main className="mbf-page min-w-0 flex-1 bg-bg">{children}</main>
     </div>
   );

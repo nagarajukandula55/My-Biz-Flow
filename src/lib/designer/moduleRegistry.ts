@@ -34,13 +34,24 @@ export async function getModule(slug: string): Promise<ModuleDefinition | undefi
   };
 }
 
-export async function buildPartnerNavGroups(): Promise<PartnerNavGroup[]> {
+/**
+ * @param visibleSlugs When given, only these module slugs are included —
+ * used to scope the real partner sidebar to what that partner is actually
+ * entitled to (see src/lib/designer/entitlements.ts) instead of every
+ * module on the platform. Omitted entirely (undefined) means "show every
+ * module," which is what the Super Admin Designer's own module list needs.
+ */
+export async function buildPartnerNavGroups(visibleSlugs?: string[]): Promise<PartnerNavGroup[]> {
+  const allowed = visibleSlugs ? new Set(visibleSlugs) : undefined;
   const groups: Record<ModuleTaxonomy, ModuleDefinition[]> = {
     brand: [],
     vertical: [],
     "cross-cutting": [],
   };
-  for (const m of MODULES) groups[m.taxonomy].push(m);
+  for (const m of MODULES) {
+    if (allowed && !allowed.has(m.slug)) continue;
+    groups[m.taxonomy].push(m);
+  }
 
   const appearances = await getAllModuleAppearances();
 
@@ -63,7 +74,15 @@ export async function buildPartnerNavGroups(): Promise<PartnerNavGroup[]> {
 
   return [
     { title: "Brand", items: toItems(groups.brand) },
-    { title: "Modules", items: toItems(groups.vertical) },
-    { title: "Cross-cutting", items: toItems(groups["cross-cutting"]) },
-  ];
+    // Was "Modules" — every nav item here already IS a module, so the old
+    // title said nothing about what's actually in the group (which business
+    // type this partner runs: POS, Service Centre, Clinic, etc).
+    { title: "Business Modules", items: toItems(groups.vertical) },
+    // Was "Cross-cutting" — internal engineering jargon (taxonomy name
+    // leaking into partner-facing UI). These are the add-ons that work
+    // alongside whichever business module(s) above are active (Inventory,
+    // Accounting/GST, Loyalty & Rewards, HRMS, Marketplace, Field Force),
+    // which "Shared Tools" actually describes.
+    { title: "Shared Tools", items: toItems(groups["cross-cutting"]) },
+  ].filter((group) => group.items.length > 0);
 }

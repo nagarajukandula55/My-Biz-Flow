@@ -15,6 +15,19 @@ export type NumberingScheme = {
   sequenceDigits: number; // zero-padding width, e.g. 4 -> 0007
   sequenceStart: number;
   suffix: string;
+  /**
+   * Optional token template, e.g. "{prefix}{yyyy}{mm}{dd}{seq}" — when set,
+   * this REPLACES the structured prefix/fy/seq/suffix + separator building
+   * below entirely, so a scheme can produce formats the structured fields
+   * can't express (e.g. AN-CRM's own "WO202609150001": prefix + full
+   * YYYYMMDD + a 4-digit running sequence, no separators at all — not
+   * expressible via financialYearFormat, which only ever renders a
+   * financial-year string, never a literal calendar date).
+   * Available tokens: {prefix} {suffix} {seq} {fy} {yyyy} {yy} {mm} {dd}.
+   * An unrecognized {token} is left as literal text rather than stripped,
+   * so a typo is visible in the live preview instead of silently vanishing.
+   */
+  template?: string;
 };
 
 export const DEFAULT_SCHEME: NumberingScheme = {
@@ -28,9 +41,29 @@ export const DEFAULT_SCHEME: NumberingScheme = {
 
 /** The document types that currently have a document page — see DESIGN_SYSTEM.md §5. */
 export const NUMBERED_DOCUMENT_TYPES = [
-  { id: "billing.document", label: "Invoice (Billing)" },
-  { id: "service-centre.document", label: "Job Card (Service Centre)" },
-  { id: "service-centre.invoice", label: "Sales Invoice (Service Centre)" },
+  // A single shared sequence per B2C/B2B, used by EVERY invoice
+  // regardless of where it was created (Billing's own "New Invoice" form
+  // OR a Service Centre workorder's Close/Handover) — previously these
+  // were two entirely separate scopes ("billing.invoice.b2c" and
+  // "service-centre.invoice.b2c"), so an invoice created from a
+  // workorder and one created directly in Billing could both print as
+  // e.g. "BILL-...-0001" at the same time: two different invoices, same
+  // number. One shared key per B2C/B2B fixes that at the root.
+  { id: "invoice.b2c", label: "B2C Sales Invoice (Billing + Service Centre)" },
+  { id: "invoice.b2b", label: "B2B Sales Invoice (Billing + Service Centre)" },
+  // "service-centre.document" (Job Card) deliberately removed from this
+  // list — the Job Card print page (service-centre/[recordId]/document/
+  // page.tsx) never reads a numbering scheme at all; its printed "RO No."
+  // is always the workorder's own id (service-centre.workorder below), by
+  // design (see that page's comment). Offering a numbering scheme here
+  // that has zero effect on anything printed was pure confusion — it
+  // showed a Settings section a partner could edit (and that defaulted to
+  // a nonsensical inherited "INV" prefix, since nothing seeds Job Card
+  // with its own sensible default) with no way to ever see it take effect.
+  { id: "service-centre.workorder", label: "Workorder / Job ID (Service Centre)" },
+  { id: "service-centre.brand", label: "Brand Code (Service Centre)" },
+  { id: "service-centre.model", label: "Model Code (Service Centre)" },
+  { id: "inventory.bom-material", label: "Material Code (BOM)" },
   { id: "pos.document", label: "Receipt (POS)" },
   { id: "amc-field-service.document", label: "Service Report (AMC/Field Service)" },
   { id: "legal.document", label: "Engagement Letter (Legal)" },
@@ -58,10 +91,24 @@ export function getFinancialYear(date: Date, format: FinancialYearFormat): strin
 const SEPARATOR_CHAR: Record<Separator, string> = { "-": "-", "/": "/", ".": ".", none: "" };
 
 export function formatNumber(scheme: NumberingScheme, sequence: number, date: Date = new Date()): string {
-  const sep = SEPARATOR_CHAR[scheme.separator];
   const fy = getFinancialYear(date, scheme.financialYearFormat);
   const paddedSeq = String(sequence).padStart(scheme.sequenceDigits, "0");
 
+  if (scheme.template?.trim()) {
+    const tokens: Record<string, string> = {
+      prefix: scheme.prefix,
+      suffix: scheme.suffix,
+      seq: paddedSeq,
+      fy,
+      yyyy: String(date.getFullYear()),
+      yy: String(date.getFullYear()).slice(-2),
+      mm: String(date.getMonth() + 1).padStart(2, "0"),
+      dd: String(date.getDate()).padStart(2, "0"),
+    };
+    return scheme.template.replace(/\{(\w+)\}/g, (match, key: string) => (key in tokens ? tokens[key] : match));
+  }
+
+  const sep = SEPARATOR_CHAR[scheme.separator];
   const parts = [scheme.prefix, fy, paddedSeq].filter((p) => p !== "");
   return parts.join(sep) + (scheme.suffix ? sep + scheme.suffix : "");
 }

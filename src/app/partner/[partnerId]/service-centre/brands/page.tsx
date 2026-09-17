@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/AppShell";
+import { renderTierGate } from "@/lib/pageTierGate";
 import { registerPage } from "@/lib/designer/registry";
 import { ScBrandClientTable } from "./ScBrandClientTable";
 import { ScBrandNewButton } from "./ScBrandNewButton";
@@ -24,6 +25,9 @@ registerPage({
 export const dynamic = "force-dynamic";
 
 export default async function ScBrandListPage({ params }: { params: { partnerId: string } }) {
+  const tierGate = await renderTierGate(params.partnerId, "service-centre.brands.list", "Device Brands");
+  if (tierGate) return <AppShell topbarTitle={"Device Brands"}>{tierGate}</AppShell>;
+
   const columns = await applyCustomizations("service-centre.brands.list", scBrandColumns);
   const rows = await listBusinessRecords(params.partnerId, "service-centre-brands");
 

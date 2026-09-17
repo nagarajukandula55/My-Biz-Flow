@@ -31,8 +31,10 @@ registerPage({
 
 export default async function BillingDetailPage({
   params,
+  searchParams,
 }: {
   params: { partnerId: string; recordId: string };
+  searchParams?: { created?: string; updated?: string };
 }) {
   const mod = await getModule("billing");
   const record = await getBusinessRecord(params.partnerId, "billing", params.recordId);
@@ -40,6 +42,15 @@ export default async function BillingDetailPage({
   const fields = await applyCustomizationsToDetailFields("billing.detail", getBillingDetailFields(record), billingColumns);
   const timeline = getBillingTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
+  // The internal recordKey (recordLabel, e.g. "BIL-UQZR4H") is an opaque
+  // random id, never meant to be shown to anyone, but it's what
+  // billing-payments rows store as `invoiceId` (see
+  // createInvoiceFromWorkorderAction) — so it must stay recordLabel for
+  // getInvoiceBalance's lookup below. The real, business-facing invoice
+  // number is the separately persisted `invoiceNumber` field (assigned
+  // once via the shared per-partner NumberingCounter); only the on-screen
+  // heading should show that instead.
+  const displayInvoiceNumber = String(record["invoiceNumber"] ?? recordLabel);
   const payments = await listBusinessRecords(params.partnerId, "billing-payments");
   const { paid, balance, payments: linkedPayments } = getInvoiceBalance(
     payments,
@@ -53,12 +64,14 @@ export default async function BillingDetailPage({
 
         <RecordDetail
           fields={fields}
+          recordLabel={displayInvoiceNumber}
+          searchParams={searchParams}
           timeline={timeline}
           related={billingRelated}
           headerSlot={
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="font-display text-xl font-bold text-text">{recordLabel}</h1>
+                <h1 className="font-display text-xl font-bold text-text">{displayInvoiceNumber}</h1>
                 <p className="mt-1 text-xs text-text-muted">Invoice detail</p>
               </div>
               <div className="flex items-center gap-3">
@@ -81,7 +94,7 @@ export default async function BillingDetailPage({
                   partnerId={params.partnerId}
                   moduleSlug="billing"
                   recordKey={params.recordId}
-                  recordLabel={recordLabel}
+                  recordLabel={displayInvoiceNumber}
                 />
               </div>
             </div>

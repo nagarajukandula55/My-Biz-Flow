@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { LogoMark } from "@/components/LogoMark";
+import { BrandLogo } from "@/components/BrandLogo";
 import { registerPage } from "@/lib/designer/registry";
 import "@/lib/designer/registerAll";
 
@@ -79,8 +79,7 @@ export default function HelpPage() {
       />
       <header className="mb-6 flex items-center justify-between border-b border-border pb-4">
         <Link href="/" className="flex items-center gap-2">
-          <LogoMark size={22} />
-          <span className="font-display text-base font-extrabold text-text">My Biz Flow</span>
+          <BrandLogo height={30} />
         </Link>
       </header>
       <div>

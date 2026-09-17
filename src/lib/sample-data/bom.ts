@@ -73,6 +73,13 @@ export const bomColumns: Column[] = [
   { key: "category", label: "Category", type: "text" },
   { key: "status", label: "Status", type: "select-chip", chipVariantMap: STATUS_VARIANT },
   // --- Optional fields, ported from AN-CRM's BOM shape (non-breaking) ---
+  // Brand/Model association — AN-CRM's own BOM model (src/models/BOM.ts)
+  // carries brandId/deviceModelId, both optional (a part can be brand-
+  // agnostic, brand-wide, or pinned to one exact model). Stored here as
+  // plain name text since this catalog is a JSON-blob BusinessRecord, not
+  // a relational schema — no migration needed.
+  { key: "brandName", label: "Brand", type: "text" },
+  { key: "modelName", label: "Model", type: "text" },
   { key: "reorderLevel", label: "Reorder Level", type: "text" },
   { key: "supplierRef", label: "Supplier / Vendor Ref", type: "text" },
   { key: "batchNumber", label: "Batch / Lot Number", type: "text" },
@@ -202,6 +209,8 @@ export const bomFormFields: FormFieldDef[] = [
   { key: "category", label: "Category", type: "text", required: false },
   { key: "status", label: "Status", type: "select", required: true, options: ["Active", "Inactive"] },
   // --- Optional fields, ported from AN-CRM's BOM shape (non-breaking) ---
+  { key: "brandName", label: "Brand", type: "text", required: false, placeholder: "Leave blank if this part isn't brand-specific" },
+  { key: "modelName", label: "Model", type: "text", required: false, placeholder: "Leave blank if this part isn't model-specific" },
   { key: "reorderLevel", label: "Reorder Level", type: "number", required: false, placeholder: "Stock qty below which a reorder is due" },
   { key: "supplierRef", label: "Supplier / Vendor Ref", type: "text", required: false, placeholder: "Vendor Profile id or supplier name" },
   { key: "batchNumber", label: "Batch / Lot Number", type: "text", required: false },
@@ -228,6 +237,8 @@ export function getBomDetailFields(record: Row): RecordField[] {
     { label: "Serialized", value: r["serialized"], type: "boolean" },
     { label: "Category", value: r["category"], type: "text" },
     { label: "Status", value: r["status"], type: "select", chipVariant: STATUS_VARIANT[String(r["status"])] ?? "neutral" },
+    { label: "Brand", value: r["brandName"], type: "text" },
+    { label: "Model", value: r["modelName"], type: "text" },
     { label: "Reorder Level", value: r["reorderLevel"], type: "text" },
     { label: "Supplier / Vendor Ref", value: r["supplierRef"], type: "text" },
     { label: "Batch / Lot Number", value: r["batchNumber"], type: "text" },

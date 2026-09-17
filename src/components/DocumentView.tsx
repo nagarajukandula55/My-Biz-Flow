@@ -1,11 +1,12 @@
 import type { Column, Row } from "@/components/DataTable";
-import { LogoMark } from "@/components/LogoMark";
 import { PrintButton } from "@/components/PrintButton";
 import { PrintFrame, type PrintSize } from "@/components/PrintFrame";
 import { formatCurrencyINR, formatDate } from "@/lib/format";
 import { getDocumentTemplate, renderTemplate } from "@/lib/designer/documentTemplates";
 import { getEffectiveScheme } from "@/lib/designer/numbering";
 import { formatNumber } from "@/lib/designer/numberingFormat";
+import { buildTrackingUrl, generateTrackingQrDataUrl } from "@/lib/trackingQr";
+import { generateUpiQrDataUrl } from "@/lib/upiQr";
 
 /**
  * Renders a record as a real printable document — letterhead, fields laid
@@ -40,6 +41,15 @@ export async function DocumentView({
   sequenceIndex,
   lineItems,
   printSizes = ["a4"],
+  fieldKeys,
+  totals,
+  footerNote,
+  signatures,
+  termsText,
+  contactBand,
+  trackingCode,
+  upiPayment,
+  logoDataUrl,
 }: {
   pageId: string;
   /** The numbering system's document-type id, e.g. "billing.document" — see NUMBERED_DOCUMENT_TYPES. */
@@ -57,11 +67,77 @@ export async function DocumentView({
   /** Which page sizes this document offers a screen toggle for — e.g. Service Centre's
    * Sales Invoice is A4/A5 only, POS additionally offers Thermal. Defaults to A4 only. */
   printSizes?: PrintSize[];
+  /**
+   * Curated subset of `columns`, in print order. A record's column set is
+   * built for a LIST (every operational/routing/costing field), which is not
+   * the same thing as what belongs on a document handed to a customer — a job
+   * card showing pickup latitude and internal cost estimates is an internal
+   * sheet, not a handover receipt. When omitted every column still prints, so
+   * every other module's document is unchanged.
+   */
+  fieldKeys?: string[];
+  /** Overrides the totals read off the record — for documents whose figures
+   * are derived rather than stored (e.g. an estimate, priced live from the
+   * workorder's current parts/service lines). */
+  totals?: { subtotal: number; tax: number; total: number };
+  /** Declaration / disclaimer printed under the body, e.g. "not a tax invoice". */
+  footerNote?: string;
+  /** Signature lines printed at the foot of the document. */
+  signatures?: string[];
+  /**
+   * This partner's configured Terms & Conditions for THIS document type,
+   * already resolved (document-specific override -> general fallback) by
+   * resolveDocumentTerms(). Null/blank prints no terms block at all — an
+   * empty "Terms & Conditions" heading is worse than none.
+   */
+  termsText?: string | null;
+  /**
+   * The service centre's own opening hours / public support number, from
+   * Settings > Business Profile. Printed as a footer band so a customer
+   * holding the paper knows when and where to call. Omitted entirely when
+   * the partner hasn't set either.
+   */
+  contactBand?: { hours?: string | null; hotline?: string | null };
+  /**
+   * The Service Centre workorder code this document belongs to — when set,
+   * a "Track your repair" QR + plain-text URL is printed near the footer so
+   * a customer never has to type anything (see src/lib/trackingQr.ts).
+   * Omitted for every non-Service-Centre document, which has no public
+   * tracker to link to.
+   */
+  trackingCode?: string;
+  /**
+   * This partner's UPI VPA + the amount due — when set, a scannable UPI
+   * payment QR (src/lib/upiQr.ts) is printed near the footer, same as
+   * Service Centre's Sales Invoice already does. Callers pass this only for
+   * document types that are actually payable (an issued invoice), not for
+   * quotations/challans/credit notes. generateUpiQrDataUrl() itself returns
+   * null (rendering nothing) when the partner has no/an invalid VPA
+   * configured or the amount is zero.
+   */
+  upiPayment?: { vpa: string | null | undefined; payeeName: string; amount: number } | null;
+  /**
+   * This partner's own uploaded logo (Settings > Business Details, stored
+   * as a `data:` URL — see src/lib/partnerData.ts's updatePartnerLogo).
+   * Null/unset prints no logo at all — a generic placeholder mark on a
+   * printed customer-facing document reads as if it were the partner's
+   * real branding, which is worse than just leaving that space blank.
+   */
+  logoDataUrl?: string | null;
 }) {
   const customTemplate = await getDocumentTemplate(pageId);
   const scheme = await getEffectiveScheme(documentType, partnerId);
   const documentNumber = formatNumber(scheme, scheme.sequenceStart + sequenceIndex);
   const templateRecord = { ...record, documentNumber };
+  const trackingQrDataUrl = trackingCode ? await generateTrackingQrDataUrl(partnerId, trackingCode) : null;
+  const upiQrDataUrl = upiPayment?.vpa
+    ? await generateUpiQrDataUrl({
+        vpa: upiPayment.vpa,
+        payeeName: upiPayment.payeeName,
+        amount: upiPayment.amount,
+        invoiceNumber: documentNumber,
+      })
+    : null;
 
   return (
     <div className="mbf-page bg-bg-sunken">
@@ -74,7 +150,6 @@ export async function DocumentView({
         <div className="rounded-lg border border-border bg-bg-raised p-10 shadow-sm print:rounded-none print:border-0 print:shadow-none">
           <div className="flex items-center justify-between border-b border-border pb-6">
             <div className="flex items-center gap-2.5">
-              <LogoMark size={28} />
               <span className="font-display text-lg font-extrabold text-text">{partnerName}</span>
             </div>
             <div className="text-right">
@@ -96,7 +171,11 @@ export async function DocumentView({
           ) : (
             <>
               <dl className="mt-6 grid grid-cols-2 gap-x-8 gap-y-4">
-                {columns
+                {(fieldKeys
+                  ? (fieldKeys
+                      .map((key) => columns.find((c) => c.key === key))
+                      .filter((c): c is Column => Boolean(c)))
+                  : columns)
                   .filter((c) => c.key !== "id" && c.key !== "lineItemsSummary")
                   .filter((c) => !(lineItems && lineItems.length > 0 && ["subtotal", "taxAmount", "totalAmount"].includes(c.key)))
                   .map((col) => (
@@ -151,19 +230,19 @@ export async function DocumentView({
                       <div className="flex justify-between text-text-muted">
                         <span>Subtotal</span>
                         <span className="font-mono tabular-nums">
-                          {formatCurrencyINR(Number(record["subtotal"]) || 0)}
+                          {formatCurrencyINR(totals ? totals.subtotal : Number(record["subtotal"]) || 0)}
                         </span>
                       </div>
                       <div className="mt-1.5 flex justify-between text-text-muted">
                         <span>Tax</span>
                         <span className="font-mono tabular-nums">
-                          {formatCurrencyINR(Number(record["taxAmount"]) || 0)}
+                          {formatCurrencyINR(totals ? totals.tax : Number(record["taxAmount"]) || 0)}
                         </span>
                       </div>
                       <div className="mt-2 flex justify-between border-t border-border pt-2 text-base font-bold text-text">
                         <span>Total</span>
                         <span className="font-mono tabular-nums">
-                          {formatCurrencyINR(Number(record["totalAmount"]) || 0)}
+                          {formatCurrencyINR(totals ? totals.total : Number(record["totalAmount"]) || 0)}
                         </span>
                       </div>
                     </div>
@@ -172,9 +251,102 @@ export async function DocumentView({
               )}
             </>
           )}
+
+          {/* Signature block + declaration — what turns a field dump into a
+              document the customer actually signs on handover. Only rendered
+              for documents that ask for them, so other modules are unchanged. */}
+          {signatures && signatures.length > 0 && (
+            <div className="mt-12 flex flex-wrap justify-between gap-8">
+              {signatures.map((label) => (
+                <div key={label} className="min-w-[180px] flex-1">
+                  <div className="h-10 border-b border-border" />
+                  <div className="mt-1.5 text-xs text-text-muted">{label}</div>
+                </div>
+              ))}
+            </div>
+          )}
+          {footerNote && (
+            <p className="mt-8 border-t border-border pt-4 text-xs leading-relaxed text-text-muted">{footerNote}</p>
+          )}
+          {termsText?.trim() && (
+            <div className="mt-6 border-t border-border pt-4 text-xs leading-relaxed text-text-muted">
+              <div className="font-semibold uppercase tracking-wide">Terms &amp; Conditions</div>
+              <p className="mt-1 whitespace-pre-line">{termsText.trim()}</p>
+            </div>
+          )}
+          {upiQrDataUrl && <DocumentUpiBlock qrDataUrl={upiQrDataUrl} />}
+          {trackingQrDataUrl && trackingCode && (
+            <DocumentTrackingBlock partnerId={partnerId} code={trackingCode} qrDataUrl={trackingQrDataUrl} />
+          )}
+          <DocumentContactBand hours={contactBand?.hours} hotline={contactBand?.hotline} />
         </div>
         </PrintFrame>
       </div>
+    </div>
+  );
+}
+
+/**
+ * "Track your repair" QR + the plain-text URL underneath it (in case
+ * someone can't scan) — shared by every Service Centre print document
+ * (Job Card/Estimate/Service Record go through DocumentView above; the
+ * Sales Invoice builds its own layout and renders this directly).
+ */
+export function DocumentTrackingBlock({
+  partnerId,
+  code,
+  qrDataUrl,
+}: {
+  partnerId: string;
+  code: string;
+  qrDataUrl: string;
+}) {
+  return (
+    <div className="mt-6 flex items-center gap-4 rounded-md border border-border p-4">
+      {/* eslint-disable-next-line @next/next/no-img-element -- a generated
+          data: URL, not a file next/image can optimise. */}
+      <img src={qrDataUrl} alt="Scan to track your repair" className="h-24 w-24 flex-shrink-0" width={96} height={96} />
+      <div className="text-xs text-text-muted">
+        <div className="font-semibold uppercase tracking-wide text-text">Track Your Repair</div>
+        <p className="mt-1">Scan this code anytime to check your repair's status — no login needed.</p>
+        <p className="mt-1 break-all font-mono text-text-muted">{buildTrackingUrl(partnerId, code)}</p>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Scannable UPI payment QR block — printed on an invoice when the partner
+ * has a valid UPI VPA configured (Settings > Config, see
+ * src/lib/upiQr.ts). There is no gateway/webhook behind this: the customer
+ * scans and pays the partner's UPI VPA directly, and matching the payment
+ * against the invoice stays a manual step.
+ */
+export function DocumentUpiBlock({ qrDataUrl }: { qrDataUrl: string }) {
+  return (
+    <div className="mt-6 flex items-center gap-4 rounded-md border border-border p-4">
+      {/* eslint-disable-next-line @next/next/no-img-element -- a generated
+          data: URL, not a file next/image can optimise. */}
+      <img src={qrDataUrl} alt="Scan to pay via UPI" className="h-24 w-24 flex-shrink-0" width={96} height={96} />
+      <div className="text-xs text-text-muted">
+        <div className="font-semibold uppercase tracking-wide text-text">Pay via UPI</div>
+        <p className="mt-1">Scan with any UPI app (GPay, PhonePe, Paytm, BHIM) to pay this invoice directly.</p>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Shared footer band — the service centre's opening hours and public
+ * support number. Exported so the Sales Invoice (which builds its own
+ * layout rather than going through DocumentView) prints the identical band.
+ */
+export function DocumentContactBand({ hours, hotline }: { hours?: string | null; hotline?: string | null }) {
+  if (!hours?.trim() && !hotline?.trim()) return null;
+  return (
+    <div className="mt-6 flex flex-wrap justify-center gap-x-6 gap-y-1 border-t border-border pt-3 text-xs text-text-muted">
+      {hours?.trim() && <span>Service Hours: {hours.trim()}</span>}
+      {hotline?.trim() && <span>Support: {hotline.trim()}</span>}
     </div>
   );
 }

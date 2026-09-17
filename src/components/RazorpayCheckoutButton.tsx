@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Script from "next/script";
 import { useRouter } from "next/navigation";
+import { NoticeCard } from "@/components/NoticeCard";
 
 declare global {
   interface Window {
@@ -48,6 +49,7 @@ export function RazorpayCheckoutButton({
   const [scriptReady, setScriptReady] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
+  const [paid, setPaid] = useState(false);
 
   if (!publicKeyId) {
     return (
@@ -77,18 +79,52 @@ export function RazorpayCheckoutButton({
         description: order.planName ? `${order.planName} subscription` : description,
         order_id: order.orderId,
         prefill: { name: partnerName, email: partnerEmail, contact: partnerContact },
+        // The one step that MUST NOT silently fail: Razorpay has already
+        // charged the customer by the time this fires. Previously this had
+        // no try/catch at all -- a transient network blip here (cold
+        // function, brief drop) threw an unhandled rejection inside
+        // Razorpay's own callback, leaving the button stuck on "Opening
+        // payment..." forever with no error shown and the partner
+        // permanently stranded on PastDue despite having actually paid
+        // (confirmed live: exactly this happened for a real partner).
+        // Now: retries transient failures a few times, always resets
+        // `pending` in finally, and on final failure surfaces the real
+        // payment id so it's never lost -- support can activate manually
+        // from it rather than the payment being unrecoverable.
         handler: async (response: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => {
-          const verifyRes = await fetch(verifyUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ partnerId, ...extraBody, ...response }),
-          });
-          if (verifyRes.ok) {
-            router.refresh();
-          } else {
-            const body = await verifyRes.json();
-            setError(body.error ?? "Payment could not be verified");
+          const attempts = 3;
+          let lastErrorMessage = "Payment could not be verified";
+          try {
+            for (let attempt = 1; attempt <= attempts; attempt += 1) {
+              try {
+                const verifyRes = await fetch(verifyUrl, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ partnerId, ...extraBody, ...response }),
+                });
+                if (verifyRes.ok) {
+                  setPaid(true);
+                  router.refresh();
+                  return;
+                }
+                const body = await verifyRes.json().catch(() => ({}) as { error?: string });
+                lastErrorMessage = body.error ?? lastErrorMessage;
+                // A real verification failure (bad signature, partner
+                // mismatch) won't fix itself by retrying -- only retry on
+                // a likely-transient server error.
+                if (verifyRes.status < 500) break;
+              } catch {
+                lastErrorMessage = "Network error while confirming payment";
+              }
+              if (attempt < attempts) await new Promise((r) => setTimeout(r, attempt * 1500));
+            }
+          } finally {
+            setPending(false);
           }
+          setError(
+            `${lastErrorMessage} — your payment (ID: ${response.razorpay_payment_id}) may still have gone through. ` +
+              `Please contact support with this payment ID before trying to pay again.`
+          );
         },
         modal: { ondismiss: () => setPending(false) },
       });
@@ -97,6 +133,14 @@ export function RazorpayCheckoutButton({
       setError(err instanceof Error ? err.message : "Could not start payment");
       setPending(false);
     }
+  }
+
+  if (paid) {
+    return (
+      <NoticeCard tone="success" title="✅ Payment successful">
+        Your plan is now active — this page will update automatically.
+      </NoticeCard>
+    );
   }
 
   return (

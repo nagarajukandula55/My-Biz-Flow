@@ -1,8 +1,9 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { LogoMark } from "@/components/LogoMark";
+import { BrandLogo } from "@/components/BrandLogo";
 import { registerPage } from "@/lib/designer/registry";
 import { PARTNER_SESSION_COOKIE, verifyPartnerSessionToken } from "@/lib/partnerSession";
+import { getPartner } from "@/lib/partnerData";
 import { changePasswordAction } from "./actions";
 
 registerPage({
@@ -23,21 +24,41 @@ const ERROR_MESSAGE: Record<string, string> = {
   mismatch: "Passwords don't match.",
 };
 
-export default async function ChangePasswordPage({ searchParams }: { searchParams: { error?: string } }) {
+export default async function ChangePasswordPage({ searchParams }: { searchParams: { error?: string; welcome?: string } }) {
   const partnerId = await verifyPartnerSessionToken(cookies().get(PARTNER_SESSION_COOKIE)?.value);
   if (!partnerId) redirect("/login");
+
+  const partner = searchParams.welcome ? await getPartner(partnerId) : undefined;
 
   return (
     <div className="flex min-h-screen w-full items-center justify-center bg-bg px-6">
       <div className="w-full max-w-sm rounded-lg border border-border bg-bg-raised p-8">
         <div className="mb-6 flex items-center gap-2">
-          <LogoMark size={24} />
-          <span className="font-display text-lg font-extrabold text-text">My Biz Flow</span>
+          <BrandLogo height={32} />
         </div>
-        <h1 className="font-display text-xl font-bold text-text">Set your password</h1>
-        <p className="mt-1 text-sm text-text-muted">
-          You&apos;re signed in with a one-time password. Set your own before continuing.
-        </p>
+        {searchParams.welcome ? (
+          <>
+            <h1 className="font-display text-xl font-bold text-text">Welcome — let's finish setting up</h1>
+            <p className="mt-1 text-sm text-text-muted">
+              Your account is ready
+              {partner ? (
+                <>
+                  {" "}
+                  — your Partner ID is <span className="font-semibold text-text">{partner.id}</span>, you&apos;ll use
+                  it to sign in from any device.
+                </>
+              ) : null}
+              . Set your own password to continue.
+            </p>
+          </>
+        ) : (
+          <>
+            <h1 className="font-display text-xl font-bold text-text">Set your password</h1>
+            <p className="mt-1 text-sm text-text-muted">
+              You&apos;re signed in with a one-time password. Set your own before continuing.
+            </p>
+          </>
+        )}
 
         {searchParams.error && (
           <p className="mt-3 rounded-md border border-danger bg-danger-soft px-3 py-2 text-sm text-danger">

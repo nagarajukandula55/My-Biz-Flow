@@ -31,8 +31,10 @@ export const dynamic = "force-dynamic";
 
 export default async function ScBrandDetailPage({
   params,
+  searchParams,
 }: {
   params: { partnerId: string; recordId: string };
+  searchParams?: { created?: string; updated?: string };
 }) {
   const record = await getBusinessRecord(params.partnerId, "service-centre-brands", params.recordId);
   if (!record) notFound();
@@ -49,6 +51,8 @@ export default async function ScBrandDetailPage({
       <div>
         <RecordDetail
           fields={fields}
+          recordLabel={recordLabel}
+          searchParams={searchParams}
           timeline={timeline}
           related={scBrandRelated}
           headerSlot={

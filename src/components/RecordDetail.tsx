@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { StatusChip, type StatusVariant } from "./StatusChip";
-import { formatCurrencyINR, formatDate } from "@/lib/format";
+import { SuccessBanner } from "./SuccessBanner";
+import { formatCurrencyINR, formatDate, formatDateTime } from "@/lib/format";
 
 export type FieldType =
   | "text"
@@ -141,26 +142,57 @@ type RecordDetailProps = {
   timeline?: TimelineEntry[];
   related?: RelatedRecord[];
   headerSlot?: ReactNode;
+  /**
+   * This record's display id/label (e.g. "INV-0001", "WO-2526-0004") — used
+   * to word the create/update acknowledgment banner below. Optional only
+   * because a couple of callers (design-system's live reference page)
+   * render this component with sample data and no real record.
+   */
+  recordLabel?: string;
+  /**
+   * Straight passthrough of the detail page's own `searchParams` prop.
+   * When `?created=1` or `?updated=1` is present (set by
+   * createBusinessRecordAction/updateBusinessRecordAction's redirect), this
+   * renders a real on-screen confirmation instead of the previous silent
+   * redirect-to-detail-page.
+   */
+  searchParams?: { created?: string; updated?: string };
 };
 
-export function RecordDetail({ fields, timeline, related, headerSlot }: RecordDetailProps) {
+export function RecordDetail({ fields, timeline, related, headerSlot, recordLabel, searchParams }: RecordDetailProps) {
   return (
     <div className="flex w-full flex-col gap-6 lg:flex-row">
       <div className="flex-1 space-y-6">
+        {searchParams?.created && (
+          <SuccessBanner
+            searchParamKey="created"
+            value={searchParams.created}
+            message={`${recordLabel ?? "Record"} created.`}
+          />
+        )}
+        {searchParams?.updated && (
+          <SuccessBanner
+            searchParamKey="updated"
+            value={searchParams.updated}
+            message={`${recordLabel ?? "Record"} updated.`}
+          />
+        )}
         {headerSlot}
 
-        <div className="rounded-lg border border-border bg-bg-raised p-5">
-          <div className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
-            {fields.map((field) => (
-              <div key={field.label}>
-                <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">
-                  {field.label}
+        {fields.length > 0 && (
+          <div className="rounded-lg border border-border bg-bg-raised p-5">
+            <div className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
+              {fields.map((field) => (
+                <div key={field.label}>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+                    {field.label}
+                  </div>
+                  <div className="mt-1 text-sm">{renderFieldValue(field)}</div>
                 </div>
-                <div className="mt-1 text-sm">{renderFieldValue(field)}</div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {timeline && timeline.length > 0 && (
           <div className="rounded-lg border border-border bg-bg-raised p-5">
@@ -173,7 +205,7 @@ export function RecordDetail({ fields, timeline, related, headerSlot }: RecordDe
                     <div className="text-text">{entry.label}</div>
                     <div className="text-xs text-text-muted">
                       {entry.actor ? `${entry.actor} · ` : ""}
-                      {formatDate(entry.timestamp)}
+                      {formatDateTime(entry.timestamp)}
                     </div>
                   </div>
                 </li>

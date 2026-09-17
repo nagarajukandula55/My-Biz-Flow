@@ -4,11 +4,22 @@ import { verifyPaymentSignature } from "@/lib/razorpay";
 import { computePartnerDueAmount } from "@/lib/subscriptionData";
 import { prisma } from "@/lib/prisma";
 import { notifyCentralApiSale } from "@/lib/centralApi";
+import { getSessionPartnerId } from "@/lib/requirePartnerSession";
 
-/** Verifies a Checkout success callback's signature, then activates the partner's subscription. */
+/**
+ * Verifies a Checkout success callback's signature, then activates the
+ * partner's subscription. partnerId comes from the signed-in session
+ * cookie, not the request body — same reasoning as create-order/route.ts.
+ * The signature check below already prevented forging a payment, but a
+ * caller could otherwise have named a DIFFERENT partnerId than the one who
+ * actually paid and activated that partner's subscription instead.
+ */
 export async function POST(request: Request) {
-  const { partnerId, razorpay_order_id, razorpay_payment_id, razorpay_signature } = await request.json();
-  if (!partnerId || !razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+  const partnerId = await getSessionPartnerId();
+  if (!partnerId) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
+
+  const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = await request.json();
+  if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
     return NextResponse.json({ error: "Missing verification fields" }, { status: 400 });
   }
 

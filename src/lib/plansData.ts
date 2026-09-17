@@ -9,6 +9,8 @@ export type PlanRecord = {
   id: string;
   name: string;
   price: number;
+  /** Bare-minimum introductory monthly rate, active until LAUNCH_PRICING_CUTOVER (src/lib/subscriptionData.ts) -- null means this plan has no launch discount. */
+  launchPrice: number | null;
   billingCycle: "monthly" | "yearly";
   includedModuleSlugs: string[];
   maxUsers: number;
@@ -20,6 +22,7 @@ function toRecord(row: {
   id: string;
   name: string;
   price: number;
+  launchPrice: number | null;
   billingCycle: string;
   includedModuleSlugs: unknown;
   maxUsers: number;
@@ -30,6 +33,7 @@ function toRecord(row: {
     id: row.id,
     name: row.name,
     price: row.price,
+    launchPrice: row.launchPrice,
     billingCycle: row.billingCycle as "monthly" | "yearly",
     includedModuleSlugs: (row.includedModuleSlugs as string[] | null) ?? [],
     maxUsers: row.maxUsers,
@@ -56,6 +60,7 @@ export async function getPlan(id: string): Promise<PlanRecord | undefined> {
 export type PlanInput = {
   name: string;
   price: number;
+  launchPrice?: number | null;
   billingCycle: "monthly" | "yearly";
   includedModuleSlugs: string[];
   maxUsers: number;

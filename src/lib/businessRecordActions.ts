@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createBusinessRecord, updateBusinessRecord, deleteBusinessRecord, getBusinessRecord } from "@/lib/businessRecords";
+import { createBusinessRecord, updateBusinessRecord, getBusinessRecord } from "@/lib/businessRecords";
 import { getPartner } from "@/lib/partnerData";
 import { notifyCentralApiBillingInvoice } from "@/lib/centralApi";
 
@@ -12,6 +12,22 @@ export async function createBusinessRecordAction(
   moduleSlug: string,
   values: Record<string, unknown>
 ) {
+  // Assign the real invoice number ONCE, here, at actual creation time —
+  // via the same atomic, persisted NumberingCounter (getNextNumber) and
+  // the SAME "invoice.b2c"/"invoice.b2b" scope a Service-Centre-workorder-
+  // originated invoice uses (see service-centre/[recordId]/actions.ts,
+  // createInvoiceFromWorkorderAction), so both origins draw from one
+  // shared per-partner sequence and never hand out the same number twice.
+  // Previously nothing stored a number at all: the printed document page
+  // recomputed one live by counting "billing" rows on every render.
+  if (moduleSlug === "billing" && !values["invoiceNumber"]) {
+    const { getNextNumber } = await import("@/lib/designer/numbering");
+    const isB2B = Boolean(String(values["customerGstin"] ?? "").trim());
+    const numberingDocType = isB2B ? "invoice.b2b" : "invoice.b2c";
+    const numberingDefaults = isB2B ? { prefix: "INV" } : { prefix: "BILL" };
+    values = { ...values, invoiceNumber: await getNextNumber(numberingDocType, partnerId, numberingDefaults) };
+  }
+
   const record = await createBusinessRecord(partnerId, moduleSlug, values);
 
   if (moduleSlug === "billing") {
@@ -22,11 +38,20 @@ export async function createBusinessRecordAction(
       const customerContact = customerContactId
         ? await getBusinessRecord(partnerId, "billing-contacts", customerContactId)
         : undefined;
+      // The invoice form now captures the customer's state directly (see
+      // BillingInvoiceForm.tsx) — prefer that over the linked contact's
+      // stored state, which only existed for invoices typed against a
+      // saved contact.
+      const customerState = record["customerState"]
+        ? String(record["customerState"])
+        : customerContact?.["state"]
+          ? String(customerContact["state"])
+          : undefined;
       await notifyCentralApiBillingInvoice(partner, {
         externalOrderId: String(record.id),
         customer: String(record["customer"] ?? ""),
         customerGstin: record["customerGstin"] ? String(record["customerGstin"]) : undefined,
-        customerState: customerContact?.["state"] ? String(customerContact["state"]) : undefined,
+        customerState,
         items: items.map((it) => ({
           description: String(it["description"] ?? ""),
           quantity: Number(it["quantity"] ?? 0),
@@ -39,7 +64,10 @@ export async function createBusinessRecordAction(
   }
 
   revalidatePath(`/partner/${partnerId}/${moduleSlug}`);
-  redirect(`/partner/${partnerId}/${moduleSlug}/${record.id}`);
+  // ?created=1 is read by RecordDetail (via each detail page's own
+  // searchParams prop) to render a real "<record> created" acknowledgment
+  // on arrival, instead of a silent redirect to the new record.
+  redirect(`/partner/${partnerId}/${moduleSlug}/${record.id}?created=1`);
 }
 
 /** Bind with .bind(null, partnerId, moduleSlug, recordKey) before passing as a RecordForm `action` prop. */
@@ -52,14 +80,26 @@ export async function updateBusinessRecordAction(
   await updateBusinessRecord(partnerId, moduleSlug, recordKey, values);
   revalidatePath(`/partner/${partnerId}/${moduleSlug}`);
   revalidatePath(`/partner/${partnerId}/${moduleSlug}/${recordKey}`);
-  redirect(`/partner/${partnerId}/${moduleSlug}/${recordKey}`);
+  // ?updated=1 — same acknowledgment mechanism as the create action above.
+  redirect(`/partner/${partnerId}/${moduleSlug}/${recordKey}?updated=1`);
 }
 
-/** Bind with .bind(null, partnerId, moduleSlug, recordKey) before calling from a delete confirm handler. */
-export async function deleteBusinessRecordAction(partnerId: string, moduleSlug: string, recordKey: string) {
-  await deleteBusinessRecord(partnerId, moduleSlug, recordKey);
-  revalidatePath(`/partner/${partnerId}/${moduleSlug}`);
-  redirect(`/partner/${partnerId}/${moduleSlug}`);
+/**
+ * Deleting a BusinessRecord is disabled, full stop — not just hidden from
+ * the UI. There is no partner-facing "Delete" button left anywhere in the
+ * app (`DeleteBusinessRecordButton` is a permanent no-op), and no separate
+ * Super-Admin delete UI exists either, so there is no legitimate caller
+ * left for this action. It stays defined (rather than being deleted itself)
+ * only so any stray reference fails loudly instead of silently deleting
+ * data, in case some other code path is ever wired to call it directly.
+ * Records should be archived/marked inactive via a Status field instead.
+ */
+export async function deleteBusinessRecordAction(
+  _partnerId: string,
+  _moduleSlug: string,
+  _recordKey: string
+): Promise<never> {
+  throw new Error("Deleting records is not permitted. Mark the record inactive instead.");
 }
 
 /**
