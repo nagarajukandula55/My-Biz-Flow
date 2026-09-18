@@ -131,6 +131,15 @@ export const TELEGRAM_TEMPLATE_DEFS: TelegramTemplateDef[] = [
       "⚠️ <b>Unassigned Book Appointment Inquiry</b>\n\n<pre>\nCustomer      {{customerName}}\nPhone         {{customerPhone}}\nService type  {{serviceType}}\nPincode       {{pincode}}\nComplaint     {{complaint}}\n</pre>\n<i>No partner currently covers this area/service type — the customer was told to call in. Route this manually or ask a nearby partner to add this pincode to their Service Area.</i>",
   },
   {
+    key: "contact_submitted",
+    label: "Contact form submitted (ops-facing)",
+    group: "Event alert",
+    command: "/test_contact_submitted",
+    variables: ["name", "email", "message"],
+    defaultBody:
+      "✉️ <b>New Contact Form Submission</b>\n\n<pre>\nName    {{name}}\nEmail   {{email}}\n</pre>\n{{message}}\n\n<i>Review it in /admin/contact-submissions.</i>",
+  },
+  {
     key: "new_partner_application",
     label: "New partner application (ops-facing)",
     group: "Event alert",

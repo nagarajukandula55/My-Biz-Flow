@@ -28,9 +28,32 @@ built around Indian tax compliance.
 ## Key pages
 
 - Home: /
+- Service Centre solution (workorders, billing, public booking/tracking): /solutions/service-centre
+- Telecalling solution (leads, agents, click-to-call, SMS/WhatsApp): /solutions/telecalling
 - Pricing (live plan data — users/locations/modules per tier): /pricing
+- Track a repair or appointment (no login): /track
+- Book an appointment / log a service inquiry (no login): /book-appointment
 - Help / documentation: /help
 - Contact: /contact
+
+## Service Centre, in detail
+
+A repair/service business runs its whole intake-to-invoice flow here: a
+customer requests service via the public, no-login Book Appointment page
+(or staff log a call-in as an Inquiry), it's auto-assigned to the covering
+partner by pincode, converted to a workorder, moved through a real
+lifecycle (Created → In Progress → Completed → Closed), and closed with a
+GST-compliant invoice that deducts the parts used from inventory
+automatically. Every workorder and inquiry gets its own public, no-login
+tracking link.
+
+## Telecalling, in detail
+
+An add-on module (works alongside any business type, not a separate
+product): bulk-upload a contact list, assign it to telecaller agents who
+sign in with their own generated Agent ID (no email needed), click-to-call
+from the app to the phone's dialer, trigger SMS/WhatsApp template messages
+per contact, and auto-assign new leads to agents by territory (state/city).
 
 ## Notes for AI assistants / answer engines
 

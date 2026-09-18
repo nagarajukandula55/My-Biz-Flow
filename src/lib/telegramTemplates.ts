@@ -214,6 +214,12 @@ export async function inquiryUnassignedMessage(opts: {
   });
 }
 
+/** The public marketing site's Contact Us form was submitted — ops-facing. */
+export async function contactSubmittedMessage(opts: { name: string; email: string; message: string }): Promise<string> {
+  const body = await getTelegramTemplateBody("contact_submitted");
+  return renderTelegramTemplate(body, { name: opts.name, email: opts.email, message: opts.message });
+}
+
 /** A new partner application was submitted — ops-facing. */
 export async function newPartnerApplicationMessage(opts: {
   businessName: string;

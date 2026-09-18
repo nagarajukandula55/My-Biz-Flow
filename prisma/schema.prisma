@@ -1108,6 +1108,23 @@ model PostalPincode {
   @@map("postal_pincodes")
 }
 
+/// A submission from the public marketing site's Contact Us form
+/// (src/app/contact/actions.ts) — ops-facing, not partner-scoped. Super
+/// Admin reviews these from My-Biz-Flow-Admin (same physical DB, mirrored
+/// model there).
+model ContactSubmission {
+  id           String    @id @default(cuid())
+  name         String
+  email        String
+  message      String
+  resolvedAt   DateTime?
+  resolvedNote String?
+  createdAt    DateTime  @default(now())
+
+  @@index([resolvedAt])
+  @@map("contact_submissions")
+}
+
 /// A public Book Appointment inquiry that no partner's configured Service
 /// Area could match (see src/lib/serviceCentreInquiryAssignment.ts) — not
 /// partner-scoped (there is no partner to scope it to), so it lives in its

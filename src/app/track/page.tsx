@@ -27,9 +27,10 @@ export default function TrackPage({
         <Link href="/" className="mb-6 flex items-center gap-2">
           <BrandLogo height={32} />
         </Link>
-        <h1 className="font-display text-xl font-bold text-text">Track My Repair</h1>
+        <h1 className="font-display text-xl font-bold text-text">Track My Repair or Appointment</h1>
         <p className="mt-1 text-sm text-text-muted">
-          Enter your workorder number and the phone number used at intake to find your repair status.
+          Enter your reference number (workorder or appointment/inquiry number) and the phone number you gave, to
+          check its status.
         </p>
 
         {(searchParams.error === "not_found" || searchParams.error === "missing") && (
@@ -40,11 +41,11 @@ export default function TrackPage({
 
         <form action={lookupWorkorder} className="mt-6 flex flex-col gap-3">
           <label className="text-xs font-semibold uppercase tracking-wide text-text-muted">
-            Workorder Number
+            Reference Number
             <input
               type="text"
               name="workorderNumber"
-              placeholder="e.g. SVC-0001"
+              placeholder="e.g. WO2609150001 or INQ-0001"
               required
               autoFocus
               className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text outline-none focus:border-teal"

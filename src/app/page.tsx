@@ -309,9 +309,16 @@ export default async function RootPage({
                 <div key={t.id} className="mbf-glass-card flex flex-col p-5">
                   <h3 className="font-display text-base font-bold text-text">{t.id}</h3>
                   <p className="mt-1 flex-1 text-sm text-text-muted">{t.description || "—"}</p>
-                  <Link href={`/signup?type=${encodeURIComponent(t.id)}`} className="btn-accent mbf-cta-glow mt-4 text-center">
-                    Sign up as {t.id}
-                  </Link>
+                  <div className="mt-4 flex items-center gap-3">
+                    <Link href={`/signup?type=${encodeURIComponent(t.id)}`} className="btn-accent mbf-cta-glow flex-1 text-center">
+                      Sign up as {t.id}
+                    </Link>
+                    {t.id === "service-centre" && (
+                      <Link href="/solutions/service-centre" className="btn-outline shrink-0">
+                        Learn more
+                      </Link>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -321,23 +328,28 @@ export default async function RootPage({
 
       <section className="border-t border-border px-6 py-16">
         <div className="mx-auto max-w-5xl">
-          <p className="text-center text-xs font-semibold uppercase tracking-widest text-accent">Coming soon</p>
-          <h2 className="mt-2 text-center font-display text-2xl font-bold text-text">Telecalling / Call Centre module</h2>
+          <p className="text-center text-xs font-semibold uppercase tracking-widest text-accent">Add-on module — live now</p>
+          <h2 className="mt-2 text-center font-display text-2xl font-bold text-text">Telecalling / Tele-marketing</h2>
           <p className="mbf-prose mx-auto mt-2 max-w-2xl text-center text-base text-text-muted">
-            Upload a contact list, assign it to your telecalling team, click-to-call straight from the app, and trigger
-            SMS/WhatsApp messages (welcome, product links, follow-ups) — all in one place. Currently in internal rollout;
-            public signup opens soon.
+            Bulk-upload a contact list, assign it to telecaller agents (their own login, not yours), click-to-call
+            straight from the app to the phone's dialer, and trigger SMS/WhatsApp template messages per contact —
+            layered onto whichever business type you run, not a separate product.
           </p>
           <div className="mx-auto mt-8 max-w-md">
             <div className="mbf-glass-card flex items-center justify-between gap-4 p-5">
               <div>
                 <h3 className="font-display text-base font-bold text-text">Telecalling / Call Centre</h3>
-                <p className="mt-1 text-sm text-text-muted">Leads, click-to-call, SMS/WhatsApp templates, call dispositions.</p>
+                <p className="mt-1 text-sm text-text-muted">Leads, agent logins, click-to-call, SMS/WhatsApp templates, territory-based auto-assignment.</p>
               </div>
-              <span className="shrink-0 rounded-full bg-accent-soft px-3 py-1 text-xs font-semibold text-accent">
-                Coming Soon
-              </span>
             </div>
+          </div>
+          <div className="mt-8 flex items-center justify-center gap-3">
+            <Link href="/solutions/telecalling" className="btn-accent mbf-cta-glow">
+              Learn more
+            </Link>
+            <Link href="/contact" className="btn-outline">
+              Ask about adding it to your account
+            </Link>
           </div>
         </div>
       </section>

@@ -38,7 +38,10 @@ export async function lookupWorkorder(formData: FormData) {
     redirect("/track?error=missing");
   }
 
-  const match = await prisma.businessRecord.findFirst({
+  // Checked second: the reference number could be either a workorder
+  // (WO-...) or an inquiry/appointment (INQ-...) not yet converted — same
+  // exact-match-on-both-fields safety rule as the workorder lookup above.
+  const workorderMatch = await prisma.businessRecord.findFirst({
     where: {
       moduleSlug: "service-centre",
       recordKey: workorderNumber,
@@ -47,9 +50,22 @@ export async function lookupWorkorder(formData: FormData) {
     select: { partnerId: true, recordKey: true },
   });
 
-  if (!match) {
+  if (workorderMatch) {
+    redirect(`/service-centre-track/${encodeURIComponent(workorderMatch.partnerId)}/${encodeURIComponent(workorderMatch.recordKey)}`);
+  }
+
+  const inquiryMatch = await prisma.businessRecord.findFirst({
+    where: {
+      moduleSlug: "service-centre-inquiry",
+      recordKey: workorderNumber,
+      data: { path: ["customerPhone"], equals: phone } as any,
+    },
+    select: { partnerId: true, recordKey: true },
+  });
+
+  if (!inquiryMatch) {
     redirect("/track?error=not_found");
   }
 
-  redirect(`/service-centre-track/${encodeURIComponent(match.partnerId)}/${encodeURIComponent(match.recordKey)}`);
+  redirect(`/service-centre-track-inquiry/${encodeURIComponent(inquiryMatch.partnerId)}/${encodeURIComponent(inquiryMatch.recordKey)}`);
 }
