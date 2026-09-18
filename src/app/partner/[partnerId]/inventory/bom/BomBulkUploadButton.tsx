@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { Modal } from "@/components/Modal";
 import { bulkImportBomAction } from "./actions";
 import { bomFormFields } from "@/lib/sample-data/bom";
+import { downloadCsvTemplate } from "@/lib/downloadCsvTemplate";
 
 /** Bulk CSV upload for the Material Catalog, same UX pattern as Telecalling's
  * "Upload CSV" (see LeadsClient.tsx, importLeadsAction) — a modal with a
@@ -19,6 +20,35 @@ export function BomBulkUploadButton({ partnerId }: { partnerId: string }) {
   // "id" (Material Code) is excluded — it's auto-generated when left blank,
   // not a column a CSV upload should ask for (see actions.ts).
   const csvColumns = bomFormFields.filter((f) => f.key !== "id").map((f) => f.key).join(", ");
+
+  function handleDownloadTemplate() {
+    const header = bomFormFields.filter((f) => f.key !== "id").map((f) => f.key);
+    const sample: Record<string, string> = {
+      description: "USB-C Charging Port Flex Cable",
+      barcode: "8901234567890",
+      hsnCode: "8504 — Electrical transformers, static converters",
+      type: "Spare Part",
+      uom: "Nos",
+      rate: "180",
+      rateType: "Exclusive",
+      taxPercent: "18",
+      mrp: "220",
+      serialized: "false",
+      category: "Charging",
+      status: "Active",
+      brandName: "Samsung",
+      modelName: "Galaxy M31",
+      reorderLevel: "10",
+      supplierRef: "Acme Electronics",
+      batchNumber: "BATCH-2026-09",
+      warrantyPeriodDays: "90",
+    };
+    downloadCsvTemplate(
+      "bom-materials-template.csv",
+      header,
+      header.map((key) => sample[key] ?? "")
+    );
+  }
 
   function handleUpload(formData: FormData) {
     setError(null);
@@ -64,7 +94,12 @@ export function BomBulkUploadButton({ partnerId }: { partnerId: string }) {
             </div>
           )}
           <form action={handleUpload} className="space-y-3">
-            <input type="file" name="file" accept=".csv" required className="text-sm text-text" />
+            <div className="flex flex-wrap items-center gap-3">
+              <input type="file" name="file" accept=".csv" required className="text-sm text-text" />
+              <button type="button" onClick={handleDownloadTemplate} className="text-sm font-semibold text-accent hover:underline">
+                Download template
+              </button>
+            </div>
             <button type="submit" disabled={isPending} className="btn-accent">
               {isPending ? "Uploading…" : "Upload & Import"}
             </button>

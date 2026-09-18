@@ -6,6 +6,7 @@ import { useState, useTransition } from "react";
 import { StatusChip } from "@/components/StatusChip";
 import { createLeadAction, importLeadsAction, assignLeadAction } from "@/lib/telecalling/actions";
 import { LEAD_STATUSES } from "@/lib/telecalling/leadsData";
+import { downloadCsvTemplate } from "@/lib/downloadCsvTemplate";
 
 type Lead = {
   id: string;
@@ -149,7 +150,22 @@ export function LeadsClient({
             <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-text-muted">
               CSV file (columns: name, phone, email, source, state, city — phone is required)
             </label>
-            <input type="file" name="file" accept=".csv" required className="text-sm text-text" />
+            <div className="flex flex-wrap items-center gap-3">
+              <input type="file" name="file" accept=".csv" required className="text-sm text-text" />
+              <button
+                type="button"
+                onClick={() =>
+                  downloadCsvTemplate(
+                    "leads-template.csv",
+                    ["name", "phone", "email", "source", "state", "city"],
+                    ["Ravi Kumar", "9876543210", "ravi.kumar@example.com", "Website", "Karnataka", "Bengaluru"]
+                  )
+                }
+                className="text-sm font-semibold text-accent hover:underline"
+              >
+                Download template
+              </button>
+            </div>
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <input
