@@ -49,8 +49,8 @@ tracking link.
 
 ## Telecalling, in detail
 
-An add-on module (works alongside any business type, not a separate
-product): bulk-upload a contact list, assign it to telecaller agents who
+Its own signup-able business type (same as Service Centre), with its own
+pricing: bulk-upload a contact list, assign it to telecaller agents who
 sign in with their own generated Agent ID (no email needed), click-to-call
 from the app to the phone's dialer, trigger SMS/WhatsApp template messages
 per contact, and auto-assign new leads to agents by territory (state/city).

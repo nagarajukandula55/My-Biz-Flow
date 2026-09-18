@@ -13,7 +13,7 @@ registerPage({
   superAdminOnly: false,
   customizableRegions: [],
   explanation:
-    "Full marketing/feature page for the Telecalling / Tele-marketing add-on module — real, verified capabilities only: bulk lead upload, agent logins separate from the owner's, click-to-call, SMS/WhatsApp templates, and territory-based auto-assignment (src/lib/designer/modules.ts's own module description).",
+    "Full marketing/feature page for the Telecalling business type — a real, signup-able Partner Type (PartnerType.id 'telecalling', idPrefix 'CC', real Plan pricing) same as Service Centre, not an add-on. Real, verified capabilities only: bulk lead upload, agent logins separate from the owner's, click-to-call, SMS/WhatsApp templates, and territory-based auto-assignment (src/lib/designer/modules.ts's own module description).",
   sourceFile: "src/app/solutions/telecalling/page.tsx",
 });
 
@@ -50,8 +50,8 @@ const PERKS = [
     description: "Leads move through the queue with call dispositions logged, so nothing sits untouched because nobody remembered to follow up.",
   },
   {
-    title: "Layer it onto any business type",
-    description: "Telecalling is an add-on module, not a separate product — run it alongside Service Centre, POS, Billing, or any other vertical on the same account.",
+    title: "Its own business type, priced separately",
+    description: "Sign up as a Telecalling business directly — its own pricing, its own account, not bundled into another module.",
   },
   {
     title: "No-code, same as every module",
@@ -69,7 +69,7 @@ const HOW_IT_WORKS = [
 const FAQS = [
   { q: "Do telecaller agents need their own email to log in?", a: "No — an Agent ID (e.g. AGT001) is generated automatically, and the agent signs in with that, not an email." },
   { q: "Can I restrict which leads an agent sees?", a: "Yes — assign them a territory (states and/or cities) and they'll only see and be auto-assigned leads matching it; leaving it blank gives them everything." },
-  { q: "Is Telecalling a separate account, or does it work with what I already have?", a: "It's an add-on module layered onto your existing business type — Service Centre, POS, or any other vertical on this platform — not a separate signup." },
+  { q: "Is Telecalling its own account, or does it come bundled with another module?", a: "It's its own business type with its own signup and pricing — same as Service Centre. Pick it directly at signup." },
   { q: "What messaging channels are supported?", a: "SMS and WhatsApp template messages, triggered per contact from the call queue." },
 ];
 
@@ -115,7 +115,7 @@ export default function TelecallingSolutionPage() {
           <Link href="/solutions/service-centre" className="text-text-muted hover:text-text">Service Centre</Link>
           <Link href="/pricing" className="text-text-muted hover:text-text">Pricing</Link>
           <Link href="/login" className="text-text-muted hover:text-text">Sign in</Link>
-          <Link href="/contact" className="btn-accent mbf-cta-glow">Get started</Link>
+          <Link href="/signup?type=telecalling" className="btn-accent mbf-cta-glow">Get started</Link>
         </nav>
       </header>
 
@@ -126,11 +126,11 @@ export default function TelecallingSolutionPage() {
         </h1>
         <p className="mbf-prose mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-text-muted">
           Bulk-upload leads, hand them to agents with their own logins, click-to-call from the app, and trigger
-          SMS/WhatsApp templates — layered onto whichever business type you already run.
+          SMS/WhatsApp templates — its own business type, with its own pricing.
         </p>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
-          <Link href="/contact" className="btn-accent mbf-cta-glow">Ask about adding it to your account</Link>
-          <Link href="/solutions/service-centre" className="btn-outline">See Service Centre</Link>
+          <Link href="/signup?type=telecalling" className="btn-accent mbf-cta-glow">Start free</Link>
+          <Link href="/pricing?type=telecalling" className="btn-outline">See pricing</Link>
         </div>
       </section>
 
@@ -184,8 +184,8 @@ export default function TelecallingSolutionPage() {
       <section className="border-t border-border px-6 py-16 text-center">
         <h2 className="font-display text-2xl font-bold text-text">Ready to put your lead list to work?</h2>
         <div className="mt-6 flex flex-wrap items-center justify-center gap-4">
-          <Link href="/contact" className="btn-accent mbf-cta-glow">Ask about adding it to your account</Link>
-          <Link href="/pricing" className="btn-outline">See pricing</Link>
+          <Link href="/signup?type=telecalling" className="btn-accent mbf-cta-glow">Start free</Link>
+          <Link href="/pricing?type=telecalling" className="btn-outline">See pricing</Link>
         </div>
       </section>
 

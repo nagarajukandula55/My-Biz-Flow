@@ -212,8 +212,8 @@ export default async function RootPage({
             <p className="mbf-prose mx-auto mt-5 text-lg leading-relaxed text-text-muted">
               My Biz Flow is a modular, no-code, multi-vertical business/CRM platform. Instead of shipping a separate
               product per industry, every business runs on one shared metadata engine — modules, fields, pipelines,
-              and dashboards are all config-driven. Mix and match POS, Service Centre, Billing, Clinic, HRMS, and
-              more on a single account.
+              and dashboards are all config-driven. Mix and match POS, Service Centre, Telecalling, Billing, Clinic,
+              HRMS, and more on a single account.
             </p>
           </>
         )}
@@ -313,8 +313,8 @@ export default async function RootPage({
                     <Link href={`/signup?type=${encodeURIComponent(t.id)}`} className="btn-accent mbf-cta-glow flex-1 text-center">
                       Sign up as {t.id}
                     </Link>
-                    {t.id === "service-centre" && (
-                      <Link href="/solutions/service-centre" className="btn-outline shrink-0">
+                    {(t.id === "service-centre" || t.id === "telecalling") && (
+                      <Link href={`/solutions/${t.id}`} className="btn-outline shrink-0">
                         Learn more
                       </Link>
                     )}
@@ -323,34 +323,6 @@ export default async function RootPage({
               ))}
             </div>
           )}
-        </div>
-      </section>
-
-      <section className="border-t border-border px-6 py-16">
-        <div className="mx-auto max-w-5xl">
-          <p className="text-center text-xs font-semibold uppercase tracking-widest text-accent">Add-on module — live now</p>
-          <h2 className="mt-2 text-center font-display text-2xl font-bold text-text">Telecalling / Tele-marketing</h2>
-          <p className="mbf-prose mx-auto mt-2 max-w-2xl text-center text-base text-text-muted">
-            Bulk-upload a contact list, assign it to telecaller agents (their own login, not yours), click-to-call
-            straight from the app to the phone's dialer, and trigger SMS/WhatsApp template messages per contact —
-            layered onto whichever business type you run, not a separate product.
-          </p>
-          <div className="mx-auto mt-8 max-w-md">
-            <div className="mbf-glass-card flex items-center justify-between gap-4 p-5">
-              <div>
-                <h3 className="font-display text-base font-bold text-text">Telecalling / Call Centre</h3>
-                <p className="mt-1 text-sm text-text-muted">Leads, agent logins, click-to-call, SMS/WhatsApp templates, territory-based auto-assignment.</p>
-              </div>
-            </div>
-          </div>
-          <div className="mt-8 flex items-center justify-center gap-3">
-            <Link href="/solutions/telecalling" className="btn-accent mbf-cta-glow">
-              Learn more
-            </Link>
-            <Link href="/contact" className="btn-outline">
-              Ask about adding it to your account
-            </Link>
-          </div>
         </div>
       </section>
 

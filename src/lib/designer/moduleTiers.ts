@@ -44,6 +44,11 @@ export const MODULE_TIER_FEATURES: Record<string, ModuleTierFeatures> = {
     pro: ["Recurring invoices", "Outstanding & tax-summary reports", "Contact statements"],
     ultimate: ["Full accounting suite (ledgers, GST Assistant)", "Razorpay payment collection", "Central-api accounting sync"],
   },
+  telecalling: {
+    basic: ["Bulk lead upload & call queue", "Click-to-call from the app", "Agent logins with generated Agent IDs"],
+    pro: ["Territory-based auto-assignment (state/city)", "SMS/WhatsApp template messages", "Call disposition logging"],
+    ultimate: ["Unlimited agents", "Priority support", "Custom Report Builder & Analytics"],
+  },
   brand: {
     basic: ["Brand -> Partner -> Location hierarchy", "Partner directory"],
     pro: ["Location-level performance rollups", "Cross-location role assignment"],
