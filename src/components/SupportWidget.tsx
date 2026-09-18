@@ -7,6 +7,25 @@ import type { SupportTicketRecord } from "@/lib/supportTickets";
 
 const POLL_MS = 6000;
 
+/** Splits a message on any bare URL/relative path (from an auto-reply's link, see supportAutoReply.ts) and renders those as real clickable links — messages are plain text otherwise, so without this a link would just sit there unclickable. */
+function renderMessageText(text: string) {
+  const parts = text.split(/(https?:\/\/\S+|(?:^|\s)\/[a-zA-Z0-9/_#-]+)/g);
+  return parts.map((part, i) => {
+    const trimmed = part.trim();
+    const isLink = trimmed.startsWith("http") || trimmed.startsWith("/");
+    if (!isLink) return <span key={i}>{part}</span>;
+    const leadingSpace = part.startsWith(" ") ? " " : "";
+    return (
+      <span key={i}>
+        {leadingSpace}
+        <a href={trimmed} target={trimmed.startsWith("http") ? "_blank" : undefined} rel="noopener noreferrer" className="underline">
+          {trimmed}
+        </a>
+      </span>
+    );
+  });
+}
+
 /**
  * One-click canned messages — sends immediately on click (same "one click,
  * no confirmation" pattern as Telecalling's send-template dropdown), so a
@@ -102,8 +121,8 @@ export function SupportWidget({
         <div className="mb-3 flex w-80 flex-col overflow-hidden rounded-lg border border-border bg-bg-raised shadow-lg">
           <div className="flex items-center justify-between border-b border-border px-4 py-3">
             <div>
-              <h2 className="font-display text-sm font-bold text-text">Chat with us</h2>
-              <p className="text-[11px] text-text-muted">Usually replies within a few minutes</p>
+              <h2 className="font-display text-sm font-bold text-text">ANu</h2>
+              <p className="text-[11px] text-text-muted">Your My Biz Flow assistant · usually replies within a few minutes</p>
             </div>
             <button type="button" onClick={() => setOpen(false)} aria-label="Close" className="text-text-muted hover:text-text">
               <X className="h-4 w-4" />
@@ -137,7 +156,7 @@ export function SupportWidget({
                       m.from === "partner" ? "bg-accent text-white" : "bg-bg text-text"
                     }`}
                   >
-                    {m.text}
+                    {renderMessageText(m.text)}
                   </div>
                 </div>
               ))
@@ -184,7 +203,7 @@ export function SupportWidget({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        aria-label={open ? "Close support" : "Open support"}
+        aria-label={open ? "Close ANu" : "Open ANu"}
         className="flex h-12 w-12 items-center justify-center rounded-full bg-accent text-white shadow-lg hover:opacity-90"
       >
         {open ? <X className="h-5 w-5" /> : <MessageCircle className="h-5 w-5" />}

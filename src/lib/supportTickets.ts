@@ -106,9 +106,10 @@ export async function sendPartnerSupportMessage(partnerId: string, businessName:
   // partner still gets an immediate reply even if ops Telegram is
   // unreachable; a note is sent to the thread either way so a human doesn't
   // duplicate an answer that's already been given.
-  const autoReply = matchAutoReply(trimmed);
+  const autoReply = matchAutoReply(trimmed, partnerId);
   if (autoReply) {
-    const withReply: SupportTicketRecord = { ...ticket, messages: [...ticket.messages, { from: "support", text: autoReply, at: new Date().toISOString() }] };
+    const replyText = autoReply.link ? `${autoReply.text}\n${autoReply.link}` : autoReply.text;
+    const withReply: SupportTicketRecord = { ...ticket, messages: [...ticket.messages, { from: "support", text: replyText, at: new Date().toISOString() }] };
     await updateBusinessRecord(partnerId, MODULE_SLUG, ticket.id, {
       businessName: withReply.businessName ?? businessName,
       messages: withReply.messages,
@@ -116,7 +117,7 @@ export async function sendPartnerSupportMessage(partnerId: string, businessName:
       resolvedAt: withReply.resolvedAt,
     });
     ticket = withReply;
-    await pushToTelegramThread(ticket, `🤖 <i>Auto-reply sent:</i> ${autoReply}`);
+    await pushToTelegramThread(ticket, `🤖 <i>Auto-reply sent:</i> ${replyText}`);
   }
 
   return ticket;

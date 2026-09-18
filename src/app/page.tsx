@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { BrandLogo } from "@/components/BrandLogo";
+import { PublicHelpBubble } from "@/components/PublicHelpBubble";
 import { registerPage } from "@/lib/designer/registry";
 import { listActivePartnerTypes } from "@/lib/designer/partnerTypesData";
 import { SITE_URL, SITE_NAME } from "@/lib/seo";
@@ -166,6 +167,7 @@ export default async function RootPage({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
+      <PublicHelpBubble />
       <header className="flex items-center justify-between border-b border-border px-6 py-5">
         <div className="flex items-center gap-2">
           <BrandLogo height={36} />
