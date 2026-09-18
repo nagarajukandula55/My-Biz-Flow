@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getPartner, updatePartnerSubscription } from "@/lib/partnerData";
 import { BILLING_CYCLES, type BillingCycle } from "@/lib/subscriptionData";
+import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 
 /**
  * Partner picks a Plan + billing cycle to convert off trial (or to switch
@@ -24,6 +25,7 @@ import { BILLING_CYCLES, type BillingCycle } from "@/lib/subscriptionData";
  * lets the page offer a "Change plan" option in that state instead.
  */
 export async function chooseSubscriptionAction(partnerId: string, formData: FormData) {
+  await requireSessionPartnerId(partnerId);
   const planId = String(formData.get("planId") ?? "").trim();
   const billingCycle = String(formData.get("billingCycle") ?? "").trim() as BillingCycle;
   if (!planId || !billingCycle) throw new Error("Choose a plan and a billing cycle");

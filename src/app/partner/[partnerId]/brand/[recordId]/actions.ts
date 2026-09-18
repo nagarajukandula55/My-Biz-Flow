@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getBusinessRecord, updateBusinessRecord } from "@/lib/businessRecords";
 import type { AccessScope } from "@/lib/sample-data/brand";
+import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 
 /** Sets a partner User's cross-location access scope — patches the generic `users` BusinessRecord (same store, different moduleSlug), editable here from the Brand record's detail page. */
 export async function setUserAccessScopeAction(
@@ -11,6 +12,7 @@ export async function setUserAccessScopeAction(
   accessScope: AccessScope,
   brandRecordId: string
 ): Promise<void> {
+  await requireSessionPartnerId(partnerId);
   const user = await getBusinessRecord(partnerId, "users", userId);
   if (!user) return;
   await updateBusinessRecord(partnerId, "users", userId, { ...user, accessScope });

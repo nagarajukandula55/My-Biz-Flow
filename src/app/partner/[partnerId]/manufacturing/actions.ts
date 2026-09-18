@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createBusinessRecord, getBusinessRecord, listBusinessRecords, updateBusinessRecord } from "@/lib/businessRecords";
 import { extractProductionFromRecord } from "@/lib/sample-data/manufacturing";
+import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 
 /**
  * Completes production: recomputes cost server-side (never trusts client
@@ -24,6 +25,7 @@ export async function completeProductionAction(
   laborCost: number,
   quantityProduced: number
 ): Promise<{ error?: string }> {
+  await requireSessionPartnerId(partnerId);
   const record = await getBusinessRecord(partnerId, "manufacturing", workOrderId);
   if (!record) return { error: "Work order not found." };
 

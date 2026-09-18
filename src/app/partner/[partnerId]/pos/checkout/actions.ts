@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createBusinessRecord, getBusinessRecord, updateBusinessRecord, listBusinessRecords } from "@/lib/businessRecords";
 import { computeSaleTotals, extractSaleFromRecord, type SaleLine, type Tender } from "@/lib/sample-data/pos";
+import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 
 export type CompleteSaleInput = {
   lines: SaleLine[];
@@ -23,6 +24,7 @@ export type CompleteSaleInput = {
  * real relational column.
  */
 export async function completeSaleAction(partnerId: string, input: CompleteSaleInput) {
+  await requireSessionPartnerId(partnerId);
   if (input.lines.length === 0) throw new Error("Cart is empty");
 
   const totals = computeSaleTotals(input.lines);
@@ -95,6 +97,7 @@ export async function completeSaleAction(partnerId: string, input: CompleteSaleI
  * reports read correctly.
  */
 export async function voidSaleAction(partnerId: string, saleId: string, reason: string): Promise<void> {
+  await requireSessionPartnerId(partnerId);
   const record = await getBusinessRecord(partnerId, "pos", saleId);
   if (!record) return;
   const sale = extractSaleFromRecord(record);

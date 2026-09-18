@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createBusinessRecord, getBusinessRecord, updateBusinessRecord } from "@/lib/businessRecords";
 import { addMonths, CYCLE_MONTHS, extractMembershipFromRecord, type BillingCycle } from "@/lib/sample-data/subscriptions";
+import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 
 /**
  * Records a payment for the membership's current billing cycle: creates a
@@ -12,6 +13,7 @@ import { addMonths, CYCLE_MONTHS, extractMembershipFromRecord, type BillingCycle
  * "recompute + persist + create invoice" for a real money-moving action.
  */
 export async function recordPaymentAction(partnerId: string, membershipId: string): Promise<void> {
+  await requireSessionPartnerId(partnerId);
   const record = await getBusinessRecord(partnerId, "subscriptions", membershipId);
   if (!record) throw new Error("Membership not found");
   const membership = extractMembershipFromRecord(record);
@@ -50,6 +52,7 @@ export async function recordPaymentAction(partnerId: string, membershipId: strin
 
 /** Freezes a membership — billing stops tracking until Resume is called. */
 export async function freezeMembershipAction(partnerId: string, membershipId: string, resumeDate?: string): Promise<void> {
+  await requireSessionPartnerId(partnerId);
   const record = await getBusinessRecord(partnerId, "subscriptions", membershipId);
   if (!record) return;
   await updateBusinessRecord(partnerId, "subscriptions", membershipId, {
@@ -64,6 +67,7 @@ export async function freezeMembershipAction(partnerId: string, membershipId: st
 
 /** Resumes a frozen membership and recalculates nextBillingDate from the resume point. */
 export async function resumeMembershipAction(partnerId: string, membershipId: string): Promise<void> {
+  await requireSessionPartnerId(partnerId);
   const record = await getBusinessRecord(partnerId, "subscriptions", membershipId);
   if (!record) return;
   const membership = extractMembershipFromRecord(record);
@@ -84,6 +88,7 @@ export async function resumeMembershipAction(partnerId: string, membershipId: st
 
 /** Logs a check-in timestamp for gym-style usage tracking on an active membership. */
 export async function checkInAction(partnerId: string, membershipId: string): Promise<void> {
+  await requireSessionPartnerId(partnerId);
   const record = await getBusinessRecord(partnerId, "subscriptions", membershipId);
   if (!record) return;
   const membership = extractMembershipFromRecord(record);
@@ -99,6 +104,7 @@ export async function checkInAction(partnerId: string, membershipId: string): Pr
 }
 
 export async function setBillingCycleAction(partnerId: string, membershipId: string, billingCycle: BillingCycle): Promise<void> {
+  await requireSessionPartnerId(partnerId);
   const record = await getBusinessRecord(partnerId, "subscriptions", membershipId);
   if (!record) return;
   await updateBusinessRecord(partnerId, "subscriptions", membershipId, { ...record, billingCycle });

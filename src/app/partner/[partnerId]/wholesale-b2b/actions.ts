@@ -6,6 +6,7 @@ import { createBusinessRecord, getBusinessRecord, listBusinessRecords, updateBus
 import { computeOrderLineTotal } from "@/lib/sample-data/wholesale-b2b";
 import { getPartner } from "@/lib/partnerData";
 import { notifyCentralApiBillingInvoice } from "@/lib/centralApi";
+import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 
 /**
  * Sums this dealer's own unpaid order totals — every order not yet
@@ -30,6 +31,7 @@ async function dealerOutstandingBalance(partnerId: string, dealerName: string, e
  * .bind(null, partnerId) before passing as a RecordForm `action` prop.
  */
 export async function createWholesaleOrderAction(partnerId: string, values: Record<string, unknown>): Promise<void> {
+  await requireSessionPartnerId(partnerId);
   const dealerName = String(values["dealerName"] ?? "").trim();
   if (!dealerName) throw new Error("Dealer / Distributor is required.");
 
@@ -76,6 +78,7 @@ export async function updateWholesaleOrderAction(
   recordKey: string,
   values: Record<string, unknown>
 ): Promise<void> {
+  await requireSessionPartnerId(partnerId);
   const existing = await getBusinessRecord(partnerId, "wholesale-b2b", recordKey);
   if (!existing) throw new Error("Order not found.");
 
@@ -128,6 +131,7 @@ export async function updateWholesaleOrderAction(
  * the generic Billing form do).
  */
 export async function createInvoiceFromWholesaleOrderAction(partnerId: string, orderId: string): Promise<void> {
+  await requireSessionPartnerId(partnerId);
   const record = await getBusinessRecord(partnerId, "wholesale-b2b", orderId);
   if (!record) return;
   if (record["invoiceId"]) return; // already invoiced — don't double-create
