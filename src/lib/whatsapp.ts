@@ -37,3 +37,59 @@ export async function sendWhatsAppMessage(to: string, message: string): Promise<
     console.error("[whatsapp] send failed:", err);
   }
 }
+
+/**
+ * Sends a Meta-APPROVED template message (type: "template") — the only way
+ * to reliably reach someone who hasn't messaged this WhatsApp number first
+ * (sendWhatsAppMessage's free-form text only works within an existing 24h
+ * customer-initiated conversation window, which a cold-called lead usually
+ * isn't in). `bodyParams` fills the template's {{1}}, {{2}}, ... in order —
+ * e.g. for "lead_welcome" (name, link): ["Rajesh", "https://mybizflow.in"].
+ * Returns true only once Meta's API actually accepts the send (a real HTTP
+ * 200 with a message id) — false for anything else (not configured,
+ * template not yet approved, rejected, network failure), so a caller can
+ * show an honest "sent"/"not sent" confirmation instead of assuming success.
+ */
+export async function sendWhatsAppTemplateMessage(
+  to: string,
+  templateName: string,
+  languageCode: string,
+  bodyParams: string[]
+): Promise<boolean> {
+  const phoneNumberId = env.whatsappBusinessPhoneNumberId();
+  const accessToken = env.whatsappAccessToken();
+
+  if (!phoneNumberId || !accessToken) {
+    console.log(`[whatsapp:not-configured] would send template "${templateName}" to ${to}`);
+    return false;
+  }
+
+  try {
+    const res = await fetch(`https://graph.facebook.com/v21.0/${phoneNumberId}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        to: to.replace(/[^\d]/g, ""),
+        type: "template",
+        template: {
+          name: templateName,
+          language: { code: languageCode },
+          components:
+            bodyParams.length > 0
+              ? [{ type: "body", parameters: bodyParams.map((text) => ({ type: "text", text })) }]
+              : undefined,
+        },
+      }),
+    });
+    const body = await res.json().catch(() => null);
+    if (!res.ok || !body?.messages?.[0]?.id) {
+      console.error(`[whatsapp] template "${templateName}" send failed:`, body?.error ?? res.status);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("[whatsapp] template send failed:", err);
+    return false;
+  }
+}

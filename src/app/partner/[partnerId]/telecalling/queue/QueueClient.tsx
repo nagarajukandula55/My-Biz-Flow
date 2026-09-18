@@ -178,7 +178,10 @@ export function QueueClient({
                   fd.set("leadId", lead.id);
                   fd.set("agentId", agentId);
                   startTransition(async () => {
-                    await boundLogCall(fd);
+                    const result = await boundLogCall(fd);
+                    if (result.whatsappWelcomeSent) {
+                      setMessageStatus((prev) => ({ ...prev, [lead.id]: "✅ Welcome WhatsApp message sent to lead." }));
+                    }
                     setOpenLeadId(null);
                   });
                 }}

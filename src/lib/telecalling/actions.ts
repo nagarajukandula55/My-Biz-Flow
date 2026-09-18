@@ -91,7 +91,7 @@ export async function assignLeadAction(partnerId: string, formData: FormData) {
   revalidatePath(`/partner/${partnerId}/telecalling`);
 }
 
-export async function logCallAction(partnerId: string, formData: FormData) {
+export async function logCallAction(partnerId: string, formData: FormData): Promise<{ whatsappWelcomeSent: boolean }> {
   partnerId = await requireSessionOrStaffPartnerId(partnerId);
   const leadId = String(formData.get("leadId") ?? "");
   const agentId = String(formData.get("agentId") ?? "");
@@ -99,7 +99,7 @@ export async function logCallAction(partnerId: string, formData: FormData) {
   const notes = String(formData.get("notes") ?? "").trim();
   const callbackAtRaw = String(formData.get("callbackAt") ?? "");
   if (!leadId || !agentId || !outcome) throw new Error("Lead, agent and outcome are required");
-  await logCall(partnerId, {
+  const call = await logCall(partnerId, {
     leadId,
     agentId,
     outcome,
@@ -107,6 +107,7 @@ export async function logCallAction(partnerId: string, formData: FormData) {
     callbackAt: callbackAtRaw ? new Date(callbackAtRaw) : undefined,
   });
   revalidatePath(`/partner/${partnerId}/telecalling/queue`);
+  return { whatsappWelcomeSent: call.whatsappWelcomeSent };
 }
 
 export async function sendTemplateAction(partnerId: string, formData: FormData) {

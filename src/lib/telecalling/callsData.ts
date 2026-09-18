@@ -7,9 +7,12 @@
 import { prisma } from "@/lib/prisma";
 import { assertPartnerScope } from "@/lib/tenant";
 import { updateLeadStatus, type LeadStatus } from "@/lib/telecalling/leadsData";
-import { sendWhatsAppMessage } from "@/lib/whatsapp";
+import { sendWhatsAppTemplateMessage } from "@/lib/whatsapp";
 import { isWhatsappTriggerEnabled } from "@/lib/whatsappTriggers";
 import { SITE_URL } from "@/lib/seo";
+
+/** Meta-approved WhatsApp template name/language for the lead-accepted welcome message (WhatsApp Manager > Message templates) — {{1}}=lead name, {{2}}=site link, matching the order the template body was written in. */
+const LEAD_WELCOME_TEMPLATE = { name: "lead_welcome", languageCode: "en" };
 
 export const CALL_OUTCOMES = [
   "Interested",
@@ -45,19 +48,24 @@ export type CallRecord = {
   notes: string | null;
   callbackAt: Date | null;
   createdAt: Date;
+  /** True only if the "lead accepted" WhatsApp welcome template was actually accepted by Meta's API on this call — lets the queue UI show a real confirmation instead of assuming it always sends. */
+  whatsappWelcomeSent: boolean;
 };
 
-function toRecord(row: {
-  id: string;
-  leadId: string;
-  partnerId: string;
-  agentId: string;
-  outcome: string;
-  notes: string | null;
-  callbackAt: Date | null;
-  createdAt: Date;
-  agent: { name: string };
-}): CallRecord {
+function toRecord(
+  row: {
+    id: string;
+    leadId: string;
+    partnerId: string;
+    agentId: string;
+    outcome: string;
+    notes: string | null;
+    callbackAt: Date | null;
+    createdAt: Date;
+    agent: { name: string };
+  },
+  whatsappWelcomeSent = false
+): CallRecord {
   return {
     id: row.id,
     leadId: row.leadId,
@@ -68,6 +76,7 @@ function toRecord(row: {
     notes: row.notes,
     callbackAt: row.callbackAt,
     createdAt: row.createdAt,
+    whatsappWelcomeSent,
   };
 }
 
@@ -77,7 +86,7 @@ export async function listCallsForLead(leadId: string, partnerId: string): Promi
     include: { agent: true },
     orderBy: { createdAt: "desc" },
   });
-  return rows.map(toRecord);
+  return rows.map((r) => toRecord(r));
 }
 
 /** Logs a call's outcome and advances the Lead's status accordingly. */
@@ -102,17 +111,22 @@ export async function logCall(
   await updateLeadStatus(input.leadId, partnerId, OUTCOME_TO_LEAD_STATUS[input.outcome]);
 
   // Automated WhatsApp trigger — off by default, turned on per
-  // PlatformSettings.enabledWhatsappTriggers (see whatsappTriggers.ts).
-  // Best-effort: sendWhatsAppMessage never throws (see whatsapp.ts), so a
-  // send failure/misconfiguration can never break logging the call itself.
+  // PlatformSettings.enabledWhatsappTriggers (see whatsappTriggers.ts). Uses
+  // the Meta-APPROVED "lead_welcome" template (WhatsApp Manager > Message
+  // templates), not free-form text — a cold-called lead who's never
+  // messaged this number first is outside the 24h window free-form
+  // messages require, so only a template can reliably reach them.
+  // Best-effort: sendWhatsAppTemplateMessage never throws (see whatsapp.ts),
+  // so a send failure/misconfiguration can never break logging the call.
+  let whatsappWelcomeSent = false;
   if (input.outcome === "Accepted" && (await isWhatsappTriggerEnabled("telecalling.leadAccepted"))) {
-    await sendWhatsAppMessage(
+    whatsappWelcomeSent = await sendWhatsAppTemplateMessage(
       lead.phone,
-      `🎉 Hi ${lead.name}, thank you for showing interest in *My Biz Flow*!\n\n` +
-        `We're excited to have you onboard. Take a look at everything we offer here: ${SITE_URL}\n\n` +
-        `Our team will be in touch shortly to help you get started — feel free to reply here anytime with questions.`
+      LEAD_WELCOME_TEMPLATE.name,
+      LEAD_WELCOME_TEMPLATE.languageCode,
+      [lead.name, SITE_URL]
     );
   }
 
-  return toRecord(row);
+  return toRecord(row, whatsappWelcomeSent);
 }
