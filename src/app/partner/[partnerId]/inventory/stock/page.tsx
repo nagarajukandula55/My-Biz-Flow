@@ -2,8 +2,10 @@ import { AppShell } from "@/components/AppShell";
 import { registerPage } from "@/lib/designer/registry";
 import { StockClientTable } from "./StockClientTable";
 import { StockNewButton } from "./StockNewButton";
+import { BulkUploadButton } from "@/components/BulkUploadButton";
+import { bulkImportStockAction } from "./actions";
 import { applyCustomizations } from "@/lib/designer/customizations";
-import { stockColumns } from "@/lib/sample-data/warehouse";
+import { stockColumns, stockFormFields } from "@/lib/sample-data/warehouse";
 import { listBusinessRecords } from "@/lib/businessRecords";
 
 registerPage({
@@ -31,7 +33,17 @@ export default async function StockPage({ params }: { params: { partnerId: strin
     <AppShell
       topbarTitle="Inventory (Stock)"
       topbarActions={
-        <StockNewButton partnerId={params.partnerId} />
+        <div className="flex items-center gap-3">
+          <BulkUploadButton
+            title="Bulk Upload Stock"
+            columns={stockFormFields.map((f) => f.key)}
+            requiredColumnsNote="Material, Warehouse and Qty on Hand are required per row."
+            sampleRow={["USB-C Charging Port Flex Cable", "Central Warehouse — Bengaluru", "25", "0", "10"]}
+            templateFilename="stock-template.csv"
+            importAction={bulkImportStockAction.bind(null, params.partnerId)}
+          />
+          <StockNewButton partnerId={params.partnerId} />
+        </div>
       }
     >
       <div>
