@@ -255,6 +255,16 @@ model Partner {
   /// falling back to a partner in the same city/state (see
   /// src/lib/serviceCentreInquiryAssignment.ts).
   serviceCentrePincodes     Json @default("[]")
+  /// "Serialized Inventory" toggle on /partner/<id>/settings. When false
+  /// (the default — every existing partner reads as off), Service Centre
+  /// workorders can use free-text parts, BOM catalog parts, and pricing
+  /// freely with NO stock validation blocking Mark Completed/Close — parts
+  /// are recorded for pricing only, nothing is checked or deducted against
+  /// Inventory. When true, deductInventoryForWorkorderAction (see
+  /// src/app/partner/[partnerId]/service-centre/[recordId]/actions.ts)
+  /// fail-closed checks and deducts stock for every BOM-catalog-matched
+  /// part line before allowing the job to complete.
+  serializedInventoryEnabled Boolean @default(false)
   /// Free-text terms printed on the partner's own quotes/invoices — the
   /// GENERAL default. Each of the per-document-type overrides below falls
   /// back to this when blank, and a document whose specific override AND

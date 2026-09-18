@@ -183,19 +183,40 @@ export async function patchServiceCentreWorkorderAction(
  * serialized line's `qty` is not read for the deduction amount) and its
  * entered serial is recorded on the stock row's `consumedSerials` list for
  * traceability; a non-serialized line deducts its own `qty`.
+ *
+ * Gated entirely by Partner.serializedInventoryEnabled (the "Serialized
+ * Inventory" toggle on /partner/<id>/settings). Off (the default) means
+ * this is a complete no-op: free-text parts, BOM catalog parts, and their
+ * pricing all flow through to Mark Completed/Close with no stock
+ * validation or deduction at all — inventory tracking simply isn't part of
+ * this partner's workflow. Only when explicitly turned on does this
+ * fail-closed check/deduct against real stock.
  */
 export async function deductInventoryForWorkorderAction(partnerId: string, workorderId: string): Promise<void> {
   await assertCanActOnServiceCentre(partnerId);
   const record = await requireWorkorder(partnerId, workorderId);
   const lifecycle = extractLifecycleFromRecord(record);
   if (lifecycle.inventoryDeducted) return; // already deducted — don't double-count
+
+  const partner = await getPartner(partnerId);
+  if (!partner?.serializedInventoryEnabled) {
+    await updateBusinessRecord(partnerId, "service-centre", workorderId, { ...record, inventoryDeducted: true });
+    return;
+  }
+
   if (lifecycle.partLines.length === 0) {
     await updateBusinessRecord(partnerId, "service-centre", workorderId, { ...record, inventoryDeducted: true });
     return;
   }
 
-  const linesToConsume = lifecycle.partLines.filter((line) => !line.pending);
-  const partner = await getPartner(partnerId);
+  // A part line is only stock-tracked when it was matched to a BOM catalog
+  // item (materialId set) — see WorkorderLifecycle.tsx's setPartLabel():
+  // typing a name that doesn't match anything is a deliberately supported
+  // "free-text, unpriced" line, not an error state. Without this filter,
+  // ANY workorder containing one would fail the stock pre-check below with
+  // "0 available" (findStockRecord("") never matches a real stock row) and
+  // Mark Completed would throw for every such job.
+  const linesToConsume = lifecycle.partLines.filter((line) => !line.pending && line.materialId);
 
   // Fail-closed pre-check — every line must have enough stock before ANY of them are deducted.
   const shortages: string[] = [];

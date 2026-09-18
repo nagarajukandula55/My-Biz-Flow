@@ -4,7 +4,7 @@ import { useState } from "react";
 import { RecordForm, type FormFieldDef } from "@/components/RecordForm";
 import { StatusChip } from "@/components/StatusChip";
 import { MODULES } from "@/lib/designer/modules";
-import { requestModuleAccessAction, saveBusinessDetailsAction } from "./actions";
+import { requestModuleAccessAction, saveBusinessDetailsAction, saveSerializedInventoryEnabledAction } from "./actions";
 import { LogoUploadForm } from "./LogoUploadForm";
 // Data Export / Backup is hidden for now per product decision — the button,
 // its underlying Server Action and download route are untouched, just not
@@ -39,6 +39,7 @@ export function SettingsPageClient({
   moduleStatuses,
   partnerId,
   businessDetails,
+  serializedInventoryEnabled,
 }: {
   visibleModuleSlugs: string[];
   /** Real ModuleAccessKey state per module (src/lib/designer/accessKeys.ts) — "active", "requested" (pending Super Admin review), or absent (never requested / previously denied). */
@@ -53,9 +54,25 @@ export function SettingsPageClient({
     currency: string;
     logoDataUrl: string | null;
   };
+  /** Partner.serializedInventoryEnabled — real, persisted value; see the toggle below. */
+  serializedInventoryEnabled: boolean;
 }) {
   const visibleSet = new Set(visibleModuleSlugs);
-  const [serializedInventory, setSerializedInventory] = useState(false);
+  const [serializedInventory, setSerializedInventory] = useState(serializedInventoryEnabled);
+  const [savingToggle, setSavingToggle] = useState(false);
+
+  async function toggleSerializedInventory() {
+    const next = !serializedInventory;
+    setSerializedInventory(next); // optimistic — a failed save reverts below
+    setSavingToggle(true);
+    try {
+      await saveSerializedInventoryEnabledAction(partnerId, next);
+    } catch {
+      setSerializedInventory(!next);
+    } finally {
+      setSavingToggle(false);
+    }
+  }
 
   return (
     <div>
@@ -146,21 +163,24 @@ export function SettingsPageClient({
         <div className="mt-8 max-w-2xl">
           <h2 className="font-display text-lg font-bold text-text">Serialized Inventory</h2>
           <p className="mt-1 text-sm text-text-muted">
-            When enabled, materials can be tracked by Serial/IMEI number and workorders will validate
-            against Inventory/Warehouse stock before closing. Only shown here because the Inventory /
-            Warehouse module is enabled above — demo stub, does not persist yet.
+            Off (default): workorders can use free-text parts and BOM catalog parts with their pricing, and
+            Mark Completed / Close never checks or deducts Inventory stock. On: every BOM-matched part line
+            is validated and deducted against real Inventory/Warehouse stock before a workorder can
+            complete — a job is blocked if there isn&apos;t enough on hand. Only shown here because the
+            Inventory / Warehouse module is enabled above.
           </p>
           <div className="mt-4 flex items-center justify-between rounded-md border border-border bg-bg-raised px-3 py-2.5">
             <div>
               <div className="text-sm font-semibold text-text">Serialized Inventory</div>
               <div className="mt-0.5 text-xs text-text-muted">
-                Enables serial/IMEI tracking across the Inventory and Warehouse module.
+                Enables stock validation/deduction across Service Centre workorders.
               </div>
             </div>
             <button
               type="button"
-              onClick={() => setSerializedInventory((v) => !v)}
-              className={`h-6 w-11 flex-shrink-0 rounded-full transition-colors ${
+              onClick={toggleSerializedInventory}
+              disabled={savingToggle}
+              className={`h-6 w-11 flex-shrink-0 rounded-full transition-colors disabled:opacity-60 ${
                 serializedInventory ? "bg-accent" : "bg-bg-sunken"
               }`}
               aria-pressed={serializedInventory}

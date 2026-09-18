@@ -9,6 +9,7 @@ import {
   updatePartnerBusinessDetails,
   updatePartnerLogo,
   updatePartnerServiceArea,
+  updatePartnerSerializedInventoryEnabled,
 } from "@/lib/partnerData";
 import { requestAccessKey } from "@/lib/designer/accessKeys";
 
@@ -131,6 +132,17 @@ export async function savePartnerConfigAction(partnerId: string, formData: FormD
 
   revalidatePath(`/partner/${partnerId}/settings`);
   redirect(`/partner/${partnerId}/settings?saved=1`);
+}
+
+/**
+ * Settings' "Serialized Inventory" toggle — real persistence for what used
+ * to be a client-only demo stub. Called directly from the client toggle
+ * (not a <form>), same pattern as saveLogoAction.
+ */
+export async function saveSerializedInventoryEnabledAction(partnerId: string, enabled: boolean): Promise<void> {
+  await requireSessionPartnerId(partnerId);
+  await updatePartnerSerializedInventoryEnabled(partnerId, enabled);
+  revalidatePath(`/partner/${partnerId}/settings`);
 }
 
 /**

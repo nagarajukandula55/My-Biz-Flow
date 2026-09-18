@@ -54,6 +54,7 @@ export default async function SettingsPage({ params }: { params: { partnerId: st
           currency: partner?.currency ?? "INR",
           logoDataUrl: partner?.logoDataUrl ?? null,
         }}
+        serializedInventoryEnabled={partner?.serializedInventoryEnabled ?? false}
       />
       {partner && (
         // SettingsTabs reads the ?tab= query param (useSearchParams) so a

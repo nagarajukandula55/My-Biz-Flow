@@ -75,6 +75,8 @@ export type PartnerRecord = {
   /** Whole rupees (this app stores money in rupees, not paise). */
   defaultLaborCharge: number | null;
   upiId: string | null;
+  /** Settings' "Serialized Inventory" toggle — see schema.prisma's comment on the column for what it gates. */
+  serializedInventoryEnabled: boolean;
 };
 
 function toRecord(row: {
@@ -124,6 +126,7 @@ function toRecord(row: {
   /** Whole rupees (this app stores money in rupees, not paise). */
   defaultLaborCharge: number | null;
   upiId: string | null;
+  serializedInventoryEnabled: boolean;
 }): PartnerRecord {
   return {
     ...row,
@@ -306,6 +309,19 @@ export async function updatePartnerServiceArea(
       serviceCentreServiceTypes: parseServiceTypes(input.serviceTypes),
       serviceCentrePincodes: parsePincodeList(input.pincodes),
     },
+  });
+}
+
+/**
+ * Settings' "Serialized Inventory" toggle — was a client-only demo stub;
+ * this is its real persistence. See Partner.serializedInventoryEnabled's
+ * schema comment and deductInventoryForWorkorderAction (service-centre
+ * [recordId]/actions.ts) for what turning this on/off actually gates.
+ */
+export async function updatePartnerSerializedInventoryEnabled(partnerId: string, enabled: boolean): Promise<void> {
+  await prisma.partner.update({
+    where: { id: partnerId },
+    data: { serializedInventoryEnabled: enabled },
   });
 }
 
