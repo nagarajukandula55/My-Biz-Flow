@@ -9,7 +9,10 @@
  * another partner's revenue/workorders.
  */
 import { prisma } from "@/lib/prisma";
-import type { ReportFrequency } from "@/lib/telegramTemplates";
+import { businessReportMessage, type ReportFrequency } from "@/lib/telegramTemplates";
+import { getPartner } from "@/lib/partnerData";
+import { listPartnersWithReportsEnabled, sendPartnerTelegramReport, sendRawTelegramMessage } from "@/lib/telegram";
+import { env } from "@/lib/env";
 
 /** True when `now` falls on the last calendar day of its month. */
 function isLastDayOfMonth(now: Date): boolean {
@@ -23,8 +26,8 @@ export function shouldSendReportToday(frequency: ReportFrequency, now: Date): bo
   return isLastDayOfMonth(now); // MONTHLY
 }
 
-/** True once this partner has already gotten (or had an attempted) send today — Vercel Cron doesn't guarantee exactly-once, so this is the idempotency check. All three frequencies only ever trigger once per calendar day (see shouldSendReportToday), so a same-day check is sufficient for all of them. */
-export function alreadySentToday(lastReportSentAt: Date | null, now: Date): boolean {
+/** True once this partner has already gotten (or had an attempted) send today for this cadence — Vercel Cron doesn't guarantee exactly-once, so this is the idempotency check. Each cadence only ever triggers once per calendar day (see shouldSendReportToday), so a same-day check per cadence is sufficient. `lastReportSentAt` is TelegramSettingsRecord's per-cadence stamp map (src/lib/telegram.ts). */
+export function alreadySentToday(lastReportSentAt: Date | null | undefined, now: Date): boolean {
   if (!lastReportSentAt) return false;
   return lastReportSentAt.toDateString() === now.toDateString();
 }
@@ -142,4 +145,124 @@ export async function computePartnerReportComparison(
   ]);
   const changePct = prior.revenue === 0 ? "n/a" : `${(((current.revenue - prior.revenue) / prior.revenue) * 100).toFixed(1)}%`;
   return { current, prior, changePct };
+}
+
+function formatInr(n: number): string {
+  return `₹${Math.round(n).toLocaleString("en-IN")}`;
+}
+
+export type ReportPushDetail = { partnerId: string; businessName: string; ok: boolean; error?: string };
+export type ReportPushResult = {
+  cadence: ReportFrequency;
+  attempted: number;
+  sent: number;
+  failed: number;
+  details: ReportPushDetail[];
+};
+
+/**
+ * Builds and sends one partner's digest for the given frequency — the exact
+ * send this frequency's automatic cron run performs for a due partner,
+ * pulled out so the manual "push report now" bridge (src/app/api/admin/
+ * push-reports/route.ts) can reuse it without duplicating the
+ * comparison/template/send sequence.
+ */
+export async function sendOnePartnerReport(partnerId: string, frequency: ReportFrequency, now: Date): Promise<void> {
+  const partner = await getPartner(partnerId);
+  if (!partner) throw new Error("Partner not found");
+
+  const { current, prior, changePct } = await computePartnerReportComparison(partnerId, frequency, now);
+  const message = await businessReportMessage({
+    partnerBusinessName: partner.businessName,
+    frequency,
+    revenue: formatInr(current.revenue),
+    priorRevenue: formatInr(prior.revenue),
+    invoiceCount: current.invoiceCount,
+    priorInvoiceCount: prior.invoiceCount,
+    workorderCount: current.workorderCount,
+    priorWorkorderCount: prior.workorderCount,
+    changePct,
+  });
+  await sendPartnerTelegramReport(partnerId, frequency, message);
+}
+
+/**
+ * Manual "push report now" (Super Admin, via the Admin app's bridge call) —
+ * bypasses shouldSendReportToday/alreadySentToday entirely, since an explicit
+ * admin-triggered send is the whole point (unlike the cron, which only fires
+ * on a partner's own due day). Scope is either every partner with at least
+ * one connected chat (same candidate set the cron reads via
+ * listPartnersWithReportsEnabled — routing["report"] === "none" still opts a
+ * partner out at send time, inside sendPartnerTelegramReport) or one
+ * specific partner regardless of their own routing, since picking a single
+ * partner is already an explicit admin choice. lastReportSentAt still gets
+ * stamped for this cadence (inside sendPartnerTelegramReport) so a same-day
+ * automatic cron run for that partner/cadence treats this as already-sent.
+ */
+export async function pushTelegramReportsNow(
+  frequency: ReportFrequency,
+  opts: { partnerId?: string; now?: Date } = {}
+): Promise<ReportPushResult> {
+  const now = opts.now ?? new Date();
+  const details: ReportPushDetail[] = [];
+
+  let targets: { partnerId: string; businessName: string }[];
+  if (opts.partnerId) {
+    const partner = await getPartner(opts.partnerId);
+    if (!partner) throw new Error(`No partner found for id ${opts.partnerId}`);
+    targets = [{ partnerId: partner.id, businessName: partner.businessName }];
+  } else {
+    const candidates = await listPartnersWithReportsEnabled();
+    const partners = await Promise.all(candidates.map((c) => getPartner(c.partnerId)));
+    targets = candidates
+      .map((c, i) => ({ partnerId: c.partnerId, businessName: partners[i]?.businessName }))
+      .filter((t): t is { partnerId: string; businessName: string } => Boolean(t.businessName));
+  }
+
+  for (const target of targets) {
+    try {
+      await sendOnePartnerReport(target.partnerId, frequency, now);
+      details.push({ partnerId: target.partnerId, businessName: target.businessName, ok: true });
+    } catch (err) {
+      details.push({
+        partnerId: target.partnerId,
+        businessName: target.businessName,
+        ok: false,
+        error: err instanceof Error ? err.message : "Send failed",
+      });
+    }
+  }
+
+  const sent = details.filter((d) => d.ok).length;
+  return { cadence: frequency, attempted: details.length, sent, failed: details.length - sent, details };
+}
+
+/**
+ * Best-effort ops digest to the Super Admin's own Telegram (TELEGRAM_OPS_CHAT_ID,
+ * NOT any partner's chat) after a report run — automatic cron or manual push.
+ * Must never throw: a summary-send failure should never break the cron
+ * response or the manual push's own success response.
+ */
+export async function sendReportRunOpsSummary(params: {
+  trigger: "cron" | "manual";
+  cadence: string;
+  attempted: number;
+  sent: number;
+  failed: number;
+  now?: Date;
+}): Promise<void> {
+  try {
+    const opsChatId = env.telegramOpsChatId();
+    if (!opsChatId) return;
+    const when = (params.now ?? new Date()).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" });
+    const lines = [
+      `📊 Telegram report run (${params.trigger === "manual" ? "manual push" : "cron"})`,
+      `Cadence: ${params.cadence}`,
+      `Attempted: ${params.attempted} · Sent: ${params.sent} · Failed: ${params.failed}`,
+      when,
+    ];
+    await sendRawTelegramMessage(opsChatId, lines.join("\n"));
+  } catch (err) {
+    console.error("[sendReportRunOpsSummary] failed:", err);
+  }
 }
