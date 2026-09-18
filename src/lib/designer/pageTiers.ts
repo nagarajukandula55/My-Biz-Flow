@@ -119,6 +119,15 @@ export const DEFAULT_PAGE_TIERS: Record<string, PlanTier> = {
   "service-centre.detail": "basic",
   "service-centre.solutions.list": "basic",
   "service-centre.solutions.create": "basic",
+  // The standalone /solutions/new form and the list page stay Basic — see
+  // above. This is a NARROWER gate on top of that: only the workorder
+  // repair page's inline "+ Add Solution" quick-add (createServiceCentreSolutionInlineAction)
+  // checks it, to decide whether a Starter/Basic partner's quick-add
+  // persists to the reusable catalog (Pro+) or is used for just the current
+  // workorder and discarded (Basic) — Solution is already a plain label
+  // field on the workorder record (WorkorderLifecycle.tsx), never a
+  // required foreign key, so skipping catalog persistence on Basic is safe.
+  "service-centre.solutions.save-to-catalog": "pro",
   "service-centre.fault-codes.list": "pro",
   "service-centre.fault-codes.create": "pro",
   "service-centre.symptom-codes.list": "pro",

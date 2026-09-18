@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createBusinessRecord } from "@/lib/businessRecords";
 import { createBusinessRecordAction } from "@/lib/businessRecordActions";
-import { assertPageTierAccess } from "@/lib/tenant";
+import { assertPageTierAccess, getPageTierAccess } from "@/lib/tenant";
 import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import { getPartner } from "@/lib/partnerData";
 import { parseProductDomains } from "@/lib/catalog/productDomains";
@@ -105,17 +105,29 @@ export async function createServiceCentreModelInlineAction(
 }
 
 /**
- * Solutions has no tier gate (Basic can already create them via the full
- * /solutions/new form) — this inline variant exists purely so the
- * workorder repair page's "+ Add Solution" quick-add modal doesn't
- * navigate away, same reasoning as the Brand/Model/BOM inline actions
- * above, just without an assertPageTierAccess call.
+ * Solutions has no tier gate on reading/creating from the full /solutions/new
+ * form (Basic can already do that) — but THIS inline quick-add, reached
+ * mid-workorder, is separately checked against
+ * "service-centre.solutions.save-to-catalog" (pageTiers.ts): a Pro+ partner
+ * still gets the same persist-and-reuse behavior as before, but a
+ * Starter/Basic partner's quick-add is used for just this workorder and
+ * never written to the reusable catalog — the workorder only ever stores
+ * Solution as a plain label field (WorkorderLifecycle.tsx's solutionId/
+ * solutionLabel), never a required foreign key, so there's nothing else
+ * that depends on this row existing.
  */
 export async function createServiceCentreSolutionInlineAction(
   partnerId: string,
   values: Record<string, unknown>
 ): Promise<InlineCreateResult> {
   partnerId = await requireSessionPartnerId(partnerId);
+  const title = String(values["title"] ?? "");
+
+  const access = await getPageTierAccess(partnerId, "service-centre.solutions.save-to-catalog");
+  if (!access.allowed) {
+    return { label: title || undefined };
+  }
+
   const record = await createBusinessRecord(partnerId, "service-centre-solutions", {
     status: "Active",
     category: "Other",
