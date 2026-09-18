@@ -9,6 +9,8 @@
  */
 
 import { prisma } from "@/lib/prisma";
+import { getErrorChatId } from "@/lib/platformSettings";
+import { sendRawTelegramMessage } from "@/lib/telegram";
 
 export type LoggedError = {
   id: string;
@@ -57,6 +59,26 @@ export async function logError(input: {
   } catch {
     // Never let logging itself throw.
   }
+
+  // Best-effort Telegram alert to the dedicated errors group — kept in its
+  // own try/catch so a Telegram outage can never affect the DB log above,
+  // and never propagates back to whatever crashed in the first place.
+  try {
+    const chatId = await getErrorChatId();
+    if (chatId) {
+      const severity = (input.severity ?? "error").toUpperCase();
+      await sendRawTelegramMessage(
+        chatId,
+        `⚠️ <b>${severity}</b> — ${escapeHtml(input.source)}\n${escapeHtml(input.message)}`
+      );
+    }
+  } catch {
+    // Never let alerting itself throw.
+  }
+}
+
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 export async function getLoggedErrors(): Promise<LoggedError[]> {

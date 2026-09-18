@@ -12,7 +12,7 @@ import { prisma } from "@/lib/prisma";
 import { businessReportMessage, type ReportFrequency } from "@/lib/telegramTemplates";
 import { getPartner } from "@/lib/partnerData";
 import { listPartnersWithReportsEnabled, sendPartnerTelegramReport, sendRawTelegramMessage } from "@/lib/telegram";
-import { env } from "@/lib/env";
+import { getOpsChatId } from "@/lib/platformSettings";
 
 /** True when `now` falls on the last calendar day of its month. */
 function isLastDayOfMonth(now: Date): boolean {
@@ -252,7 +252,7 @@ export async function sendReportRunOpsSummary(params: {
   now?: Date;
 }): Promise<void> {
   try {
-    const opsChatId = env.telegramOpsChatId();
+    const opsChatId = await getOpsChatId();
     if (!opsChatId) return;
     const when = (params.now ?? new Date()).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" });
     const lines = [

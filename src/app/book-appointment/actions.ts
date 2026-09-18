@@ -7,7 +7,7 @@ import { findPartnerForInquiry } from "@/lib/serviceCentreInquiryAssignment";
 import { sendPartnerTelegramAlert, sendRawTelegramMessage } from "@/lib/telegram";
 import { inquiryAssignedMessage, inquiryUnassignedMessage } from "@/lib/telegramTemplates";
 import { serviceTypeLabel } from "@/lib/serviceTypes";
-import { env } from "@/lib/env";
+import { getOpsChatId } from "@/lib/platformSettings";
 
 /**
  * Public, no-login "Book Appointment" submit — the customer never picks a
@@ -47,7 +47,7 @@ export async function bookAppointmentAction(formData: FormData): Promise<void> {
       data: { customerName, customerPhone, serviceType, complaint, pincode, addressLine, brand, model },
     });
 
-    const opsChatId = env.telegramOpsChatId();
+    const opsChatId = await getOpsChatId();
     if (opsChatId) {
       await sendRawTelegramMessage(
         opsChatId,

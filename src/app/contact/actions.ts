@@ -1,7 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { env } from "@/lib/env";
+import { getOpsChatId } from "@/lib/platformSettings";
 import { sendRawTelegramMessage } from "@/lib/telegram";
 import { contactSubmittedMessage } from "@/lib/telegramTemplates";
 
@@ -26,7 +26,7 @@ export async function submitContactForm(formData: FormData) {
   await prisma.contactSubmission.create({ data: { name, email, message } });
 
   try {
-    const opsChatId = env.telegramOpsChatId();
+    const opsChatId = await getOpsChatId();
     if (opsChatId) {
       await sendRawTelegramMessage(opsChatId, await contactSubmittedMessage({ name, email, message }));
     }

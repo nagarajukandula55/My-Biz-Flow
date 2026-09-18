@@ -16,7 +16,7 @@
  */
 import { prisma } from "@/lib/prisma";
 import { createBusinessRecord, getBusinessRecord, updateBusinessRecord, listBusinessRecords } from "@/lib/businessRecords";
-import { env } from "@/lib/env";
+import { getOpsChatId } from "@/lib/platformSettings";
 import { sendRawTelegramMessage } from "@/lib/telegram";
 
 const MODULE_SLUG = "support-tickets";
@@ -109,7 +109,7 @@ async function findThreadAnchor(ticketId: string): Promise<{ chatId: string; mes
 }
 
 async function pushToTelegramThread(ticket: SupportTicketRecord, text: string): Promise<void> {
-  const opsChatId = env.telegramOpsChatId();
+  const opsChatId = await getOpsChatId();
   if (!opsChatId) return; // not configured — the chat still works via the widget/admin page, just no Telegram side
 
   const anchor = await findThreadAnchor(ticket.id);

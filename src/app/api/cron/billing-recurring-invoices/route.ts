@@ -7,6 +7,7 @@ import { listBusinessRecords, getBusinessRecord, createBusinessRecord, updateBus
 import { advanceNextRunDate, type RecurringFrequency } from "@/lib/sample-data/billing-recurring";
 import { notifyCentralApiBillingInvoice } from "@/lib/centralApi";
 import { sendRawTelegramMessage } from "@/lib/telegram";
+import { getOpsChatId } from "@/lib/platformSettings";
 
 /**
  * Vercel Cron entry point (schedule it in vercel.json, e.g. daily) — for
@@ -96,7 +97,7 @@ export async function GET(request: Request) {
     // Site-administration alert -> the admin/ops group (TELEGRAM_OPS_CHAT_ID),
     // never a partner's own chat — this is a platform integration failure,
     // not something any partner needs to see or act on.
-    const opsChatId = env.telegramOpsChatId();
+    const opsChatId = await getOpsChatId();
     if (opsChatId) {
       await sendRawTelegramMessage(
         opsChatId,

@@ -10,7 +10,7 @@ import { sendPartnerWelcomeEmail } from "@/lib/email";
 import { sendPartnerApplicationReceivedEmail } from "@/lib/email/partnerEmails";
 import { sendRawTelegramMessage } from "@/lib/telegram";
 import { newPartnerApplicationMessage } from "@/lib/telegramTemplates";
-import { env } from "@/lib/env";
+import { getOpsChatId } from "@/lib/platformSettings";
 import {
   PARTNER_SESSION_COOKIE,
   PARTNER_SESSION_MAX_AGE_SECONDS,
@@ -78,7 +78,7 @@ export async function registerBusiness(formData: FormData) {
     // could be dropped before it resolves.
     await sendPartnerApplicationReceivedEmail({ to: businessEmail, businessName });
 
-    const opsChatId = env.telegramOpsChatId();
+    const opsChatId = await getOpsChatId();
     if (opsChatId) {
       await sendRawTelegramMessage(
         opsChatId,

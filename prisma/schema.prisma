@@ -80,6 +80,21 @@ model NumberingCounter {
   @@map("numbering_counters")
 }
 
+/// Singleton row (id is always "platform") holding platform-ops config that
+/// used to live only in env vars — currently the two Telegram group chat
+/// IDs: one for business-facing ops notifications (signups, bookings,
+/// support tickets — previously TELEGRAM_OPS_CHAT_ID only), one for
+/// application error alerts (new — see src/lib/errorLog.ts). Editable from
+/// the separate My-Biz-Flow-Admin app against this same physical DB; either
+/// field falling back to its env var when unset (see src/lib/platformSettings.ts).
+model PlatformSettings {
+  id          String  @id @default("platform")
+  opsChatId   String?
+  errorChatId String?
+
+  @@map("platform_settings")
+}
+
 /// Mirrors data/page-access.json — pageId -> isPublic (src/lib/designer/pageAccess.ts).
 /// Only rows for pages actually marked public are stored (absence = private),
 /// same as the JSON store's "delete key when false" convention.
