@@ -17,6 +17,13 @@ registerPage({
   sourceFile: "src/app/solutions/field-force/page.tsx",
 });
 
+// The one canonical Field Force operator account (FF0001) — see
+// scripts/createFieldForceOperator.ts. Providers/customers sign up
+// directly under this account, not a business they register themselves.
+const FF_OPERATOR_ID = "FF0001";
+const PROVIDER_SIGNUP_HREF = `/partner/${FF_OPERATOR_ID}/field-force/provider/signup`;
+const CUSTOMER_SIGNUP_HREF = `/partner/${FF_OPERATOR_ID}/field-force/customer/signup`;
+
 export const metadata: Metadata = {
   title: "Join as a Service Provider or Book a Home Service | My Biz Flow Field Force",
   description:
@@ -117,7 +124,7 @@ export default function FieldForceSolutionPage() {
           <Link href="/solutions/telecalling" className="text-text-muted hover:text-text">Telecalling</Link>
           <Link href="/pricing" className="text-text-muted hover:text-text">Pricing</Link>
           <Link href="/login" className="text-text-muted hover:text-text">Sign in</Link>
-          <Link href="/contact" className="btn-accent mbf-cta-glow">Get started</Link>
+          <Link href={PROVIDER_SIGNUP_HREF} className="btn-accent mbf-cta-glow">Get started</Link>
         </nav>
       </header>
 
@@ -131,8 +138,8 @@ export default function FieldForceSolutionPage() {
           done? Request one and get matched to a provider near you.
         </p>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
-          <Link href="/contact" className="btn-accent mbf-cta-glow">Join as a Provider — free</Link>
-          <Link href="/contact" className="btn-outline">Request a Service</Link>
+          <Link href={PROVIDER_SIGNUP_HREF} className="btn-accent mbf-cta-glow">Join as a Provider — free</Link>
+          <Link href={CUSTOMER_SIGNUP_HREF} className="btn-outline">Request a Service</Link>
         </div>
       </section>
 
@@ -186,8 +193,8 @@ export default function FieldForceSolutionPage() {
       <section className="border-t border-border px-6 py-16 text-center">
         <h2 className="font-display text-2xl font-bold text-text">Ready to get started?</h2>
         <div className="mt-6 flex flex-wrap items-center justify-center gap-4">
-          <Link href="/contact" className="btn-accent mbf-cta-glow">Join as a Provider — free</Link>
-          <Link href="/contact" className="btn-outline">Request a Service</Link>
+          <Link href={PROVIDER_SIGNUP_HREF} className="btn-accent mbf-cta-glow">Join as a Provider — free</Link>
+          <Link href={CUSTOMER_SIGNUP_HREF} className="btn-outline">Request a Service</Link>
         </div>
       </section>
 

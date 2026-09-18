@@ -45,8 +45,8 @@ const APPS = [
     slug: "field-force",
     name: "Field Force",
     tagline: "For providers and customers — bookings, dispatch, job tracking.",
-    installFrom: "Providers and customers each get their own login link from the business they work with or booked through — sign in, then \"Add to Home Screen\".",
-    cta: { label: "Learn more", href: "/solutions/field-force" },
+    installFrom: "Free to join. Sign up as a provider or request a service, then use \"Add to Home Screen\" from your browser.",
+    cta: { label: "Join as a Provider", href: "/partner/FF0001/field-force/provider/signup" },
     learnMore: "/solutions/field-force",
   },
 ];

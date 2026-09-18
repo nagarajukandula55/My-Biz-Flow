@@ -39,8 +39,9 @@ const DEFAULT_GST_RATE = 18;
  * actually invoiced — the persisted Billing record and printed Sales
  * Invoice disagreed with what the workorder page showed the customer.
  */
-function baseRateOf(entered: number, taxPercent: number, rateMode?: "excl" | "incl"): number {
-  return rateMode === "incl" ? entered / (1 + taxPercent / 100) : entered;
+function baseRateOf(entered: number, taxPercent: number, rateMode?: "excl" | "incl", discountPercent?: number): number {
+  const base = rateMode === "incl" ? entered / (1 + taxPercent / 100) : entered;
+  return discountPercent ? base * (1 - Math.min(100, Math.max(0, discountPercent)) / 100) : base;
 }
 
 /**
@@ -72,7 +73,7 @@ export async function buildServiceCentreLines(
       hsn: SERVICE_HSN,
       quantity: 1,
       unit: "Service",
-      rate: underWarranty ? 0 : baseRateOf(line.laborCharge, gstRate, line.rateMode),
+      rate: underWarranty ? 0 : baseRateOf(line.laborCharge, gstRate, line.rateMode, line.discountPercent),
       gstRate,
     });
   }
@@ -100,7 +101,7 @@ export async function buildServiceCentreLines(
       // afterwards. Falls back to the live catalog for older lines.
       // baseRateOf() backs tax out of an "Incl GST"-entered rate first,
       // same as WorkorderLifecycle.tsx's own live total preview.
-      rate: underWarranty ? 0 : baseRateOf(enteredRate, gstRate, line.rateMode),
+      rate: underWarranty ? 0 : baseRateOf(enteredRate, gstRate, line.rateMode, line.discountPercent),
       gstRate,
     });
   }

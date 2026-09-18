@@ -379,6 +379,8 @@ export interface PartLine {
   cost?: number;
   /** Batch/lot number of the specific stock consumed for this line — future-proofing beyond AN-CRM's BOM shape. */
   batchNumber?: string;
+  /** 0-100. Applied to the (tax-exclusive) base rate before tax, e.g. 10 = 10% off. Unset/0 means no discount. */
+  discountPercent?: number;
 }
 
 export interface ServiceLine {
@@ -397,6 +399,8 @@ export interface ServiceLine {
   symptomCodeLabel?: string;
   taxRate?: number;
   hsnCode?: string;
+  /** Same semantics as PartLine.discountPercent — 0-100, applied to the (tax-exclusive) labour charge before tax. */
+  discountPercent?: number;
 }
 
 /**

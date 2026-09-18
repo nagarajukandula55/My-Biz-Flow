@@ -575,8 +575,10 @@ export function WorkorderLifecycle({
    * number. "excl" (the default for every line that predates this field)
    * is the identity case: the entered number already IS the base rate.
    */
-  function baseRateOf(entered: number, taxPercent: number, rateMode?: "excl" | "incl"): number {
-    return rateMode === "incl" ? entered / (1 + taxPercent / 100) : entered;
+  /** discountPercent (0-100) is applied to the base rate AFTER the incl/excl-GST reverse-calc, so a discount is always a discount off the true pre-tax price, never off a tax-inclusive figure. */
+  function baseRateOf(entered: number, taxPercent: number, rateMode?: "excl" | "incl", discountPercent?: number): number {
+    const base = rateMode === "incl" ? entered / (1 + taxPercent / 100) : entered;
+    return discountPercent ? base * (1 - Math.min(100, Math.max(0, discountPercent)) / 100) : base;
   }
 
   // Estimate covers labor AND parts — parts were previously excluded, so
@@ -586,12 +588,12 @@ export function WorkorderLifecycle({
   // price isn't double-counted as pure profit before tax is added back
   // below.
   const laborTotal = serviceLines.reduce(
-    (sum, l) => sum + baseRateOf(l.laborCharge || 0, l.taxRate ?? 18, l.rateMode) * (l.qty || 1),
+    (sum, l) => sum + baseRateOf(l.laborCharge || 0, l.taxRate ?? 18, l.rateMode, l.discountPercent) * (l.qty || 1),
     0
   );
   const partsTotal = partLines.reduce(
     (sum, p) =>
-      p.pending ? sum : sum + baseRateOf(p.unitPrice || 0, p.taxRate ?? 18, p.rateMode) * (p.qty || 1),
+      p.pending ? sum : sum + baseRateOf(p.unitPrice || 0, p.taxRate ?? 18, p.rateMode, p.discountPercent) * (p.qty || 1),
     0
   );
   const estimateTotal = laborTotal + partsTotal;
@@ -611,14 +613,14 @@ export function WorkorderLifecycle({
    */
   const laborTax = serviceLines.reduce(
     (sum, l) =>
-      sum + baseRateOf(l.laborCharge || 0, l.taxRate ?? 18, l.rateMode) * ((l.taxRate ?? 18) / 100) * (l.qty || 1),
+      sum + baseRateOf(l.laborCharge || 0, l.taxRate ?? 18, l.rateMode, l.discountPercent) * ((l.taxRate ?? 18) / 100) * (l.qty || 1),
     0
   );
   const partsTax = partLines.reduce(
     (sum, p) =>
       p.pending
         ? sum
-        : sum + baseRateOf(p.unitPrice || 0, p.taxRate ?? 18, p.rateMode) * ((p.taxRate ?? 18) / 100) * (p.qty || 1),
+        : sum + baseRateOf(p.unitPrice || 0, p.taxRate ?? 18, p.rateMode, p.discountPercent) * ((p.taxRate ?? 18) / 100) * (p.qty || 1),
     0
   );
   // Tax Apply, unchecked, genuinely zeroes CGST/SGST for these lines — it
@@ -709,9 +711,10 @@ export function WorkorderLifecycle({
     setPartLines((prev) => prev.map((p) => (p.id === lineId ? { ...p, qty } : p)));
   }
 
-  function setPartRate(lineId: string, rawRate: string) {
-    const unitPrice = Math.max(0, Number(rawRate) || 0);
-    setPartLines((prev) => prev.map((p) => (p.id === lineId ? { ...p, unitPrice } : p)));
+  /** Rate itself is no longer hand-typed for a part line — it's always whatever the selected BOM material's catalog rate is (see the material-select handler above, `unitPrice: match.rate`). A discount is the one way to move the price off catalog, so it's tracked separately instead of letting the rate be edited directly. */
+  function setPartDiscount(lineId: string, rawPercent: string) {
+    const discountPercent = Math.min(100, Math.max(0, Number(rawPercent) || 0));
+    setPartLines((prev) => prev.map((p) => (p.id === lineId ? { ...p, discountPercent } : p)));
   }
 
   function setPartTaxRate(lineId: string, rawRate: string) {
@@ -807,6 +810,11 @@ export function WorkorderLifecycle({
   function setLaborCharge(lineId: string, rawCharge: string) {
     const laborCharge = Math.max(0, Number(rawCharge) || 0);
     setServiceLines((prev) => prev.map((l) => (l.id === lineId ? { ...l, laborCharge } : l)));
+  }
+
+  function setServiceDiscount(lineId: string, rawPercent: string) {
+    const discountPercent = Math.min(100, Math.max(0, Number(rawPercent) || 0));
+    setServiceLines((prev) => prev.map((l) => (l.id === lineId ? { ...l, discountPercent } : l)));
   }
 
   function persistLaborCharge() {
@@ -1660,7 +1668,7 @@ export function WorkorderLifecycle({
             {serviceLines.map((line) => {
               const qty = line.qty || 1;
               const taxRate = line.taxRate ?? 18;
-              const base = baseRateOf(line.laborCharge || 0, taxRate, line.rateMode);
+              const base = baseRateOf(line.laborCharge || 0, taxRate, line.rateMode, line.discountPercent);
               const lineTotal = (base + (!underWarranty && taxApply ? base * (taxRate / 100) : 0)) * qty;
               return (
                 <div key={line.id} className="flex flex-wrap items-end gap-2 rounded-md border border-border bg-bg px-3 py-2 text-sm">
@@ -1709,6 +1717,20 @@ export function WorkorderLifecycle({
                     </select>
                   </label>
                   <label className="flex shrink-0 flex-col gap-0.5 text-[10px] font-semibold uppercase tracking-wide text-text-muted">
+                    Discount %
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      step={1}
+                      value={line.discountPercent ?? 0}
+                      disabled={!editable}
+                      onChange={(e) => setServiceDiscount(line.id, e.target.value)}
+                      onBlur={persistLaborCharge}
+                      className="w-16 rounded-md border border-border bg-bg-raised px-2 py-1 text-right text-sm tabular-nums text-text disabled:opacity-60"
+                    />
+                  </label>
+                  <label className="flex shrink-0 flex-col gap-0.5 text-[10px] font-semibold uppercase tracking-wide text-text-muted">
                     Tax %
                     <select
                       value={taxRate}
@@ -1744,7 +1766,7 @@ export function WorkorderLifecycle({
             {partLines.map((line) => {
               const qty = line.qty || 1;
               const taxRate = line.taxRate ?? 18;
-              const base = baseRateOf(line.unitPrice || 0, taxRate, line.rateMode);
+              const base = baseRateOf(line.unitPrice || 0, taxRate, line.rateMode, line.discountPercent);
               const lineTotal = (base + (!underWarranty && taxApply && !line.pending ? base * (taxRate / 100) : 0)) * qty;
               return (
                 <div key={line.id} className="rounded-md border border-border bg-bg px-3 py-2 text-sm">
@@ -1773,16 +1795,13 @@ export function WorkorderLifecycle({
                       />
                     </label>
                     <label className="flex shrink-0 flex-col gap-0.5 text-[10px] font-semibold uppercase tracking-wide text-text-muted">
-                      Rate
+                      Rate (BOM)
                       <input
                         type="number"
-                        min={0}
-                        step={1}
+                        readOnly
+                        title="Set by the selected material's catalog rate — not hand-typed. Use Discount % to price below it."
                         value={line.unitPrice ?? 0}
-                        disabled={!editable || line.pending}
-                        onChange={(e) => setPartRate(line.id, e.target.value)}
-                        onBlur={persistPartQty}
-                        className="w-24 rounded-md border border-border bg-bg-raised px-2 py-1 text-right text-sm tabular-nums text-text disabled:opacity-60"
+                        className="w-24 cursor-not-allowed rounded-md border border-border bg-bg-sunken px-2 py-1 text-right text-sm tabular-nums text-text-muted"
                       />
                       <select
                         value={line.rateMode ?? "excl"}
@@ -1793,6 +1812,20 @@ export function WorkorderLifecycle({
                         <option value="excl">Excl. GST</option>
                         <option value="incl">Incl. GST</option>
                       </select>
+                    </label>
+                    <label className="flex shrink-0 flex-col gap-0.5 text-[10px] font-semibold uppercase tracking-wide text-text-muted">
+                      Discount %
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        step={1}
+                        value={line.discountPercent ?? 0}
+                        disabled={!editable || line.pending}
+                        onChange={(e) => setPartDiscount(line.id, e.target.value)}
+                        onBlur={persistPartQty}
+                        className="w-16 rounded-md border border-border bg-bg-raised px-2 py-1 text-right text-sm tabular-nums text-text disabled:opacity-60"
+                      />
                     </label>
                     <label className="flex shrink-0 flex-col gap-0.5 text-[10px] font-semibold uppercase tracking-wide text-text-muted">
                       Tax %
