@@ -6,6 +6,7 @@ import { logCall, type CallOutcome } from "@/lib/telecalling/callsData";
 import { createTemplate, updateTemplate, deleteTemplate, type MessageChannel } from "@/lib/telecalling/templatesData";
 import { sendTemplateToLead } from "@/lib/telecalling/messaging";
 import { createPartnerStaff, updatePartnerStaff, resetPartnerStaffPassword, nextAgentLoginId, setAgentTerritory } from "@/lib/partnerStaff";
+import { requireSessionOrStaffPartnerId, requireSessionPartnerId } from "@/lib/requirePartnerSession";
 
 /** Minimal CSV parser: first row is the header, columns matched case-insensitively
  * against name/phone/email/source. No quoted-comma support — good enough for a
@@ -39,6 +40,7 @@ function parseLeadsCsv(
 }
 
 export async function createLeadAction(partnerId: string, formData: FormData) {
+  partnerId = await requireSessionOrStaffPartnerId(partnerId);
   const name = String(formData.get("name") ?? "").trim();
   const phone = String(formData.get("phone") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim();
@@ -54,6 +56,7 @@ export async function createLeadAction(partnerId: string, formData: FormData) {
 }
 
 export async function importLeadsAction(partnerId: string, formData: FormData) {
+  partnerId = await requireSessionOrStaffPartnerId(partnerId);
   const file = formData.get("file");
   const batchLabel = String(formData.get("batchLabel") ?? "").trim();
   const agentIds = formData.getAll("agentIds").map(String).filter(Boolean);
@@ -80,6 +83,7 @@ export async function importLeadsAction(partnerId: string, formData: FormData) {
 }
 
 export async function assignLeadAction(partnerId: string, formData: FormData) {
+  partnerId = await requireSessionOrStaffPartnerId(partnerId);
   const leadId = String(formData.get("leadId") ?? "");
   const assignedToId = String(formData.get("assignedToId") ?? "") || null;
   if (!leadId) throw new Error("Lead is required");
@@ -88,6 +92,7 @@ export async function assignLeadAction(partnerId: string, formData: FormData) {
 }
 
 export async function logCallAction(partnerId: string, formData: FormData) {
+  partnerId = await requireSessionOrStaffPartnerId(partnerId);
   const leadId = String(formData.get("leadId") ?? "");
   const agentId = String(formData.get("agentId") ?? "");
   const outcome = String(formData.get("outcome") ?? "") as CallOutcome;
@@ -105,6 +110,7 @@ export async function logCallAction(partnerId: string, formData: FormData) {
 }
 
 export async function sendTemplateAction(partnerId: string, formData: FormData) {
+  partnerId = await requireSessionOrStaffPartnerId(partnerId);
   const leadId = String(formData.get("leadId") ?? "");
   const templateId = String(formData.get("templateId") ?? "");
   const sentById = String(formData.get("sentById") ?? "");
@@ -116,6 +122,7 @@ export async function sendTemplateAction(partnerId: string, formData: FormData) 
 }
 
 export async function createTemplateAction(partnerId: string, formData: FormData) {
+  partnerId = await requireSessionOrStaffPartnerId(partnerId);
   const name = String(formData.get("name") ?? "").trim();
   const channel = String(formData.get("channel") ?? "sms") as MessageChannel;
   const category = String(formData.get("category") ?? "General").trim();
@@ -126,6 +133,7 @@ export async function createTemplateAction(partnerId: string, formData: FormData
 }
 
 export async function updateTemplateAction(partnerId: string, formData: FormData) {
+  partnerId = await requireSessionOrStaffPartnerId(partnerId);
   const id = String(formData.get("id") ?? "");
   const name = String(formData.get("name") ?? "").trim();
   const channel = String(formData.get("channel") ?? "sms") as MessageChannel;
@@ -137,6 +145,7 @@ export async function updateTemplateAction(partnerId: string, formData: FormData
 }
 
 export async function deleteTemplateAction(partnerId: string, formData: FormData) {
+  partnerId = await requireSessionOrStaffPartnerId(partnerId);
   const id = String(formData.get("id") ?? "");
   if (!id) throw new Error("Template id is required");
   await deleteTemplate(id, partnerId);
@@ -155,6 +164,7 @@ function parseTerritoryList(raw: string): string[] {
 }
 
 export async function createAgentAction(partnerId: string, formData: FormData) {
+  partnerId = await requireSessionPartnerId(partnerId);
   const name = String(formData.get("name") ?? "").trim();
   const phone = String(formData.get("phone") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim();
@@ -178,6 +188,7 @@ export async function createAgentAction(partnerId: string, formData: FormData) {
 
 /** Updates just an agent's territory (states/cities) — see setAgentTerritory's doc comment. */
 export async function setAgentTerritoryAction(partnerId: string, formData: FormData) {
+  partnerId = await requireSessionPartnerId(partnerId);
   const id = String(formData.get("id") ?? "");
   if (!id) throw new Error("Agent id is required");
   const assignedStates = parseTerritoryList(String(formData.get("assignedStates") ?? ""));
@@ -191,6 +202,7 @@ export async function setAgentTerritoryAction(partnerId: string, formData: FormD
 }
 
 export async function setAgentStatusAction(partnerId: string, formData: FormData) {
+  partnerId = await requireSessionPartnerId(partnerId);
   const id = String(formData.get("id") ?? "");
   const status = String(formData.get("status") ?? "");
   const existing = formData.get("name");
@@ -206,6 +218,7 @@ export async function setAgentStatusAction(partnerId: string, formData: FormData
 }
 
 export async function resetAgentPasswordAction(partnerId: string, formData: FormData) {
+  partnerId = await requireSessionPartnerId(partnerId);
   const id = String(formData.get("id") ?? "");
   if (!id) throw new Error("Agent id is required");
   const password = await resetPartnerStaffPassword(partnerId, id);

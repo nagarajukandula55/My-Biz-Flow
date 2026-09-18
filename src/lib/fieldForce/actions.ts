@@ -21,11 +21,14 @@ import {
 import { dispatchBookingRequest, respondToOffer } from "@/lib/fieldForce/matchingEngine";
 import { setFieldForceSettings } from "@/lib/fieldForce/settingsData";
 import { setPlatformFeeConfig } from "@/lib/fieldForce/platformFeeData";
-import { createCustomerAccount, verifyCustomerLogin, CUSTOMER_SESSION_COOKIE } from "@/lib/fieldForce/customerAuth";
-import { verifyProviderLogin, PROVIDER_SESSION_COOKIE } from "@/lib/fieldForce/providerAuth";
+import { createCustomerAccount, verifyCustomerLogin, getCurrentCustomer, CUSTOMER_SESSION_COOKIE } from "@/lib/fieldForce/customerAuth";
+import { verifyProviderLogin, getCurrentProvider, PROVIDER_SESSION_COOKIE } from "@/lib/fieldForce/providerAuth";
 import { markRead, notify } from "@/lib/fieldForce/notifications";
+import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
+import { ADMIN_COOKIE_NAME, isValidAdminCookie } from "@/lib/adminAuth";
 
 export async function onboardProviderAction(partnerId: string, formData: FormData) {
+  partnerId = await requireSessionPartnerId(partnerId);
   const name = String(formData.get("name") ?? "").trim();
   const phone = String(formData.get("phone") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim();
@@ -52,6 +55,7 @@ export async function onboardProviderAction(partnerId: string, formData: FormDat
 }
 
 export async function setProviderStatusAction(partnerId: string, formData: FormData) {
+  partnerId = await requireSessionPartnerId(partnerId);
   const id = String(formData.get("id") ?? "");
   const status = String(formData.get("status") ?? "") as "pending" | "active" | "suspended";
   await setProviderStatus(id, partnerId, status);
@@ -60,6 +64,7 @@ export async function setProviderStatusAction(partnerId: string, formData: FormD
 }
 
 export async function createServiceAction(partnerId: string, formData: FormData) {
+  partnerId = await requireSessionPartnerId(partnerId);
   const name = String(formData.get("name") ?? "").trim();
   const category = String(formData.get("category") ?? "").trim();
   const priceType = String(formData.get("priceType") ?? "fixed") as "fixed" | "hourly";
@@ -73,6 +78,7 @@ export async function createServiceAction(partnerId: string, formData: FormData)
 }
 
 export async function setServiceActiveAction(partnerId: string, formData: FormData) {
+  partnerId = await requireSessionPartnerId(partnerId);
   const id = String(formData.get("id") ?? "");
   const isActive = formData.get("isActive") === "true";
   await setServiceActive(id, isActive);
@@ -80,6 +86,7 @@ export async function setServiceActiveAction(partnerId: string, formData: FormDa
 }
 
 export async function updateServicePricingAction(partnerId: string, formData: FormData) {
+  partnerId = await requireSessionPartnerId(partnerId);
   const id = String(formData.get("id") ?? "");
   const priceType = String(formData.get("priceType") ?? "fixed") as "fixed" | "hourly";
   const basePrice = Math.round(Number(formData.get("basePrice") ?? 0) * 100);
@@ -92,6 +99,7 @@ export async function updateServicePricingAction(partnerId: string, formData: Fo
 }
 
 export async function updateFieldForceSettingsAction(partnerId: string, formData: FormData) {
+  partnerId = await requireSessionPartnerId(partnerId);
   await setFieldForceSettings(partnerId, {
     customerSignupEnabled: formData.get("customerSignupEnabled") === "true",
     providerSignupEnabled: formData.get("providerSignupEnabled") === "true",
@@ -100,6 +108,7 @@ export async function updateFieldForceSettingsAction(partnerId: string, formData
 }
 
 export async function allocateProviderAction(partnerId: string, formData: FormData) {
+  partnerId = await requireSessionPartnerId(partnerId);
   const bookingId = String(formData.get("bookingId") ?? "");
   const providerId = String(formData.get("providerId") ?? "");
   if (!bookingId || !providerId) throw new Error("Booking and provider are required");
@@ -110,6 +119,7 @@ export async function allocateProviderAction(partnerId: string, formData: FormDa
 }
 
 export async function updateAllocationStatusAction(partnerId: string, formData: FormData) {
+  partnerId = await requireSessionPartnerId(partnerId);
   const allocationId = String(formData.get("allocationId") ?? "");
   const status = String(formData.get("status") ?? "") as BookingStatus;
   await updateAllocationStatus(allocationId, partnerId, status);
@@ -119,6 +129,7 @@ export async function updateAllocationStatusAction(partnerId: string, formData: 
 
 /** Creates the customer (or reuses an existing one by phone) + a new address, then the Booking itself, then dispatches it. */
 export async function createBookingAction(partnerId: string, formData: FormData) {
+  partnerId = await requireSessionPartnerId(partnerId);
   const customerName = String(formData.get("customerName") ?? "").trim();
   const customerPhone = String(formData.get("customerPhone") ?? "").trim();
   const customerEmail = String(formData.get("customerEmail") ?? "").trim();
@@ -155,6 +166,7 @@ export async function createBookingAction(partnerId: string, formData: FormData)
 }
 
 export async function updateBookingDetailsAction(partnerId: string, bookingId: string, formData: FormData) {
+  partnerId = await requireSessionPartnerId(partnerId);
   const scheduledDate = String(formData.get("scheduledDate") ?? "");
   const slotLabel = String(formData.get("slotLabel") ?? "");
   const notes = String(formData.get("notes") ?? "").trim();
@@ -168,6 +180,7 @@ export async function updateBookingDetailsAction(partnerId: string, bookingId: s
 }
 
 export async function updateBookingStatusAction(partnerId: string, formData: FormData) {
+  partnerId = await requireSessionPartnerId(partnerId);
   const bookingId = String(formData.get("bookingId") ?? "");
   const status = String(formData.get("status") ?? "") as BookingStatus;
   await updateBookingStatus(bookingId, partnerId, status);
@@ -176,6 +189,7 @@ export async function updateBookingStatusAction(partnerId: string, formData: For
 }
 
 export async function assignProviderAction(partnerId: string, formData: FormData) {
+  partnerId = await requireSessionPartnerId(partnerId);
   const bookingId = String(formData.get("bookingId") ?? "");
   const providerId = String(formData.get("providerId") ?? "");
   if (!bookingId || !providerId) throw new Error("Booking and provider are required");
@@ -184,6 +198,7 @@ export async function assignProviderAction(partnerId: string, formData: FormData
 }
 
 export async function setFinalPriceAction(partnerId: string, formData: FormData) {
+  partnerId = await requireSessionPartnerId(partnerId);
   const bookingId = String(formData.get("bookingId") ?? "");
   const amount = Math.round(Number(formData.get("amount") ?? 0) * 100);
   await setFinalPrice(bookingId, partnerId, amount);
@@ -191,6 +206,7 @@ export async function setFinalPriceAction(partnerId: string, formData: FormData)
 }
 
 export async function rateBookingAction(partnerId: string, formData: FormData) {
+  partnerId = await requireSessionPartnerId(partnerId);
   const bookingId = String(formData.get("bookingId") ?? "");
   const ratingValue = Number(formData.get("ratingValue") ?? 0);
   const ratingComment = String(formData.get("ratingComment") ?? "").trim();
@@ -227,8 +243,14 @@ export async function logoutCustomerAction(partnerId: string) {
   redirect(`/partner/${partnerId}/field-force/customer/login`);
 }
 
-/** The customer's own self-service booking creation — identity comes from the session, not a typed-in name/phone. */
+/** The customer's own self-service booking creation — identity comes from the session, not a typed-in name/phone.
+ * customerId is still a client-bound parameter (bound at render from the page's own session read), so it's
+ * re-verified here against the session cookie itself rather than trusted as-is. */
 export async function createCustomerBookingAction(partnerId: string, customerId: string, formData: FormData) {
+  const sessionCustomer = await getCurrentCustomer(partnerId);
+  if (!sessionCustomer || sessionCustomer.id !== customerId) {
+    throw new Error("Not signed in as this customer.");
+  }
   const line1 = String(formData.get("line1") ?? "").trim();
   const line2 = String(formData.get("line2") ?? "").trim();
   const landmark = String(formData.get("landmark") ?? "").trim();
@@ -294,8 +316,14 @@ export async function logoutProviderAction(partnerId: string) {
 }
 
 /** The Provider's own status-advance control (en-route/in-progress/completed/cancelled) —
- * verifies the booking is actually assigned to this provider. No ops involvement required. */
+ * verifies the booking is actually assigned to this provider. No ops involvement required.
+ * providerId (client-bound) is re-verified against the session cookie first, same reasoning
+ * as the Customer actions above. */
 export async function updateBookingStatusAsProviderAction(partnerId: string, providerId: string, formData: FormData) {
+  const sessionProvider = await getCurrentProvider(partnerId);
+  if (!sessionProvider || sessionProvider.id !== providerId) {
+    throw new Error("Not signed in as this provider.");
+  }
   const bookingId = String(formData.get("bookingId") ?? "");
   const status = String(formData.get("status") ?? "") as BookingStatus;
   await updateBookingStatusAsProvider(bookingId, providerId, partnerId, status);
@@ -319,8 +347,13 @@ export async function updateBookingStatusAsProviderAction(partnerId: string, pro
   revalidatePath(`/partner/${partnerId}/field-force/customer/bookings/${bookingId}`);
 }
 
-/** The Customer's own rating submission — verifies the booking belongs to this customer. */
+/** The Customer's own rating submission — verifies the booking belongs to this customer, AND that
+ * customerId itself (client-bound) matches the session cookie, same as createCustomerBookingAction. */
 export async function rateCustomerBookingAction(partnerId: string, customerId: string, formData: FormData) {
+  const sessionCustomer = await getCurrentCustomer(partnerId);
+  if (!sessionCustomer || sessionCustomer.id !== customerId) {
+    throw new Error("Not signed in as this customer.");
+  }
   const bookingId = String(formData.get("bookingId") ?? "");
   const ratingValue = Number(formData.get("ratingValue") ?? 0);
   const ratingComment = String(formData.get("ratingComment") ?? "").trim();
@@ -328,8 +361,14 @@ export async function rateCustomerBookingAction(partnerId: string, customerId: s
   revalidatePath(`/partner/${partnerId}/field-force/customer/bookings/${bookingId}`);
 }
 
-/** A logged-in Provider onboards a team member under them — no password required at creation time. */
+/** A logged-in Provider onboards a team member under them — no password required at creation time.
+ * teamLeadId (client-bound) is re-verified against the session cookie first, same reasoning as
+ * the other Provider/Customer self-service actions above. */
 export async function addTeamMemberAction(partnerId: string, teamLeadId: string, formData: FormData) {
+  const sessionProvider = await getCurrentProvider(partnerId);
+  if (!sessionProvider || sessionProvider.id !== teamLeadId) {
+    throw new Error("Not signed in as this provider.");
+  }
   const name = String(formData.get("name") ?? "").trim();
   const phone = String(formData.get("phone") ?? "").trim();
   const pincode = String(formData.get("pincode") ?? "").trim();
@@ -344,20 +383,35 @@ export async function addTeamMemberAction(partnerId: string, teamLeadId: string,
   revalidatePath(`/partner/${partnerId}/field-force/provider/dashboard`);
 }
 
+/** providerId (client-bound) is re-verified against the session cookie first, same reasoning
+ * as the other Provider/Customer self-service actions above. */
 export async function respondToOfferAction(partnerId: string, providerId: string, formData: FormData) {
+  const sessionProvider = await getCurrentProvider(partnerId);
+  if (!sessionProvider || sessionProvider.id !== providerId) {
+    throw new Error("Not signed in as this provider.");
+  }
   const offerId = String(formData.get("offerId") ?? "");
   const response = String(formData.get("response") ?? "") as "accepted" | "declined";
   await respondToOffer(offerId, providerId, response);
   revalidatePath(`/partner/${partnerId}/field-force/provider/dashboard`);
 }
 
-export async function markNotificationReadAction(id: string) {
-  await markRead(id);
+/** Not currently called from any page (dead/unwired today), but still a live Server Action
+ * endpoint — partnerId is required and session-checked, and markRead() itself is now
+ * partnerId-scoped too (see notifications.ts), so a bare notification id alone is never
+ * enough to touch another partner's row. */
+export async function markNotificationReadAction(partnerId: string, id: string) {
+  partnerId = await requireSessionPartnerId(partnerId);
+  await markRead(id, partnerId);
 }
 
 // --- Platform-level commission config (Super Admin, global) ---
 
 export async function updatePlatformFeeConfigAction(formData: FormData) {
+  const adminCookie = cookies().get(ADMIN_COOKIE_NAME)?.value;
+  if (!(await isValidAdminCookie(adminCookie))) {
+    throw new Error("Super Admin session required.");
+  }
   const feeType = String(formData.get("feeType") ?? "percent") as "percent" | "flat";
   const rawValue = Number(formData.get("feeValue") ?? 0);
   await setPlatformFeeConfig({

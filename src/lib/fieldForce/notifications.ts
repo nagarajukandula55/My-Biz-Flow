@@ -55,8 +55,11 @@ export async function listNotifications(
   }) as Promise<NotificationRecord[]>;
 }
 
-export async function markRead(id: string): Promise<void> {
-  await prisma.notification.update({ where: { id }, data: { isRead: true } });
+/** Scoped by partnerId too — this is called from a Server Action taking a
+ * client-bound id with no other ownership check, so the query itself must
+ * not trust the id alone (see markNotificationReadAction). */
+export async function markRead(id: string, partnerId: string): Promise<void> {
+  await prisma.notification.updateMany({ where: { id, partnerId }, data: { isRead: true } });
 }
 
 export async function unreadCount(partnerId: string, audience: NotificationAudience, recipientId?: string): Promise<number> {

@@ -64,6 +64,28 @@ export async function requireSessionPartnerId(partnerId: string): Promise<string
 }
 
 /**
+ * For Server Actions reachable by either the partner owner OR a PartnerStaff
+ * session scoped to this partner (e.g. Telecalling, where a Telecaller agent
+ * has their own login — see agentAuth.ts — and PartnerLayout already lets
+ * that staff session reach every page under its module's prefix, not just
+ * the ones the UI links to). Mirrors requirePartnerSessionForPage's
+ * owner/admin/staff acceptance, but throws instead of redirecting, same as
+ * requireSessionPartnerId above.
+ */
+export async function requireSessionOrStaffPartnerId(partnerId: string): Promise<string> {
+  const sessionPartnerId = await getSessionPartnerId();
+  if (sessionPartnerId === partnerId) return partnerId;
+
+  const adminCookie = cookies().get(ADMIN_COOKIE_NAME)?.value;
+  if (await isValidAdminCookie(adminCookie)) return partnerId;
+
+  const staffSession = await getStaffSession();
+  if (staffSession && staffSession.partnerId === partnerId) return partnerId;
+
+  throw new PartnerAuthorizationError(`No owner or staff session scoped to partner "${partnerId}".`);
+}
+
+/**
  * For Server Component pages/layouts: redirects to /login if there's no
  * session, or if the session belongs to a DIFFERENT partner than the one
  * in the URL (the actual cross-tenant case — never silently render
