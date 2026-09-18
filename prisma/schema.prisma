@@ -17,9 +17,18 @@ datasource db {
   // Pooled connection (via Neon's PgBouncer endpoint) for normal app
   // queries — see Vercel's Neon integration, which sets this automatically.
   url       = env("DATABASE_URL")
-  // Direct (unpooled) connection for migrations — `prisma migrate deploy`
-  // needs a session-mode connection for advisory locks, which PgBouncer's
-  // transaction-mode pooling doesn't support.
+  // Direct (unpooled) connection — Prisma only reads `directUrl` for
+  // `migrate dev`'s shadow database, NOT for `migrate deploy` (a common
+  // Prisma/Neon gotcha: this field alone does NOT fix migrate deploy
+  // against a pooled URL, despite looking like it should). `migrate
+  // deploy` always connects with `url` and needs a session-mode
+  // connection to acquire its advisory lock — PgBouncer's transaction-
+  // mode pooling doesn't support that, and the lock acquisition can hang/
+  // timeout (confirmed: a real production deploy failed this way on
+  // 2026-09-18). The actual fix is in package.json's `build` script,
+  // which overrides DATABASE_URL to this unpooled value for the
+  // `prisma migrate deploy` step specifically, then leaves it pooled
+  // again for `next build`/runtime.
   directUrl = env("DATABASE_URL_UNPOOLED")
 }
 
