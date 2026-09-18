@@ -6,6 +6,8 @@ import { sendSupportMessageAction, getSupportThreadAction } from "@/lib/supportT
 import type { SupportTicketRecord } from "@/lib/supportTickets";
 
 const POLL_MS = 6000;
+/** Slower poll while the widget is closed — just enough to catch a new reply and show the unread badge, without polling as aggressively as the open (actively-watched) state. */
+const BACKGROUND_POLL_MS = 20000;
 
 /** Splits a message on any bare URL/relative path (from an auto-reply's link, see supportAutoReply.ts) and renders those as real clickable links — messages are plain text otherwise, so without this a link would just sit there unclickable. */
 function renderMessageText(text: string) {
@@ -50,6 +52,11 @@ const QUICK_SHORTCUTS = [
  * reload needed (see src/lib/supportTickets.ts / the Telegram webhook's
  * support-ticket reply case for the full mechanism).
  *
+ * Polls even while closed (slower — BACKGROUND_POLL_MS) so a reply that
+ * arrives while the widget is closed shows up as a red unread-count badge
+ * on the floating bubble, not just silently once reopened. Seen state
+ * persists across reloads via localStorage (`anu-lastseen-<partnerId>`).
+ *
  * QUICK_SHORTCUTS above the input send a canned message with one click, no
  * typing — several match a keyword rule in src/lib/supportAutoReply.ts, so
  * clicking one often gets an instant "support" reply in the thread before
@@ -75,7 +82,9 @@ export function SupportWidget({
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [lastSeenCount, setLastSeenCount] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const lastSeenKey = `anu-lastseen-${partnerId}`;
 
   async function refresh() {
     try {
@@ -86,13 +95,44 @@ export function SupportWidget({
     }
   }
 
+  // Restore how many messages had already been seen as of the last visit,
+  // so a reply that arrived while the tab was closed/reloaded still shows
+  // as unread instead of resetting to 0 on every page load.
   useEffect(() => {
-    if (!open) return;
+    try {
+      const saved = Number(localStorage.getItem(lastSeenKey) ?? "0");
+      if (Number.isFinite(saved)) setLastSeenCount(saved);
+    } catch {
+      // storage unavailable — badge just won't persist across reloads
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Poll always, not just while open — at a slower background rate when
+  // closed, so a reply while the widget is closed still surfaces as an
+  // unread badge on the bubble instead of only appearing once reopened.
+  useEffect(() => {
     refresh();
-    const id = setInterval(refresh, POLL_MS);
+    const id = setInterval(refresh, open ? POLL_MS : BACKGROUND_POLL_MS);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  // Opening the widget (or the thread growing while it's already open,
+  // e.g. a reply arrives mid-conversation) marks everything as seen —
+  // only a reply that arrives while CLOSED should count as unread.
+  useEffect(() => {
+    if (!open || !thread) return;
+    setLastSeenCount(thread.messages.length);
+    try {
+      localStorage.setItem(lastSeenKey, String(thread.messages.length));
+    } catch {
+      // best-effort persistence only
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, thread?.messages.length]);
+
+  const unreadCount = !open && thread ? Math.max(0, thread.messages.length - lastSeenCount) : 0;
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
@@ -203,10 +243,15 @@ export function SupportWidget({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        aria-label={open ? "Close ANu" : "Open ANu"}
-        className="flex h-12 w-12 items-center justify-center rounded-full bg-accent text-white shadow-lg hover:opacity-90"
+        aria-label={open ? "Close ANu" : unreadCount > 0 ? `Open ANu (${unreadCount} new)` : "Open ANu"}
+        className="relative flex h-12 w-12 items-center justify-center rounded-full bg-accent text-white shadow-lg hover:opacity-90"
       >
         {open ? <X className="h-5 w-5" /> : <MessageCircle className="h-5 w-5" />}
+        {unreadCount > 0 && (
+          <span className="absolute -right-1 -top-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-danger px-1 text-[11px] font-bold text-white">
+            {unreadCount > 9 ? "9+" : unreadCount}
+          </span>
+        )}
       </button>
     </div>
   );
