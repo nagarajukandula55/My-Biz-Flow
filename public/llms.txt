@@ -31,6 +31,7 @@ built around Indian tax compliance.
 - Service Centre solution (workorders, billing, public booking/tracking): /solutions/service-centre
 - Telecalling solution (leads, agents, click-to-call, SMS/WhatsApp): /solutions/telecalling
 - Field Force solution (home-services bookings, skilled/unskilled dispatch): /solutions/field-force
+- Downloads (installing each app as a PWA): /downloads
 - Pricing (live plan data — users/locations/modules per tier): /pricing
 - Track a repair or appointment (no login): /track
 - Book an appointment / log a service inquiry (no login): /book-appointment

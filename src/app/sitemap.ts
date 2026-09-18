@@ -17,6 +17,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: "/solutions/telecalling", priority: 0.9, changeFrequency: "weekly" },
     { path: "/solutions/field-force", priority: 0.9, changeFrequency: "weekly" },
     { path: "/pricing", priority: 0.9, changeFrequency: "weekly" },
+    { path: "/downloads", priority: 0.7, changeFrequency: "monthly" },
     { path: "/book-appointment", priority: 0.7, changeFrequency: "monthly" },
     { path: "/track", priority: 0.6, changeFrequency: "monthly" },
     { path: "/help", priority: 0.6, changeFrequency: "monthly" },

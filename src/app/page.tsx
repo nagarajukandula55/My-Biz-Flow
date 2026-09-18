@@ -180,6 +180,9 @@ export default async function RootPage({
           <Link href="/book-appointment" className="text-text-muted hover:text-text">
             Book Appointment
           </Link>
+          <Link href="/downloads" className="text-text-muted hover:text-text">
+            Downloads
+          </Link>
           <Link href="/help" className="text-text-muted hover:text-text">
             Help
           </Link>
@@ -386,6 +389,9 @@ export default async function RootPage({
           </Link>
           <Link href="/book-appointment" className="hover:text-text">
             Book Appointment
+          </Link>
+          <Link href="/downloads" className="hover:text-text">
+            Downloads
           </Link>
           <Link href="/help" className="hover:text-text">
             Help

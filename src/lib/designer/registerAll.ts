@@ -202,6 +202,7 @@ import "@/app/book-appointment/confirmed/page";
 import "@/app/solutions/service-centre/page";
 import "@/app/solutions/telecalling/page";
 import "@/app/solutions/field-force/page";
+import "@/app/downloads/page";
 import "@/app/signup/page";
 import "@/app/signup/pending/page";
 import "@/app/change-password/page";
