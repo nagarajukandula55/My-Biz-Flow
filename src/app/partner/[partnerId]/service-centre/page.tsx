@@ -167,15 +167,34 @@ export default async function ServiceCentrePage({
     };
   });
 
-  // Summary cards + the Status filter's real option list are computed from
-  // the SAME milestone logic as the Status column above (computeDisplayStatus
-  // -> extractLifecycleFromRecord + mapStageToMilestone) so the cards, the
+  // Summary cards recompute against every OTHER active filter (brand/
+  // engineer/payment mode/warranty status/date range/search) — deliberately
+  // excluding `milestone` itself, since these cards ARE the milestone
+  // selector (clicking one sets `?milestone=`); recomputing them from an
+  // already-milestone-filtered set would collapse every other card to 0
+  // instead of showing "how many in each milestone, given what else is
+  // filtered" (same pattern as excluding `status` from Telecalling's
+  // by-status breakdown for the identical reason). Uses the SAME milestone
+  // logic as the Status column above (computeDisplayStatus ->
+  // extractLifecycleFromRecord + mapStageToMilestone) so the cards, the
   // column and the filter dropdown never disagree on what counts as
   // Open/Closed/Cancelled/Part Pending. Cancelled is its own milestone,
   // distinct from Closed, per explicit feedback that the two must not be
-  // conflated. Counts are taken from `allRows` (the full unfiltered set)
-  // rather than the current page's `rows`.
-  const milestoneCounts = allRows.reduce<Record<string, number>>((acc, row) => {
+  // conflated. Filter dropdown OPTIONS below still draw from the full
+  // unfiltered `allRows`, not `cardRows`, so they don't shrink.
+  const cardRows = allRows.filter((row) => {
+    if (status && String(row["status"] ?? "") !== status) return false;
+    if (brandName && String(row["brandName"] ?? "") !== brandName) return false;
+    if (engineerName && String(row["engineerName"] ?? "") !== engineerName) return false;
+    if (paymentMode && String(row["paymentMode"] ?? "") !== paymentMode) return false;
+    if (warrantyStatus && String(row["warrantyStatus"] ?? "") !== warrantyStatus) return false;
+    const receivedDate = String(row["receivedDate"] ?? "");
+    if (from && receivedDate < from) return false;
+    if (to && receivedDate > to) return false;
+    if (q && !SEARCH_FIELDS.some((f) => String(row[f] ?? "").toLowerCase().includes(q.toLowerCase()))) return false;
+    return true;
+  });
+  const milestoneCounts = cardRows.reduce<Record<string, number>>((acc, row) => {
     const { milestone } = computeDisplayStatus(row);
     acc[milestone] = (acc[milestone] ?? 0) + 1;
     return acc;
@@ -183,7 +202,7 @@ export default async function ServiceCentrePage({
   const closedCount = milestoneCounts["CLOSED"] ?? 0;
   const cancelledCount = milestoneCounts["CANCELLED"] ?? 0;
   const partPendingCount = milestoneCounts["PART_PENDING"] ?? 0;
-  const openCount = allRows.length - closedCount - cancelledCount;
+  const openCount = cardRows.length - closedCount - cancelledCount;
 
   const rangeStart = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const rangeEnd = Math.min(total, page * pageSize);
