@@ -23,7 +23,13 @@ export default function GlobalError({
     // eslint-disable-next-line no-console
     console.error(error);
     reportClientError({
-      message: error.message,
+      // In production, Next.js redacts Server Component error messages down
+      // to a generic string and attaches a `digest` instead — that digest is
+      // the only thing that correlates this client-visible report with the
+      // real error/stack in the server's own logs (e.g. Vercel function
+      // logs). Without it, every production incident logs as the same
+      // useless generic text with no way to find the actual cause.
+      message: error.digest ? `${error.message} (digest: ${error.digest})` : error.message,
       stack: error.stack,
       source: typeof window !== "undefined" ? window.location.pathname : "unknown",
     });
