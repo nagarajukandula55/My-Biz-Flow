@@ -1049,3 +1049,22 @@ model CustomerDataAccessOtp {
 
   @@map("customer_data_access_otps")
 }
+
+/// Links a Telegram message this app sent about a support ticket back to
+/// that ticket, so a reply in Telegram (which only carries the message_id
+/// it's replying to, not the ticket id) can be resolved to the right
+/// conversation — same threading pattern as TelegramLogEntry.workorderId,
+/// generalized for support tickets (a different module, not worth
+/// overloading that table's workorder-specific fields for).
+model SupportTicketTelegramLink {
+  id        String   @id @default(cuid())
+  chatId    String
+  messageId Int
+  partnerId String
+  ticketId  String
+  createdAt DateTime @default(now())
+
+  @@unique([chatId, messageId])
+  @@index([partnerId, ticketId])
+  @@map("support_ticket_telegram_links")
+}

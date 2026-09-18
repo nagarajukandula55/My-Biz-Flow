@@ -1,28 +1,27 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { MessageCircle, X } from "lucide-react";
-import { submitSupportTicketAction } from "@/lib/supportTicketActions";
+import { sendSupportMessageAction, getSupportThreadAction } from "@/lib/supportTicketActions";
+import type { SupportTicketRecord } from "@/lib/supportTickets";
+
+const POLL_MS = 6000;
 
 /**
- * Fixed bottom-right "Support" bubble on every partner page (matches
- * AN-CRM's ContactWidget.tsx placement — see that file's floating button).
- * Unlike AN-CRM's widget (which relays to Telegram/WhatsApp), this is a
- * genuine human support-ticket submission: the message is persisted via
- * submitSupportTicketAction into a BusinessRecord ("support-tickets" module,
- * see src/lib/supportTickets.ts) for a Super Admin to review/resolve from
- * /admin/support-tickets. No AI/bot reply of any kind — just storage.
+ * Fixed bottom-right "Support" bubble on every partner page. Real two-way
+ * live chat, not a fire-and-forget ticket: a message sent here is pushed
+ * to My Biz Flow's own ops Telegram chat within that conversation's own
+ * thread, and this widget polls for replies while open — a human OR a bot
+ * replying in that Telegram thread shows up here within POLL_MS, no page
+ * reload needed (see src/lib/supportTickets.ts / the Telegram webhook's
+ * support-ticket reply case for the full mechanism).
  *
- * WhatsApp is a second, non-persisted reach-out option alongside the ticket
- * form: a plain https://wa.me/<number> deep link to MY BIZ FLOW's own
- * platform support number (env.platformSupportWhatsappNumber — see
- * src/lib/env.ts), NOT the partner's own supportHotline (that's a
- * partner-owned field printed on their documents, for THEIR customers to
- * call — a different audience entirely). This is the partner reaching the
- * platform for help, same audience as the ticket form. No API/SDK/webhook —
- * just WhatsApp's standard "click to chat" link. The number is passed in
- * from the server (env vars aren't readable client-side) and the button is
- * omitted entirely when it isn't configured.
+ * WhatsApp is a second, separate reach-out option alongside the chat: a
+ * plain https://wa.me/<number> deep link to MY BIZ FLOW's own platform
+ * support number (env.platformSupportWhatsappNumber — see src/lib/env.ts),
+ * NOT the partner's own supportHotline (a different, partner-owned field
+ * for THEIR customers). No API/SDK/webhook — just WhatsApp's standard
+ * "click to chat" link, omitted entirely when unconfigured.
  */
 export function SupportWidget({
   partnerId,
@@ -32,18 +31,44 @@ export function SupportWidget({
   whatsappNumber?: string | null;
 }) {
   const [open, setOpen] = useState(false);
-  const [sent, setSent] = useState(false);
+  const [thread, setThread] = useState<SupportTicketRecord | undefined>(undefined);
+  const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-  const formRef = useRef<HTMLFormElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
-  function handleSubmit(formData: FormData) {
+  async function refresh() {
+    try {
+      const t = await getSupportThreadAction(partnerId);
+      setThread(t);
+    } catch {
+      // best-effort — a failed poll shouldn't disrupt the open widget
+    }
+  }
+
+  useEffect(() => {
+    if (!open) return;
+    refresh();
+    const id = setInterval(refresh, POLL_MS);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
+  }, [thread?.messages.length]);
+
+  function handleSend() {
+    const text = draft.trim();
+    if (!text) return;
     setError(null);
+    const formData = new FormData();
+    formData.set("message", text);
+    setDraft("");
     startTransition(async () => {
       try {
-        await submitSupportTicketAction(partnerId, formData);
-        setSent(true);
-        formRef.current?.reset();
+        await sendSupportMessageAction(partnerId, formData);
+        await refresh();
       } catch (err) {
         setError(err instanceof Error ? err.message : "Could not send your message. Try again.");
       }
@@ -53,15 +78,13 @@ export function SupportWidget({
   return (
     <div className="fixed bottom-5 right-5 z-50">
       {open && (
-        <div className="mb-3 w-80 rounded-lg border border-border bg-bg-raised p-4 shadow-lg">
-          <div className="mb-2 flex items-center justify-between">
-            <h2 className="font-display text-sm font-bold text-text">Contact Support</h2>
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              aria-label="Close"
-              className="text-text-muted hover:text-text"
-            >
+        <div className="mb-3 flex w-80 flex-col overflow-hidden rounded-lg border border-border bg-bg-raised shadow-lg">
+          <div className="flex items-center justify-between border-b border-border px-4 py-3">
+            <div>
+              <h2 className="font-display text-sm font-bold text-text">Chat with us</h2>
+              <p className="text-[11px] text-text-muted">Usually replies within a few minutes</p>
+            </div>
+            <button type="button" onClick={() => setOpen(false)} aria-label="Close" className="text-text-muted hover:text-text">
               <X className="h-4 w-4" />
             </button>
           </div>
@@ -73,41 +96,53 @@ export function SupportWidget({
               )}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="mb-3 flex items-center justify-center gap-2 rounded-md border border-border bg-bg px-3 py-2 text-sm font-semibold text-text hover:bg-bg-sunken"
+              className="mx-4 mt-3 flex items-center justify-center gap-2 rounded-md border border-border bg-bg px-3 py-1.5 text-xs font-semibold text-text hover:bg-bg-sunken"
             >
-              <svg viewBox="0 0 24 24" className="h-4 w-4 fill-success" aria-hidden="true">
+              <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-success" aria-hidden="true">
                 <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.87.5 3.62 1.44 5.13L2 22l5.13-1.34a9.88 9.88 0 0 0 4.9 1.29h.01c5.46 0 9.91-4.45 9.91-9.91S17.5 2 12.04 2zm5.8 14.03c-.24.68-1.4 1.3-1.93 1.38-.5.08-1.13.11-1.83-.11-.42-.13-.96-.31-1.65-.6-2.9-1.25-4.79-4.17-4.94-4.37-.14-.2-1.18-1.57-1.18-2.99 0-1.42.75-2.11 1.01-2.4.27-.29.58-.36.78-.36.2 0 .39.002.56.01.18.008.42-.07.66.5.24.58.82 2 .89 2.15.07.15.12.32.02.51-.1.19-.15.31-.3.48-.15.17-.31.38-.44.51-.15.15-.3.31-.13.6.17.29.77 1.27 1.65 2.05 1.14 1.02 2.1 1.34 2.4 1.49.3.15.47.13.65-.05.18-.19.75-.87.95-1.17.2-.29.4-.24.66-.15.27.1 1.7.8 1.99.95.29.14.48.21.55.33.07.12.07.7-.17 1.38z" />
               </svg>
               Message us on WhatsApp
             </a>
           )}
 
-          {sent ? (
-            <div className="rounded-md bg-success-soft px-3 py-2 text-sm text-success">
-              Message sent — our team will get back to you.
-              <button
-                type="button"
-                onClick={() => setSent(false)}
-                className="mt-2 block text-xs font-semibold text-accent hover:underline"
-              >
-                Send another message
-              </button>
-            </div>
-          ) : (
-            <form ref={formRef} action={handleSubmit} className="space-y-2">
-              <textarea
-                name="message"
-                required
-                rows={4}
-                placeholder="How can we help?"
-                className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text outline-none focus:border-accent"
-              />
-              {error && <p className="text-xs text-danger">{error}</p>}
-              <button type="submit" disabled={isPending} className="btn-accent w-full text-sm disabled:opacity-60">
-                {isPending ? "Sending…" : "Send"}
-              </button>
-            </form>
-          )}
+          <div ref={scrollRef} className="max-h-72 min-h-[140px] flex-1 space-y-2 overflow-y-auto px-4 py-3">
+            {!thread || thread.messages.length === 0 ? (
+              <p className="text-center text-xs text-text-muted">Send a message and our team will reply here — no need to wait on this page.</p>
+            ) : (
+              thread.messages.map((m, i) => (
+                <div key={i} className={`flex ${m.from === "partner" ? "justify-end" : "justify-start"}`}>
+                  <div
+                    className={`max-w-[85%] rounded-lg px-3 py-1.5 text-sm ${
+                      m.from === "partner" ? "bg-accent text-white" : "bg-bg text-text"
+                    }`}
+                  >
+                    {m.text}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {error && <p className="px-4 text-xs text-danger">{error}</p>}
+
+          <div className="flex items-center gap-2 border-t border-border p-3">
+            <input
+              type="text"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSend();
+                }
+              }}
+              placeholder="Type a message…"
+              className="flex-1 rounded-md border border-border bg-bg px-3 py-2 text-sm text-text outline-none focus:border-accent"
+            />
+            <button type="button" onClick={handleSend} disabled={isPending || !draft.trim()} className="btn-accent px-3 py-2 text-sm disabled:opacity-60">
+              Send
+            </button>
+          </div>
         </div>
       )}
 

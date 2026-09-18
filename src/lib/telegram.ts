@@ -422,17 +422,35 @@ export async function findPartnerIdByChatId(chatId: string): Promise<string | nu
  * bot token configured, matching every other send path's graceful
  * degradation.
  */
-export async function sendRawTelegramMessage(chatId: string, text: string): Promise<void> {
+/**
+ * Returns the Bot API's own message_id for the sent message (or null if
+ * unconfigured/failed) — existing callers all discard this (previously
+ * void), so widening the return type is backward compatible. Needed by
+ * anything that wants a later reply-to-this-message to resolve back to
+ * something (see src/lib/supportTickets.ts's live-chat threading, which
+ * mirrors the same pattern sendWorkorderTelegramAlert already uses via
+ * TelegramLogEntry.messageId).
+ */
+export async function sendRawTelegramMessage(chatId: string, text: string, replyToMessageId?: number): Promise<number | null> {
   const botToken = env.telegramBotToken();
-  if (!botToken) return;
+  if (!botToken) return null;
   try {
-    await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+    const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: chatId, text, parse_mode: "HTML" }),
+      body: JSON.stringify({
+        chat_id: chatId,
+        text,
+        parse_mode: "HTML",
+        ...(replyToMessageId ? { reply_to_message_id: replyToMessageId } : {}),
+      }),
     });
+    const body = await res.json().catch(() => null);
+    if (!res.ok || !body?.ok) return null;
+    return (body.result?.message_id as number | undefined) ?? null;
   } catch (err) {
     console.error("[telegram] command reply send failed:", err);
+    return null;
   }
 }
 

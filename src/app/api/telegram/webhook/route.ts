@@ -13,6 +13,7 @@ import { findTelegramTemplateDefByCommand, TELEGRAM_TEMPLATE_DEFS } from "@/lib/
 import { getTelegramTemplateBody, renderTelegramTemplate } from "@/lib/telegramTemplatesData";
 import { businessReportMessage, helpMessageText, connectConfirmationMessage, type ReportFrequency } from "@/lib/telegramTemplates";
 import { computePartnerReportComparison } from "@/lib/telegramReportData";
+import { findSupportTicketByReplyMessageId, appendSupportReply } from "@/lib/supportTickets";
 
 function formatInr(n: number): string {
   return `₹${Math.round(n).toLocaleString("en-IN")}`;
@@ -231,9 +232,9 @@ export async function POST(request: Request) {
   // workorder that alert was about, and log it as a chat entry there.
   const repliedToMessageId = message.reply_to_message?.message_id;
   if (typeof repliedToMessageId === "number") {
-    const match = await findWorkorderByReplyMessageId(chatId, repliedToMessageId);
-    if (match && text) {
-      await appendTelegramChatLogEntry(match.partnerId, match.workorderId, {
+    const workorderMatch = await findWorkorderByReplyMessageId(chatId, repliedToMessageId);
+    if (workorderMatch && text) {
+      await appendTelegramChatLogEntry(workorderMatch.partnerId, workorderMatch.workorderId, {
         direction: "in",
         text,
         chatId,
@@ -242,7 +243,19 @@ export async function POST(request: Request) {
         // uses this to skip a duplicate log entry on a retried delivery.
         messageId: message.message_id,
       });
+      return NextResponse.json({ ok: true });
     }
+
+    // Case 2b: a reply within a live support-chat thread — from a human on
+    // the team, or a bot script hitting the Bot API — appended to that
+    // ticket, which the partner's widget is polling for. See
+    // src/lib/supportTickets.ts's own doc comment for the full mechanism.
+    const ticketMatch = await findSupportTicketByReplyMessageId(chatId, repliedToMessageId);
+    if (ticketMatch && text) {
+      await appendSupportReply(ticketMatch.partnerId, ticketMatch.ticketId, text, { chatId, messageId: message.message_id });
+      return NextResponse.json({ ok: true });
+    }
+
     return NextResponse.json({ ok: true });
   }
 
