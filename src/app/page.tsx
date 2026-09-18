@@ -313,13 +313,25 @@ export default async function RootPage({
                   <h3 className="font-display text-base font-bold text-text">{t.id}</h3>
                   <p className="mt-1 flex-1 text-sm text-text-muted">{t.description || "—"}</p>
                   <div className="mt-4 flex items-center gap-3">
-                    <Link href={`/signup?type=${encodeURIComponent(t.id)}`} className="btn-accent mbf-cta-glow flex-1 text-center">
-                      Sign up as {t.id}
-                    </Link>
-                    {(t.id === "service-centre" || t.id === "telecalling" || t.id === "field-force") && (
-                      <Link href={`/solutions/${t.id}`} className="btn-outline shrink-0">
-                        Learn more
+                    {t.id === "field-force" ? (
+                      // Field Force isn't a business you register for a paid
+                      // account — it's a free marketplace individuals join
+                      // directly (see /solutions/field-force), so it skips
+                      // the generic business-registration signup form.
+                      <Link href="/solutions/field-force" className="btn-accent mbf-cta-glow flex-1 text-center">
+                        Join or request a service — free
                       </Link>
+                    ) : (
+                      <>
+                        <Link href={`/signup?type=${encodeURIComponent(t.id)}`} className="btn-accent mbf-cta-glow flex-1 text-center">
+                          Sign up as {t.id}
+                        </Link>
+                        {(t.id === "service-centre" || t.id === "telecalling") && (
+                          <Link href={`/solutions/${t.id}`} className="btn-outline shrink-0">
+                            Learn more
+                          </Link>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>

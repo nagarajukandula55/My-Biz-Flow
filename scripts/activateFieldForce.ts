@@ -1,78 +1,60 @@
 /**
- * One-off: creates a real, signup-able "field-force" PartnerType (none
- * existed yet — unlike Telecalling, which pre-existed as Draft) with real
- * Plan pricing, same mechanism Service Centre/Telecalling already use.
- * Field Force itself (skilled/unskilled provider onboarding, service
- * catalog, bookings, dispatch by pincode, ratings) is already fully built
- * — src/app/partner/[partnerId]/field-force/* — this just gives it a
- * front door. Pricing is a reasonable placeholder, fully editable from
- * Admin -> Plans / Admin -> Partner Types afterwards.
+ * One-off: fixes the "field-force" PartnerType's pricing model. Field
+ * Force isn't a per-partner subscription business the way Service Centre/
+ * Telecalling are — it's a commission marketplace: the platform already
+ * takes a cut of every booking (flat/percent, charged to customer/
+ * provider/split — see /admin/field-force-fee, src/lib/fieldForce/
+ * commission.ts), configured once, platform-wide. Charging a subscription
+ * ON TOP of that (the original Basic/Pro/Ultimate plans this script used
+ * to create) double-charges and contradicts "anybody can sign up, no
+ * pricing to join." Replaces those three paid plans with one Free plan.
  * Run once: npx tsx scripts/activateFieldForce.ts
  */
 import { prisma } from "../src/lib/prisma";
 
 async function main() {
-  const plans = [
-    {
-      id: "PLAN-FIELDFORCE-BASIC",
-      name: "Field Force Starter",
-      price: 799,
-      launchPrice: 399,
-      billingCycle: "yearly" as const,
-      includedModuleSlugs: ["field-force"],
-      maxUsers: 5,
-      maxLocations: 1,
-      isPublic: true,
-    },
-    {
-      id: "PLAN-FIELDFORCE-PRO",
-      name: "Field Force Pro",
-      price: 1499,
-      launchPrice: 749,
-      billingCycle: "yearly" as const,
-      includedModuleSlugs: ["field-force"],
-      maxUsers: 20,
-      maxLocations: 1,
-      isPublic: true,
-    },
-    {
-      id: "PLAN-FIELDFORCE-ULTIMATE",
-      name: "Field Force Ultimate",
-      price: 2999,
-      launchPrice: 1499,
-      billingCycle: "yearly" as const,
-      includedModuleSlugs: ["field-force"],
-      maxUsers: 9999,
-      maxLocations: 9999,
-      isPublic: true,
-    },
-  ];
+  const freePlan = {
+    id: "PLAN-FIELDFORCE-FREE",
+    name: "Field Force",
+    price: 0,
+    launchPrice: null,
+    billingCycle: "yearly" as const,
+    includedModuleSlugs: ["field-force"],
+    maxUsers: 9999,
+    maxLocations: 9999,
+    isPublic: true,
+  };
 
-  for (const plan of plans) {
-    await prisma.plan.upsert({ where: { id: plan.id }, create: plan, update: plan });
-    console.log(`Upserted plan ${plan.id}`);
+  await prisma.plan.upsert({ where: { id: freePlan.id }, create: freePlan, update: freePlan });
+  console.log(`Upserted plan ${freePlan.id}`);
+
+  for (const staleId of ["PLAN-FIELDFORCE-BASIC", "PLAN-FIELDFORCE-PRO", "PLAN-FIELDFORCE-ULTIMATE"]) {
+    await prisma.plan.deleteMany({ where: { id: staleId } });
   }
+  console.log("Removed the old paid Field Force plans.");
 
   await prisma.partnerType.upsert({
     where: { id: "field-force" },
     create: {
       id: "field-force",
       description:
-        "Field Force: a full home-services booking system — priced service catalog, customer bookings, dispatch of skilled or unskilled engineers by service and pincode, payment collection, and ratings.",
+        "Field Force: free to join. Providers (skilled or unskilled) sign up and get a login to receive and manage jobs; customers request service through their own app. The platform earns a small commission per completed booking (see Admin > Field Force Platform Commission), not a subscription fee.",
       defaultModules: ["field-force"],
       assignableRoleIds: [],
       planTierByPage: {},
-      planIds: plans.map((p) => p.id),
+      planIds: [freePlan.id],
       idPrefix: "FF",
       requiresApproval: true,
       status: "Active",
     },
     update: {
       status: "Active",
-      planIds: plans.map((p) => p.id),
+      planIds: [freePlan.id],
+      description:
+        "Field Force: free to join. Providers (skilled or unskilled) sign up and get a login to receive and manage jobs; customers request service through their own app. The platform earns a small commission per completed booking (see Admin > Field Force Platform Commission), not a subscription fee.",
     },
   });
-  console.log("field-force PartnerType is Active with real pricing.");
+  console.log("field-force PartnerType is Active, free to join.");
 
   await prisma.$disconnect();
 }

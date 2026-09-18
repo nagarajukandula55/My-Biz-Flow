@@ -13,64 +13,65 @@ registerPage({
   superAdminOnly: false,
   customizableRegions: [],
   explanation:
-    "Full marketing/feature page for the Field Force business type — a real, signup-able Partner Type (PartnerType.id 'field-force', idPrefix 'FF', real Plan pricing). Real, verified capabilities only: priced service catalog, customer bookings, skilled/unskilled provider onboarding (Provider.skillLevel), dispatch by service+pincode, payment collection, ratings.",
+    "Full marketing/feature page for Field Force — a free-to-join home-services marketplace (PartnerType.id 'field-force', idPrefix 'FF', Plan price 0). Not a per-partner SaaS subscription: the platform earns a small commission per completed booking instead (src/lib/fieldForce/commission.ts, configured platform-wide at Admin > Field Force Platform Commission), which is why there is no signup fee. Real, verified capabilities only: priced service catalog, customer bookings, skilled/unskilled provider onboarding (Provider.skillLevel), dispatch by service+pincode, payment collection, ratings.",
   sourceFile: "src/app/solutions/field-force/page.tsx",
 });
 
 export const metadata: Metadata = {
-  title: "Field Force / Home Services Booking Software | My Biz Flow",
+  title: "Join as a Service Provider or Book a Home Service | My Biz Flow Field Force",
   description:
-    "Run a home-services business end to end: a priced service catalog, customer bookings, dispatch of skilled or unskilled engineers by service and pincode, payment collection, and ratings — with providers onboarding themselves or through your team.",
+    "Free to join. Skilled or unskilled professionals sign up as a service provider and get their own login to receive and manage jobs. Customers request home services — repairs, installs, and more — and get matched to a provider by service and pincode.",
   alternates: { canonical: "/solutions/field-force" },
 };
 
 const PERKS = [
   {
-    title: "Priced service catalog",
-    description: "List every service you dispatch for with its own price — customers book against real, published rates, not a phone-call quote.",
+    title: "Free to join",
+    description: "No subscription, no signup fee — the platform earns a small commission only when a job is actually completed and paid for.",
   },
   {
-    title: "Skilled & unskilled provider onboarding",
+    title: "Skilled & unskilled work, both welcome",
     description: "Every provider carries a real skill level, so a job requiring a skilled technician never gets routed to someone who isn't qualified for it.",
   },
   {
-    title: "Providers onboard themselves",
-    description: "Self-signup, admin-onboarding, or team-lead onboarding — three real paths to bring a provider on, not just one admin-only form.",
+    title: "Your own login",
+    description: "Sign up and get your own provider account — no separate app store listing to hunt for, no waiting on someone else's account.",
   },
   {
-    title: "Dispatch by service & pincode",
-    description: "A booking matches to a provider who actually offers that service in that area — not a random assignment.",
+    title: "Jobs matched to you",
+    description: "A request matches to a provider who actually offers that service in that area — not a random assignment.",
   },
   {
-    title: "Customers book without an account",
-    description: "A public customer booking flow with its own lightweight login — no forcing a customer through your staff's account system.",
+    title: "Customers request in minutes",
+    description: "Pick a service, describe the job, and get matched — no phone tag, no waiting for a callback quote.",
   },
   {
-    title: "Payment collection per booking",
-    description: "Track what's owed and collected on every job, tied to the booking it belongs to.",
+    title: "Payment tracked per job",
+    description: "What's owed and collected is tied to the booking it belongs to — a clear record every time.",
   },
   {
-    title: "Ratings & booking history",
-    description: "Every completed job leaves a rating, building a real track record per provider over time.",
+    title: "Ratings build your reputation",
+    description: "Every completed job leaves a rating, building a real track record over time — good work gets noticed.",
   },
   {
     title: "No-code, same as every module",
-    description: "A Super Admin manages the service catalog, fields, and provider roster without custom development.",
+    description: "The service catalog, fields, and provider roster are managed without custom development.",
   },
 ];
 
 const HOW_IT_WORKS = [
-  { step: "1", title: "Build your service catalog", description: "List what you dispatch for and at what price." },
-  { step: "2", title: "Onboard providers", description: "Bring on skilled and unskilled engineers — self-signup, admin-onboarded, or via a team lead — each tagged with their real skill level." },
-  { step: "3", title: "Customers book", description: "A customer picks a service and books, no account required beyond a lightweight customer login." },
-  { step: "4", title: "Dispatch, collect, rate", description: "The right provider gets matched by service and pincode, payment is tracked per booking, and the job closes with a rating." },
+  { step: "1", title: "Sign up free", description: "Providers self-signup with their skill level; no fee to join." },
+  { step: "2", title: "Get your login", description: "A real account to receive, accept, and manage job requests." },
+  { step: "3", title: "Customers request a service", description: "They pick a service, describe the job, and get matched by service and pincode." },
+  { step: "4", title: "Do the job, get paid, get rated", description: "Payment is tracked per booking, and every completed job builds your rating." },
 ];
 
 const FAQS = [
+  { q: "Does it cost anything to join as a provider?", a: "No — signing up is free. The platform only earns a small commission per completed, paid booking." },
   { q: "Can I tell skilled and unskilled providers apart?", a: "Yes — every provider carries a real skill level, and services can require a minimum skill level, so dispatch respects it." },
-  { q: "How do providers get onboarded?", a: "Three ways: they sign up themselves, your admin onboards them directly, or a team lead onboards providers under them." },
-  { q: "Do customers need an account to book?", a: "They need a lightweight customer login (separate from your staff accounts), not a full business signup." },
-  { q: "Is payment tracked per job?", a: "Yes — payment collection is tied to each booking, not a separate ledger you have to reconcile by hand." },
+  { q: "How do providers get onboarded?", a: "Self-signup is the main path — an admin or team lead can also onboard a provider directly." },
+  { q: "Do customers need an account to book?", a: "They need a lightweight customer login (separate from provider accounts), not a full business signup." },
+  { q: "Is payment tracked per job?", a: "Yes — payment collection is tied to each booking, not a separate ledger to reconcile by hand." },
 ];
 
 export default function FieldForceSolutionPage() {
@@ -116,28 +117,28 @@ export default function FieldForceSolutionPage() {
           <Link href="/solutions/telecalling" className="text-text-muted hover:text-text">Telecalling</Link>
           <Link href="/pricing" className="text-text-muted hover:text-text">Pricing</Link>
           <Link href="/login" className="text-text-muted hover:text-text">Sign in</Link>
-          <Link href="/signup?type=field-force" className="btn-accent mbf-cta-glow">Get started</Link>
+          <Link href="/contact" className="btn-accent mbf-cta-glow">Get started</Link>
         </nav>
       </header>
 
       <section className="px-6 py-20 text-center">
-        <p className="text-xs font-semibold uppercase tracking-widest text-accent">Field Force</p>
+        <p className="text-xs font-semibold uppercase tracking-widest text-accent">Field Force — free to join</p>
         <h1 className="mx-auto mt-2 max-w-3xl font-display text-4xl font-extrabold text-text sm:text-5xl">
-          Book, dispatch, and pay <span className="mbf-headline-mark">home-service jobs</span>.
+          Earn as a <span className="mbf-headline-mark">service provider</span>, or get help fast as a customer.
         </h1>
         <p className="mbf-prose mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-text-muted">
-          A priced service catalog, customer bookings, and dispatch of skilled or unskilled engineers by service and
-          pincode — its own business type, with its own pricing.
+          Skilled or unskilled, sign up free and get your own login to receive real job requests. Need a service
+          done? Request one and get matched to a provider near you.
         </p>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
-          <Link href="/signup?type=field-force" className="btn-accent mbf-cta-glow">Start free</Link>
-          <Link href="/pricing?type=field-force" className="btn-outline">See pricing</Link>
+          <Link href="/contact" className="btn-accent mbf-cta-glow">Join as a Provider — free</Link>
+          <Link href="/contact" className="btn-outline">Request a Service</Link>
         </div>
       </section>
 
       <section className="border-t border-border px-6 py-16">
         <div className="mx-auto max-w-5xl">
-          <h2 className="text-center font-display text-2xl font-bold text-text">Everything a home-services business needs</h2>
+          <h2 className="text-center font-display text-2xl font-bold text-text">Everything the marketplace needs</h2>
           <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {PERKS.map((p) => (
               <div key={p.title} className="mbf-glass-card p-5">
@@ -183,10 +184,10 @@ export default function FieldForceSolutionPage() {
       </section>
 
       <section className="border-t border-border px-6 py-16 text-center">
-        <h2 className="font-display text-2xl font-bold text-text">Ready to put your provider network to work?</h2>
+        <h2 className="font-display text-2xl font-bold text-text">Ready to get started?</h2>
         <div className="mt-6 flex flex-wrap items-center justify-center gap-4">
-          <Link href="/signup?type=field-force" className="btn-accent mbf-cta-glow">Start free</Link>
-          <Link href="/pricing?type=field-force" className="btn-outline">See pricing</Link>
+          <Link href="/contact" className="btn-accent mbf-cta-glow">Join as a Provider — free</Link>
+          <Link href="/contact" className="btn-outline">Request a Service</Link>
         </div>
       </section>
 
