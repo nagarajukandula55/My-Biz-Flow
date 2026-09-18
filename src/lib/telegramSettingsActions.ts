@@ -3,15 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import {
+  getTelegramSettings,
   saveTelegramSettings,
   saveTelegramRouting,
   sendPartnerTelegramAlert,
-  disconnectTelegramChat,
   TELEGRAM_ALERT_TYPES,
   TELEGRAM_REPORT_FREQUENCIES,
   type TelegramAlertType,
   type TelegramReportFrequency,
-  type TelegramChatSlot,
   type AlertDestination,
   type TelegramRoutingMap,
 } from "@/lib/telegram";
@@ -19,8 +18,16 @@ import {
 export async function saveTelegramSettingsAction(partnerId: string, formData: FormData): Promise<void> {
   await requireSessionPartnerId(partnerId);
 
-  const chatId = String(formData.get("chatId") ?? "").trim();
-  const groupChatId = String(formData.get("groupChatId") ?? "").trim();
+  // Once a slot is connected, only a Super Admin can change/clear it (see
+  // My-Biz-Flow-Admin's subscriber edit page) — a partner can no longer
+  // reconnect/overwrite it themselves, including via the "enter chat id
+  // manually" form below, which posts through this same action. A submitted
+  // value is only honored for a slot that isn't already connected.
+  const existing = await getTelegramSettings(partnerId);
+  const submittedChatId = String(formData.get("chatId") ?? "").trim();
+  const submittedGroupChatId = String(formData.get("groupChatId") ?? "").trim();
+  const chatId = existing.chatId ?? submittedChatId;
+  const groupChatId = existing.groupChatId ?? submittedGroupChatId;
   const validKeys = new Set(TELEGRAM_ALERT_TYPES.map((t) => t.key));
   const enabledTypes = TELEGRAM_ALERT_TYPES.map((t) => t.key).filter(
     (key) => formData.get(`alert_${key}`) === "on" && validKeys.has(key)
@@ -67,17 +74,5 @@ export async function saveTelegramRoutingAction(partnerId: string, formData: For
 export async function sendTestTelegramMessageAction(partnerId: string): Promise<void> {
   await requireSessionPartnerId(partnerId);
   await sendPartnerTelegramAlert(partnerId, "test", "🔔 This is a test message from your Telegram Alerts setup.");
-  revalidatePath(`/partner/${partnerId}/service-centre/telegram`);
-}
-
-/**
- * "Disconnect" — clears the chat captured by the deep-link connect flow for
- * one slot (personal or group), so alerts stop going to that chat until the
- * partner connects it again. The other slot, alert-type/report-frequency
- * and routing settings are kept.
- */
-export async function disconnectTelegramAction(partnerId: string, slot: TelegramChatSlot): Promise<void> {
-  await requireSessionPartnerId(partnerId);
-  await disconnectTelegramChat(partnerId, slot);
   revalidatePath(`/partner/${partnerId}/service-centre/telegram`);
 }

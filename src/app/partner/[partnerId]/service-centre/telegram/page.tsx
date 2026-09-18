@@ -9,7 +9,7 @@ import {
   type AlertDestination,
 } from "@/lib/telegram";
 import { generateTelegramConnectQrDataUrl } from "@/lib/telegramQr";
-import { saveTelegramSettingsAction, sendTestTelegramMessageAction, disconnectTelegramAction } from "@/lib/telegramSettingsActions";
+import { saveTelegramSettingsAction, sendTestTelegramMessageAction } from "@/lib/telegramSettingsActions";
 import { env } from "@/lib/env";
 import { NoticeCard } from "@/components/NoticeCard";
 
@@ -110,7 +110,7 @@ export default async function TelegramAlertsPage({ params }: { params: { partner
         {connectionIssue && (
           <NoticeCard tone="danger" title="⚠️ Your Telegram alerts aren't getting through">
             Your last {connectionIssue.count} alert{connectionIssue.count === 1 ? "" : "s"} failed to send —{" "}
-            {connectionIssue.reason}. Reconnect your Telegram chat below to start receiving alerts again.
+            {connectionIssue.reason}. Contact support to have your Telegram connection reset so you can reconnect.
           </NoticeCard>
         )}
 
@@ -155,11 +155,7 @@ export default async function TelegramAlertsPage({ params }: { params: { partner
                   </div>
                 </div>
                 {connected ? (
-                  <form action={disconnectTelegramAction.bind(null, params.partnerId, slot)}>
-                    <button type="submit" className="btn-outline">
-                      Disconnect
-                    </button>
-                  </form>
+                  <span className="text-xs text-text-muted">Contact support to change this.</span>
                 ) : connectLink ? (
                   <a href={connectLink} target="_blank" rel="noopener noreferrer" className="btn-accent">
                     Connect {slot === "group" ? "Group" : ""}
@@ -204,55 +200,60 @@ export default async function TelegramAlertsPage({ params }: { params: { partner
           );
         })}
 
-        <details className="rounded-lg border border-border bg-bg-raised p-4 text-sm text-text-muted">
-          <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-text-muted">
-            Enter a Chat ID manually instead
-          </summary>
-          <p className="mt-2">
-            Only needed for a group chat the bot has been added to (get its Chat ID from @userinfobot or the group's
-            admin tools) — a personal DM connects automatically via the QR/link above.
-          </p>
-          <form action={saveTelegramSettingsAction.bind(null, params.partnerId)} className="mt-3 space-y-2">
-            <label className="block text-xs font-semibold uppercase tracking-wide text-text-muted">
-              Personal Chat ID
-              <input
-                type="text"
-                name="chatId"
-                defaultValue={settings.chatId ?? ""}
-                placeholder="123456789"
-                className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm normal-case text-text outline-none focus:border-accent"
-              />
-            </label>
-            <label className="block text-xs font-semibold uppercase tracking-wide text-text-muted">
-              Group Chat ID
-              <input
-                type="text"
-                name="groupChatId"
-                defaultValue={settings.groupChatId ?? ""}
-                placeholder="-1001234567890"
-                className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm normal-case text-text outline-none focus:border-accent"
-              />
-            </label>
-            {/* Alert types + report frequency + routing live in the main form
-                below — this mini-form only overrides the chat ids, then falls
-                through to the same save action, so it must resend the other
-                fields' current values or they'd be cleared. Simplest correct
-                fix: keep them as hidden inputs mirroring the main form's
-                current values. */}
-            {TELEGRAM_ALERT_TYPES.map((t) => (
-              settings.enabledTypes.includes(t.key) ? (
-                <input key={t.key} type="hidden" name={`alert_${t.key}`} value="on" />
-              ) : null
-            ))}
-            {TELEGRAM_ALERT_TYPES.map((t) => (
-              <input key={t.key} type="hidden" name={`routing_${t.key}`} value={settings.routing[t.key] ?? "both"} />
-            ))}
-            <input type="hidden" name="reportFrequency" value={settings.reportFrequency} />
-            <button type="submit" className="btn-outline">
-              Save Chat IDs
-            </button>
-          </form>
-        </details>
+        {!bothChatsConnected && (
+          <details className="rounded-lg border border-border bg-bg-raised p-4 text-sm text-text-muted">
+            <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-text-muted">
+              Enter a Chat ID manually instead
+            </summary>
+            <p className="mt-2">
+              Only needed for a group chat the bot has been added to (get its Chat ID from @userinfobot or the group's
+              admin tools) — a personal DM connects automatically via the QR/link above. Only shown for a slot that
+              isn't connected yet — once connected, a chat id can no longer be changed here (contact support).
+            </p>
+            <form action={saveTelegramSettingsAction.bind(null, params.partnerId)} className="mt-3 space-y-2">
+              {!settings.chatId && (
+                <label className="block text-xs font-semibold uppercase tracking-wide text-text-muted">
+                  Personal Chat ID
+                  <input
+                    type="text"
+                    name="chatId"
+                    placeholder="123456789"
+                    className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm normal-case text-text outline-none focus:border-accent"
+                  />
+                </label>
+              )}
+              {!settings.groupChatId && (
+                <label className="block text-xs font-semibold uppercase tracking-wide text-text-muted">
+                  Group Chat ID
+                  <input
+                    type="text"
+                    name="groupChatId"
+                    placeholder="-1001234567890"
+                    className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm normal-case text-text outline-none focus:border-accent"
+                  />
+                </label>
+              )}
+              {/* Alert types + report frequency + routing live in the main form
+                  below — this mini-form only overrides the chat ids, then falls
+                  through to the same save action, so it must resend the other
+                  fields' current values or they'd be cleared. Simplest correct
+                  fix: keep them as hidden inputs mirroring the main form's
+                  current values. */}
+              {TELEGRAM_ALERT_TYPES.map((t) => (
+                settings.enabledTypes.includes(t.key) ? (
+                  <input key={t.key} type="hidden" name={`alert_${t.key}`} value="on" />
+                ) : null
+              ))}
+              {TELEGRAM_ALERT_TYPES.map((t) => (
+                <input key={t.key} type="hidden" name={`routing_${t.key}`} value={settings.routing[t.key] ?? "both"} />
+              ))}
+              <input type="hidden" name="reportFrequency" value={settings.reportFrequency} />
+              <button type="submit" className="btn-outline">
+                Save Chat IDs
+              </button>
+            </form>
+          </details>
+        )}
 
         <form action={saveTelegramSettingsAction.bind(null, params.partnerId)} className="space-y-4 rounded-lg border border-border bg-bg-raised p-4">
           <input type="hidden" name="chatId" value={settings.chatId ?? ""} />

@@ -8,6 +8,7 @@ import {
   parseStartPayload,
   findPartnerIdByChatId,
   sendRawTelegramMessage,
+  getTelegramSettings,
 } from "@/lib/telegram";
 import { findTelegramTemplateDefByCommand, TELEGRAM_TEMPLATE_DEFS } from "@/lib/telegramTemplateDefs";
 import { getTelegramTemplateBody, renderTelegramTemplate } from "@/lib/telegramTemplatesData";
@@ -216,6 +217,23 @@ export async function POST(request: Request) {
       await sendTelegramReply(message.chat.id, "This connect link isn't valid — please use the link on your Telegram Alerts page again.");
       return NextResponse.json({ ok: true });
     }
+
+    // A slot only ever connects once from the partner's own side now — a
+    // partner can no longer reconnect/change it themselves (only a Super
+    // Admin can, from the Admin app), so re-scanning an old saved QR image
+    // must not silently hijack an already-connected slot to a different
+    // chat. An idempotent re-/start from the SAME chat is still a harmless
+    // no-op/reconfirm.
+    const existingSettings = await getTelegramSettings(partnerId);
+    const currentChatId = slot === "group" ? existingSettings.groupChatId : existingSettings.chatId;
+    if (currentChatId && currentChatId !== chatId) {
+      await sendTelegramReply(
+        message.chat.id,
+        "This My Biz Flow account already has a Telegram chat connected for this slot. Contact support if you need it changed."
+      );
+      return NextResponse.json({ ok: true });
+    }
+
     await connectTelegramChat(partnerId, chatId, slot, deriveChatDisplayName(message.chat));
     const slotLabel = slot === "group" ? "group chat" : "personal chat";
     await sendTelegramReply(message.chat.id, await connectConfirmationMessage(slotLabel));
