@@ -26,7 +26,8 @@ import { newWorkorderCreatedMessage } from "@/lib/telegramTemplates";
 /** Standard GSTIN: 2-digit state code, 10-char PAN, entity digit, 'Z', checksum. */
 const GSTIN_RE = /^[0-3][0-9][A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/;
 
-const REQUIRED_FIELDS: { key: string; label: string }[] = [
+/** Exported so callers (e.g. inquiries/actions.ts's convert flow) can prompt for exactly what's missing, not just show a combined error string. */
+export const REQUIRED_FIELDS: { key: string; label: string }[] = [
   { key: "customerPhone", label: "Contact No" },
   { key: "customer", label: "Customer Name" },
   { key: "faultDescription", label: "Fault in Device" },

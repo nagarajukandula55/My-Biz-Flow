@@ -42,6 +42,8 @@ export const inquiryColumns: Column[] = [
   { key: "serviceType", label: "Service Type", type: "select-chip" },
   { key: "complaint", label: "Complaint", type: "text" },
   { key: "pincode", label: "Pincode", type: "text" },
+  { key: "city", label: "City", type: "text" },
+  { key: "state", label: "State", type: "text" },
   { key: "source", label: "Source", type: "select-chip" },
   { key: "status", label: "Status", type: "select-chip", chipVariantMap: INQUIRY_STATUS_VARIANT },
   { key: "createdAt", label: "Logged On", type: "text" },
@@ -75,6 +77,11 @@ export function getInquiryDetailFields(record: Row): RecordField[] {
     { label: "Brand / Model", value: [record["brand"], record["model"]].filter(Boolean).join(" ") || "—", type: "text" },
     { label: "Address", value: record["addressLine"], type: "text" },
     { label: "Pincode", value: record["pincode"], type: "text" },
+    // Auto-derived from Pincode at intake (see createInquiryAction /
+    // bookAppointmentAction) — not a separate input, so it's display-only
+    // here, same as every other system-derived field on this page.
+    { label: "City", value: record["city"] || "—", type: "text" },
+    { label: "State", value: record["state"] || "—", type: "text" },
     { label: "Preferred Date", value: record["preferredDate"], type: "text" },
     { label: "Source", value: record["source"] ?? "Staff", type: "text" },
     { label: "Status", value: record["status"], type: "select" },

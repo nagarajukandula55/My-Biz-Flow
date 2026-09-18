@@ -70,6 +70,13 @@ export async function bookAppointmentAction(formData: FormData): Promise<void> {
     serviceType,
     complaint,
     pincode,
+    // Derived above from the same pincode lookup used for partner
+    // assignment — stored now rather than recomputed at convert-to-
+    // workorder time, so the inquiry itself already shows where the
+    // customer is (and conversion doesn't need PostalPincode to still have
+    // a match later).
+    city: city ?? "",
+    state: state ?? "",
     addressLine,
     brand,
     model,
