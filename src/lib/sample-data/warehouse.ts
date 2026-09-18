@@ -457,12 +457,19 @@ export const partOrderRelated: RelatedRecord[] = [];
 // Orders cover)
 // ---------------------------------------------------------------------
 
-export const STOCK_TRANSFER_STATUSES = ["Pending", "In Transit", "Completed"] as const;
+// "Pending Super Admin Approval"/"Rejected" only ever apply to a
+// cross-partner transfer (toPartnerId set to a different partner) — an
+// intra-partner (own-warehouse-to-own-warehouse) transfer never touches
+// them, same Pending -> In Transit -> Completed flow as before. See
+// createStockTransferAction (actions.ts) for where the gate is enforced.
+export const STOCK_TRANSFER_STATUSES = ["Pending", "In Transit", "Completed", "Pending Super Admin Approval", "Rejected"] as const;
 
 const STOCK_TRANSFER_STATUS_VARIANT: Record<string, StatusVariant> = {
   Pending: "warning",
   "In Transit": "teal",
   Completed: "success",
+  "Pending Super Admin Approval": "warning",
+  Rejected: "danger",
 };
 
 export const stockTransferColumns: Column[] = [
@@ -470,6 +477,7 @@ export const stockTransferColumns: Column[] = [
   { key: "materialId", label: "Material", type: "text" },
   { key: "fromWarehouseName", label: "From Warehouse", type: "text" },
   { key: "toWarehouseName", label: "To Warehouse", type: "text" },
+  { key: "toPartnerId", label: "To Partner", type: "text" },
   { key: "quantity", label: "Quantity", type: "text" },
   { key: "transferDate", label: "Transfer Date", type: "date" },
   { key: "reason", label: "Reason / Note", type: "text" },
@@ -479,12 +487,52 @@ export const stockTransferColumns: Column[] = [
 export const stockTransferFormFields: FormFieldDef[] = [
   { key: "materialId", label: "Material", type: "select", required: true, options: getBomOptions().map((o) => o.label) },
   { key: "fromWarehouseName", label: "From Warehouse", type: "select", required: true, options: getWarehouseOptions().map((o) => o.label) },
-  { key: "toWarehouseName", label: "To Warehouse", type: "select", required: true, options: getWarehouseOptions().map((o) => o.label) },
+  { key: "toWarehouseName", label: "To Warehouse (leave blank for a partner-to-partner transfer)", type: "select", required: false, options: getWarehouseOptions().map((o) => o.label) },
+  { key: "toPartnerId", label: "OR Transfer To Partner ID (e.g. SC0042) — requires Super Admin approval", type: "text", required: false },
   { key: "quantity", label: "Quantity", type: "number", required: true },
   { key: "transferDate", label: "Transfer Date", type: "date", required: true },
   { key: "reason", label: "Reason / Note", type: "text", required: false },
   { key: "status", label: "Status", type: "select", required: true, options: [...STOCK_TRANSFER_STATUSES] },
 ];
+
+export function getStockTransferDetailFields(record: Row): RecordField[] {
+  const r = record;
+  return [
+    { label: "Transfer ID", value: r["id"], type: "text" },
+    { label: "Material", value: r["materialId"], type: "text" },
+    { label: "From Warehouse", value: r["fromWarehouseName"], type: "text" },
+    { label: "To Warehouse", value: r["toWarehouseName"] || "—", type: "text" },
+    { label: "To Partner", value: r["toPartnerId"] || "—", type: "text" },
+    { label: "Quantity", value: r["quantity"], type: "text" },
+    { label: "Transfer Date", value: r["transferDate"], type: "date" },
+    { label: "Reason / Note", value: r["reason"], type: "text" },
+    {
+      label: "Status",
+      value: r["status"],
+      type: "select",
+      chipVariant: STOCK_TRANSFER_STATUS_VARIANT[String(r["status"])] ?? "neutral",
+    },
+  ];
+}
+
+export function getStockTransferTimeline(record: Row): TimelineEntry[] {
+  const entries: TimelineEntry[] = [
+    {
+      id: "t1",
+      label: record["toPartnerId"]
+        ? `Partner-to-partner transfer requested to ${record["toPartnerId"]}`
+        : "Transfer created",
+      timestamp: `${record["transferDate"] ?? "2026-09-19"}T09:00:00`,
+      actor: "Partner",
+    },
+  ];
+  if (record["status"] === "Pending Super Admin Approval") {
+    entries.push({ id: "t2", label: "Awaiting Super Admin approval", timestamp: `${record["transferDate"] ?? "2026-09-19"}T09:00:01`, actor: "System" });
+  }
+  return entries;
+}
+
+export const stockTransferRelated: RelatedRecord[] = [];
 
 // ---------------------------------------------------------------------
 // Stock Take — periodic physical count reconciled against the system's

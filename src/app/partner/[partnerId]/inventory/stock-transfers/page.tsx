@@ -2,8 +2,10 @@ import { AppShell } from "@/components/AppShell";
 import { registerPage } from "@/lib/designer/registry";
 import { StockTransfersClientTable } from "./StockTransfersClientTable";
 import { StockTransfersNewButton } from "./StockTransfersNewButton";
+import { BulkUploadButton } from "@/components/BulkUploadButton";
+import { bulkImportStockTransfersAction } from "./actions";
 import { applyCustomizations } from "@/lib/designer/customizations";
-import { stockTransferColumns } from "@/lib/sample-data/warehouse";
+import { stockTransferColumns, stockTransferFormFields } from "@/lib/sample-data/warehouse";
 import { listBusinessRecords } from "@/lib/businessRecords";
 
 registerPage({
@@ -17,7 +19,7 @@ registerPage({
     { key: "columns", label: "Table columns" },
     { key: "filters", label: "List filters" },
   ],
-  explanation: "Lists every stock transfer between two of this partner's warehouses, with a \"+ New\" action to create one and row-click navigation into the record's detail view.",
+  explanation: "Lists every stock transfer — between two of this partner's own warehouses, or requested to another onboarded partner (gated behind Super Admin approval, see createStockTransferAction) — with a \"+ New\" action to create one and row-click navigation into the record's detail view.",
   sourceFile: "src/app/partner/[partnerId]/inventory/stock-transfers/page.tsx",
 });
 
@@ -31,7 +33,17 @@ export default async function StockTransfersPage({ params }: { params: { partner
     <AppShell
       topbarTitle="Stock Transfers"
       topbarActions={
-        <StockTransfersNewButton partnerId={params.partnerId} />
+        <div className="flex items-center gap-3">
+          <BulkUploadButton
+            title="Bulk Upload Stock Transfers"
+            columns={stockTransferFormFields.map((f) => f.key)}
+            requiredColumnsNote="Material, From Warehouse, Quantity, Transfer Date and Status are required per row. Bulk upload only supports own-warehouse transfers — use + New Transfer for a partner-to-partner request."
+            sampleRow={["USB-C Charging Port Flex Cable", "Central Warehouse — Bengaluru", "Secondary Warehouse — Mumbai", "", "5", "2026-09-19", "Rebalancing stock", "Pending"]}
+            templateFilename="stock-transfers-template.csv"
+            importAction={bulkImportStockTransfersAction.bind(null, params.partnerId)}
+          />
+          <StockTransfersNewButton partnerId={params.partnerId} />
+        </div>
       }
     >
       <div>

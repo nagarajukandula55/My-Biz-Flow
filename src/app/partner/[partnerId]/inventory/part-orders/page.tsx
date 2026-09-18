@@ -2,8 +2,10 @@ import { AppShell } from "@/components/AppShell";
 import { registerPage } from "@/lib/designer/registry";
 import { PartOrdersClientTable } from "./PartOrdersClientTable";
 import { PartOrdersNewButton } from "./PartOrdersNewButton";
+import { BulkUploadButton } from "@/components/BulkUploadButton";
+import { bulkImportPartOrdersAction } from "./actions";
 import { applyCustomizations } from "@/lib/designer/customizations";
-import { partOrderColumns } from "@/lib/sample-data/warehouse";
+import { partOrderColumns, partOrderFormFields } from "@/lib/sample-data/warehouse";
 import { listBusinessRecords } from "@/lib/businessRecords";
 
 registerPage({
@@ -31,7 +33,17 @@ export default async function PartOrdersPage({ params }: { params: { partnerId: 
     <AppShell
       topbarTitle="Part Orders"
       topbarActions={
-        <PartOrdersNewButton partnerId={params.partnerId} />
+        <div className="flex items-center gap-3">
+          <BulkUploadButton
+            title="Bulk Upload Part Orders"
+            columns={partOrderFormFields.map((f) => f.key)}
+            requiredColumnsNote="Material, Quantity, Source Warehouse and Status are required per row."
+            sampleRow={["", "USB-C Charging Port Flex Cable", "5", "Central Warehouse — Bengaluru", "Indiranagar Service Centre", "Pending", ""]}
+            templateFilename="part-orders-template.csv"
+            importAction={bulkImportPartOrdersAction.bind(null, params.partnerId)}
+          />
+          <PartOrdersNewButton partnerId={params.partnerId} />
+        </div>
       }
     >
       <div>

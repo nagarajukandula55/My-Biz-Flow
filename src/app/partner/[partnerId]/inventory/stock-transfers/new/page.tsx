@@ -3,7 +3,7 @@ import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { stockTransferFormFields } from "@/lib/sample-data/warehouse";
 import { applyCustomizations } from "@/lib/designer/customizations";
-import { createBusinessRecordAction } from "@/lib/businessRecordActions";
+import { createStockTransferAction } from "../actions";
 
 registerPage({
   id: "inventory.stock-transfers.create",
@@ -28,12 +28,15 @@ export default async function NewStockTransferPage({ params }: { params: { partn
     <AppShell topbarTitle="New Transfer — Stock Transfers">
       <div>
         <h1 className="font-display text-xl font-bold text-text">New Transfer</h1>
-        <p className="mt-1 text-xs text-text-muted">Move material between two of this partner's warehouses.</p>
+        <p className="mt-1 text-xs text-text-muted">
+          Move material between two of this partner's warehouses, or request a transfer to another onboarded
+          partner (requires Super Admin approval).
+        </p>
         <div className="mt-6">
           <RecordForm
             fields={fields}
             submitLabel="Create Transfer"
-            action={createBusinessRecordAction.bind(null, params.partnerId, "inventory-stock-transfers")}
+            action={createStockTransferAction.bind(null, params.partnerId)}
           />
         </div>
       </div>
