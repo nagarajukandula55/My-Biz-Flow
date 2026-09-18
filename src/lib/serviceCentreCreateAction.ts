@@ -5,6 +5,7 @@ import { getNextNumber } from "@/lib/designer/numbering";
 import { getPartner } from "@/lib/partnerData";
 import { sendWorkorderTelegramAlert } from "@/lib/telegram";
 import { newWorkorderCreatedMessage } from "@/lib/telegramTemplates";
+import { SERVICE_CENTRE_REQUIRED_FIELDS } from "@/lib/serviceCentreRequiredFields";
 
 /**
  * Service-Centre-specific create action: validates intake, assigns the Job
@@ -26,24 +27,13 @@ import { newWorkorderCreatedMessage } from "@/lib/telegramTemplates";
 /** Standard GSTIN: 2-digit state code, 10-char PAN, entity digit, 'Z', checksum. */
 const GSTIN_RE = /^[0-3][0-9][A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/;
 
-/** Exported so callers (e.g. inquiries/actions.ts's convert flow) can prompt for exactly what's missing, not just show a combined error string. */
-export const REQUIRED_FIELDS: { key: string; label: string }[] = [
-  { key: "customerPhone", label: "Contact No" },
-  { key: "customer", label: "Customer Name" },
-  { key: "faultDescription", label: "Fault in Device" },
-  { key: "customerAddress", label: "Address" },
-  { key: "customerCity", label: "City" },
-  { key: "customerState", label: "State" },
-  { key: "customerPincode", label: "Pincode" },
-];
-
 /** Validation only — exported for the action below; pure, no I/O. */
 export async function validateServiceCentreWorkorder(
   values: Record<string, unknown>
 ): Promise<string | null> {
   const text = (key: string) => String(values[key] ?? "").trim();
 
-  const missing = REQUIRED_FIELDS.filter((f) => !text(f.key)).map((f) => f.label);
+  const missing = SERVICE_CENTRE_REQUIRED_FIELDS.filter((f) => !text(f.key)).map((f) => f.label);
   if (missing.length > 0) {
     return `${missing.join(", ")} ${missing.length === 1 ? "is" : "are"} required.`;
   }

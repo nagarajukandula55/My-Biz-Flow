@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createBusinessRecord, updateBusinessRecord, getBusinessRecord } from "@/lib/businessRecords";
 import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
-import { validateServiceCentreWorkorder, REQUIRED_FIELDS } from "@/lib/serviceCentreCreateAction";
+import { validateServiceCentreWorkorder } from "@/lib/serviceCentreCreateAction";
+import { SERVICE_CENTRE_REQUIRED_FIELDS } from "@/lib/serviceCentreRequiredFields";
 import { getNextNumber } from "@/lib/designer/numbering";
 import { getPartner } from "@/lib/partnerData";
 import { prisma } from "@/lib/prisma";
@@ -143,7 +144,7 @@ export async function convertInquiryToWorkorderAction(
     // cases, not just "blank", or a badly-formatted pincode would report
     // no missing fields at all despite validation failing.
     const text = (key: string) => String(values[key] ?? "").trim();
-    const missing = REQUIRED_FIELDS.filter((f) => {
+    const missing = SERVICE_CENTRE_REQUIRED_FIELDS.filter((f) => {
       const v = text(f.key);
       if (!v) return true;
       if (f.key === "customerPhone") return v.replace(/\D/g, "").length < 10;
