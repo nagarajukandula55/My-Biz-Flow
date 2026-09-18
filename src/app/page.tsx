@@ -81,14 +81,20 @@ registerPage({
   superAdminOnly: false,
   customizableRegions: [],
   explanation:
-    "Public marketing home page (no AppShell). Hero, a 'choose your business type' section pulling live Active Partner Types from the PartnerType Prisma table (each card links to /signup?type=<id>, so the home page can never drift from what Super Admin has actually configured), and a screenshots section referencing /screenshots/*.png files that don't exist yet (graceful bg-bg-sunken fallback boxes) — real screenshots to be added in a follow-up pass. CTAs to /signup and /pricing.",
+    "Public marketing home page (no AppShell). Hero, a 'choose your business type' section pulling live Active Partner Types from the PartnerType Prisma table (each card links to /signup?type=<id>, so the home page can never drift from what Super Admin has actually configured), and a screenshots section with real screenshots of the running app (public/screenshots/*.png), captured from the standing DEMO0001 demo partner account (see scripts/create-demo-partner.ts / src/lib/demoPartnerSeed.ts) so they're always real product, never mockups. CTAs to /signup and /pricing.",
   sourceFile: "src/app/page.tsx",
 });
 
+// dashboard/workorders/analytics — every partner can reach all three with
+// just a normal login; the original list also had "pos-list" and
+// "designer", but POS isn't in the Service Centre PartnerType's own
+// defaultModules and Designer is a Super-Admin-only tool that moved to a
+// separate app entirely (see CLAUDE.md) — neither is real content a
+// prospective customer needs to see on this page anyway.
 const SCREENSHOTS: { name: string; alt: string }[] = [
-  { name: "dashboard", alt: "A partner dashboard showing live stat tiles and recent activity" },
-  { name: "pos-list", alt: "The POS module's list view showing recent sales in a data table" },
-  { name: "designer", alt: "The Super Admin Designer listing every registered page in the product" },
+  { name: "dashboard", alt: "A partner dashboard showing live revenue stat tiles and a workorder overview" },
+  { name: "workorders", alt: "The Service Centre workorders list with real filters and lifecycle status chips" },
+  { name: "analytics", alt: "The Analytics page's revenue/workorder trend chart and summary cards" },
 ];
 
 export default async function RootPage({
