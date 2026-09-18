@@ -553,8 +553,13 @@ const START_PAYLOAD_SLOT_SUFFIX: Record<TelegramChatSlot, string> = {
  * can show a "not set up" state instead of a dead link.
  */
 export function buildTelegramConnectLink(partnerId: string, slot: TelegramChatSlot = "personal"): string | null {
-  const username = env.telegramBotUsername();
-  if (!username) return null;
+  const rawUsername = env.telegramBotUsername();
+  if (!rawUsername) return null;
+  // t.me links take the bare handle, no leading "@" — TELEGRAM_BOT_USERNAME
+  // is sometimes entered as "@mybizflowbot" (how @BotFather displays it),
+  // which otherwise produces an invalid "t.me/@mybizflowbot" link that
+  // Telegram can't resolve to a bot and just shows its generic app page.
+  const username = rawUsername.replace(/^@/, "");
   const payload = `${partnerId}${START_PAYLOAD_SLOT_SUFFIX[slot]}`;
   const param = slot === "group" ? "startgroup" : "start";
   return `https://t.me/${username}?${param}=${encodeURIComponent(payload)}`;
