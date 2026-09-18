@@ -36,7 +36,7 @@ import { expenseColumns } from "@/lib/sample-data/billing-expenses";
 import { creditNoteColumns } from "@/lib/sample-data/billing-credit-notes";
 import { quotationColumns, deliveryChallanColumns, proformaInvoiceColumns } from "@/lib/sample-data/billing-sales-documents";
 import { bomColumns } from "@/lib/sample-data/bom";
-import { stockColumns, stockAdjustmentColumns, returnOrderColumns, partOrderColumns, warehouseColumns } from "@/lib/sample-data/warehouse";
+import { stockColumns, stockAdjustmentColumns, stockTransferColumns, stockTakeColumns, returnOrderColumns, partOrderColumns, warehouseColumns } from "@/lib/sample-data/warehouse";
 
 /** BusinessRecord moduleSlug the saved definitions themselves live under. */
 export const REPORT_DEFINITIONS_MODULE = "report-definitions";
@@ -77,6 +77,8 @@ export const REPORT_SOURCES: ReportSource[] = [
   { slug: "inventory-warehouses", label: "Warehouses", group: "Inventory", columns: warehouseColumns },
   { slug: "inventory-stock", label: "Stock", group: "Inventory", columns: stockColumns },
   { slug: "inventory-stock-adjustments", label: "Stock Adjustments", group: "Inventory", columns: stockAdjustmentColumns },
+  { slug: "inventory-stock-transfers", label: "Stock Transfers", group: "Inventory", columns: stockTransferColumns },
+  { slug: "inventory-stock-take", label: "Stock Take", group: "Inventory", columns: stockTakeColumns },
   { slug: "inventory-return-orders", label: "Return Orders", group: "Inventory", columns: returnOrderColumns },
   { slug: "inventory-part-orders", label: "Part Orders", group: "Inventory", columns: partOrderColumns },
 ];

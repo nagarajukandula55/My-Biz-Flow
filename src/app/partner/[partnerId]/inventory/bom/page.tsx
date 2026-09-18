@@ -3,6 +3,7 @@ import { registerPage } from "@/lib/designer/registry";
 import { BomClientTable } from "./BomClientTable";
 import { BomNewButton } from "./BomNewButton";
 import { BomSearchButton } from "./BomSearchButton";
+import { BomBulkUploadButton } from "./BomBulkUploadButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { bomColumns } from "@/lib/sample-data/bom";
 import { listBusinessRecords } from "@/lib/businessRecords";
@@ -34,6 +35,7 @@ export default async function BomPage({ params }: { params: { partnerId: string 
       topbarActions={
         <div className="flex items-center gap-3">
           <BomSearchButton />
+          <BomBulkUploadButton partnerId={params.partnerId} />
           <BomNewButton partnerId={params.partnerId} />
         </div>
       }

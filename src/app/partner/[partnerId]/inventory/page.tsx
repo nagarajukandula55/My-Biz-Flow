@@ -2,7 +2,7 @@ import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
-import { Boxes, Warehouse, ClipboardList, SlidersHorizontal, Undo2, PackageCheck } from "lucide-react";
+import { Boxes, Warehouse, ClipboardList, SlidersHorizontal, ArrowLeftRight, ClipboardCheck, Undo2, PackageCheck } from "lucide-react";
 import { listBusinessRecords } from "@/lib/businessRecords";
 
 registerPage({
@@ -46,6 +46,20 @@ const SECTIONS = [
     label: "Stock Adjustments",
     description: "Manual increase/decrease log — damaged, lost, recount, initial stock.",
     moduleSlug: "inventory-stock-adjustments",
+  },
+  {
+    href: "stock-transfers",
+    icon: ArrowLeftRight,
+    label: "Stock Transfers",
+    description: "Move material between two of this partner's own warehouses.",
+    moduleSlug: "inventory-stock-transfers",
+  },
+  {
+    href: "stock-take",
+    icon: ClipboardCheck,
+    label: "Stock Take",
+    description: "Physical count reconciled against the system's expected quantity, per material/warehouse.",
+    moduleSlug: "inventory-stock-take",
   },
   {
     href: "return-orders",

@@ -450,3 +450,74 @@ export function getPartOrderTimeline(record: Row): TimelineEntry[] {
 }
 
 export const partOrderRelated: RelatedRecord[] = [];
+
+// ---------------------------------------------------------------------
+// Stock Transfers — moving material between two of this partner's own
+// warehouses (not the Warehouse<->Service-Centre-location flow Return/Part
+// Orders cover)
+// ---------------------------------------------------------------------
+
+export const STOCK_TRANSFER_STATUSES = ["Pending", "In Transit", "Completed"] as const;
+
+const STOCK_TRANSFER_STATUS_VARIANT: Record<string, StatusVariant> = {
+  Pending: "warning",
+  "In Transit": "teal",
+  Completed: "success",
+};
+
+export const stockTransferColumns: Column[] = [
+  { key: "id", label: "Transfer ID", type: "text" },
+  { key: "materialId", label: "Material", type: "text" },
+  { key: "fromWarehouseName", label: "From Warehouse", type: "text" },
+  { key: "toWarehouseName", label: "To Warehouse", type: "text" },
+  { key: "quantity", label: "Quantity", type: "text" },
+  { key: "transferDate", label: "Transfer Date", type: "date" },
+  { key: "reason", label: "Reason / Note", type: "text" },
+  { key: "status", label: "Status", type: "select-chip", chipVariantMap: STOCK_TRANSFER_STATUS_VARIANT },
+];
+
+export const stockTransferFormFields: FormFieldDef[] = [
+  { key: "materialId", label: "Material", type: "select", required: true, options: getBomOptions().map((o) => o.label) },
+  { key: "fromWarehouseName", label: "From Warehouse", type: "select", required: true, options: getWarehouseOptions().map((o) => o.label) },
+  { key: "toWarehouseName", label: "To Warehouse", type: "select", required: true, options: getWarehouseOptions().map((o) => o.label) },
+  { key: "quantity", label: "Quantity", type: "number", required: true },
+  { key: "transferDate", label: "Transfer Date", type: "date", required: true },
+  { key: "reason", label: "Reason / Note", type: "text", required: false },
+  { key: "status", label: "Status", type: "select", required: true, options: [...STOCK_TRANSFER_STATUSES] },
+];
+
+// ---------------------------------------------------------------------
+// Stock Take — periodic physical count reconciled against the system's
+// expected quantity for a material/warehouse
+// ---------------------------------------------------------------------
+
+export const STOCK_TAKE_STATUSES = ["Pending", "Reconciled"] as const;
+
+const STOCK_TAKE_STATUS_VARIANT: Record<string, StatusVariant> = {
+  Pending: "warning",
+  Reconciled: "success",
+};
+
+export const stockTakeColumns: Column[] = [
+  { key: "id", label: "Stock Take ID", type: "text" },
+  { key: "materialId", label: "Material", type: "text" },
+  { key: "warehouseName", label: "Warehouse", type: "text" },
+  { key: "expectedQty", label: "Expected Qty", type: "text" },
+  { key: "countedQty", label: "Counted Qty", type: "text" },
+  { key: "variance", label: "Variance", type: "text" },
+  { key: "countedDate", label: "Counted Date", type: "date" },
+  { key: "countedBy", label: "Counted By", type: "text" },
+  { key: "note", label: "Note", type: "text" },
+  { key: "status", label: "Status", type: "select-chip", chipVariantMap: STOCK_TAKE_STATUS_VARIANT },
+];
+
+export const stockTakeFormFields: FormFieldDef[] = [
+  { key: "materialId", label: "Material", type: "select", required: true, options: getBomOptions().map((o) => o.label) },
+  { key: "warehouseName", label: "Warehouse", type: "select", required: true, options: getWarehouseOptions().map((o) => o.label) },
+  { key: "expectedQty", label: "Expected Qty", type: "number", required: true, help: "Current system quantity on hand — see Inventory (Stock)." },
+  { key: "countedQty", label: "Counted Qty", type: "number", required: true },
+  { key: "countedDate", label: "Counted Date", type: "date", required: true },
+  { key: "countedBy", label: "Counted By", type: "text", required: false },
+  { key: "note", label: "Note", type: "text", required: false },
+  { key: "status", label: "Status", type: "select", required: true, options: [...STOCK_TAKE_STATUSES] },
+];

@@ -131,6 +131,8 @@ export const MODULE_SUB_NAV: Record<string, PartnerNavSubItem[]> = {
     { key: "inventory.warehouses", label: "Warehouses", href: "inventory/warehouses" },
     { key: "inventory.stock", label: "Inventory (Stock)", href: "inventory/stock" },
     { key: "inventory.stock-adjustments", label: "Stock Adjustments", href: "inventory/stock-adjustments" },
+    { key: "inventory.stock-transfers", label: "Stock Transfers", href: "inventory/stock-transfers" },
+    { key: "inventory.stock-take", label: "Stock Take", href: "inventory/stock-take" },
     { key: "inventory.return-orders", label: "Return Orders", href: "inventory/return-orders" },
     { key: "inventory.part-orders", label: "Part Orders", href: "inventory/part-orders" },
   ],
