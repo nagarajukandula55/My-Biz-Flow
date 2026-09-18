@@ -530,19 +530,34 @@ const START_PAYLOAD_SLOT_SUFFIX: Record<TelegramChatSlot, string> = {
 
 /**
  * The "Connect Telegram" deep link shown on the Telegram Alerts page, one
- * per chat slot — https://t.me/<bot_username>?start=<partnerId>_slot_<slot>.
- * Opening it in Telegram and hitting Start sends that payload as
- * `/start <payload>` to the bot, which the webhook route
- * (src/app/api/telegram/webhook/route.ts) decodes via parseStartPayload()
- * and hands to connectTelegramChat() below. Returns null when
- * TELEGRAM_BOT_USERNAME isn't configured yet, so the page can show a
- * "not set up" state instead of a dead link.
+ * per chat slot.
+ *
+ * Personal slot: https://t.me/<bot_username>?start=<payload> — opens a
+ * private chat with the bot and sends `/start <payload>` there once Start
+ * is tapped, per Telegram's own deep-link behavior for a normal `start`
+ * parameter (always targets the bot's own DM, never a group).
+ *
+ * Group slot: https://t.me/<bot_username>?startgroup=<payload> — a DIFFERENT
+ * Telegram deep-link parameter, specifically for "add this bot to a group I
+ * pick" (opens Telegram's own group picker instead of a DM). Using plain
+ * `start=` here would be wrong: it would open a private chat with whoever
+ * scanned it and connect THEIR OWN DM under the group slot, not any actual
+ * group — Telegram has no `start=` mechanism that can target a group at
+ * all, `startgroup=` is the one that does. Once the picked group is joined,
+ * Telegram delivers the same `/start <payload>` message to the bot, but
+ * with message.chat now correctly being that group — same webhook handler
+ * (parseStartPayload/connectTelegramChat below) handles both cases
+ * identically, only the deep-link parameter differs.
+ *
+ * Returns null when TELEGRAM_BOT_USERNAME isn't configured yet, so the page
+ * can show a "not set up" state instead of a dead link.
  */
 export function buildTelegramConnectLink(partnerId: string, slot: TelegramChatSlot = "personal"): string | null {
   const username = env.telegramBotUsername();
   if (!username) return null;
   const payload = `${partnerId}${START_PAYLOAD_SLOT_SUFFIX[slot]}`;
-  return `https://t.me/${username}?start=${encodeURIComponent(payload)}`;
+  const param = slot === "group" ? "startgroup" : "start";
+  return `https://t.me/${username}?${param}=${encodeURIComponent(payload)}`;
 }
 
 /**

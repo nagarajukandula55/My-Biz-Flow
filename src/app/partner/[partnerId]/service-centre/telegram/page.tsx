@@ -62,6 +62,7 @@ export default async function TelegramAlertsPage({ params }: { params: { partner
     connectLink: string | null;
     qr: string | null;
     hint: string;
+    steps: string[];
   }> = [
     {
       slot: "personal",
@@ -71,6 +72,12 @@ export default async function TelegramAlertsPage({ params }: { params: { partner
       connectLink: personalConnectLink,
       qr: personalQr,
       hint: "Scan with your phone's camera, or tap the link — hitting Start captures this chat automatically.",
+      steps: [
+        "Open your phone's camera app and point it at the QR code (or tap the QR — most phones open it straight in-camera).",
+        'A notification/banner will appear — tap it to open Telegram. On desktop, click "Connect" instead to open Telegram directly.',
+        'Telegram opens a chat with the My Biz Flow bot with a "Start" button already filled in — tap Start (or Send, if it opened as a message).',
+        "You'll get an instant \"Connected!\" reply in that chat — come back to this page and refresh; it'll show as connected.",
+      ],
     },
     {
       slot: "group",
@@ -79,7 +86,13 @@ export default async function TelegramAlertsPage({ params }: { params: { partner
       chatTitle: settings.groupChatTitle,
       connectLink: groupConnectLink,
       qr: groupQr,
-      hint: "Add the bot to your group first, then have anyone in the group scan or tap this to connect the group.",
+      hint: "Scan or tap this to add the bot straight to a group you pick — no need to add it manually first.",
+      steps: [
+        "Scan the QR code with your phone camera, or tap the link on desktop — this is a special Telegram \"add bot to group\" link, different from the personal one above.",
+        "Telegram shows you a list of your groups — pick the one you want alerts posted to (you need admin rights in that group to add a bot).",
+        "Telegram adds the bot to that group automatically — nothing else to tap.",
+        "The group gets an instant \"Connected!\" message from the bot — refresh this page and it'll show the group as connected.",
+      ],
     },
   ];
 
@@ -117,7 +130,7 @@ export default async function TelegramAlertsPage({ params }: { params: { partner
           </NoticeCard>
         )}
 
-        {chatSlots.map(({ slot, label, chatId, chatTitle, connectLink, qr, hint }) => {
+        {chatSlots.map(({ slot, label, chatId, chatTitle, connectLink, qr, hint, steps }) => {
           const connected = Boolean(chatId);
           return (
             <div key={slot} className="rounded-lg border border-border bg-bg-raised p-4">
@@ -161,12 +174,30 @@ export default async function TelegramAlertsPage({ params }: { params: { partner
                 </p>
               )}
               {!connected && connectLink && (
-                <div className="mt-3 flex items-start gap-3">
+                <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-start">
                   {qr && (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={qr} alt={`${label} connect QR code`} width={128} height={128} className="rounded-md border border-border bg-white p-1" />
+                    <img
+                      src={qr}
+                      alt={`${label} connect QR code`}
+                      width={176}
+                      height={176}
+                      className="h-44 w-44 flex-shrink-0 rounded-md border border-border bg-white p-2"
+                    />
                   )}
-                  <p className="text-xs text-text-muted">{hint}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-semibold text-text-muted">{hint}</p>
+                    <ol className="mt-2 space-y-1.5">
+                      {steps.map((step, i) => (
+                        <li key={i} className="flex gap-2 text-xs text-text-muted">
+                          <span className="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-accent-soft text-[10px] font-bold text-accent">
+                            {i + 1}
+                          </span>
+                          <span>{step}</span>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
                 </div>
               )}
             </div>
