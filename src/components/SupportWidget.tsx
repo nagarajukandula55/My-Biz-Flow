@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { MessageCircle, X } from "lucide-react";
 import { sendSupportMessageAction, getSupportThreadAction } from "@/lib/supportTicketActions";
 import type { SupportTicketRecord } from "@/lib/supportTickets";
+import { SUPPORT_LANGUAGES, DEFAULT_SUPPORT_LANGUAGE, type SupportLanguage } from "@/lib/i18n/supportLanguages";
 
 const POLL_MS = 6000;
 /** Slower poll while the widget is closed — just enough to catch a new reply and show the unread badge, without polling as aggressively as the open (actively-watched) state. */
@@ -83,8 +84,33 @@ export function SupportWidget({
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [lastSeenCount, setLastSeenCount] = useState(0);
+  const [language, setLanguage] = useState<SupportLanguage>(DEFAULT_SUPPORT_LANGUAGE);
   const scrollRef = useRef<HTMLDivElement>(null);
   const lastSeenKey = `anu-lastseen-${partnerId}`;
+  const languageKey = "anu-language";
+
+  // Only picks which language an AUTO-REPLY answers in — never translates
+  // what the partner types or a human's reply (see supportAutoReply.ts's
+  // header). Persisted across visits, not per-partner (a person's language
+  // preference doesn't change with which business they're signed into).
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(languageKey);
+      if (saved && SUPPORT_LANGUAGES.some((l) => l.code === saved)) setLanguage(saved as SupportLanguage);
+    } catch {
+      // storage unavailable — defaults to English
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function selectLanguage(code: SupportLanguage) {
+    setLanguage(code);
+    try {
+      localStorage.setItem(languageKey, code);
+    } catch {
+      // best-effort only
+    }
+  }
 
   async function refresh() {
     try {
@@ -144,6 +170,7 @@ export function SupportWidget({
     setError(null);
     const formData = new FormData();
     formData.set("message", text);
+    formData.set("language", language);
     setDraft("");
     startTransition(async () => {
       try {
@@ -167,6 +194,25 @@ export function SupportWidget({
             <button type="button" onClick={() => setOpen(false)} aria-label="Close" className="text-text-muted hover:text-text">
               <X className="h-4 w-4" />
             </button>
+          </div>
+
+          {/* Only changes which language an AUTO-REPLY answers in — the
+              live chat itself (what you type, and any human reply) always
+              stays as typed. See supportAutoReply.ts's header. */}
+          <div className="flex flex-wrap gap-1 border-b border-border px-4 py-2">
+            {SUPPORT_LANGUAGES.map((l) => (
+              <button
+                key={l.code}
+                type="button"
+                onClick={() => selectLanguage(l.code)}
+                className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                  language === l.code ? "bg-accent text-white" : "text-text-muted hover:bg-bg-sunken"
+                }`}
+                title={`Auto-reply answers in ${l.label}`}
+              >
+                {l.nativeLabel}
+              </button>
+            ))}
           </div>
 
           {whatsappNumber && (

@@ -4,14 +4,28 @@ import { revalidatePath } from "next/cache";
 import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import { getPartner } from "@/lib/partnerData";
 import { sendPartnerSupportMessage, appendSupportReply, getOpenSupportTicket, setSupportTicketStatus, type SupportTicketRecord } from "@/lib/supportTickets";
+import { SUPPORT_LANGUAGES, DEFAULT_SUPPORT_LANGUAGE, type SupportLanguage } from "@/lib/i18n/supportLanguages";
 
-/** Sends a message from the floating Support widget — live chat, not a one-shot ticket. */
+const VALID_LANGUAGES = new Set(SUPPORT_LANGUAGES.map((l) => l.code));
+
+/**
+ * Sends a message from the floating Support widget — live chat, not a
+ * one-shot ticket. The chat message itself is always whatever the partner
+ * typed (English or otherwise) — `language` only picks which language an
+ * AUTO-REPLY match (if any) answers in, never translates the partner's own
+ * words or a human's reply. Falls back to English for an unrecognized/
+ * missing value rather than trusting client input blindly.
+ */
 export async function sendSupportMessageAction(partnerId: string, formData: FormData): Promise<void> {
   await requireSessionPartnerId(partnerId);
   const message = String(formData.get("message") ?? "").trim();
   if (!message) throw new Error("Please enter a message before sending.");
+  const languageRaw = String(formData.get("language") ?? "");
+  const language: SupportLanguage = VALID_LANGUAGES.has(languageRaw as SupportLanguage)
+    ? (languageRaw as SupportLanguage)
+    : DEFAULT_SUPPORT_LANGUAGE;
   const partner = await getPartner(partnerId);
-  await sendPartnerSupportMessage(partnerId, partner?.businessName ?? partnerId, message);
+  await sendPartnerSupportMessage(partnerId, partner?.businessName ?? partnerId, message, language);
   revalidatePath(`/partner/${partnerId}`, "layout");
 }
 

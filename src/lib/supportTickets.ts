@@ -19,6 +19,7 @@ import { createBusinessRecord, getBusinessRecord, updateBusinessRecord, listBusi
 import { getOpsChatId } from "@/lib/platformSettings";
 import { sendRawTelegramMessage } from "@/lib/telegram";
 import { matchAutoReply } from "@/lib/supportAutoReply";
+import type { SupportLanguage } from "@/lib/i18n/supportLanguages";
 
 const MODULE_SLUG = "support-tickets";
 
@@ -74,7 +75,12 @@ export async function getOpenSupportTicket(partnerId: string): Promise<SupportTi
  * grouped there — same "one anchor, every reply threaded off it" approach
  * sendWorkorderTelegramAlert uses per-workorder.
  */
-export async function sendPartnerSupportMessage(partnerId: string, businessName: string, text: string): Promise<SupportTicketRecord> {
+export async function sendPartnerSupportMessage(
+  partnerId: string,
+  businessName: string,
+  text: string,
+  autoReplyLanguage: SupportLanguage = "en"
+): Promise<SupportTicketRecord> {
   const trimmed = text.trim();
   if (!trimmed) throw new Error("Message is required");
 
@@ -106,7 +112,7 @@ export async function sendPartnerSupportMessage(partnerId: string, businessName:
   // partner still gets an immediate reply even if ops Telegram is
   // unreachable; a note is sent to the thread either way so a human doesn't
   // duplicate an answer that's already been given.
-  const autoReply = matchAutoReply(trimmed, partnerId);
+  const autoReply = matchAutoReply(trimmed, partnerId, autoReplyLanguage);
   if (autoReply) {
     const replyText = autoReply.link ? `${autoReply.text}\n${autoReply.link}` : autoReply.text;
     const withReply: SupportTicketRecord = { ...ticket, messages: [...ticket.messages, { from: "support", text: replyText, at: new Date().toISOString() }] };
