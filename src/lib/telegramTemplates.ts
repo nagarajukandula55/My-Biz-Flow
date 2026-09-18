@@ -19,17 +19,48 @@
  */
 import { getTelegramTemplateBody, renderTelegramTemplate } from "@/lib/telegramTemplatesData";
 
+/** Falls back to an em dash for any optional workorder field a caller
+ * doesn't have (e.g. a job logged with no brand/model yet) — renderTelegramTemplate
+ * already blanks unknown tokens, but an em dash reads better than a blank
+ * table cell in the fixed-width <pre> block every workorder template uses. */
+function dash(value: string | undefined | null): string {
+  const v = (value ?? "").trim();
+  return v || "—";
+}
+
 /** New Service Centre workorder created. */
 export async function newWorkorderCreatedMessage(opts: {
   partnerBusinessName: string;
   workorderNumber: string;
   customerName: string;
+  customerPhone?: string;
+  deviceCategory?: string;
+  brandName?: string;
+  modelName?: string;
+  imeiOrSerialNumber?: string;
+  faultDescription?: string;
+  priority?: string;
+  loggedBy?: string;
+  receivedDate?: string;
+  estimatedAmount?: string;
+  warrantyStatus?: string;
 }): Promise<string> {
   const body = await getTelegramTemplateBody("new_workorder");
   return renderTelegramTemplate(body, {
     businessName: opts.partnerBusinessName,
     workorderNumber: opts.workorderNumber,
     customerName: opts.customerName,
+    customerPhone: dash(opts.customerPhone),
+    deviceCategory: dash(opts.deviceCategory),
+    brandName: dash(opts.brandName),
+    modelName: dash(opts.modelName),
+    imeiOrSerialNumber: dash(opts.imeiOrSerialNumber),
+    faultDescription: dash(opts.faultDescription),
+    priority: dash(opts.priority),
+    loggedBy: dash(opts.loggedBy),
+    receivedDate: dash(opts.receivedDate),
+    estimatedAmount: dash(opts.estimatedAmount),
+    warrantyStatus: dash(opts.warrantyStatus),
   });
 }
 
@@ -38,12 +69,26 @@ export async function workorderClosedMessage(opts: {
   partnerBusinessName: string;
   workorderNumber: string;
   amount: string;
+  customerName?: string;
+  customerPhone?: string;
+  brandName?: string;
+  modelName?: string;
+  engineerName?: string;
+  warrantyStatus?: string;
+  remark?: string;
 }): Promise<string> {
   const body = await getTelegramTemplateBody("workorder_closed");
   return renderTelegramTemplate(body, {
     businessName: opts.partnerBusinessName,
     workorderNumber: opts.workorderNumber,
     amount: opts.amount,
+    customerName: dash(opts.customerName),
+    customerPhone: dash(opts.customerPhone),
+    brandName: dash(opts.brandName),
+    modelName: dash(opts.modelName),
+    engineerName: dash(opts.engineerName),
+    warrantyStatus: dash(opts.warrantyStatus),
+    remark: dash(opts.remark),
   });
 }
 
@@ -52,12 +97,24 @@ export async function workorderCancelledMessage(opts: {
   partnerBusinessName: string;
   workorderNumber: string;
   reason?: string;
+  customerName?: string;
+  customerPhone?: string;
+  brandName?: string;
+  modelName?: string;
+  loggedBy?: string;
+  receivedDate?: string;
 }): Promise<string> {
   const body = await getTelegramTemplateBody("workorder_cancelled");
   return renderTelegramTemplate(body, {
     businessName: opts.partnerBusinessName,
     workorderNumber: opts.workorderNumber,
-    reason: opts.reason ?? "—",
+    reason: dash(opts.reason),
+    customerName: dash(opts.customerName),
+    customerPhone: dash(opts.customerPhone),
+    brandName: dash(opts.brandName),
+    modelName: dash(opts.modelName),
+    loggedBy: dash(opts.loggedBy),
+    receivedDate: dash(opts.receivedDate),
   });
 }
 

@@ -434,6 +434,13 @@ export async function createInvoiceFromWorkorderAction(
         partnerBusinessName: partner.businessName,
         workorderNumber: workorderId,
         amount: `₹${totalAmount.toLocaleString("en-IN")}`,
+        customerName: String(record["customer"] ?? ""),
+        customerPhone: String(record["customerPhone"] ?? ""),
+        brandName: String(record["brandName"] ?? ""),
+        modelName: String(record["modelName"] ?? ""),
+        engineerName: String(record["engineerName"] ?? ""),
+        warrantyStatus: String(record["warrantyStatus"] ?? ""),
+        remark: String(record["remark"] ?? ""),
       })
     );
   }
@@ -491,6 +498,12 @@ export async function cancelWorkorderAction(
         partnerBusinessName: partner.businessName,
         workorderNumber: workorderId,
         reason: trimmedReason,
+        customerName: String(record["customer"] ?? ""),
+        customerPhone: String(record["customerPhone"] ?? ""),
+        brandName: String(record["brandName"] ?? ""),
+        modelName: String(record["modelName"] ?? ""),
+        loggedBy: String(record["loggedBy"] ?? ""),
+        receivedDate: String(record["receivedDate"] ?? ""),
       })
     );
   }

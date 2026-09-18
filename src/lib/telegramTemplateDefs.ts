@@ -44,27 +44,37 @@ export const TELEGRAM_TEMPLATE_DEFS: TelegramTemplateDef[] = [
     label: "New workorder assigned",
     group: "Event alert",
     command: "/test_new_workorder",
-    variables: ["businessName", "workorderNumber", "customerName"],
+    variables: [
+      "businessName", "workorderNumber", "customerName", "customerPhone", "deviceCategory",
+      "brandName", "modelName", "imeiOrSerialNumber", "faultDescription", "priority",
+      "loggedBy", "receivedDate", "estimatedAmount", "warrantyStatus",
+    ],
     defaultBody:
-      "🆕 <b>{{businessName}} — New Workorder</b>\n\n<pre>\nWorkorder        {{workorderNumber}}\nCustomer         {{customerName}}\n</pre>",
+      "🆕 <b>New Workorder — {{businessName}}</b>\n\n<pre>\nWorkorder     {{workorderNumber}}\nCustomer      {{customerName}}\nPhone         {{customerPhone}}\nDevice        {{deviceCategory}}\nBrand/Model   {{brandName}} / {{modelName}}\nIMEI/Serial   {{imeiOrSerialNumber}}\nPriority      {{priority}}\nWarranty      {{warrantyStatus}}\nLogged by     {{loggedBy}}\nReceived      {{receivedDate}}\nEst. amount   {{estimatedAmount}}\n</pre>\n<b>Fault:</b> <i>{{faultDescription}}</i>",
   },
   {
     key: "workorder_closed",
     label: "Workorder closed",
     group: "Event alert",
     command: "/test_workorder_closed",
-    variables: ["businessName", "workorderNumber", "amount"],
+    variables: [
+      "businessName", "workorderNumber", "amount", "customerName", "customerPhone",
+      "brandName", "modelName", "engineerName", "warrantyStatus", "remark",
+    ],
     defaultBody:
-      "✅ <b>{{businessName}} — Workorder Closed</b>\n\n<pre>\nWorkorder        {{workorderNumber}}\nInvoiced         {{amount}}\n</pre>",
+      "✅ <b>Workorder Closed — {{businessName}}</b>\n\n<pre>\nWorkorder     {{workorderNumber}}\nCustomer      {{customerName}}\nPhone         {{customerPhone}}\nBrand/Model   {{brandName}} / {{modelName}}\nEngineer      {{engineerName}}\nWarranty      {{warrantyStatus}}\nInvoiced      {{amount}}\n</pre>\n<b>Remark:</b> <i>{{remark}}</i>\n\n<i>Thank you for using {{businessName}}.</i>",
   },
   {
     key: "workorder_cancelled",
     label: "Workorder cancelled",
     group: "Event alert",
     command: "/test_workorder_cancelled",
-    variables: ["businessName", "workorderNumber", "reason"],
+    variables: [
+      "businessName", "workorderNumber", "reason", "customerName", "customerPhone",
+      "brandName", "modelName", "loggedBy", "receivedDate",
+    ],
     defaultBody:
-      "🚫 <b>{{businessName}} — Workorder Cancelled</b>\n\n<pre>\nWorkorder        {{workorderNumber}}\nReason           {{reason}}\n</pre>",
+      "🚫 <b>Workorder Cancelled — {{businessName}}</b>\n\n<pre>\nWorkorder     {{workorderNumber}}\nCustomer      {{customerName}}\nPhone         {{customerPhone}}\nBrand/Model   {{brandName}} / {{modelName}}\nLogged by     {{loggedBy}}\nReceived      {{receivedDate}}\n</pre>\n<b>Reason:</b> <i>{{reason}}</i>",
   },
   {
     key: "payment_received",
@@ -73,7 +83,7 @@ export const TELEGRAM_TEMPLATE_DEFS: TelegramTemplateDef[] = [
     command: "/test_payment_received",
     variables: ["businessName", "amount", "planName"],
     defaultBody:
-      "💰 <b>{{businessName}} — Payment Received</b>\n\n<pre>\nAmount           {{amount}}\nPlan             {{planName}}\n</pre>",
+      "💰 <b>Payment Received</b>\n\n<pre>\nBusiness      {{businessName}}\nPlan          {{planName}}\nAmount        {{amount}}\n</pre>\n<i>Thanks for keeping your subscription active.</i>",
   },
   {
     key: "payment_due",
@@ -82,7 +92,7 @@ export const TELEGRAM_TEMPLATE_DEFS: TelegramTemplateDef[] = [
     command: "/test_payment_due",
     variables: ["businessName", "amount", "dueDate"],
     defaultBody:
-      "⏰ <b>{{businessName}} — Payment Due</b>\n\n<pre>\nAmount           {{amount}}\nDue              {{dueDate}}\n</pre>",
+      "⏰ <b>Payment Due</b>\n\n<pre>\nBusiness      {{businessName}}\nAmount        {{amount}}\nDue date      {{dueDate}}\n</pre>\n<i>Please settle this before the due date to avoid interruption.</i>",
   },
   {
     key: "subscription_expiring",
@@ -91,7 +101,7 @@ export const TELEGRAM_TEMPLATE_DEFS: TelegramTemplateDef[] = [
     command: "/test_subscription_expiring",
     variables: ["businessName", "expiresOn", "planName"],
     defaultBody:
-      "⚠️ <b>{{businessName}} — Subscription Expiring</b>\n\n<pre>\nExpires          {{expiresOn}}\nPlan             {{planName}}\n</pre>",
+      "⚠️ <b>Subscription Expiring</b>\n\n<pre>\nBusiness      {{businessName}}\nPlan          {{planName}}\nExpires       {{expiresOn}}\n</pre>\n<i>Renew to keep your account uninterrupted.</i>",
   },
   {
     key: "low_stock",
@@ -100,7 +110,7 @@ export const TELEGRAM_TEMPLATE_DEFS: TelegramTemplateDef[] = [
     command: "/test_low_stock",
     variables: ["businessName", "itemName", "quantityRemaining", "reorderThreshold"],
     defaultBody:
-      "📉 <b>{{businessName}} — Low Stock</b>\n\n<pre>\nItem             {{itemName}}\nRemaining        {{quantityRemaining}}\nThreshold        {{reorderThreshold}}\n</pre>",
+      "📉 <b>Low Stock — {{businessName}}</b>\n\n<pre>\nItem          {{itemName}}\nRemaining     {{quantityRemaining}}\nThreshold     {{reorderThreshold}}\n</pre>\n<i>Time to reorder this item.</i>",
   },
   {
     key: "new_partner_application",
@@ -109,7 +119,7 @@ export const TELEGRAM_TEMPLATE_DEFS: TelegramTemplateDef[] = [
     command: "/test_new_partner_application",
     variables: ["businessName", "partnerTypeName"],
     defaultBody:
-      "📋 <b>New Partner Application</b>\n\n<pre>\nBusiness         {{businessName}}\nPartner type     {{partnerTypeName}}\n</pre>",
+      "📋 <b>New Partner Application</b>\n\n<pre>\nBusiness      {{businessName}}\nPartner type  {{partnerTypeName}}\n</pre>",
   },
   {
     key: "general_announcement",

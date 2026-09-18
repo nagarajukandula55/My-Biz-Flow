@@ -110,6 +110,17 @@ export async function createServiceCentreWorkorderAction(
         partnerBusinessName: partner.businessName,
         workorderNumber: jobId,
         customerName: String(values["customer"] ?? ""),
+        customerPhone: String(values["customerPhone"] ?? ""),
+        deviceCategory: String(values["deviceCategory"] ?? ""),
+        brandName: String(values["brandName"] ?? ""),
+        modelName: String(values["modelName"] ?? ""),
+        imeiOrSerialNumber: String(values["imeiOrSerialNumber"] ?? ""),
+        faultDescription: String(values["faultDescription"] ?? ""),
+        priority: String(values["priority"] ?? ""),
+        loggedBy: String(values["loggedBy"] ?? ""),
+        receivedDate: String(values["receivedDate"] ?? now.toISOString().slice(0, 10)),
+        estimatedAmount: values["estimatedAmount"] ? `₹${Number(values["estimatedAmount"]).toLocaleString("en-IN")}` : "",
+        warrantyStatus: String(values["warrantyStatus"] ?? ""),
       })
     );
   }
