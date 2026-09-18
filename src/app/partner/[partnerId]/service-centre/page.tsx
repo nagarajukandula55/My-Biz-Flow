@@ -73,7 +73,7 @@ type SearchParams = {
   q?: string;
 };
 
-const SEARCH_FIELDS = ["id", "customer", "device"];
+const SEARCH_FIELDS = ["id", "customer", "device", "customerPhone"];
 
 function buildQueryString(params: SearchParams, overrides: Record<string, string | undefined>) {
   const merged: Record<string, string | undefined> = { ...params, ...overrides };

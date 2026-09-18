@@ -9,6 +9,7 @@ import { Modal } from "@/components/Modal";
 import { DeleteBusinessRecordButton } from "@/components/DeleteBusinessRecordButton";
 import { PrintPopupLink } from "@/components/PrintPopupLink";
 import { SearchSelectModal, type SearchSelectOption } from "@/components/SearchSelectModal";
+import { CustomerDataOtpGate } from "../customers/CustomerDataOtpGate";
 import {
   WORKORDER_STAGES,
   MILESTONE_STATUSES,
@@ -71,6 +72,14 @@ const MILESTONE_LABEL: Record<MilestoneStatus, string> = {
  * CANCELLED is a terminal side-branch, not shown inline either.
  */
 const MILESTONE_STEPPER: MilestoneStatus[] = ["CREATED", "REPAIR_IN_PROGRESS", "REPAIR_COMPLETED", "CLOSED"];
+
+/** Masks all but the last 4 digits of a customer's contact number, same convention as maskAccountNumber (BillingInvoiceForm.tsx). */
+function maskPhone(phone?: string): string {
+  const v = (phone ?? "").trim();
+  if (!v) return "";
+  if (v.length <= 4) return v;
+  return `•••• ${v.slice(-4)}`;
+}
 
 function fmtStepDate(d?: string): string | null {
   if (!d) return null;
@@ -246,6 +255,7 @@ export function WorkorderLifecycle({
   addBomMaterialAction,
   addSolutionAction,
   addStaffNameAction,
+  customerDataUnlocked,
 }: {
   partnerId: string;
   workorderId: string;
@@ -363,6 +373,14 @@ export function WorkorderLifecycle({
   addSolutionAction?: (values: Record<string, unknown>) => Promise<{ error?: string; id?: string; label?: string }>;
   /** Bound, tier-checked (service-centre.staff-names.create, Pro+) server action for quick-adding a new roster entry right from the Engineer/Collected By dropdowns — omitted entirely on a partner below Pro, same as addBrandAction/addModelAction. */
   addStaffNameAction?: (values: Record<string, unknown>) => Promise<{ error?: string; id?: string; label?: string }>;
+  /**
+   * True once this partner's own Telegram-verified customer-data unlock
+   * (isCustomerDataUnlocked, src/lib/customerDataAccess.ts — same gate the
+   * Customers list/detail pages use) is currently active. Only consulted
+   * for a Closed workorder's Contact No. below — every other stage always
+   * shows the real value, matching today's behaviour.
+   */
+  customerDataUnlocked: boolean;
 }) {
   const [stage, setStage] = useState<WorkorderStage>(initialStage);
   const [partLines, setPartLines] = useState<PartLine[]>(initialPartLines);
@@ -456,6 +474,18 @@ export function WorkorderLifecycle({
   const [collectedByFreeText, setCollectedByFreeText] = useState(false);
   const [hold, setHold] = useState(Boolean(onHold));
   const [holdModalOpen, setHoldModalOpen] = useState(false);
+  // IMEI/Serial No. wasn't always captured at intake — Mark Completed now
+  // asks for it inline (once) when it's still missing at that point,
+  // instead of silently leaving the gap forever. Optional/unused once a
+  // value already exists (no forced re-entry).
+  const [imei, setImei] = useState(imeiOrSerialNumber ?? "");
+  const [completeModalOpen, setCompleteModalOpen] = useState(false);
+  const [imeiDraft, setImeiDraft] = useState("");
+  // Customer contact number on a Closed workorder is masked until this
+  // partner's own Telegram OTP unlock (customerDataUnlocked) is active —
+  // reuses the same CustomerDataOtpGate the Customers list/detail pages
+  // show, just opened from a modal here instead of blocking the whole page.
+  const [contactUnlockOpen, setContactUnlockOpen] = useState(false);
   const [holdReasonDraft, setHoldReasonDraft] = useState("");
   const [brandJobNoDraft, setBrandJobNoDraft] = useState(brandJobNoForPartOrder ?? "");
   const [brandJobNo, setBrandJobNo] = useState(brandJobNoForPartOrder ?? "");
@@ -1022,6 +1052,19 @@ export function WorkorderLifecycle({
     run(() => setWorkorderHoldAction(partnerId, workorderId, false), () => announceSuccess("Repair resumed."));
   }
 
+  /** Completes the IMEI-was-missing detour from advanceStage() above, then finishes the same Mark Completed transition it would otherwise have run directly. */
+  function confirmMarkCompleted() {
+    const value = imeiDraft.trim();
+    if (!value) return;
+    setCompleteModalOpen(false);
+    setImei(value);
+    setStage("Completed");
+    persist({ stage: "Completed", imeiOrSerialNumber: value }, "Marked Completed.");
+    startPersist(async () => {
+      await deductInventoryForWorkorderAction(partnerId, workorderId);
+    });
+  }
+
   /**
    * Failure-recovery only: creates the invoice for a workorder that is
    * already Closed but has no `invoice` yet (i.e. the invoice-creation call
@@ -1097,6 +1140,11 @@ export function WorkorderLifecycle({
       setCloseBlockedMessage(
         "Enter the Engineer / Serviced By name before marking the repair completed."
       );
+      return;
+    }
+    if (next === "Completed" && !imei.trim()) {
+      setImeiDraft("");
+      setCompleteModalOpen(true);
       return;
     }
     if (next === "Closed") {
@@ -1450,6 +1498,28 @@ export function WorkorderLifecycle({
           <div>
             <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">Customer</div>
             <div className="mt-0.5 text-sm text-text">{customerName || "—"}</div>
+          </div>
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">Contact No.</div>
+            {/* Closed workorders mask the customer's contact number behind
+                the same Telegram-OTP unlock the Customers list/detail pages
+                use (customerDataUnlocked, isCustomerDataUnlocked) — every
+                other stage, and an already-unlocked session, show it plain,
+                exactly as before. */}
+            {stage === "Closed" && customerPhone && !customerDataUnlocked ? (
+              <div className="mt-0.5 flex items-center gap-2">
+                <span className="text-sm text-text">{maskPhone(customerPhone)}</span>
+                <button
+                  type="button"
+                  onClick={() => setContactUnlockOpen(true)}
+                  className="text-xs font-semibold text-teal hover:underline"
+                >
+                  Unlock
+                </button>
+              </div>
+            ) : (
+              <div className="mt-0.5 text-sm text-text">{customerPhone || "—"}</div>
+            )}
           </div>
           <div>
             <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">Device</div>
@@ -2312,6 +2382,49 @@ export function WorkorderLifecycle({
             className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm font-normal normal-case tracking-normal text-text"
           />
         </label>
+      </Modal>
+      {/* Mark Completed — IMEI/Serial No. wasn't captured at intake, so it's
+          collected here, once, before the repair can be marked completed. */}
+      <Modal
+        open={completeModalOpen}
+        onClose={() => setCompleteModalOpen(false)}
+        title="Mark Completed"
+        size="sm"
+        footer={
+          <>
+            <button type="button" className="btn-outline" onClick={() => setCompleteModalOpen(false)}>
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="btn-accent disabled:opacity-50"
+              onClick={confirmMarkCompleted}
+              disabled={!imeiDraft.trim()}
+            >
+              Mark Completed
+            </button>
+          </>
+        }
+      >
+        <p className="text-sm text-text-muted">
+          This device&apos;s IMEI/Serial No. wasn&apos;t recorded at intake. Enter it now before the repair can be marked completed.
+        </p>
+        <label className="mt-3 block text-xs font-semibold uppercase tracking-wide text-text-muted">
+          IMEI / Serial No.
+          <input
+            type="text"
+            value={imeiDraft}
+            onChange={(e) => setImeiDraft(e.target.value)}
+            placeholder="Enter IMEI or Serial No."
+            className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm font-normal normal-case tracking-normal text-text"
+          />
+        </label>
+      </Modal>
+      {/* Unlock Customer Data — same CustomerDataOtpGate the Customers
+          list/detail pages show full-page, reused as-is here in a Modal
+          since the rest of this page stays visible around it. */}
+      <Modal open={contactUnlockOpen} onClose={() => setContactUnlockOpen(false)} title="Unlock Customer Data" size="sm">
+        <CustomerDataOtpGate partnerId={partnerId} />
       </Modal>
       <Modal
         open={confirmCloseOpen}

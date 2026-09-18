@@ -619,13 +619,10 @@ export const serviceCentreColumns: Column[] = [
 const SERVICE_CENTRE_LIST_COLUMN_KEYS = [
   "id",
   "customer",
-  "customerPhone",
-  "loggedBy",
   "brandName",
   "modelName",
   "status",
   "receivedDate",
-  "imeiOrSerialNumber",
   "faultDescription",
   "remark",
 ];

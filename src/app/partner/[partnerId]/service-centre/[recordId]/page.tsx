@@ -14,6 +14,7 @@ import { getPartner } from "@/lib/partnerData";
 import { activeStaffNames } from "@/lib/sample-data/service-centre-staff-names";
 import { WorkorderLifecycle } from "./WorkorderLifecycle";
 import { getPageTierAccess } from "@/lib/tenant";
+import { isCustomerDataUnlocked } from "@/lib/customerDataAccess";
 import {
   createServiceCentreBrandInlineAction,
   createServiceCentreModelInlineAction,
@@ -68,6 +69,7 @@ export default async function ServiceCentreDetailPage({
   const activeSolutions = solutionRecords.filter((r) => r["status"] === "Active");
   const solutionOptions = activeSolutions.map((r) => ({ value: String(r["id"]), label: String(r["title"] ?? r["id"]) }));
   const partner = await getPartner(params.partnerId);
+  const customerDataUnlocked = await isCustomerDataUnlocked(params.partnerId);
 
   const brandRecords = await listBusinessRecords(params.partnerId, "service-centre-brands");
   const brandOptions = brandRecords
@@ -159,6 +161,7 @@ export default async function ServiceCentreDetailPage({
           addStaffNameAction={
             staffNamesTier.allowed ? createServiceCentreStaffNameInlineAction.bind(null, params.partnerId) : undefined
           }
+          customerDataUnlocked={customerDataUnlocked}
         />
 
         {/* Everything below is secondary detail, not a second page header —
