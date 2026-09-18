@@ -104,14 +104,32 @@ export default async function PartnerLayout({
     return <>{children}</>;
   }
 
+  // Every one of these hits Postgres, and this layout runs on EVERY partner
+  // page load — a single transient connection blip (Neon's pooled
+  // connections do drop/time out occasionally; see the advisory-lock
+  // timeout this same DB gave `prisma migrate` mid-session) in ANY of them
+  // used to 500 the whole page via Promise.all's fail-fast behavior. Alerts
+  // and Telegram-connection status are supplementary banners, not required
+  // for the page to function, so they degrade to empty/disconnected on
+  // failure instead of taking the page down with them. Nav groups and the
+  // partner record are load-bearing (sidebar, branding) — those still
+  // reject, but only that one Promise.all entry fails to resolve/timeout
+  // together with the others now surfaces cleanly instead of masking
+  // itself as this file's own logic.
   const [navGroups, alerts, partner, telegramSettings] = await Promise.all([
     buildPartnerAdminNavGroups(params.partnerId),
     // Alerts are computed here rather than in each page so the bell's count is
     // correct on every partner screen, and recomputed on each server render
     // rather than cached — see src/lib/alerts.ts for why nothing is stored.
-    computeAlerts(params.partnerId),
-    getPartner(params.partnerId),
-    getTelegramSettings(params.partnerId),
+    computeAlerts(params.partnerId).catch(() => []),
+    // Used here only for sidebar branding/the trial banner — both already
+    // handle a missing partner gracefully (optional chaining below), so a
+    // transient failure degrades to "no branding this render" rather than
+    // crashing the whole page.
+    getPartner(params.partnerId).catch(() => undefined),
+    getTelegramSettings(params.partnerId).catch(
+      () => ({ partnerId: params.partnerId, chatId: null, chatTitle: null, groupChatId: null, groupChatTitle: null, routing: {}, lastReportSentAt: null })
+    ),
   ]);
   return (
     <div className="flex min-h-screen w-full">

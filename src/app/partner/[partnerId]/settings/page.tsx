@@ -30,10 +30,16 @@ registerPage({
  * Client Component) and hands the interactive body to SettingsPageClient.
  */
 export default async function SettingsPage({ params }: { params: { partnerId: string } }) {
+  // A transient Prisma/connection blip in any one of these used to 500 the
+  // whole page via Promise.all's fail-fast behavior (see the same fix in
+  // ../layout.tsx, which runs on every partner page and hit this exact
+  // pattern). accessKeys only drives the "requested"/"active" module-status
+  // badges below — safe to degrade to none on failure; the rest of the page
+  // already renders fine with an empty moduleStatuses map.
   const [visibleModuleSlugs, partner, accessKeys] = await Promise.all([
     getVisibleModuleSlugs(params.partnerId),
     getPartner(params.partnerId),
-    listAccessKeysForPartner(params.partnerId),
+    listAccessKeysForPartner(params.partnerId).catch(() => []),
   ]);
   const moduleStatuses: Record<string, "active" | "requested" | "none"> = {};
   for (const key of accessKeys) {
