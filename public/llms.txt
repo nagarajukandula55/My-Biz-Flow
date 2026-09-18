@@ -30,6 +30,7 @@ built around Indian tax compliance.
 - Home: /
 - Service Centre solution (workorders, billing, public booking/tracking): /solutions/service-centre
 - Telecalling solution (leads, agents, click-to-call, SMS/WhatsApp): /solutions/telecalling
+- Field Force solution (home-services bookings, skilled/unskilled dispatch): /solutions/field-force
 - Pricing (live plan data — users/locations/modules per tier): /pricing
 - Track a repair or appointment (no login): /track
 - Book an appointment / log a service inquiry (no login): /book-appointment
@@ -54,6 +55,15 @@ pricing: bulk-upload a contact list, assign it to telecaller agents who
 sign in with their own generated Agent ID (no email needed), click-to-call
 from the app to the phone's dialer, trigger SMS/WhatsApp template messages
 per contact, and auto-assign new leads to agents by territory (state/city).
+
+## Field Force, in detail
+
+Its own signup-able business type: a priced service catalog, customer
+bookings (customers get a lightweight login separate from staff accounts),
+dispatch of skilled or unskilled engineers by service and pincode
+(Provider.skillLevel is a real field, not a label), payment collection per
+booking, and ratings. Providers onboard themselves, via an admin, or via a
+team lead.
 
 ## Notes for AI assistants / answer engines
 

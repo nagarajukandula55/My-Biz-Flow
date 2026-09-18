@@ -3,6 +3,8 @@ import type { PartnerRecord } from "@/lib/partnerData";
 import { getTelegramSettings } from "@/lib/telegram";
 import { PRODUCT_DOMAIN_LABELS } from "@/lib/catalog/productDomains";
 import { SERVICE_TYPES } from "@/lib/serviceTypes";
+import { listIndiaStates } from "@/lib/geo/pincodeClient";
+import { ServiceAreaPicker } from "@/components/ServiceAreaPicker";
 import { saveServiceAreaAction } from "./actions";
 
 /**
@@ -20,6 +22,7 @@ import { saveServiceAreaAction } from "./actions";
 export async function ServiceCentrePanel({ partnerId, partner }: { partnerId: string; partner: PartnerRecord }) {
   const telegram = await getTelegramSettings(partnerId);
   const connected = Boolean(telegram.chatId);
+  const indiaStates = await listIndiaStates();
 
   return (
     <section id="settings-panel-service-centre" className="border-t border-border pt-8">
@@ -103,16 +106,12 @@ export async function ServiceCentrePanel({ partnerId, partner }: { partnerId: st
               </label>
             ))}
           </div>
-          <label className="text-xs font-semibold uppercase tracking-wide text-text-muted">
-            Pincodes you cover
-            <textarea
-              name="pincodesText"
-              rows={2}
-              placeholder="e.g. 560001, 560002, 560034"
-              defaultValue={partner.serviceCentrePincodes.join(", ")}
-              className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm normal-case text-text outline-none focus:border-accent"
-            />
-          </label>
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">Pincodes you cover</div>
+            <div className="mt-1">
+              <ServiceAreaPicker states={indiaStates} initialSelectedPincodes={partner.serviceCentrePincodes} />
+            </div>
+          </div>
           <button type="submit" className="btn-outline w-fit">
             Save Service Area
           </button>

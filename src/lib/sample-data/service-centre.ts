@@ -768,7 +768,7 @@ export const serviceCentreFormFields: FormFieldDef[] = [
   // matching the reference app's savedModelsByBrand behaviour.
   { section: "Device", column: 2, key: "brandName", label: "Brand", type: "text", required: false, placeholder: "e.g. Samsung — pick a saved brand or type a new one" },
   { section: "Device", column: 2, key: "modelName", label: "Model", type: "text", required: false, placeholder: "e.g. Galaxy M14 — pick a saved model or type a new one", parentKey: "brandName" },
-  { section: "Device", column: 2, key: "imeiOrSerialNumber", label: "IMEI / Serial Number", type: "text", required: true, placeholder: "15-digit IMEI for a phone/tablet, otherwise the manufacturer serial number" },
+  { section: "Device", column: 2, key: "imeiOrSerialNumber", label: "IMEI / Serial Number", type: "text", required: false, placeholder: "15-digit IMEI for a phone/tablet, otherwise the manufacturer serial number — leave blank for devices with neither" },
   { section: "Device", column: 2, key: "deviceAppearance", label: "Appearance", type: "select", required: false, options: [...DEVICE_APPEARANCE_OPTIONS], optionLabels: DEVICE_APPEARANCE_LABELS },
   { section: "Device", column: 2, key: "fileBackupDescription", label: "File Backup Done", type: "select", required: false, options: [...FILE_BACKUP_OPTIONS], optionLabels: FILE_BACKUP_LABELS },
   { section: "Device", column: 2, key: "warrantyStatus", label: "Warranty Type", type: "select", required: false, options: [...WARRANTY_STATUSES], optionLabels: WARRANTY_STATUS_LABELS, help: "In-warranty and 90-day jobs are non-chargeable — their invoice lines bill at zero." },

@@ -313,7 +313,7 @@ export default async function RootPage({
                     <Link href={`/signup?type=${encodeURIComponent(t.id)}`} className="btn-accent mbf-cta-glow flex-1 text-center">
                       Sign up as {t.id}
                     </Link>
-                    {(t.id === "service-centre" || t.id === "telecalling") && (
+                    {(t.id === "service-centre" || t.id === "telecalling" || t.id === "field-force") && (
                       <Link href={`/solutions/${t.id}`} className="btn-outline shrink-0">
                         Learn more
                       </Link>
