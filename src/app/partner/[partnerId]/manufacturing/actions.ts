@@ -1,9 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createBusinessRecord, getBusinessRecord, listBusinessRecords, updateBusinessRecord } from "@/lib/businessRecords";
+import { createBusinessRecord, getBusinessRecord, updateBusinessRecord } from "@/lib/businessRecords";
 import { extractProductionFromRecord } from "@/lib/sample-data/manufacturing";
 import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
+import { findStockRecord, adjustStockQty } from "@/lib/inventoryStock";
 
 /**
  * Completes production: recomputes cost server-side (never trusts client
@@ -40,11 +41,9 @@ export async function completeProductionAction(
   const safeQuantityProduced = Number.isFinite(quantityProduced) && quantityProduced >= 0 ? quantityProduced : 0;
 
   // Raw-material stock check — fail closed, no partial deduction.
-  const stockRecords = await listBusinessRecords(partnerId, "inventory-stock");
-  const stockById = new Map(stockRecords.map((r) => [String(r["id"]), r]));
   for (const line of production.bomLines) {
-    const stock = stockById.get(line.materialId);
-    const available = Number(stock?.["quantityOnHand"] ?? 0);
+    const stock = await findStockRecord(partnerId, line.materialId);
+    const available = Number(stock?.["qtyOnHand"] ?? 0);
     if (!stock || available < line.qty) {
       return {
         error: `Insufficient stock for ${line.materialLabel}: ${available} available, ${line.qty} required.`,
@@ -52,9 +51,7 @@ export async function completeProductionAction(
     }
   }
   for (const line of production.bomLines) {
-    const stock = stockById.get(line.materialId)!;
-    const newQty = Number(stock["quantityOnHand"] ?? 0) - line.qty;
-    await updateBusinessRecord(partnerId, "inventory-stock", line.materialId, { ...stock, quantityOnHand: newQty });
+    await adjustStockQty(partnerId, line.materialId, line.materialLabel, "", -line.qty);
   }
 
   const materialCost = production.bomLines.reduce((sum, l) => sum + l.qty * l.rate, 0);
@@ -64,11 +61,11 @@ export async function completeProductionAction(
   if (safeQuantityProduced > 0) {
     const productName = String(record["productName"] ?? workOrderId);
     const finishedGood = await createBusinessRecord(partnerId, "inventory-stock", {
-      itemName: `${productName} (Finished Good — ${workOrderId})`,
-      quantityOnHand: safeQuantityProduced,
-      unitCost: Math.round((totalCost / safeQuantityProduced) * 100) / 100,
+      materialId: `${productName} (Finished Good — ${workOrderId})`,
+      warehouseName: "",
+      qtyOnHand: safeQuantityProduced,
+      reservedQty: 0,
       reorderLevel: 0,
-      stockStatus: "In stock",
       sourceProductionWorkOrderId: workOrderId,
     });
     finishedGoodStockId = String(finishedGood.id);

@@ -39,7 +39,7 @@ export async function completeSaleAction(partnerId: string, input: CompleteSaleI
   const stockBySku = new Map(stockRecords.map((r) => [String(r["id"]), r]));
   for (const line of input.lines) {
     const stock = stockBySku.get(line.sku);
-    const available = Number(stock?.["quantityOnHand"] ?? 0);
+    const available = Number(stock?.["qtyOnHand"] ?? 0);
     if (!stock || available < line.qty) {
       throw new Error(
         `Insufficient stock for ${line.productName} (${line.sku}): ${available} available, ${line.qty} requested.`
@@ -48,8 +48,8 @@ export async function completeSaleAction(partnerId: string, input: CompleteSaleI
   }
   for (const line of input.lines) {
     const stock = stockBySku.get(line.sku)!;
-    const newQty = Number(stock["quantityOnHand"] ?? 0) - line.qty;
-    await updateBusinessRecord(partnerId, "inventory-stock", line.sku, { ...stock, quantityOnHand: newQty });
+    const newQty = Number(stock["qtyOnHand"] ?? 0) - line.qty;
+    await updateBusinessRecord(partnerId, "inventory-stock", line.sku, { ...stock, qtyOnHand: newQty });
   }
 
   const paymentSummary = Array.from(new Set(input.tenders.map((t) => t.method))).join(" + ");
@@ -107,8 +107,8 @@ export async function voidSaleAction(partnerId: string, saleId: string, reason: 
     for (const line of sale.lines) {
       const stock = await getBusinessRecord(partnerId, "inventory-stock", line.sku);
       if (stock) {
-        const restoredQty = Number(stock["quantityOnHand"] ?? 0) + line.qty;
-        await updateBusinessRecord(partnerId, "inventory-stock", line.sku, { ...stock, quantityOnHand: restoredQty });
+        const restoredQty = Number(stock["qtyOnHand"] ?? 0) + line.qty;
+        await updateBusinessRecord(partnerId, "inventory-stock", line.sku, { ...stock, qtyOnHand: restoredQty });
       }
     }
   }

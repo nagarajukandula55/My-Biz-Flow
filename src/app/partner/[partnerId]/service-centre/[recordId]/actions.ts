@@ -17,6 +17,7 @@ import { notifyCentralApiBillingInvoice } from "@/lib/centralApi";
 import { buildServiceCentreLines } from "@/lib/serviceCentreLines";
 import { sendWorkorderTelegramAlert, sendPartnerTelegramAlert } from "@/lib/telegram";
 import { workorderClosedMessage, workorderCancelledMessage, lowStockAlertMessage } from "@/lib/telegramTemplates";
+import { findStockRecord, adjustStockQty } from "@/lib/inventoryStock";
 
 /**
  * Shared lookup for every action below. Previously each action did
@@ -172,6 +173,17 @@ export async function patchServiceCentreWorkorderAction(
  * Guarded by `inventoryDeducted` on the workorder record so re-entering
  * Completed (e.g. after a later edit) never double-deducts.
  */
+/**
+ * Deducts every non-pending part line's quantity from live Inventory stock
+ * when a workorder is completed. Fail-closed: if ANY line would consume
+ * more than is actually on hand, nothing is deducted and the caller gets
+ * an error instead of some lines silently going negative — same posture
+ * completeSaleAction (POS) already uses. A serialized line always consumes
+ * exactly 1 unit (a serial number identifies one physical unit, so a
+ * serialized line's `qty` is not read for the deduction amount) and its
+ * entered serial is recorded on the stock row's `consumedSerials` list for
+ * traceability; a non-serialized line deducts its own `qty`.
+ */
 export async function deductInventoryForWorkorderAction(partnerId: string, workorderId: string): Promise<void> {
   await assertCanActOnServiceCentre(partnerId);
   const record = await requireWorkorder(partnerId, workorderId);
@@ -182,19 +194,39 @@ export async function deductInventoryForWorkorderAction(partnerId: string, worko
     return;
   }
 
-  const stockRecords = await listBusinessRecords(partnerId, "inventory-stock");
-  const stockById = new Map(stockRecords.map((r) => [String(r["id"]), r]));
+  const linesToConsume = lifecycle.partLines.filter((line) => !line.pending);
   const partner = await getPartner(partnerId);
 
-  for (const line of lifecycle.partLines) {
-    if (line.pending) continue; // never fulfilled — nothing to deduct
-    const stock = stockById.get(line.materialId);
-    if (!stock) continue; // no matching stock record — best-effort, doesn't block the job
-    const currentQty = Number(stock["quantityOnHand"] ?? 0);
-    const newQty = Math.max(0, currentQty - (line.qty || 1));
-    const reorderLevel = Number(stock["reorderLevel"] ?? 0);
-    await updateBusinessRecord(partnerId, "inventory-stock", line.materialId, { ...stock, quantityOnHand: newQty });
-    stockById.set(line.materialId, { ...stock, quantityOnHand: newQty });
+  // Fail-closed pre-check — every line must have enough stock before ANY of them are deducted.
+  const shortages: string[] = [];
+  for (const line of linesToConsume) {
+    const stock = await findStockRecord(partnerId, line.materialId);
+    const available = Number(stock?.["qtyOnHand"] ?? 0);
+    const needed = line.serialized ? 1 : line.qty || 1;
+    if (available < needed) {
+      shortages.push(`${line.materialLabel || line.materialId}: ${available} available, ${needed} needed`);
+    }
+  }
+  if (shortages.length > 0) {
+    throw new Error(`Not enough stock to complete this job — ${shortages.join("; ")}.`);
+  }
+
+  for (const line of linesToConsume) {
+    const needed = line.serialized ? 1 : line.qty || 1;
+    const before = await findStockRecord(partnerId, line.materialId);
+    const reorderLevel = Number(before?.["reorderLevel"] ?? 0);
+    const currentQty = Number(before?.["qtyOnHand"] ?? 0);
+
+    const newQty = await adjustStockQty(partnerId, line.materialId, line.materialLabel, String(before?.["warehouseName"] ?? ""), -needed);
+
+    if (line.serialized && line.serial && before) {
+      const consumedSerials = Array.isArray(before["consumedSerials"]) ? (before["consumedSerials"] as unknown[]) : [];
+      await updateBusinessRecord(partnerId, "inventory-stock", String(before["id"]), {
+        ...before,
+        qtyOnHand: newQty,
+        consumedSerials: [...consumedSerials, { serial: line.serial, workorderId, consumedAt: new Date().toISOString() }],
+      });
+    }
 
     // Fire once, right as stock crosses the threshold — not on every
     // subsequent deduction while it stays low, so this doesn't spam an
@@ -205,7 +237,7 @@ export async function deductInventoryForWorkorderAction(partnerId: string, worko
         "lowStock",
         await lowStockAlertMessage({
           partnerBusinessName: partner.businessName,
-          itemName: String(stock["itemName"] ?? stock["name"] ?? line.materialId),
+          itemName: line.materialLabel || line.materialId,
           quantityRemaining: newQty,
           reorderThreshold: reorderLevel,
         })

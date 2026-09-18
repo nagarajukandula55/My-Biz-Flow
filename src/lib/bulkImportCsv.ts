@@ -50,7 +50,7 @@ export async function runBulkImport(
   moduleSlug: string,
   file: File,
   formFields: FormFieldDef[],
-  transform?: (values: Record<string, unknown>) => Record<string, unknown>
+  transform?: (values: Record<string, unknown>) => Record<string, unknown> | Promise<Record<string, unknown>>
 ): Promise<BulkImportResult> {
   const allKeys = formFields.map((f) => f.key);
   const requiredKeys = formFields.filter((f) => f.required).map((f) => f.key);
@@ -73,7 +73,7 @@ export async function runBulkImport(
       for (const key of allKeys) {
         if (row[key] !== undefined && row[key] !== "") values[key] = row[key];
       }
-      if (transform) values = transform(values);
+      if (transform) values = await transform(values);
       await createBusinessRecord(partnerId, moduleSlug, values);
       count++;
     } catch (e) {

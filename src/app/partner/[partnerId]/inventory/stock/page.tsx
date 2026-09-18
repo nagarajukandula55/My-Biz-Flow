@@ -3,6 +3,7 @@ import { registerPage } from "@/lib/designer/registry";
 import { StockClientTable } from "./StockClientTable";
 import { StockNewButton } from "./StockNewButton";
 import { BulkUploadButton } from "@/components/BulkUploadButton";
+import { RecordCsvExportButton } from "@/components/RecordCsvExportButton";
 import { bulkImportStockAction } from "./actions";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { stockColumns, stockFormFields } from "@/lib/sample-data/warehouse";
@@ -41,6 +42,11 @@ export default async function StockPage({ params }: { params: { partnerId: strin
             sampleRow={["USB-C Charging Port Flex Cable", "Central Warehouse — Bengaluru", "25", "0", "10"]}
             templateFilename="stock-template.csv"
             importAction={bulkImportStockAction.bind(null, params.partnerId)}
+          />
+          <RecordCsvExportButton
+            columns={columns.map((c) => c.key)}
+            rows={rows}
+            filename={`stock-${params.partnerId}-${new Date().toISOString().slice(0, 10)}.csv`}
           />
           <StockNewButton partnerId={params.partnerId} />
         </div>

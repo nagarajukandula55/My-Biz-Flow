@@ -19,20 +19,28 @@ registerPage({
     { key: "validation-rules", label: "Validation rules" },
     { key: "default-values", label: "Default values" },
   ],
-  explanation: "The same config-driven RecordForm pre-populated with an existing per-warehouse stock ledger entry's sample data, letting a user edit and save changes (demo stub, no persistence yet).",
+  explanation:
+    "Config-driven RecordForm for a stock ledger entry — deliberately excludes Qty on Hand from the editable fields. A quantity change must go through Stock Adjustments (with a reason), Part Orders (dispatch), or Stock Take (physical recount) instead of a bare number overwrite with no record of why (see createStockAdjustmentAction/createPartOrderAction/createStockTakeAction, src/lib/inventoryStock.ts).",
   sourceFile: "src/app/partner/[partnerId]/inventory/stock/[recordId]/edit/page.tsx",
 });
+
+// Qty on Hand is excluded — see the explanation above. Every other field
+// (Material, Warehouse, Reserved Qty, Reorder Level) stays editable.
+const EDITABLE_FIELDS = stockFormFields.filter((f) => f.key !== "qtyOnHand");
 
 export default async function EditStockPage({ params }: { params: { partnerId: string; recordId: string } }) {
   const record = await getBusinessRecord(params.partnerId, "inventory-stock", params.recordId);
   if (!record) notFound();
-  const fields = await applyCustomizations("inventory.stock.edit", stockFormFields);
+  const fields = await applyCustomizations("inventory.stock.edit", EDITABLE_FIELDS);
 
   return (
     <AppShell topbarTitle="Edit Stock Entry — Inventory (Stock)">
       <div>
         <h1 className="font-display text-xl font-bold text-text">Edit Stock Entry</h1>
-        <p className="mt-1 text-xs text-text-muted">{String(record["id"])}</p>
+        <p className="mt-1 text-xs text-text-muted">
+          {String(record["id"])} — Qty on Hand: {String(record["qtyOnHand"] ?? 0)} (change it via Stock Adjustments,
+          Part Orders, or Stock Take, not here)
+        </p>
         <div className="mt-6">
           <RecordForm
             fields={fields}

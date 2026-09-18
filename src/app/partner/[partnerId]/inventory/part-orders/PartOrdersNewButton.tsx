@@ -1,7 +1,7 @@
 "use client";
 
 import { RecordFormModal, useRecordFormModal } from "@/components/RecordFormModal";
-import { createBusinessRecordAction } from "@/lib/businessRecordActions";
+import { createPartOrderAction } from "./actions";
 import { partOrderFormFields } from "@/lib/sample-data/warehouse";
 
 /** Create-as-modal for inventory/part-orders (see src/components/RecordFormModal.tsx). */
@@ -18,7 +18,7 @@ export function PartOrdersNewButton({ partnerId }: { partnerId: string }) {
         title="New Part Order"
         fields={partOrderFormFields}
         submitLabel="Create Part Order"
-        action={createBusinessRecordAction.bind(null, partnerId, "inventory-part-orders")}
+        action={createPartOrderAction.bind(null, partnerId)}
       />
     </>
   );

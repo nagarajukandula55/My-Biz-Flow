@@ -1057,12 +1057,18 @@ export function WorkorderLifecycle({
     const value = imeiDraft.trim();
     if (!value) return;
     setCompleteModalOpen(false);
-    setImei(value);
-    setStage("Completed");
-    persist({ stage: "Completed", imeiOrSerialNumber: value }, "Marked Completed.");
-    startPersist(async () => {
-      await deductInventoryForWorkorderAction(partnerId, workorderId);
-    });
+    // Inventory is checked and deducted BEFORE the stage actually flips —
+    // if there isn't enough stock for a line, the job stays where it was
+    // and the shortage shows as an error, rather than "Completed" already
+    // being persisted by the time a shortage is discovered.
+    run(
+      () => deductInventoryForWorkorderAction(partnerId, workorderId),
+      () => {
+        setImei(value);
+        setStage("Completed");
+        persist({ stage: "Completed", imeiOrSerialNumber: value }, "Marked Completed.");
+      }
+    );
   }
 
   /**
@@ -1157,14 +1163,22 @@ export function WorkorderLifecycle({
       setConfirmCloseOpen(true);
       return;
     }
+    if (next === "Completed") {
+      // Same inventory-first-then-persist ordering as confirmMarkCompleted
+      // above (this is the branch that runs when IMEI was already on file,
+      // so Mark Completed never went through that detour) — a stock
+      // shortage blocks the stage from flipping at all.
+      run(
+        () => deductInventoryForWorkorderAction(partnerId, workorderId),
+        () => {
+          setStage(next);
+          persist({ stage: next }, `Marked ${next}.`);
+        }
+      );
+      return;
+    }
     setStage(next);
     persist({ stage: next }, `Marked ${next}.`);
-    if (next === "Completed") {
-      // Side effect, mirrors POS checkout: deduct consumed parts from live Inventory stock once the repair is done.
-      startPersist(async () => {
-        await deductInventoryForWorkorderAction(partnerId, workorderId);
-      });
-    }
   }
 
   /**

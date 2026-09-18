@@ -85,12 +85,12 @@ export async function computeAlerts(partnerId: string, now: Date = new Date()): 
 
   const alerts: Alert[] = [];
 
-  // 1. Low stock — quantityOnHand at or below the item's own reorderLevel.
+  // 1. Low stock — qtyOnHand at or below the item's own reorderLevel.
   //    Both fields must actually be numeric on the record; an item with no
   //    reorder level set has not opted in to this and is skipped rather
   //    than assigned a made-up threshold.
   for (const item of stock) {
-    const qty = toNumber(item["quantityOnHand"]);
+    const qty = toNumber(item["qtyOnHand"]);
     const reorder = toNumber(item["reorderLevel"]);
     if (qty === null || reorder === null) continue;
     if (qty > reorder) continue;
@@ -99,7 +99,7 @@ export async function computeAlerts(partnerId: string, now: Date = new Date()): 
       id: `low-stock:${code}`,
       severity: qty <= 0 ? "danger" : "warning",
       title: qty <= 0 ? "Out of stock" : "Low stock",
-      detail: `${str(item, "itemName") || code} — ${qty} on hand, reorder level ${reorder}.`,
+      detail: `${str(item, "materialId") || code} — ${qty} on hand, reorder level ${reorder}.`,
       href: `inventory/stock`,
     });
   }

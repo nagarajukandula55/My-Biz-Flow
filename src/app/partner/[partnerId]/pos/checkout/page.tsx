@@ -27,7 +27,7 @@ export default async function PosCheckoutPage({ params }: { params: { partnerId:
   ]);
   const materialById = new Map(materialRecords.map((m) => [String(m["id"]), m]));
   const stockItems = stockRecords
-    .filter((r) => Number(r["quantityOnHand"] ?? 0) > 0)
+    .filter((r) => Number(r["qtyOnHand"] ?? 0) > 0)
     .map((r) => {
       const material = materialById.get(String(r["id"]));
       return {
@@ -39,7 +39,7 @@ export default async function PosCheckoutPage({ params }: { params: { partnerId:
         // goods a Service Centre partner never needed to define as a "material").
         unitPrice: Number(material?.["rate"] ?? r["unitCost"] ?? 0),
         taxRate: Number(material?.["taxPercent"] ?? 18),
-        available: Number(r["quantityOnHand"] ?? 0),
+        available: Number(r["qtyOnHand"] ?? 0),
       };
     });
 

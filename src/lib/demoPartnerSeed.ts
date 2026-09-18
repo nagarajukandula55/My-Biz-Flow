@@ -142,12 +142,18 @@ async function seedDummyData() {
     { id: "SOL0004", title: "Software reset / reflash", category: "Software", estimatedRepairMinutes: 20, status: "Active" },
   ]);
 
+  // Field names here must match what the live Inventory (Stock) pages and
+  // every stock-consuming action actually read/write (materialId,
+  // warehouseName, qtyOnHand — see src/lib/sample-data/warehouse.ts and
+  // src/lib/inventoryStock.ts) — this used to seed a completely different,
+  // unused shape (itemName/warehouseLocation/quantityOnHand/unitCost/
+  // stockStatus) that the real Stock UI never read.
   await seedIfEmpty("inventory-stock", [
-    { id: "INV0001", itemName: "Samsung Galaxy M14 Display", warehouseLocation: "Rack A1", quantityOnHand: 8, reorderLevel: 3, unitCost: 2200, stockStatus: "In stock" },
-    { id: "INV0002", itemName: "iPhone 13 Battery", warehouseLocation: "Rack A2", quantityOnHand: 2, reorderLevel: 3, unitCost: 1800, stockStatus: "Low stock" },
-    { id: "INV0003", itemName: "USB-C Charging Port Flex", warehouseLocation: "Rack B1", quantityOnHand: 15, reorderLevel: 5, unitCost: 350, stockStatus: "In stock" },
-    { id: "INV0004", itemName: "Redmi Note 12 Display", warehouseLocation: "Rack A1", quantityOnHand: 6, reorderLevel: 3, unitCost: 1600, stockStatus: "In stock" },
-    { id: "INV0005", itemName: "Laptop RAM 8GB DDR4", warehouseLocation: "Rack C1", quantityOnHand: 4, reorderLevel: 2, unitCost: 1900, stockStatus: "In stock" },
+    { id: "INV0001", materialId: "Samsung Galaxy M14 Display", warehouseName: "", qtyOnHand: 8, reservedQty: 0, reorderLevel: 3 },
+    { id: "INV0002", materialId: "iPhone 13 Battery", warehouseName: "", qtyOnHand: 2, reservedQty: 0, reorderLevel: 3 },
+    { id: "INV0003", materialId: "USB-C Charging Port Flex", warehouseName: "", qtyOnHand: 15, reservedQty: 0, reorderLevel: 5 },
+    { id: "INV0004", materialId: "Redmi Note 12 Display", warehouseName: "", qtyOnHand: 6, reservedQty: 0, reorderLevel: 3 },
+    { id: "INV0005", materialId: "Laptop RAM 8GB DDR4", warehouseName: "", qtyOnHand: 4, reservedQty: 0, reorderLevel: 2 },
   ]);
 
   const today = new Date();
