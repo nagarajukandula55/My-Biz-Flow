@@ -709,26 +709,27 @@ model TelegramSettings {
   chatTitle        String?
   /// Same as `chatTitle`, for `groupChatId`.
   groupChatTitle   String?
-  enabledTypes     Json      @default("[]")
   /// Per-alert-type routing: which of the two connected chats
-  /// (personal/group/both) each TELEGRAM_ALERT_TYPES key is delivered to.
-  /// Keyed by TelegramAlertType, valued "personal" | "group" | "both" — see
-  /// TelegramRoutingMap in src/lib/telegram.ts. A type with no entry here
-  /// defaults to "both" (send to whichever of chatId/groupChatId is set),
-  /// matching this app's Json-column precedent for flexible per-type config
-  /// (Partner.productDomains).
+  /// (personal/group/both/none) each TELEGRAM_ALERT_TYPES key — plus the
+  /// pseudo-key "report" for the business-summary digest — is delivered to.
+  /// Keyed by TelegramAlertType | "report", valued
+  /// "personal" | "group" | "both" | "none" — see TelegramRoutingMap in
+  /// src/lib/telegram.ts. A type with no entry here defaults to "both" (send
+  /// to whichever of chatId/groupChatId is set); "none" is the replacement
+  /// for the old per-type enable/disable checkbox (removed — every type is
+  /// always "on", routing is the only on/off/where control now).
   routing          Json      @default("{}")
-  /// Automatic periodic business-summary digest cadence, matching AN-CRM's
-  /// VendorProfile.telegramReportFrequency (DAILY/WEEKLY/MONTHLY/NONE) —
-  /// see src/lib/telegramTemplates.ts's businessReportMessage(). Actually
-  /// sent by /api/cron/telegram-reports (see that route + lastReportSentAt
-  /// below for the idempotency guard) once a bot token is configured.
-  reportFrequency  String    @default("NONE")
-  /// When the last scheduled digest was sent (or attempted, if no bot token
-  /// is configured) — the cron's idempotency guard, since Vercel Cron does
-  /// not guarantee exactly-once delivery and this route may run more than
+  /// Every partner with a connected chat gets ALL THREE report cadences
+  /// (daily, weekly, and monthly digests — see
+  /// src/lib/telegramTemplates.ts's businessReportMessage()), not a single
+  /// pick-one frequency — the old `reportFrequency` NONE/DAILY/WEEKLY/MONTHLY
+  /// column is gone; report delivery is now gated purely by `routing["report"]`
+  /// like any other alert type. Keyed by cadence (DAILY/WEEKLY/MONTHLY), each
+  /// value the last time that specific cadence was sent (or attempted) —
+  /// the cron's idempotency guard, since Vercel Cron does not guarantee
+  /// exactly-once delivery and this route may run more than
   /// once on the same calendar day/week/month.
-  lastReportSentAt DateTime?
+  lastReportSentAt Json      @default("{}")
   updatedAt        DateTime  @updatedAt
 
   @@map("telegram_settings")

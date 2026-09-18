@@ -29,18 +29,23 @@ export const TELEGRAM_ALERT_TYPES = [
 
 export type TelegramAlertType = (typeof TELEGRAM_ALERT_TYPES)[number]["key"];
 
-/** Digest cadence for the automatic business-summary report — matches AN-CRM's
- * VendorProfile.telegramReportFrequency (DAILY/WEEKLY/MONTHLY, plus NONE/off). */
-export const TELEGRAM_REPORT_FREQUENCIES = ["NONE", "DAILY", "WEEKLY", "MONTHLY"] as const;
-export type TelegramReportFrequency = (typeof TELEGRAM_REPORT_FREQUENCIES)[number];
+/** Cadence keys the automatic business-summary report is sent on — every
+ * partner with a connected chat gets all three (see routing["report"] for
+ * the on/off/where control; there is no more single pick-one frequency). */
+export const TELEGRAM_REPORT_CADENCES = ["DAILY", "WEEKLY", "MONTHLY"] as const;
+export type TelegramReportCadence = (typeof TELEGRAM_REPORT_CADENCES)[number];
 
-/** Which connected chat an alert type is routed to. A type with no explicit
- * entry in `routing` defaults to "both" — send to whichever of
- * chatId/groupChatId is actually connected (so a partner with only one chat
- * connected keeps getting alerts there, unchanged from before routing existed). */
+/** Which connected chat an alert type (or the "report" digest) is routed to.
+ * A type with no explicit entry in `routing` defaults to "both" — send to
+ * whichever of chatId/groupChatId is actually connected (so a partner with
+ * only one chat connected keeps getting alerts there, unchanged from before
+ * routing existed). "none" replaces the old separate enable/disable
+ * checkbox — every alert type is always "on", routing is the only
+ * on/off/where control. */
 export type TelegramChatSlot = "personal" | "group";
-export type AlertDestination = TelegramChatSlot | "both";
-export type TelegramRoutingMap = Partial<Record<TelegramAlertType, AlertDestination>>;
+export type AlertDestination = TelegramChatSlot | "both" | "none";
+export type TelegramRoutingKey = TelegramAlertType | "report";
+export type TelegramRoutingMap = Partial<Record<TelegramRoutingKey, AlertDestination>>;
 
 export type TelegramSettingsRecord = {
   partnerId: string;
@@ -50,10 +55,12 @@ export type TelegramSettingsRecord = {
   chatTitle: string | null;
   groupChatId: string | null;
   groupChatTitle: string | null;
-  enabledTypes: TelegramAlertType[];
   routing: TelegramRoutingMap;
-  reportFrequency: TelegramReportFrequency;
-  lastReportSentAt: Date | null;
+  /** Last time each report cadence was sent (or attempted) — per-cadence
+   * because DAILY/WEEKLY/MONTHLY now fire independently for every connected
+   * partner (e.g. every Saturday DAILY and WEEKLY are both due), so a single
+   * timestamp can no longer gate all three. */
+  lastReportSentAt: Partial<Record<TelegramReportCadence, Date | null>>;
 };
 
 export type TelegramLogEntryRecord = {
@@ -66,6 +73,16 @@ export type TelegramLogEntryRecord = {
   createdAt: string;
 };
 
+function parseLastReportSentAt(raw: unknown): Partial<Record<TelegramReportCadence, Date | null>> {
+  if (!raw || typeof raw !== "object") return {};
+  const out: Partial<Record<TelegramReportCadence, Date | null>> = {};
+  for (const cadence of TELEGRAM_REPORT_CADENCES) {
+    const value = (raw as Record<string, unknown>)[cadence];
+    if (typeof value === "string" && value) out[cadence] = new Date(value);
+  }
+  return out;
+}
+
 export async function getTelegramSettings(partnerId: string): Promise<TelegramSettingsRecord> {
   const row = await prisma.telegramSettings.findUnique({ where: { partnerId } });
   return {
@@ -74,34 +91,33 @@ export async function getTelegramSettings(partnerId: string): Promise<TelegramSe
     chatTitle: row?.chatTitle ?? null,
     groupChatId: row?.groupChatId ?? null,
     groupChatTitle: row?.groupChatTitle ?? null,
-    enabledTypes: (row?.enabledTypes as TelegramAlertType[] | undefined) ?? [],
     routing: (row?.routing as TelegramRoutingMap | undefined) ?? {},
-    reportFrequency: (row?.reportFrequency as TelegramReportFrequency | undefined) ?? "NONE",
-    lastReportSentAt: row?.lastReportSentAt ?? null,
+    lastReportSentAt: parseLastReportSentAt(row?.lastReportSentAt),
   };
 }
 
-/** Every partner with a non-"NONE" report frequency — the cron's iteration set (no per-partner round-trip needed to check who opted in). */
+/** Every partner with at least one connected chat (personal or group) — the
+ * cron's iteration set. Reports are no longer per-partner opt-in/frequency —
+ * every connected partner gets all three cadences, gated only by
+ * routing["report"] (same as any other alert type; "none" opts out). */
 export async function listPartnersWithReportsEnabled(): Promise<TelegramSettingsRecord[]> {
-  const rows = await prisma.telegramSettings.findMany({ where: { reportFrequency: { not: "NONE" } } });
+  const rows = await prisma.telegramSettings.findMany({
+    where: { OR: [{ chatId: { not: null } }, { groupChatId: { not: null } }] },
+  });
   return rows.map((row) => ({
     partnerId: row.partnerId,
     chatId: row.chatId,
     chatTitle: row.chatTitle ?? null,
     groupChatId: row.groupChatId,
     groupChatTitle: row.groupChatTitle ?? null,
-    enabledTypes: (row.enabledTypes as TelegramAlertType[] | undefined) ?? [],
     routing: (row.routing as TelegramRoutingMap | undefined) ?? {},
-    reportFrequency: (row.reportFrequency as TelegramReportFrequency | undefined) ?? "NONE",
-    lastReportSentAt: row.lastReportSentAt ?? null,
+    lastReportSentAt: parseLastReportSentAt(row.lastReportSentAt),
   }));
 }
 
 export async function saveTelegramSettings(
   partnerId: string,
   chatId: string,
-  enabledTypes: TelegramAlertType[],
-  reportFrequency: TelegramReportFrequency,
   extra?: {
     groupChatId?: string;
     routing?: TelegramRoutingMap;
@@ -128,39 +144,34 @@ export async function saveTelegramSettings(
   await prisma.telegramSettings.upsert({
     where: { partnerId },
     create: {
-      partnerId, chatId: chatId || null, groupChatId: groupChatId || null, enabledTypes, routing, reportFrequency,
+      partnerId, chatId: chatId || null, groupChatId: groupChatId || null, routing,
       chatTitle: chatTitle || null, groupChatTitle: groupChatTitle || null,
     },
     update: {
-      chatId: chatId || null, groupChatId: groupChatId || null, enabledTypes, routing, reportFrequency,
+      chatId: chatId || null, groupChatId: groupChatId || null, routing,
       chatTitle: chatTitle || null, groupChatTitle: groupChatTitle || null,
     },
   });
 }
 
-/** Saves only the routing map, leaving chat ids / enabled types / report
- * frequency untouched — the action behind the per-alert-type routing select
- * on the Telegram Alerts page. */
+/** Saves only the routing map, leaving chat ids untouched — the action
+ * behind the per-alert-type routing select on the Telegram Alerts page. */
 export async function saveTelegramRouting(partnerId: string, routing: TelegramRoutingMap): Promise<void> {
   const existing = await getTelegramSettings(partnerId);
-  await saveTelegramSettings(partnerId, existing.chatId ?? "", existing.enabledTypes, existing.reportFrequency, {
+  await saveTelegramSettings(partnerId, existing.chatId ?? "", {
     groupChatId: existing.groupChatId ?? "",
     routing,
   });
 }
 
-/** Resolves which chat id(s) a given alert (or "test") should be sent to,
- * honouring the routing map — a type with no explicit entry defaults to
- * "both" so a partner with only one chat connected keeps getting alerts
- * there exactly as before routing existed. "test" always goes to every
- * connected chat, ignoring routing, so the Send Test Message button
- * verifies both slots at once. */
-function resolveChatIdsForType(settings: TelegramSettingsRecord, type: TelegramAlertType | "test" | "report"): string[] {
-  // "report" (the scheduled digest) has its own independent on/off switch
-  // (reportFrequency != "NONE", checked by the cron before calling this at
-  // all) rather than a TELEGRAM_ALERT_TYPES routing entry -- send to every
-  // connected chat, same as "test".
-  if (type === "test" || type === "report") {
+/** Resolves which chat id(s) a given alert (or "test"/"report") should be
+ * sent to, honouring the routing map — a type with no explicit entry
+ * defaults to "both" so a partner with only one chat connected keeps
+ * getting alerts there exactly as before routing existed; "none" sends
+ * nowhere. "test" always goes to every connected chat, ignoring routing, so
+ * the Send Test Message button verifies both slots at once. */
+function resolveChatIdsForType(settings: TelegramSettingsRecord, type: TelegramRoutingKey | "test"): string[] {
+  if (type === "test") {
     return [settings.chatId, settings.groupChatId].filter((id): id is string => Boolean(id));
   }
   const destination = settings.routing[type] ?? "both";
@@ -214,10 +225,12 @@ async function recordTelegramLog(input: {
 }
 
 /**
- * Sends one alert to a partner's configured chat, IF they've enabled that
- * alert type and set a chatId. Every attempt — sent or not — is recorded
- * to TelegramLogEntry so the settings page has a real activity history.
- * Never throws — this is best-effort, matching sendSms()'s posture.
+ * Sends one alert to a partner's configured chat(s), gated purely on the
+ * resolved routing (an empty chat list — no chat connected, or routing set
+ * to "none" — means no send). Every alert type is always "on"; there's no
+ * more separate enable/disable check. Every attempt — sent or not — is
+ * recorded to TelegramLogEntry so the settings page has a real activity
+ * history. Never throws — this is best-effort, matching sendSms()'s posture.
  *
  * When `workorderId` is given, the sent message's own Bot API message_id is
  * captured onto the log row alongside it — that's the reply-threading key
@@ -229,7 +242,7 @@ async function recordTelegramLog(input: {
  */
 async function sendTelegramAlertInternal(
   partnerId: string,
-  type: TelegramAlertType | "test" | "report",
+  type: TelegramRoutingKey | "test",
   message: string,
   workorderId: string | null
 ): Promise<void> {
@@ -238,10 +251,6 @@ async function sendTelegramAlertInternal(
 
   if (chatIds.length === 0) {
     await recordTelegramLog({ partnerId, type, message, chatId: null, sent: false, reason: "no chat id configured", workorderId });
-    return;
-  }
-  if (type !== "test" && type !== "report" && !settings.enabledTypes.includes(type)) {
-    await recordTelegramLog({ partnerId, type, message, chatId: chatIds[0], sent: false, reason: "alert type disabled", workorderId });
     return;
   }
 
@@ -306,12 +315,12 @@ async function sendTelegramAlertInternal(
 
 /** Reasons recordTelegramLog can carry that reflect a partner-fixable
  * connection problem (the chat rejected/blocked the bot, was deleted, etc.)
- * rather than a deployment-level or per-type configuration state — those
- * ("no chat id configured", "alert type disabled", the missing-bot-token
- * message) aren't things a partner can act on by reconnecting Telegram. */
+ * rather than a deployment-level or routing configuration state — those
+ * ("no chat id configured", the missing-bot-token message) aren't things a
+ * partner can act on by reconnecting Telegram. */
 function isConnectionFailureReason(reason: string | null): boolean {
   if (!reason) return false;
-  if (reason === "no chat id configured" || reason === "alert type disabled") return false;
+  if (reason === "no chat id configured") return false;
   if (reason.startsWith("not configured")) return false;
   return true;
 }
@@ -384,17 +393,29 @@ export async function sendWorkorderTelegramAlert(
 }
 
 /**
- * Sends the scheduled business-summary digest to a partner's connected
- * chat(s) and stamps `lastReportSentAt` so /api/cron/telegram-reports's
- * idempotency check sees this partner as done for the current period even
- * if the cron runs again the same day (Vercel Cron doesn't guarantee
- * exactly-once). Stamped regardless of whether a chat is actually
- * connected/a bot token is configured -- "attempted for this period" is
- * the right idempotency signal, not "successfully delivered".
+ * Sends one cadence of the scheduled business-summary digest to a partner's
+ * connected chat(s) (honouring routing["report"] — "none" opts out) and
+ * stamps that cadence's entry in `lastReportSentAt` so
+ * /api/cron/telegram-reports's idempotency check sees this partner/cadence
+ * as done for the current period even if the cron runs again the same day
+ * (Vercel Cron doesn't guarantee exactly-once). Stamped regardless of
+ * whether a chat is actually connected/a bot token is configured --
+ * "attempted for this period" is the right idempotency signal, not
+ * "successfully delivered".
  */
-export async function sendPartnerTelegramReport(partnerId: string, message: string): Promise<void> {
+export async function sendPartnerTelegramReport(partnerId: string, cadence: TelegramReportCadence, message: string): Promise<void> {
   await sendTelegramAlertInternal(partnerId, "report", message, null);
-  await prisma.telegramSettings.update({ where: { partnerId }, data: { lastReportSentAt: new Date() } }).catch(() => {});
+  const existing = await getTelegramSettings(partnerId);
+  // Json column -- store ISO strings, not Date objects, so the round-trip
+  // through parseLastReportSentAt() above stays well-defined.
+  const nextStamps: Record<string, string> = {};
+  for (const [key, value] of Object.entries(existing.lastReportSentAt)) {
+    if (value) nextStamps[key] = value.toISOString();
+  }
+  nextStamps[cadence] = new Date().toISOString();
+  await prisma.telegramSettings
+    .update({ where: { partnerId }, data: { lastReportSentAt: nextStamps } })
+    .catch(() => {});
 }
 
 /**
@@ -584,9 +605,9 @@ export function parseStartPayload(payload: string): { partnerId: string; slot: T
  * Called by the webhook route on a `/start <payload>` command — saves the
  * chat that sent it as this partner's TelegramSettings.chatId (personal) or
  * groupChatId (group), replacing the old single-chat manual-entry flow with
- * an automatic per-slot capture. Preserves whatever enabledTypes/routing/
- * reportFrequency/other chat slot the partner already had configured (or
- * the defaults, for a brand-new connection).
+ * an automatic per-slot capture. Preserves whatever routing/other chat slot
+ * the partner already had configured (or the defaults, for a brand-new
+ * connection).
  */
 export async function connectTelegramChat(
   partnerId: string,
@@ -598,13 +619,13 @@ export async function connectTelegramChat(
 ): Promise<void> {
   const existing = await getTelegramSettings(partnerId);
   if (slot === "group") {
-    await saveTelegramSettings(partnerId, existing.chatId ?? "", existing.enabledTypes, existing.reportFrequency, {
+    await saveTelegramSettings(partnerId, existing.chatId ?? "", {
       groupChatId: chatId,
       routing: existing.routing,
       groupChatTitle: title ?? null,
     });
   } else {
-    await saveTelegramSettings(partnerId, chatId, existing.enabledTypes, existing.reportFrequency, {
+    await saveTelegramSettings(partnerId, chatId, {
       groupChatId: existing.groupChatId ?? "",
       routing: existing.routing,
       chatTitle: title ?? null,
@@ -618,12 +639,12 @@ export async function connectTelegramChat(
 export async function disconnectTelegramChat(partnerId: string, slot: TelegramChatSlot = "personal"): Promise<void> {
   const existing = await getTelegramSettings(partnerId);
   if (slot === "group") {
-    await saveTelegramSettings(partnerId, existing.chatId ?? "", existing.enabledTypes, existing.reportFrequency, {
+    await saveTelegramSettings(partnerId, existing.chatId ?? "", {
       groupChatId: "",
       routing: existing.routing,
     });
   } else {
-    await saveTelegramSettings(partnerId, "", existing.enabledTypes, existing.reportFrequency, {
+    await saveTelegramSettings(partnerId, "", {
       groupChatId: existing.groupChatId ?? "",
       routing: existing.routing,
     });

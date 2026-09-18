@@ -8,12 +8,24 @@ import {
   saveTelegramRouting,
   sendPartnerTelegramAlert,
   TELEGRAM_ALERT_TYPES,
-  TELEGRAM_REPORT_FREQUENCIES,
-  type TelegramAlertType,
-  type TelegramReportFrequency,
   type AlertDestination,
+  type TelegramRoutingKey,
   type TelegramRoutingMap,
 } from "@/lib/telegram";
+
+/** Every routing key the form submits a `routing_<key>` select for — every
+ * alert type plus the "report" digest's own routing selector. */
+const ALL_ROUTING_KEYS: TelegramRoutingKey[] = [...TELEGRAM_ALERT_TYPES.map((t) => t.key), "report"];
+
+function readRoutingFromForm(formData: FormData): TelegramRoutingMap {
+  const validDestinations = new Set<AlertDestination>(["personal", "group", "both", "none"]);
+  const routing: TelegramRoutingMap = {};
+  for (const key of ALL_ROUTING_KEYS) {
+    const raw = String(formData.get(`routing_${key}`) ?? "both") as AlertDestination;
+    routing[key] = validDestinations.has(raw) ? raw : "both";
+  }
+  return routing;
+}
 
 export async function saveTelegramSettingsAction(partnerId: string, formData: FormData): Promise<void> {
   await requireSessionPartnerId(partnerId);
@@ -28,41 +40,18 @@ export async function saveTelegramSettingsAction(partnerId: string, formData: Fo
   const submittedGroupChatId = String(formData.get("groupChatId") ?? "").trim();
   const chatId = existing.chatId ?? submittedChatId;
   const groupChatId = existing.groupChatId ?? submittedGroupChatId;
-  const validKeys = new Set(TELEGRAM_ALERT_TYPES.map((t) => t.key));
-  const enabledTypes = TELEGRAM_ALERT_TYPES.map((t) => t.key).filter(
-    (key) => formData.get(`alert_${key}`) === "on" && validKeys.has(key)
-  ) as TelegramAlertType[];
+  const routing = readRoutingFromForm(formData);
 
-  const rawFrequency = String(formData.get("reportFrequency") ?? "NONE");
-  const reportFrequency = (TELEGRAM_REPORT_FREQUENCIES as readonly string[]).includes(rawFrequency)
-    ? (rawFrequency as TelegramReportFrequency)
-    : "NONE";
-
-  const validDestinations = new Set<AlertDestination>(["personal", "group", "both"]);
-  const routing: TelegramRoutingMap = {};
-  for (const t of TELEGRAM_ALERT_TYPES) {
-    const raw = String(formData.get(`routing_${t.key}`) ?? "both") as AlertDestination;
-    routing[t.key] = validDestinations.has(raw) ? raw : "both";
-  }
-
-  await saveTelegramSettings(partnerId, chatId, enabledTypes, reportFrequency, { groupChatId, routing });
+  await saveTelegramSettings(partnerId, chatId, { groupChatId, routing });
   revalidatePath(`/partner/${partnerId}/service-centre/telegram`);
 }
 
-/** Saves only the per-alert-type routing map — used when the routing
- * controls are submitted on their own rather than through the main settings
- * form (kept in sync with saveTelegramSettingsAction's validation). */
+/** Saves only the per-alert-type (+ report) routing map — used when the
+ * routing controls are submitted on their own rather than through the main
+ * settings form (kept in sync with saveTelegramSettingsAction's validation). */
 export async function saveTelegramRoutingAction(partnerId: string, formData: FormData): Promise<void> {
   await requireSessionPartnerId(partnerId);
-
-  const validDestinations = new Set<AlertDestination>(["personal", "group", "both"]);
-  const routing: TelegramRoutingMap = {};
-  for (const t of TELEGRAM_ALERT_TYPES) {
-    const raw = String(formData.get(`routing_${t.key}`) ?? "both") as AlertDestination;
-    routing[t.key] = validDestinations.has(raw) ? raw : "both";
-  }
-
-  await saveTelegramRouting(partnerId, routing);
+  await saveTelegramRouting(partnerId, readRoutingFromForm(formData));
   revalidatePath(`/partner/${partnerId}/service-centre/telegram`);
 }
 

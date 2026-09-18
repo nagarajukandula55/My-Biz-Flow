@@ -5,7 +5,6 @@ import {
   getRecentTelegramConnectionIssue,
   buildTelegramConnectLink,
   TELEGRAM_ALERT_TYPES,
-  TELEGRAM_REPORT_FREQUENCIES,
   type AlertDestination,
 } from "@/lib/telegram";
 import { generateTelegramConnectQrDataUrl } from "@/lib/telegramQr";
@@ -22,24 +21,20 @@ registerPage({
   superAdminOnly: false,
   customizableRegions: [],
   explanation:
-    "Per-partner Telegram alert setup — two independently-connectable chats (a personal DM and a group chat), each with its own QR-code deep link that captures the chat id AND a friendly display name automatically via the bot's webhook (no manual entry needed); once connected, a slot shows that name + Disconnect instead of the QR/link again. Per-alert-type routing between personal/group/both; which alert occasions to send; an automatic report digest frequency (DAILY/WEEKLY/MONTHLY, actually sent by /api/cron/telegram-reports — real per-partner revenue/invoice/workorder data, never shared across partners); a Send Test Message button. Send attempts are still recorded to TelegramLogEntry (including two-way reply threading on the new-workorder alert) for the Super Admin side (a separate app), but this partner-facing page surfaces that history only as an actionable banner when recent sends are failing for a fixable reason (bot blocked, chat deleted, etc.), not as a raw log. Settings are real and persisted; actual delivery needs a real bot token + registered webhook (TELEGRAM_BOT_TOKEN / TELEGRAM_BOT_USERNAME / TELEGRAM_WEBHOOK_SECRET) — see src/lib/telegram.ts and src/app/api/telegram/webhook/route.ts.",
+    "Per-partner Telegram alert setup — two independently-connectable chats (a personal DM and a group chat), each with its own QR-code deep link that captures the chat id AND a friendly display name automatically via the bot's webhook (no manual entry needed); once connected, a slot shows that name + Disconnect instead of the QR/link again. Every alert type is always on — a partner only picks its routing (personal/group/both/none), same control now used for the automatic daily+weekly+monthly business report digest (sent by /api/cron/telegram-reports — real per-partner revenue/invoice/workorder data, never shared across partners, no more separate frequency picker); a Send Test Message button. Send attempts are still recorded to TelegramLogEntry (including two-way reply threading on the new-workorder alert) for the Super Admin side (a separate app), but this partner-facing page surfaces that history only as an actionable banner when recent sends are failing for a fixable reason (bot blocked, chat deleted, etc.), not as a raw log. Settings are real and persisted; actual delivery needs a real bot token + registered webhook (TELEGRAM_BOT_TOKEN / TELEGRAM_BOT_USERNAME / TELEGRAM_WEBHOOK_SECRET) — see src/lib/telegram.ts and src/app/api/telegram/webhook/route.ts.",
   sourceFile: "src/app/partner/[partnerId]/service-centre/telegram/page.tsx",
 });
 
 export const dynamic = "force-dynamic";
 
-const REPORT_FREQUENCY_LABELS: Record<string, string> = {
-  NONE: "Off",
-  DAILY: "Daily",
-  WEEKLY: "Weekly",
-  MONTHLY: "Monthly",
-};
-
 const DESTINATION_LABELS: Record<AlertDestination, string> = {
   personal: "Personal only",
   group: "Group only",
   both: "Both",
+  none: "None",
 };
+
+const ROUTING_DESTINATIONS: AlertDestination[] = ["personal", "group", "both", "none"];
 
 export default async function TelegramAlertsPage({ params }: { params: { partnerId: string } }) {
   const [settings, connectionIssue] = await Promise.all([
@@ -233,21 +228,16 @@ export default async function TelegramAlertsPage({ params }: { params: { partner
                   />
                 </label>
               )}
-              {/* Alert types + report frequency + routing live in the main form
-                  below — this mini-form only overrides the chat ids, then falls
-                  through to the same save action, so it must resend the other
-                  fields' current values or they'd be cleared. Simplest correct
-                  fix: keep them as hidden inputs mirroring the main form's
+              {/* Routing lives in the main form below — this mini-form only
+                  overrides the chat ids, then falls through to the same save
+                  action, so it must resend the routing map's current values
+                  or they'd be reset to their defaults. Simplest correct fix:
+                  keep them as hidden inputs mirroring the main form's
                   current values. */}
-              {TELEGRAM_ALERT_TYPES.map((t) => (
-                settings.enabledTypes.includes(t.key) ? (
-                  <input key={t.key} type="hidden" name={`alert_${t.key}`} value="on" />
-                ) : null
-              ))}
               {TELEGRAM_ALERT_TYPES.map((t) => (
                 <input key={t.key} type="hidden" name={`routing_${t.key}`} value={settings.routing[t.key] ?? "both"} />
               ))}
-              <input type="hidden" name="reportFrequency" value={settings.reportFrequency} />
+              <input type="hidden" name="routing_report" value={settings.routing.report ?? "both"} />
               <button type="submit" className="btn-outline">
                 Save Chat IDs
               </button>
@@ -259,42 +249,42 @@ export default async function TelegramAlertsPage({ params }: { params: { partner
           <input type="hidden" name="chatId" value={settings.chatId ?? ""} />
           <input type="hidden" name="groupChatId" value={settings.groupChatId ?? ""} />
 
-          <label className="block text-xs font-semibold uppercase tracking-wide text-text-muted">
-            Automatic business report
-            <select
-              name="reportFrequency"
-              defaultValue={settings.reportFrequency}
-              className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm normal-case text-text outline-none focus:border-accent"
-            >
-              {TELEGRAM_REPORT_FREQUENCIES.map((f) => (
-                <option key={f} value={f}>
-                  {REPORT_FREQUENCY_LABELS[f]}
-                </option>
-              ))}
-            </select>
-            <span className="mt-1 block text-xs font-normal normal-case text-text-muted">
-              How often a real, per-business revenue/invoice/workorder summary digest is sent to your linked
-              chat(s) — DAILY sends every day (for the prior day), WEEKLY every Monday (for the prior week), MONTHLY
-              on the 1st (for the prior month). Sent automatically by a daily scheduled job; still needs a real bot
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">Automatic business report</div>
+            <p className="mt-1 text-xs text-text-muted">
+              A real, per-business revenue/invoice/workorder summary digest — daily (for the prior day), weekly
+              (every Saturday, for the prior week), and monthly (last day of the month, for the prior month) — sent
+              automatically by a daily scheduled job to whichever chat(s) you pick below. Still needs a real bot
               connection to actually deliver.
-            </span>
-          </label>
+            </p>
+            <div className="mt-2 flex items-center justify-between gap-2 text-sm text-text">
+              <span>Daily + weekly + monthly report</span>
+              <select
+                name="routing_report"
+                defaultValue={settings.routing.report ?? "both"}
+                className="rounded-md border border-border bg-bg px-2 py-1 text-xs text-text outline-none focus:border-accent"
+              >
+                {ROUTING_DESTINATIONS.map((d) => (
+                  <option key={d} value={d}>
+                    {DESTINATION_LABELS[d]}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
 
           <div>
-            <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">Alert on, and where it goes</div>
+            <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">Where each alert goes</div>
             <div className="mt-2 space-y-2">
               {TELEGRAM_ALERT_TYPES.map((t) => (
                 <div key={t.key} className="flex items-center justify-between gap-2 text-sm text-text">
-                  <label className="flex items-center gap-2">
-                    <input type="checkbox" name={`alert_${t.key}`} defaultChecked={settings.enabledTypes.includes(t.key)} />
-                    {t.label}
-                  </label>
+                  <span>{t.label}</span>
                   <select
                     name={`routing_${t.key}`}
                     defaultValue={settings.routing[t.key] ?? "both"}
                     className="rounded-md border border-border bg-bg px-2 py-1 text-xs text-text outline-none focus:border-accent"
                   >
-                    {(["personal", "group", "both"] as AlertDestination[]).map((d) => (
+                    {ROUTING_DESTINATIONS.map((d) => (
                       <option key={d} value={d}>
                         {DESTINATION_LABELS[d]}
                       </option>
@@ -304,8 +294,9 @@ export default async function TelegramAlertsPage({ params }: { params: { partner
               ))}
             </div>
             <p className="mt-2 text-xs text-text-muted">
-              "Both" sends to whichever of your personal/group chats is connected. Picking "Personal only" or "Group
-              only" for a chat you haven't connected yet means that alert type won't send until you connect it.
+              "Both" sends to whichever of your personal/group chats is connected. "None" turns that alert off
+              entirely. Picking "Personal only" or "Group only" for a chat you haven't connected yet means that
+              alert won't send until you connect it.
             </p>
           </div>
 
