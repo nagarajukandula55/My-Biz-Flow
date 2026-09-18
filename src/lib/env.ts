@@ -67,8 +67,14 @@ export const env = {
    * transactional email — see /api/admin/send-partner-email). Resend is only ever
    * called from THIS app; the Admin app never sends partner-facing email directly,
    * it only edits the templates (shared EmailTemplate table) and asks this app to
-   * send. Same shared-secret convention as TELEGRAM_WEBHOOK_SECRET/CRON_SECRET. */
-  adminServiceSecret: () => process.env.ADMIN_SERVICE_SECRET,
+   * send. Same shared-secret convention as TELEGRAM_WEBHOOK_SECRET/CRON_SECRET.
+   * Named ADMIN_BRIDGE_SECRET (not ADMIN_SERVICE_SECRET, its original name) —
+   * renamed 2026-09-18 after ADMIN_SERVICE_SECRET was confirmed correctly set
+   * in Vercel (screenshot-verified: right project, right domain, Production
+   * scope, fresh deploy, no CDN caching) yet the running deployment still
+   * never saw it, even after a delete+re-add under the same key — a rename
+   * sidesteps whatever Vercel-side state was stuck under the old name. */
+  adminServiceSecret: () => process.env.ADMIN_BRIDGE_SECRET,
   /** SMS "ping" for Field Force job offers — optional, cost-free by default.
    * Unset means src/lib/sms.ts no-ops (logs only) instead of throwing, same
    * graceful-degradation posture as the Razorpay keys above. */

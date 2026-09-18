@@ -19,13 +19,13 @@ import { paymentReceivedMessage } from "@/lib/telegramTemplates";
  * ever called from THIS app (see src/lib/email.ts) — the Admin app edits
  * the shared EmailTemplate table (both repos read the same rows) but never
  * holds a Resend client itself, so all partner communication funnels
- * through one sender. Gated by ADMIN_SERVICE_SECRET, same shared-secret
+ * through one sender. Gated by ADMIN_BRIDGE_SECRET, same shared-secret
  * convention as CRON_SECRET/TELEGRAM_WEBHOOK_SECRET.
  */
 export async function POST(req: NextRequest) {
   const secret = env.adminServiceSecret();
   if (!secret) {
-    return NextResponse.json({ success: false, error: "ADMIN_SERVICE_SECRET is not set on this deployment" }, { status: 500 });
+    return NextResponse.json({ success: false, error: "ADMIN_BRIDGE_SECRET is not set on this deployment" }, { status: 500 });
   }
   const authHeader = req.headers.get("authorization");
   if (authHeader !== `Bearer ${secret}`) {
