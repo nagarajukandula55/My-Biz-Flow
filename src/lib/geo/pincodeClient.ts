@@ -13,6 +13,24 @@ export type PincodeLookupResult = {
   areas?: string[];
 };
 
+/**
+ * Every Indian state/UT actually present in our postal_pincodes table —
+ * the real, current source for a canonical state list (replaces a
+ * previous hand-maintained INDIA_STATES_AND_UTS constant, which existed
+ * but was never wired into anything). Server-side only (queries Prisma
+ * directly); a client component needs this passed down as a prop from its
+ * page, same as any other server-fetched data.
+ */
+export async function listIndiaStates(): Promise<string[]> {
+  const { prisma } = await import("@/lib/prisma");
+  const rows = await prisma.postalPincode.findMany({
+    select: { state: true },
+    distinct: ["state"],
+    orderBy: { state: "asc" },
+  });
+  return rows.map((r) => r.state).filter(Boolean);
+}
+
 /** Returns `{ found: false }` on any failure — a lookup must never block manual entry. */
 export async function lookupPincodeViaApi(pincode: string): Promise<PincodeLookupResult> {
   if (!/^\d{6}$/.test(pincode)) return { found: false };

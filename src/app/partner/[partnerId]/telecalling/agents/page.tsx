@@ -1,6 +1,7 @@
 import { AppShell } from "@/components/AppShell";
 import { registerPage } from "@/lib/designer/registry";
 import { listPartnerStaff } from "@/lib/partnerStaff";
+import { listIndiaStates } from "@/lib/geo/pincodeClient";
 import { AgentsClient } from "./AgentsClient";
 
 registerPage({
@@ -21,6 +22,7 @@ export const dynamic = "force-dynamic";
 export default async function AgentsPage({ params }: { params: { partnerId: string } }) {
   const allStaff = await listPartnerStaff(params.partnerId);
   const agents = allStaff.filter((s) => s.role === "Telecaller");
+  const indiaStates = await listIndiaStates();
 
   return (
     <AppShell topbarTitle="Telecalling — Agents">
@@ -36,6 +38,7 @@ export default async function AgentsPage({ params }: { params: { partnerId: stri
           <AgentsClient
             partnerId={params.partnerId}
             agents={agents.map((a) => ({ ...a, createdAt: a.createdAt.toISOString(), updatedAt: a.updatedAt.toISOString() }))}
+            indiaStates={indiaStates}
           />
         </div>
       </div>

@@ -54,8 +54,11 @@ export async function closeInquiryAction(
     closedAt: new Date().toISOString(),
   });
 
-  revalidatePath(`/partner/${partnerId}/service-centre/inquiries/${inquiryId}`);
   revalidatePath(`/partner/${partnerId}/service-centre/inquiries`);
+  // ?updated=1 -> RecordDetail's own SuccessBanner (same convention every
+  // other record edit in this app uses), so closing shows a real "updated"
+  // confirmation instead of the panel just silently re-rendering.
+  redirect(`/partner/${partnerId}/service-centre/inquiries/${inquiryId}?updated=1`);
 }
 
 /**

@@ -15,7 +15,16 @@ type Agent = {
   assignedCities: string[];
 };
 
-export function AgentsClient({ partnerId, agents }: { partnerId: string; agents: Agent[] }) {
+export function AgentsClient({
+  partnerId,
+  agents,
+  indiaStates,
+}: {
+  partnerId: string;
+  agents: Agent[];
+  /** Real states/UTs actually present in our postal_pincodes table (src/lib/geo/pincodeClient.ts) — autocomplete suggestions for the still-freetext territory field below, not a hard constraint. */
+  indiaStates: string[];
+}) {
   const [showAdd, setShowAdd] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [credentials, setCredentials] = useState<{ loginId: string; password: string } | null>(null);
@@ -28,6 +37,12 @@ export function AgentsClient({ partnerId, agents }: { partnerId: string; agents:
 
   return (
     <div className="space-y-4">
+      <datalist id="mbf-india-states">
+        {indiaStates.map((s) => (
+          <option key={s} value={s} />
+        ))}
+      </datalist>
+
       <button onClick={() => setShowAdd((v) => !v)} className="btn-accent">
         + Add Agent
       </button>
@@ -66,6 +81,7 @@ export function AgentsClient({ partnerId, agents }: { partnerId: string; agents:
           <input name="email" type="email" placeholder="Email (optional)" className="rounded-md border border-border bg-bg px-3 py-2 text-sm text-text" />
           <input
             name="assignedStates"
+            list="mbf-india-states"
             placeholder="Territory states (comma-separated, optional)"
             className="rounded-md border border-border bg-bg px-3 py-2 text-sm text-text sm:col-span-2"
           />
@@ -207,6 +223,7 @@ function TerritoryCell({
     >
       <input
         name="assignedStates"
+        list="mbf-india-states"
         defaultValue={agent.assignedStates.join(", ")}
         placeholder="States, comma-separated"
         className="w-40 rounded-md border border-border bg-bg px-2 py-1 text-xs text-text"
