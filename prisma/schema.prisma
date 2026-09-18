@@ -91,6 +91,15 @@ model PlatformSettings {
   id          String  @id @default("platform")
   opsChatId   String?
   errorChatId String?
+  /// Which WhatsApp automated-message trigger points are turned on,
+  /// platform-wide — a JSON string array of trigger keys (e.g.
+  /// ["telecalling.leadAccepted"]), edited from the separate
+  /// My-Biz-Flow-Admin app against this same physical DB. Absence of a key
+  /// means that trigger is off — see src/lib/whatsappTriggers.ts. Kept as
+  /// one extensible list rather than a boolean-per-trigger column so a new
+  /// trigger point can be added in code and toggled on from Admin without
+  /// a schema migration each time.
+  enabledWhatsappTriggers Json @default("[]")
 
   @@map("platform_settings")
 }

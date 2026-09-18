@@ -7,6 +7,9 @@
 import { prisma } from "@/lib/prisma";
 import { assertPartnerScope } from "@/lib/tenant";
 import { updateLeadStatus, type LeadStatus } from "@/lib/telecalling/leadsData";
+import { sendWhatsAppMessage } from "@/lib/whatsapp";
+import { isWhatsappTriggerEnabled } from "@/lib/whatsappTriggers";
+import { SITE_URL } from "@/lib/seo";
 
 export const CALL_OUTCOMES = [
   "Interested",
@@ -97,5 +100,19 @@ export async function logCall(
     include: { agent: true },
   });
   await updateLeadStatus(input.leadId, partnerId, OUTCOME_TO_LEAD_STATUS[input.outcome]);
+
+  // Automated WhatsApp trigger — off by default, turned on per
+  // PlatformSettings.enabledWhatsappTriggers (see whatsappTriggers.ts).
+  // Best-effort: sendWhatsAppMessage never throws (see whatsapp.ts), so a
+  // send failure/misconfiguration can never break logging the call itself.
+  if (input.outcome === "Accepted" && (await isWhatsappTriggerEnabled("telecalling.leadAccepted"))) {
+    await sendWhatsAppMessage(
+      lead.phone,
+      `🎉 Hi ${lead.name}, thank you for showing interest in *My Biz Flow*!\n\n` +
+        `We're excited to have you onboard. Take a look at everything we offer here: ${SITE_URL}\n\n` +
+        `Our team will be in touch shortly to help you get started — feel free to reply here anytime with questions.`
+    );
+  }
+
   return toRecord(row);
 }

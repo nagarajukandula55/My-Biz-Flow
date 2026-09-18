@@ -45,3 +45,26 @@ export async function saveErrorChatId(chatId: string | null): Promise<void> {
     update: { errorChatId: chatId },
   });
 }
+
+/**
+ * Which WhatsApp automated-message trigger keys are currently turned on,
+ * platform-wide — see src/lib/whatsappTriggers.ts for the registry of
+ * trigger keys and src/lib/telecalling/callsData.ts for the first one
+ * (telecalling.leadAccepted). Empty by default: every trigger stays off
+ * until explicitly enabled from the separate My-Biz-Flow-Admin app.
+ */
+export async function getEnabledWhatsappTriggers(): Promise<string[]> {
+  const row = await getSettings();
+  const value = row?.enabledWhatsappTriggers;
+  return Array.isArray(value) ? value.filter((v): v is string => typeof v === "string") : [];
+}
+
+export async function setWhatsappTriggerEnabled(triggerKey: string, enabled: boolean): Promise<void> {
+  const current = await getEnabledWhatsappTriggers();
+  const next = enabled ? Array.from(new Set([...current, triggerKey])) : current.filter((k) => k !== triggerKey);
+  await prisma.platformSettings.upsert({
+    where: { id: SETTINGS_ID },
+    create: { id: SETTINGS_ID, enabledWhatsappTriggers: next },
+    update: { enabledWhatsappTriggers: next },
+  });
+}

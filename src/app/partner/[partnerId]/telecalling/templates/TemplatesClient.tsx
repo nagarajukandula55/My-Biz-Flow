@@ -12,6 +12,36 @@ type Template = {
   body: string;
 };
 
+/**
+ * Ready-to-use WhatsApp copy an agent can add with one click instead of
+ * starting from a blank textarea — WhatsApp's own markdown (*bold*, line
+ * breaks, emoji) is the only "nice looking" available in a plain text
+ * message (no rich HTML), so these lean on that. {{name}} is filled from
+ * the lead's own name at send time (see fillTemplate/sendTemplateToLead);
+ * {{link}} is filled from the "Link (optional)" field on the send button
+ * in the Queue, or left blank if not given.
+ */
+const SUGGESTED_WHATSAPP_TEMPLATES: { name: string; category: string; body: string }[] = [
+  {
+    name: "Welcome & Introduction",
+    category: "Welcome",
+    body:
+      "👋 Hi {{name}}!\n\nThanks for connecting with *My Biz Flow* — we help businesses like yours manage billing, inventory, service and more, all in one place.\n\n✨ Take a quick look here: {{link}}\n\nWe'd love to help you get started — just reply here anytime!",
+  },
+  {
+    name: "Special Offer",
+    category: "ProductInfo",
+    body:
+      "🎉 Hi {{name}}, great news!\n\nAs a valued lead, you get *early access* to My Biz Flow — no setup fees.\n\n👉 Explore now: {{link}}\n\nQuestions? Just reply here, we're happy to help!",
+  },
+  {
+    name: "Follow-up After Call",
+    category: "FollowUp",
+    body:
+      "Hi {{name}}, thanks for taking the time to speak with us today! 🙏\n\nAs promised, here's the link to learn more: {{link}}\n\nLet us know if you have any questions — we're here to help you get started.",
+  },
+];
+
 export function TemplatesClient({ partnerId, templates }: { partnerId: string; templates: Template[] }) {
   const [showAdd, setShowAdd] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -20,6 +50,22 @@ export function TemplatesClient({ partnerId, templates }: { partnerId: string; t
   const boundCreate = createTemplateAction.bind(null, partnerId);
   const boundDelete = deleteTemplateAction.bind(null, partnerId);
 
+  function addSuggested(suggestion: (typeof SUGGESTED_WHATSAPP_TEMPLATES)[number]) {
+    setError(null);
+    const fd = new FormData();
+    fd.set("name", suggestion.name);
+    fd.set("channel", "whatsapp");
+    fd.set("category", suggestion.category);
+    fd.set("body", suggestion.body);
+    startTransition(async () => {
+      try {
+        await boundCreate(fd);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Failed to add template");
+      }
+    });
+  }
+
   return (
     <div className="space-y-4">
       <button onClick={() => setShowAdd((v) => !v)} className="btn-accent">
@@ -27,6 +73,31 @@ export function TemplatesClient({ partnerId, templates }: { partnerId: string; t
       </button>
 
       {error && <div className="rounded-md border border-danger bg-danger-soft px-3 py-2 text-sm text-danger">{error}</div>}
+
+      {templates.every((t) => t.channel !== "whatsapp") && (
+        <div className="rounded-lg border border-border bg-bg-raised p-4">
+          <div className="text-sm font-semibold text-text">Suggested WhatsApp templates</div>
+          <p className="mt-0.5 text-xs text-text-muted">
+            Add one with a click, then edit the wording to fit your business.
+          </p>
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {SUGGESTED_WHATSAPP_TEMPLATES.map((s) => (
+              <div key={s.name} className="rounded-md border border-border bg-bg p-3">
+                <div className="text-sm font-semibold text-text">{s.name}</div>
+                <p className="mt-1 whitespace-pre-wrap text-xs text-text-muted">{s.body}</p>
+                <button
+                  type="button"
+                  onClick={() => addSuggested(s)}
+                  disabled={isPending}
+                  className="btn-accent mt-3 w-full text-sm"
+                >
+                  + Add this template
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {showAdd && (
         <form
