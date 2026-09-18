@@ -8,6 +8,7 @@ import {
   updatePartnerConfig,
   updatePartnerBusinessDetails,
   updatePartnerLogo,
+  updatePartnerServiceArea,
 } from "@/lib/partnerData";
 import { requestAccessKey } from "@/lib/designer/accessKeys";
 
@@ -36,6 +37,34 @@ export async function saveBusinessDetailsAction(
 
   revalidatePath(`/partner/${partnerId}/settings`);
   redirect(`/partner/${partnerId}/settings?saved=1`);
+}
+
+/**
+ * Settings > Service Centre's "Service area" block — which service types
+ * (Onsite/Walk-in) this partner offers and which pincodes they cover.
+ * Drives the public Book Appointment form's auto-assignment (see
+ * src/lib/serviceCentreInquiryAssignment.ts).
+ */
+export async function saveServiceAreaAction(partnerId: string, formData: FormData): Promise<void> {
+  await requireSessionPartnerId(partnerId);
+
+  const pincodesText = String(formData.get("pincodesText") ?? "");
+  const pincodes = Array.from(
+    new Set(
+      pincodesText
+        .split(/[,\s]+/)
+        .map((p) => p.trim())
+        .filter((p) => /^\d{6}$/.test(p))
+    )
+  );
+
+  await updatePartnerServiceArea(partnerId, {
+    serviceTypes: formData.getAll("serviceTypes").map((v) => String(v)),
+    pincodes,
+  });
+
+  revalidatePath(`/partner/${partnerId}/settings`);
+  redirect(`/partner/${partnerId}/settings?saved=1#settings-panel-service-centre`);
 }
 
 /**

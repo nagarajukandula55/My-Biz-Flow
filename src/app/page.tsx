@@ -174,6 +174,12 @@ export default async function RootPage({
           <Link href="/pricing" className="text-text-muted hover:text-text">
             Pricing
           </Link>
+          <Link href="/track" className="text-text-muted hover:text-text">
+            Track My Repair
+          </Link>
+          <Link href="/book-appointment" className="text-text-muted hover:text-text">
+            Book Appointment
+          </Link>
           <Link href="/help" className="text-text-muted hover:text-text">
             Help
           </Link>
@@ -390,6 +396,12 @@ export default async function RootPage({
         <nav className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5">
           <Link href="/pricing" className="hover:text-text">
             Pricing
+          </Link>
+          <Link href="/track" className="hover:text-text">
+            Track My Repair
+          </Link>
+          <Link href="/book-appointment" className="hover:text-text">
+            Book Appointment
           </Link>
           <Link href="/help" className="hover:text-text">
             Help

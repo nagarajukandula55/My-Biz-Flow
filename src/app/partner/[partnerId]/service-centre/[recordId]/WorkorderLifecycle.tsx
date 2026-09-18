@@ -1117,15 +1117,10 @@ export function WorkorderLifecycle({
     // unconditionally. The estimate/approval UI itself (Mark Estimate
     // Approved, the Estimate card, Generate/Print Estimate) is untouched —
     // it's just no longer a precondition to advancing the stage.
-    // Mirrors assertLegalStageTransition's server-side rule (and the
-    // reference app's close route): a repair with nothing recorded against
-    // it would produce an empty invoice at handover.
-    if (next === "Completed" && serviceLines.length === 0 && partLines.length === 0) {
-      setCloseBlockedMessage(
-        "Add at least one part or service line before marking the repair completed — otherwise there's nothing to hand over or invoice."
-      );
-      return;
-    }
+    // No line-item requirement: a call can legitimately resolve with no
+    // part consumed and no billable service (guidance-only, no-fault-found),
+    // and must still be closeable — see assertLegalStageTransition in
+    // actions.ts for the matching server-side rule (removed there too).
     // Mirrors assertLegalStageTransition's server-side Solution check
     // (actions.ts) — the engineer must select a Solution before the repair
     // can be marked completed. Solution is a plain workorder field, not a

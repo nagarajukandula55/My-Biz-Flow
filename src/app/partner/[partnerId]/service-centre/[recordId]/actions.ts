@@ -99,18 +99,11 @@ function assertLegalStageTransition(
   // blocks stage progression.
 
   if (nextStage === "Completed") {
-    // Mirrors the reference app's close route ("Cannot close a job sheet
-    // with no line items — add at least one before closing"): a repair that
-    // consumed no part and performed no service has nothing to invoice, and
-    // letting it through produces an empty Sales Invoice at handover.
-    // Warranty jobs are exempt from being CHARGED, not from being recorded.
-    const partLines = (existing["partLines"] as unknown[] | undefined) ?? [];
-    const serviceLines = (existing["serviceLines"] as unknown[] | undefined) ?? [];
-    if (partLines.length === 0 && serviceLines.length === 0) {
-      throw new Error(
-        "This workorder has no parts or service lines — add at least one before marking the repair completed."
-      );
-    }
+    // No line-item requirement here: plenty of calls resolve without
+    // consuming a part or a billable service (guidance-only, no-fault-found,
+    // remote fix) and still need to be closeable. Handover simply produces
+    // no Sales Invoice when there's nothing to bill, instead of blocking
+    // completion.
 
     // A repair can't be marked completed without a diagnosed fault
     // solution — the engineer must select one (WorkorderLifecycle.tsx's

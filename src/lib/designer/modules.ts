@@ -156,6 +156,7 @@ export const MODULE_SUB_NAV: Record<string, PartnerNavSubItem[]> = {
   "service-centre": [
     { key: "service-centre.list", label: "Workorders", href: "service-centre", section: "Workorders" },
     { key: "service-centre.new", label: "+ New Workorder", href: "service-centre/new", section: "Workorders" },
+    { key: "service-centre.inquiries.list", label: "Inquiries", href: "service-centre/inquiries", section: "Workorders" },
     // Masters used to be five (six, with Staff Names) flat rows each
     // repeating the "Masters" section heading — collapsed into one nested
     // nav item instead, so the module's sub-nav reads as one section

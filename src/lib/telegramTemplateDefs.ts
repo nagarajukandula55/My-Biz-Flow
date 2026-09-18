@@ -113,6 +113,24 @@ export const TELEGRAM_TEMPLATE_DEFS: TelegramTemplateDef[] = [
       "📉 <b>Low Stock — {{businessName}}</b>\n\n<pre>\nItem          {{itemName}}\nRemaining     {{quantityRemaining}}\nThreshold     {{reorderThreshold}}\n</pre>\n<i>Time to reorder this item.</i>",
   },
   {
+    key: "inquiry_assigned",
+    label: "Inquiry assigned",
+    group: "Event alert",
+    command: "/test_inquiry_assigned",
+    variables: ["businessName", "inquiryNumber", "customerName", "customerPhone", "serviceType", "complaint"],
+    defaultBody:
+      "📞 <b>New Inquiry — {{businessName}}</b>\n\n<pre>\nInquiry       {{inquiryNumber}}\nCustomer      {{customerName}}\nPhone         {{customerPhone}}\nService type  {{serviceType}}\nComplaint     {{complaint}}\n</pre>\n<i>Open it in Service Centre → Inquiries to accept, close, or convert to a workorder.</i>",
+  },
+  {
+    key: "inquiry_unassigned",
+    label: "Unassigned public inquiry (ops-facing)",
+    group: "Event alert",
+    command: "/test_inquiry_unassigned",
+    variables: ["customerName", "customerPhone", "serviceType", "pincode", "complaint"],
+    defaultBody:
+      "⚠️ <b>Unassigned Book Appointment Inquiry</b>\n\n<pre>\nCustomer      {{customerName}}\nPhone         {{customerPhone}}\nService type  {{serviceType}}\nPincode       {{pincode}}\nComplaint     {{complaint}}\n</pre>\n<i>No partner currently covers this area/service type — the customer was told to call in. Route this manually or ask a nearby partner to add this pincode to their Service Area.</i>",
+  },
+  {
     key: "new_partner_application",
     label: "New partner application (ops-facing)",
     group: "Event alert",

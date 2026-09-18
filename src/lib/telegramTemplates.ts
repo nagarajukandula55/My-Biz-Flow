@@ -176,6 +176,44 @@ export async function lowStockAlertMessage(opts: {
   });
 }
 
+/** A new public Book Appointment inquiry was auto-assigned to this partner. */
+export async function inquiryAssignedMessage(opts: {
+  partnerBusinessName: string;
+  inquiryNumber: string;
+  customerName: string;
+  customerPhone: string;
+  serviceType: string;
+  complaint: string;
+}): Promise<string> {
+  const body = await getTelegramTemplateBody("inquiry_assigned");
+  return renderTelegramTemplate(body, {
+    businessName: opts.partnerBusinessName,
+    inquiryNumber: opts.inquiryNumber,
+    customerName: opts.customerName,
+    customerPhone: opts.customerPhone,
+    serviceType: opts.serviceType,
+    complaint: opts.complaint,
+  });
+}
+
+/** A public Book Appointment inquiry couldn't be matched to any partner — ops-facing, so it doesn't silently vanish. */
+export async function inquiryUnassignedMessage(opts: {
+  customerName: string;
+  customerPhone: string;
+  serviceType: string;
+  pincode: string;
+  complaint: string;
+}): Promise<string> {
+  const body = await getTelegramTemplateBody("inquiry_unassigned");
+  return renderTelegramTemplate(body, {
+    customerName: opts.customerName,
+    customerPhone: opts.customerPhone,
+    serviceType: opts.serviceType,
+    pincode: opts.pincode,
+    complaint: opts.complaint,
+  });
+}
+
 /** A new partner application was submitted — ops-facing. */
 export async function newPartnerApplicationMessage(opts: {
   businessName: string;

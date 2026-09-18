@@ -225,6 +225,21 @@ model Partner {
   /// every row that predates the column, which reads as ELECTRONICS-only —
   /// what the module has always been.
   productDomains     Json    @default("[]")
+  /// Which Service Centre service types this partner offers — a JSON string
+  /// array, e.g. ["ONSITE","WALK_IN"] (src/lib/serviceTypes.ts). Drives the
+  /// public Book Appointment form (a customer only sees this partner as an
+  /// option for a service type they actually offer) and the "Service Type"
+  /// field on an Inquiry. Editable from /partner/<id>/settings' Service
+  /// Centre tab. Empty reads as "not yet configured" (excluded from
+  /// auto-assignment until the partner sets at least one).
+  serviceCentreServiceTypes Json @default("[]")
+  /// Pincodes this partner covers for Service Centre inquiries/appointments
+  /// — a JSON string array of 6-digit pincodes, editable from the same
+  /// Service Centre settings tab as serviceCentreServiceTypes. Used by the
+  /// public Book Appointment form's auto-assignment: pincode match first,
+  /// falling back to a partner in the same city/state (see
+  /// src/lib/serviceCentreInquiryAssignment.ts).
+  serviceCentrePincodes     Json @default("[]")
   /// Free-text terms printed on the partner's own quotes/invoices — the
   /// GENERAL default. Each of the per-document-type overrides below falls
   /// back to this when blank, and a document whose specific override AND
@@ -1068,4 +1083,54 @@ model SupportTicketTelegramLink {
   @@unique([chatId, messageId])
   @@index([partnerId, ticketId])
   @@map("support_ticket_telegram_links")
+}
+
+/// India Post pincode directory, our own backing table for
+/// src/app/api/pincode/route.ts so lookups don't depend on the live
+/// api.postalpincode.in API being up, and so partner serviceable-area
+/// pickers have a real browsable state -> city -> pincode/locality list
+/// (the live API only answers single-pincode lookups, not browsing).
+/// Seeded/refreshed periodically from the official All India Pincode
+/// Directory (data.gov.in) via scripts/syncPincodes.ts. The live API is
+/// still used as a fallback when a pincode isn't found here (not yet
+/// synced, or newly issued).
+model PostalPincode {
+  id         String   @id @default(cuid())
+  pincode    String
+  officeName String
+  district   String
+  state      String
+  updatedAt  DateTime @updatedAt
+
+  @@unique([pincode, officeName])
+  @@index([pincode])
+  @@index([state, district])
+  @@map("postal_pincodes")
+}
+
+/// A public Book Appointment inquiry that no partner's configured Service
+/// Area could match (see src/lib/serviceCentreInquiryAssignment.ts) — not
+/// partner-scoped (there is no partner to scope it to), so it lives in its
+/// own ops-facing table rather than BusinessRecord, which requires a
+/// partnerId. Super Admin reviews/resolves these from My-Biz-Flow-Admin
+/// (same physical DB, mirrored model there) — this is the queue behind the
+/// "notify Super Admin so they can handle it manually" requirement.
+model UnassignedInquiry {
+  id            String    @id @default(cuid())
+  customerName  String
+  customerPhone String
+  serviceType   String
+  complaint     String
+  pincode       String
+  addressLine   String?
+  brand         String?
+  model         String?
+  /// Set once Super Admin has manually routed/handled this one — kept
+  /// rather than deleted, as a record of how many inquiries went unrouted.
+  resolvedAt    DateTime?
+  resolvedNote  String?
+  createdAt     DateTime  @default(now())
+
+  @@index([resolvedAt])
+  @@map("unassigned_inquiries")
 }

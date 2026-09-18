@@ -18,6 +18,7 @@ import { getBusinessRecord, updateBusinessRecord } from "@/lib/businessRecords";
 
 export const TELEGRAM_ALERT_TYPES = [
   { key: "newWorkorder", label: "New workorder assigned" },
+  { key: "inquiryAssigned", label: "Inquiry assigned" },
   { key: "workorderClosed", label: "Workorder closed" },
   { key: "workorderCancelled", label: "Workorder cancelled" },
   { key: "paymentReceived", label: "Payment received" },

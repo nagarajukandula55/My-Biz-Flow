@@ -2,6 +2,8 @@ import Link from "next/link";
 import type { PartnerRecord } from "@/lib/partnerData";
 import { getTelegramSettings } from "@/lib/telegram";
 import { PRODUCT_DOMAIN_LABELS } from "@/lib/catalog/productDomains";
+import { SERVICE_TYPES } from "@/lib/serviceTypes";
+import { saveServiceAreaAction } from "./actions";
 
 /**
  * Settings → Service Centre: a read-only rollup of the Partner fields that
@@ -78,6 +80,43 @@ export async function ServiceCentrePanel({ partnerId, partner }: { partnerId: st
             Edit in Config →
           </Link>
         </div>
+      </div>
+
+      <div className="mt-6 max-w-2xl rounded-md border border-border bg-bg-raised p-4">
+        <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">Service Area</div>
+        <p className="mt-1 text-sm text-text-muted">
+          Which service types you offer and which pincodes you cover — used to auto-assign public Book
+          Appointment inquiries to your account and to notify you on Telegram when one comes in.
+        </p>
+        <form action={saveServiceAreaAction.bind(null, partnerId)} className="mt-3 flex flex-col gap-3">
+          <div className="flex flex-wrap gap-4">
+            {SERVICE_TYPES.map((t) => (
+              <label key={t.code} className="flex items-center gap-2 text-sm text-text">
+                <input
+                  type="checkbox"
+                  name="serviceTypes"
+                  value={t.code}
+                  defaultChecked={partner.serviceCentreServiceTypes.includes(t.code)}
+                  className="h-4 w-4 rounded border-border"
+                />
+                {t.label}
+              </label>
+            ))}
+          </div>
+          <label className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+            Pincodes you cover
+            <textarea
+              name="pincodesText"
+              rows={2}
+              placeholder="e.g. 560001, 560002, 560034"
+              defaultValue={partner.serviceCentrePincodes.join(", ")}
+              className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm normal-case text-text outline-none focus:border-accent"
+            />
+          </label>
+          <button type="submit" className="btn-outline w-fit">
+            Save Service Area
+          </button>
+        </form>
       </div>
     </section>
   );

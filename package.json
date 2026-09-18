@@ -7,7 +7,8 @@
     "build": "prisma migrate deploy && next build",
     "start": "next start",
     "lint": "next lint",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "sync:pincodes": "tsx scripts/syncPincodes.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
@@ -31,6 +32,7 @@
     "eslint-config-next": "^14.2.5",
     "postcss": "^8.4.38",
     "tailwindcss": "^3.4.4",
+    "tsx": "^4.19.2",
     "typescript": "^5.5.2"
   }
 }

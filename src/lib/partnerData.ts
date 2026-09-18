@@ -17,6 +17,7 @@ import { createBusinessRecord } from "@/lib/businessRecords";
 import { getPartnerType } from "@/lib/designer/partnerTypesData";
 import { issueAccessKey } from "@/lib/designer/accessKeys";
 import { parseProductDomains, type ProductDomain } from "@/lib/catalog/productDomains";
+import { parseServiceTypes, parsePincodeList } from "@/lib/serviceTypes";
 
 const BUSINESS_ID = "BIZ002";
 
@@ -55,6 +56,10 @@ export type PartnerRecord = {
    * ["ELECTRONICS"].
    */
   productDomains: ProductDomain[];
+  /** Which Service Centre service types (ONSITE/WALK_IN) this partner offers — see src/lib/serviceTypes.ts. */
+  serviceCentreServiceTypes: string[];
+  /** 6-digit pincodes this partner covers for Service Centre inquiries/appointments. */
+  serviceCentrePincodes: string[];
   serviceTerms: string | null;
   serviceHours: string | null;
   supportHotline: string | null;
@@ -102,6 +107,8 @@ function toRecord(row: {
   pan: string | null;
   businessCategory: string | null;
   productDomains: unknown;
+  serviceCentreServiceTypes: unknown;
+  serviceCentrePincodes: unknown;
   serviceTerms: string | null;
   serviceHours: string | null;
   supportHotline: string | null;
@@ -122,6 +129,8 @@ function toRecord(row: {
     ...row,
     addressLine: row.addressLine ?? "",
     productDomains: parseProductDomains(row.productDomains),
+    serviceCentreServiceTypes: parseServiceTypes(row.serviceCentreServiceTypes),
+    serviceCentrePincodes: parsePincodeList(row.serviceCentrePincodes),
   };
 }
 
@@ -275,6 +284,27 @@ export async function updatePartnerConfig(partnerId: string, input: PartnerConfi
       estimateTerms: clean(input.estimateTerms),
       invoiceTerms: clean(input.invoiceTerms),
       serviceRecordTerms: clean(input.serviceRecordTerms),
+    },
+  });
+}
+
+/**
+ * Persists the Settings > Service Centre tab's "Service area" block: which
+ * service types this partner offers and which pincodes they cover. Backs
+ * the public Book Appointment form's auto-assignment (see
+ * src/lib/serviceCentreInquiryAssignment.ts) — a partner with no service
+ * types or pincodes configured is simply excluded from matching until they
+ * set at least one.
+ */
+export async function updatePartnerServiceArea(
+  partnerId: string,
+  input: { serviceTypes: string[]; pincodes: string[] }
+): Promise<void> {
+  await prisma.partner.update({
+    where: { id: partnerId },
+    data: {
+      serviceCentreServiceTypes: parseServiceTypes(input.serviceTypes),
+      serviceCentrePincodes: parsePincodeList(input.pincodes),
     },
   });
 }

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { DashboardWidget } from "@/components/DashboardWidget";
 import { getVisibleModuleSlugs, getVisibleModules } from "@/lib/designer/entitlements";
-import { computeModuleStat, getServiceCentreOverview, getRevenueBreakdown, getCallsThisMonth } from "@/lib/analyticsData";
+import { computeModuleStat, getServiceCentreOverview, getInquiryOverview, getRevenueBreakdown, getCallsThisMonth } from "@/lib/analyticsData";
 import { formatCurrencyINR } from "@/lib/format";
 import { registerPage } from "@/lib/designer/registry";
 
@@ -39,9 +39,10 @@ export default async function PartnerDashboardPage({ params }: { params: { partn
   const moduleBySlug = new Map(modules.map((m) => [m.slug, m]));
   const hasServiceCentre = enabledSlugs.includes("service-centre");
   const hasTelecalling = enabledSlugs.includes("telecalling");
-  const [stats, scOverview, revenueBreakdown, callsThisMonth] = await Promise.all([
+  const [stats, scOverview, inquiryOverview, revenueBreakdown, callsThisMonth] = await Promise.all([
     Promise.all(enabledSlugs.map((slug) => computeModuleStat(params.partnerId, slug))),
     hasServiceCentre ? getServiceCentreOverview(params.partnerId) : Promise.resolve(null),
+    hasServiceCentre ? getInquiryOverview(params.partnerId) : Promise.resolve(null),
     getRevenueBreakdown(params.partnerId),
     hasTelecalling ? getCallsThisMonth(params.partnerId) : Promise.resolve(null),
   ]);
@@ -124,6 +125,28 @@ export default async function PartnerDashboardPage({ params }: { params: { partn
               </Link>
               <Link href={`/partner/${params.partnerId}/service-centre`}>
                 <DashboardWidget label="Cancelled" value={String(scOverview.cancelledWorkorders)} />
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {inquiryOverview && (
+          <div className="mt-6">
+            <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+              Inquiries — Book Appointment
+            </div>
+            <div className="mt-2 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <Link href={`/partner/${params.partnerId}/service-centre/inquiries`}>
+                <DashboardWidget label="Open Inquiries" value={String(inquiryOverview.open)} neon />
+              </Link>
+              <Link href={`/partner/${params.partnerId}/service-centre/inquiries`}>
+                <DashboardWidget label="Converted to Workorder" value={String(inquiryOverview.converted)} />
+              </Link>
+              <Link href={`/partner/${params.partnerId}/service-centre/inquiries`}>
+                <DashboardWidget label="Closed" value={String(inquiryOverview.closed)} />
+              </Link>
+              <Link href={`/partner/${params.partnerId}/service-centre/inquiries`}>
+                <DashboardWidget label="Conversion Rate" value={`${inquiryOverview.conversionRatePercent}%`} />
               </Link>
             </div>
           </div>

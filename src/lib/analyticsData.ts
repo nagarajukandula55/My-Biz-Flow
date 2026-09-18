@@ -205,6 +205,45 @@ export async function getServiceCentreOverview(partnerId: string): Promise<Servi
   };
 }
 
+export interface InquiryOverview {
+  open: number;
+  converted: number;
+  closed: number;
+  total: number;
+  /** Conversion rate over inquiries that have actually been resolved (Converted + Closed) — an all-Open inbox reads as 0%, not 100%. */
+  conversionRatePercent: number;
+}
+
+/**
+ * Inquiry funnel summary — same store as getServiceCentreOverview
+ * ("service-centre-inquiry" is Inquiry's own moduleSlug, distinct from
+ * "service-centre" which is the Workorder table), counted by status
+ * rather than time-bucketed since the standardised close-reason dropdown
+ * (see INQUIRY_CLOSE_REASONS) is what actually earns a useful dashboard
+ * summary here, not a Today/Week/Month split.
+ */
+export async function getInquiryOverview(partnerId: string): Promise<InquiryOverview> {
+  const inquiries = await prisma.businessRecord.findMany({
+    where: { partnerId, moduleSlug: "service-centre-inquiry" },
+    select: { data: true },
+  });
+
+  let open = 0;
+  let converted = 0;
+  let closed = 0;
+  for (const r of inquiries) {
+    const status = (r.data as Record<string, unknown>).status;
+    if (status === "Converted") converted++;
+    else if (status === "Closed") closed++;
+    else open++;
+  }
+
+  const resolved = converted + closed;
+  const conversionRatePercent = resolved > 0 ? Math.round((converted / resolved) * 100) : 0;
+
+  return { open, converted, closed, total: inquiries.length, conversionRatePercent };
+}
+
 /**
  * Today / This Week (Sunday-start) / This Month / This Year revenue —
  * same "money actually collected" definition as every other revenue figure

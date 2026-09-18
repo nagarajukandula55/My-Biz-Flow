@@ -82,7 +82,6 @@ export default async function ServiceCentreInvoicePage({
       // persisted Billing record, so it needed its own fix.
       invoiceDate={formatDate(String(record["handedOverAt"] ?? record["receivedDate"] ?? new Date().toISOString()))}
       workorderNumber={String(record["id"] ?? "")}
-      status={String(record["status"] ?? "")}
       // Only what was actually collected at handover — an uncollected job
       // prints an em dash rather than a guessed payment mode.
       paymentMode={String(record["paymentMode"] ?? "")}

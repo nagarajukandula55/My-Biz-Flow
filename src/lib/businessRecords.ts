@@ -174,6 +174,7 @@ export async function getBusinessRecordsByKeys(
 const NUMBERED_MODULE_SLUGS: Record<string, string> = {
   "service-centre-brands": "service-centre.brand",
   "service-centre-models": "service-centre.model",
+  "service-centre-inquiry": "service-centre.inquiry",
   "inventory-bom": "inventory.bom-material",
 };
 
@@ -188,8 +189,16 @@ export async function createBusinessRecord(
     const documentType = NUMBERED_MODULE_SLUGS[moduleSlug];
     if (documentType) {
       const { getNextNumber } = await import("@/lib/designer/numbering");
+      const prefix =
+        moduleSlug === "inventory-bom"
+          ? "MAT"
+          : moduleSlug === "service-centre-brands"
+            ? "BRD"
+            : moduleSlug === "service-centre-inquiry"
+              ? "INQ"
+              : "MDL";
       recordKey = await getNextNumber(documentType, partnerId, {
-        prefix: moduleSlug === "inventory-bom" ? "MAT" : moduleSlug === "service-centre-brands" ? "BRD" : "MDL",
+        prefix,
         sequenceDigits: 4,
         financialYearFormat: "none",
       });

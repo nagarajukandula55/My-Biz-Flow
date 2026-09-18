@@ -43,7 +43,6 @@ export function ServiceCentreInvoiceDocument({
   invoiceNumber,
   invoiceDate,
   workorderNumber,
-  status,
   paymentMode,
   collectedByName,
   customerName,
@@ -75,7 +74,6 @@ export function ServiceCentreInvoiceDocument({
   invoiceDate: string;
   /** The workorder this invoice was raised from — printed so a customer can tie the two documents together. */
   workorderNumber?: string;
-  status?: string;
   paymentMode?: string;
   /** Free-text name of whoever collected payment / handed the unit over — mirrors AN-CRM's `paymentCollectedByName`. */
   collectedByName?: string;
@@ -215,7 +213,6 @@ export function ServiceCentreInvoiceDocument({
           <div><b>Invoice No:</b> {safe(invoiceNumber)}</div>
           {workorderNumber && <div><b>WO:</b> {workorderNumber}</div>}
           <div><b>Date:</b> {safe(invoiceDate)}</div>
-          {status && <div><b>Status:</b> {safe(status)}</div>}
           {/* Document Type is always exactly B2B or B2C -- never a third
               "Bill (No Tax)" value, per explicit direction. A B2C
               non-chargeable/zero-tax job is still a B2C invoice, just one
@@ -245,7 +242,6 @@ export function ServiceCentreInvoiceDocument({
               Service Centre repair invoice (brand/model/IMEI are almost
               always present). Now always shown alongside device info. */}
           <div className="ric-sectionTitle" style={hasDevice ? { marginTop: "0.5em" } : undefined}>PAYMENT</div>
-          <div>Status: {safe(status)}</div>
           <div>Mode: {paymentMode ? safe(paymentMode) : "—"}</div>
           {collectedByName && <div>Received By: {safe(collectedByName)}</div>}
         </div>
