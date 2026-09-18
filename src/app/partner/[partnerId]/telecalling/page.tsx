@@ -39,7 +39,7 @@ export default async function TelecallingPage({
     listLeadsForPartner(params.partnerId, filter),
     listActivePartnerStaff(params.partnerId, "Telecaller"),
     listLeadLocationFilters(params.partnerId),
-    getLeadStats(params.partnerId),
+    getLeadStats(params.partnerId, filter),
   ]);
 
   return (

@@ -85,6 +85,11 @@ export default async function BillingPaymentsPage({
   const displayRows = rows.map(withInvoiceNumber);
 
   const modeOptions = Array.from(new Set(allRows.map((r) => String(r["mode"] ?? "")).filter(Boolean)));
+  // Deliberately from `allRows` (the full unfiltered set), not the current
+  // page's filtered `rows` — same global-total convention as Billing's own
+  // invoice list and Service Centre's milestone cards, so this number never
+  // disagrees with the partner's real total collected regardless of the
+  // search/date/mode filter currently applied.
   const totalCollected = allRows.reduce((sum, r) => sum + (Number(r["amount"]) || 0), 0);
 
   const rangeStart = total === 0 ? 0 : (page - 1) * pageSize + 1;

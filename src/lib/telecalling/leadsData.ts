@@ -342,16 +342,30 @@ export async function listLeadLocationFilters(partnerId: string): Promise<{ stat
   };
 }
 
-/** Dashboard stat tiles: total leads, breakdown by status, unassigned count. */
-export async function getLeadStats(partnerId: string): Promise<{
+/**
+ * Dashboard stat tiles: total leads, breakdown by status, unassigned count.
+ * Takes the SAME LeadFilter the page's table query (listLeadsForPartner)
+ * applies, so the tiles reflect whatever's currently filtered instead of
+ * always showing whole-partner totals — unlike Service Centre/Billing's
+ * stat cards, which are deliberately global by product decision, these
+ * were never meant to be global; they just never had the filter threaded
+ * through. `status` is deliberately excluded from the where-clause here
+ * even when passed — the by-status breakdown itself is the point of these
+ * tiles, so filtering by status would collapse it to a single count
+ * instead of a distribution (the status filter still narrows `unassigned`
+ * and `total` below, which don't have that issue).
+ */
+export async function getLeadStats(partnerId: string, filter?: LeadFilter): Promise<{
   total: number;
   unassigned: number;
   byStatus: Record<string, number>;
 }> {
+  const { status: _status, ...statusBreakdownFilter } = filter ?? {};
+  const where = buildWhere(partnerId, filter);
   const [total, unassigned, statusRows] = await Promise.all([
-    prisma.lead.count({ where: { partnerId } }),
-    prisma.lead.count({ where: { partnerId, assignedToId: null } }),
-    prisma.lead.groupBy({ by: ["status"], where: { partnerId }, _count: { _all: true } }),
+    prisma.lead.count({ where }),
+    prisma.lead.count({ where: { ...where, assignedToId: null } }),
+    prisma.lead.groupBy({ by: ["status"], where: buildWhere(partnerId, statusBreakdownFilter), _count: { _all: true } }),
   ]);
   const byStatus: Record<string, number> = {};
   for (const s of LEAD_STATUSES) byStatus[s] = 0;
