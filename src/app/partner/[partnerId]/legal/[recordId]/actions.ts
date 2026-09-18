@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createBusinessRecord, updateBusinessRecord, getBusinessRecord } from "@/lib/businessRecords";
+import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import { computeTimeLogTotal, MATTER_STAGES, type MatterStage, type TimeLogEntry } from "@/lib/sample-data/legal";
 
 /**
@@ -15,6 +16,7 @@ export async function logHoursAction(
   matterId: string,
   entry: { date: string; hours: number; description: string; rate: number }
 ): Promise<void> {
+  partnerId = await requireSessionPartnerId(partnerId);
   const record = await getBusinessRecord(partnerId, "legal", matterId);
   if (!record) return;
 
@@ -42,6 +44,7 @@ export async function logHoursAction(
  * total, same as the explicit Generate Invoice action below.
  */
 export async function setMatterStageAction(partnerId: string, matterId: string, stage: MatterStage): Promise<void> {
+  partnerId = await requireSessionPartnerId(partnerId);
   const record = await getBusinessRecord(partnerId, "legal", matterId);
   if (!record) return;
   if (!MATTER_STAGES.includes(stage)) return;
@@ -61,6 +64,7 @@ export async function setMatterStageAction(partnerId: string, matterId: string, 
  * service-centre/[recordId]/actions.ts. Guards against double-invoicing.
  */
 export async function createInvoiceFromMatterAction(partnerId: string, matterId: string): Promise<void> {
+  partnerId = await requireSessionPartnerId(partnerId);
   const record = await getBusinessRecord(partnerId, "legal", matterId);
   if (!record) return;
   if (record["invoiceId"]) return; // already invoiced — don't double-create

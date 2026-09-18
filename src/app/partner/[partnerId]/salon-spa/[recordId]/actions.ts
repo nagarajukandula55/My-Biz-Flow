@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createBusinessRecord, updateBusinessRecord, getBusinessRecord, listBusinessRecords } from "@/lib/businessRecords";
+import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import { DEFAULT_BOOKING_DURATION_MINUTES } from "@/lib/sample-data/salon-spa";
 
 // Independent implementation of the same overlap-window shape used by the
@@ -61,6 +62,7 @@ export async function findSalonSpaScheduleConflict(
  * before passing as RecordForm's `action` prop.
  */
 export async function createSalonSpaBookingAction(partnerId: string, values: Record<string, unknown>): Promise<void> {
+  partnerId = await requireSessionPartnerId(partnerId);
   const stylist = String(values["stylist"] ?? "");
   const appointmentDate = String(values["appointmentDate"] ?? "");
   const durationMinutes = Number(values["duration"]) || DEFAULT_BOOKING_DURATION_MINUTES;
@@ -88,6 +90,7 @@ export async function updateSalonSpaBookingAction(
   recordId: string,
   values: Record<string, unknown>
 ): Promise<void> {
+  partnerId = await requireSessionPartnerId(partnerId);
   const stylist = String(values["stylist"] ?? "");
   const appointmentDate = String(values["appointmentDate"] ?? "");
   const durationMinutes = Number(values["duration"]) || DEFAULT_BOOKING_DURATION_MINUTES;
@@ -112,6 +115,7 @@ export async function updateSalonSpaBookingAction(
  * never trusts a client-submitted commission figure.
  */
 export async function completeSalonSpaBookingAction(partnerId: string, recordId: string): Promise<void> {
+  partnerId = await requireSessionPartnerId(partnerId);
   const record = await getBusinessRecord(partnerId, "salon-spa", recordId);
   if (!record) return;
   const price = Number(record["price"] ?? 0);
@@ -131,6 +135,7 @@ export async function completeSalonSpaBookingAction(partnerId: string, recordId:
  * service-centre modules use, guarded so it only fires once per booking.
  */
 export async function createInvoiceFromBookingAction(partnerId: string, recordId: string): Promise<void> {
+  partnerId = await requireSessionPartnerId(partnerId);
   const record = await getBusinessRecord(partnerId, "salon-spa", recordId);
   if (!record) return;
   if (record["status"] !== "Completed") return;

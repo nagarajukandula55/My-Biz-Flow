@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createBusinessRecord, updateBusinessRecord, getBusinessRecord } from "@/lib/businessRecords";
+import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import type { AttendanceEntry } from "@/lib/sample-data/education";
 
 /**
@@ -11,6 +12,7 @@ import type { AttendanceEntry } from "@/lib/sample-data/education";
  * Guards against double-invoicing the same enrollment.
  */
 export async function recordFeePaymentAction(partnerId: string, enrollmentId: string): Promise<void> {
+  partnerId = await requireSessionPartnerId(partnerId);
   const record = await getBusinessRecord(partnerId, "education", enrollmentId);
   if (!record) return;
   if (record["feeInvoiceId"]) return; // already invoiced — don't double-create
@@ -52,6 +54,7 @@ export async function markAttendanceAction(
   present: boolean,
   date?: string
 ): Promise<void> {
+  partnerId = await requireSessionPartnerId(partnerId);
   const record = await getBusinessRecord(partnerId, "education", enrollmentId);
   if (!record) return;
   const day = date ?? new Date().toISOString().slice(0, 10);

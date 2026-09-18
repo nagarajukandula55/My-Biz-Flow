@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { updateBusinessRecord, getBusinessRecord } from "@/lib/businessRecords";
+import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import type { DeliveryStage } from "@/lib/sample-data/logistics-fleet";
 
 /** Assigns driver + vehicle to a shipment — assignedAt is stamped server-side. */
@@ -12,6 +13,7 @@ export async function assignDriverAction(
   driverName: string,
   vehicleNumber?: string
 ): Promise<void> {
+  partnerId = await requireSessionPartnerId(partnerId);
   const record = await getBusinessRecord(partnerId, "logistics-fleet", shipmentId);
   if (!record) return;
   await updateBusinessRecord(partnerId, "logistics-fleet", shipmentId, {
@@ -45,6 +47,7 @@ export async function advanceDeliveryStageAction(
   proof?: { recipientName: string; deliveryNotes: string },
   failureReason?: string
 ): Promise<void> {
+  partnerId = await requireSessionPartnerId(partnerId);
   const record = await getBusinessRecord(partnerId, "logistics-fleet", shipmentId);
   if (!record) return;
 

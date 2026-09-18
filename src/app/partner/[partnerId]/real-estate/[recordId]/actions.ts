@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getBusinessRecord, listBusinessRecords, updateBusinessRecord } from "@/lib/businessRecords";
+import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import { extractRealEstateLifecycle, type LeadStage } from "@/lib/sample-data/real-estate";
 
 function overlaps(aStart: string, aEnd: string, bStart: string, bEnd: string): boolean {
@@ -21,6 +22,7 @@ export async function checkSiteVisitConflictAction(
   siteVisitStart: string,
   siteVisitEnd: string
 ): Promise<{ conflict: boolean; conflictingListingId?: string }> {
+  partnerId = await requireSessionPartnerId(partnerId);
   if (!agentId || !siteVisitStart || !siteVisitEnd) return { conflict: false };
   const rows = await listBusinessRecords(partnerId, "real-estate");
   for (const row of rows) {
@@ -51,6 +53,7 @@ export async function scheduleSiteVisitAction(
   siteVisitStart: string,
   siteVisitEnd: string
 ): Promise<{ ok: boolean; message?: string }> {
+  partnerId = await requireSessionPartnerId(partnerId);
   const check = await checkSiteVisitConflictAction(partnerId, listingId, agentId, siteVisitStart, siteVisitEnd);
   if (check.conflict) {
     return {
@@ -83,6 +86,7 @@ export async function updateLeadStageAction(
   nextStage: LeadStage,
   opts?: { dealValue?: number; commissionPct?: number; closedLostReason?: string }
 ): Promise<{ ok: boolean; message?: string }> {
+  partnerId = await requireSessionPartnerId(partnerId);
   const record = await getBusinessRecord(partnerId, "real-estate", listingId);
   if (!record) return { ok: false, message: "Listing not found." };
 

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createBusinessRecord, getBusinessRecord, listBusinessRecords, updateBusinessRecord } from "@/lib/businessRecords";
+import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import {
   computeOrderTotals,
   extractOrderFromRecord,
@@ -30,6 +31,7 @@ export async function addItemToOrderAction(
   menuItemId: string,
   waiter?: string
 ): Promise<string> {
+  partnerId = await requireSessionPartnerId(partnerId);
   const menuItem = restaurantMenuItems.find((m) => m.id === menuItemId);
   if (!menuItem) throw new Error("Unknown menu item");
 
@@ -71,6 +73,7 @@ export async function addItemToOrderAction(
 }
 
 export async function updateLineQtyAction(partnerId: string, orderId: string, lineId: string, qty: number): Promise<void> {
+  partnerId = await requireSessionPartnerId(partnerId);
   const record = await getBusinessRecord(partnerId, "restaurant-pos", orderId);
   if (!record) return;
   const order = extractOrderFromRecord(record);
@@ -82,6 +85,7 @@ export async function updateLineQtyAction(partnerId: string, orderId: string, li
 }
 
 export async function removeLineAction(partnerId: string, orderId: string, lineId: string): Promise<void> {
+  partnerId = await requireSessionPartnerId(partnerId);
   const record = await getBusinessRecord(partnerId, "restaurant-pos", orderId);
   if (!record) return;
   const order = extractOrderFromRecord(record);
@@ -94,6 +98,7 @@ export async function removeLineAction(partnerId: string, orderId: string, lineI
 
 /** Marks every not-yet-sent line as sent to the kitchen and flips order status to "In kitchen". */
 export async function sendToKitchenAction(partnerId: string, orderId: string): Promise<void> {
+  partnerId = await requireSessionPartnerId(partnerId);
   const record = await getBusinessRecord(partnerId, "restaurant-pos", orderId);
   if (!record) return;
   const order = extractOrderFromRecord(record);
@@ -112,6 +117,7 @@ export async function sendToKitchenAction(partnerId: string, orderId: string): P
 }
 
 export async function markServedAction(partnerId: string, orderId: string): Promise<void> {
+  partnerId = await requireSessionPartnerId(partnerId);
   const record = await getBusinessRecord(partnerId, "restaurant-pos", orderId);
   if (!record) return;
   await updateBusinessRecord(partnerId, "restaurant-pos", orderId, { ...record, status: "Served" });
@@ -120,6 +126,7 @@ export async function markServedAction(partnerId: string, orderId: string): Prom
 }
 
 export async function setCoversAction(partnerId: string, orderId: string, covers: number): Promise<void> {
+  partnerId = await requireSessionPartnerId(partnerId);
   const record = await getBusinessRecord(partnerId, "restaurant-pos", orderId);
   if (!record) return;
   await updateBusinessRecord(partnerId, "restaurant-pos", orderId, { ...record, covers: Math.max(1, covers) });
@@ -137,6 +144,7 @@ export async function settleBillAction(
   orderId: string,
   input: { tenderMethod: string; splitCount?: number }
 ): Promise<void> {
+  partnerId = await requireSessionPartnerId(partnerId);
   const record = await getBusinessRecord(partnerId, "restaurant-pos", orderId);
   if (!record) throw new Error("Order not found");
   const order = extractOrderFromRecord(record);
@@ -181,6 +189,7 @@ export async function settleBillAction(
 }
 
 export async function cancelOrderAction(partnerId: string, orderId: string, reason: string): Promise<void> {
+  partnerId = await requireSessionPartnerId(partnerId);
   const record = await getBusinessRecord(partnerId, "restaurant-pos", orderId);
   if (!record) return;
   await updateBusinessRecord(partnerId, "restaurant-pos", orderId, {

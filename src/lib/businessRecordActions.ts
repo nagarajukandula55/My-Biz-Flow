@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { createBusinessRecord, updateBusinessRecord, getBusinessRecord } from "@/lib/businessRecords";
 import { getPartner } from "@/lib/partnerData";
 import { notifyCentralApiBillingInvoice } from "@/lib/centralApi";
+import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 
 /** Bind with .bind(null, partnerId, moduleSlug) before passing as a RecordForm `action` prop. */
 export async function createBusinessRecordAction(
@@ -12,6 +13,16 @@ export async function createBusinessRecordAction(
   moduleSlug: string,
   values: Record<string, unknown>
 ) {
+  // Every module's create/edit/patch form binds this generic action with a
+  // partnerId taken from the page's own URL — but a Server Action is its own
+  // RPC endpoint, invoked directly rather than through PartnerLayout's
+  // requirePartnerSessionForPage gate, so a crafted request could otherwise
+  // pass ANY partnerId here regardless of which partner is actually signed
+  // in. This was the generic write path behind Service Centre's Brands/
+  // Models/Solutions/Fault Codes/Symptom Codes catalogs (and every other
+  // module built directly on createBusinessRecord/updateBusinessRecord)
+  // trusting the caller-supplied partnerId with nothing to enforce it.
+  partnerId = await requireSessionPartnerId(partnerId);
   // Assign the real invoice number ONCE, here, at actual creation time —
   // via the same atomic, persisted NumberingCounter (getNextNumber) and
   // the SAME "invoice.b2c"/"invoice.b2b" scope a Service-Centre-workorder-
@@ -88,6 +99,7 @@ export async function updateBusinessRecordAction(
   recordKey: string,
   values: Record<string, unknown>
 ) {
+  partnerId = await requireSessionPartnerId(partnerId);
   await updateBusinessRecord(partnerId, moduleSlug, recordKey, values);
   revalidatePath(`/partner/${partnerId}/${moduleSlug}`);
   revalidatePath(`/partner/${partnerId}/${moduleSlug}/${recordKey}`);
@@ -127,6 +139,7 @@ export async function patchBusinessRecordAction(
   recordKey: string,
   patch: Record<string, unknown>
 ): Promise<void> {
+  partnerId = await requireSessionPartnerId(partnerId);
   const existing = await getBusinessRecord(partnerId, moduleSlug, recordKey);
   if (!existing) return;
   await updateBusinessRecord(partnerId, moduleSlug, recordKey, { ...existing, ...patch });

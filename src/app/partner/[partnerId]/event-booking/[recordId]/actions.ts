@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createBusinessRecord, getBusinessRecord, listBusinessRecords, updateBusinessRecord } from "@/lib/businessRecords";
+import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import { extractEventBookingLifecycle, type ChecklistItem } from "@/lib/sample-data/event-booking";
 
 function overlaps(aStart: string, aEnd: string, bStart: string, bEnd: string): boolean {
@@ -22,6 +23,7 @@ export async function checkVenueAvailabilityAction(
   eventStart: string,
   eventEnd: string
 ): Promise<{ conflict: boolean; conflictingEventId?: string }> {
+  partnerId = await requireSessionPartnerId(partnerId);
   if (!venue || !eventStart || !eventEnd) return { conflict: false };
   const rows = await listBusinessRecords(partnerId, "event-booking");
   for (const row of rows) {
@@ -47,6 +49,7 @@ export async function saveVenueBookingAction(
   venue: string,
   eventDate: string
 ): Promise<{ ok: boolean; message?: string }> {
+  partnerId = await requireSessionPartnerId(partnerId);
   const check = await checkVenueAvailabilityAction(partnerId, eventId, venue, eventDate, eventDate);
   if (check.conflict) {
     return {
@@ -75,6 +78,7 @@ export async function setPaymentScheduleAction(
   depositDueDate: string,
   balanceDueDate: string
 ): Promise<{ ok: boolean; message?: string }> {
+  partnerId = await requireSessionPartnerId(partnerId);
   const record = await getBusinessRecord(partnerId, "event-booking", eventId);
   if (!record) return { ok: false, message: "Event not found." };
   if (totalCost <= 0) return { ok: false, message: "Total cost must be greater than zero." };
@@ -107,6 +111,7 @@ export async function recordEventPaymentAction(
   eventId: string,
   installment: "deposit" | "balance"
 ): Promise<{ ok: boolean; message?: string }> {
+  partnerId = await requireSessionPartnerId(partnerId);
   const record = await getBusinessRecord(partnerId, "event-booking", eventId);
   if (!record) return { ok: false, message: "Event not found." };
   const lifecycle = extractEventBookingLifecycle(record);
@@ -161,6 +166,7 @@ export async function updateChecklistAction(
   action: "add" | "toggle" | "remove",
   payload: { itemId?: string; item?: string; assigned?: string }
 ): Promise<void> {
+  partnerId = await requireSessionPartnerId(partnerId);
   const record = await getBusinessRecord(partnerId, "event-booking", eventId);
   if (!record) return;
   const checklist = (record["checklist"] as ChecklistItem[] | undefined) ?? [];

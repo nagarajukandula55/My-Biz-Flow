@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createBusinessRecord, listBusinessRecords } from "@/lib/businessRecords";
+import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 
 /**
  * Creates a new enrollment, but only after checking the target batch's
@@ -18,6 +19,7 @@ import { createBusinessRecord, listBusinessRecords } from "@/lib/businessRecords
  * form for an error message).
  */
 export async function createEnrollmentAction(partnerId: string, values: Record<string, unknown>): Promise<void> {
+  partnerId = await requireSessionPartnerId(partnerId);
   const batchId = String(values["batch"] ?? "").trim();
 
   if (batchId) {

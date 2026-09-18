@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createBusinessRecord, getBusinessRecord, updateBusinessRecord } from "@/lib/businessRecords";
+import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import { computeCommission, PAYOUT_STAGES, type MarketplaceOrder } from "@/lib/sample-data/marketplace";
 
 /** Creates a new order under a vendor listing — commission is always computed server-side from the vendor's own rate, never trusting a client total. */
@@ -10,6 +11,7 @@ export async function createOrderForVendorAction(
   vendorId: string,
   saleAmount: number
 ): Promise<{ error?: string }> {
+  partnerId = await requireSessionPartnerId(partnerId);
   if (!(saleAmount > 0)) return { error: "Enter a sale amount greater than zero." };
   const vendor = await getBusinessRecord(partnerId, "marketplace", vendorId);
   if (!vendor) return { error: "Vendor listing not found." };
@@ -37,6 +39,7 @@ export async function createOrderForVendorAction(
 
 /** Advances an order's payout status Pending -> Processing -> Paid, recording a payout date once Paid. */
 export async function advancePayoutStatusAction(partnerId: string, orderId: string): Promise<void> {
+  partnerId = await requireSessionPartnerId(partnerId);
   const record = await getBusinessRecord(partnerId, "marketplace", orderId);
   if (!record || record["recordKind"] !== "order") return;
   const idx = PAYOUT_STAGES.indexOf(record["payoutStatus"] as (typeof PAYOUT_STAGES)[number]);

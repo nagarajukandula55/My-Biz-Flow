@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createBusinessRecord, updateBusinessRecord, getBusinessRecord } from "@/lib/businessRecords";
+import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 
 /**
  * Dispatches a technician to a contract's currently-open service request —
@@ -15,6 +16,7 @@ export async function dispatchTechnicianAction(
   technicianId: string,
   technicianName: string
 ): Promise<void> {
+  partnerId = await requireSessionPartnerId(partnerId);
   const record = await getBusinessRecord(partnerId, "amc-field-service", contractId);
   if (!record) return;
   await updateBusinessRecord(partnerId, "amc-field-service", contractId, {
@@ -28,6 +30,7 @@ export async function dispatchTechnicianAction(
 
 /** Opens a new service request against the contract (e.g. a fresh complaint call) — clears any prior dispatch. */
 export async function raiseServiceRequestAction(partnerId: string, contractId: string): Promise<void> {
+  partnerId = await requireSessionPartnerId(partnerId);
   const record = await getBusinessRecord(partnerId, "amc-field-service", contractId);
   if (!record) return;
   await updateBusinessRecord(partnerId, "amc-field-service", contractId, {
@@ -43,6 +46,7 @@ export async function raiseServiceRequestAction(partnerId: string, contractId: s
 
 /** Marks the current open service request resolved — closes the SLA-breach window. */
 export async function resolveServiceRequestAction(partnerId: string, contractId: string): Promise<void> {
+  partnerId = await requireSessionPartnerId(partnerId);
   const record = await getBusinessRecord(partnerId, "amc-field-service", contractId);
   if (!record) return;
   await updateBusinessRecord(partnerId, "amc-field-service", contractId, {
@@ -62,6 +66,7 @@ export async function resolveServiceRequestAction(partnerId: string, contractId:
  * server-side from the existing contractEndDate, never client-submitted.
  */
 export async function renewContractAction(partnerId: string, contractId: string): Promise<{ newContractId: string } | void> {
+  partnerId = await requireSessionPartnerId(partnerId);
   const record = await getBusinessRecord(partnerId, "amc-field-service", contractId);
   if (!record) return;
   if (record["contractStatus"] === "Renewed") return; // already renewed — don't double-renew

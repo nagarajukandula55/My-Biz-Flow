@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createBusinessRecord } from "@/lib/businessRecords";
 import { createBusinessRecordAction } from "@/lib/businessRecordActions";
 import { assertPageTierAccess } from "@/lib/tenant";
+import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import { getPartner } from "@/lib/partnerData";
 import { parseProductDomains } from "@/lib/catalog/productDomains";
 
@@ -38,6 +39,7 @@ export async function createServiceCentreBrandAction(
   partnerId: string,
   values: Record<string, unknown>
 ): Promise<void | { error?: string }> {
+  partnerId = await requireSessionPartnerId(partnerId);
   await assertPageTierAccess(partnerId, "service-centre.brands.create");
   await createBusinessRecordAction(partnerId, "service-centre-brands", values);
 }
@@ -46,6 +48,7 @@ export async function createServiceCentreModelAction(
   partnerId: string,
   values: Record<string, unknown>
 ): Promise<void | { error?: string }> {
+  partnerId = await requireSessionPartnerId(partnerId);
   await assertPageTierAccess(partnerId, "service-centre.models.create");
   await createBusinessRecordAction(partnerId, "service-centre-models", values);
 }
@@ -54,6 +57,7 @@ export async function createServiceCentreBomMaterialAction(
   partnerId: string,
   values: Record<string, unknown>
 ): Promise<void | { error?: string }> {
+  partnerId = await requireSessionPartnerId(partnerId);
   await assertPageTierAccess(partnerId, "inventory.bom.create");
   await createBusinessRecordAction(partnerId, "inventory-bom", values);
 }
@@ -72,6 +76,7 @@ export async function createServiceCentreBrandInlineAction(
   partnerId: string,
   values: Record<string, unknown>
 ): Promise<InlineCreateResult> {
+  partnerId = await requireSessionPartnerId(partnerId);
   await assertPageTierAccess(partnerId, "service-centre.brands.create");
   const domain = values.domain ?? (await primaryDomainFor(partnerId));
   const record = await createBusinessRecord(partnerId, "service-centre-brands", {
@@ -87,6 +92,7 @@ export async function createServiceCentreModelInlineAction(
   partnerId: string,
   values: Record<string, unknown>
 ): Promise<InlineCreateResult> {
+  partnerId = await requireSessionPartnerId(partnerId);
   await assertPageTierAccess(partnerId, "service-centre.models.create");
   const domain = values.domain ?? (await primaryDomainFor(partnerId));
   const record = await createBusinessRecord(partnerId, "service-centre-models", {
@@ -109,6 +115,7 @@ export async function createServiceCentreSolutionInlineAction(
   partnerId: string,
   values: Record<string, unknown>
 ): Promise<InlineCreateResult> {
+  partnerId = await requireSessionPartnerId(partnerId);
   const record = await createBusinessRecord(partnerId, "service-centre-solutions", {
     status: "Active",
     category: "Other",
@@ -122,6 +129,7 @@ export async function createServiceCentreBomMaterialInlineAction(
   partnerId: string,
   values: Record<string, unknown>
 ): Promise<InlineCreateResult> {
+  partnerId = await requireSessionPartnerId(partnerId);
   await assertPageTierAccess(partnerId, "inventory.bom.create");
   const record = await createBusinessRecord(partnerId, "inventory-bom", values);
   revalidatePath(`/partner/${partnerId}/inventory/bom`);
@@ -138,6 +146,7 @@ export async function createServiceCentreStaffNameInlineAction(
   partnerId: string,
   values: Record<string, unknown>
 ): Promise<InlineCreateResult> {
+  partnerId = await requireSessionPartnerId(partnerId);
   await assertPageTierAccess(partnerId, "service-centre.staff-names.create");
   const record = await createBusinessRecord(partnerId, "service-centre-staff-names", {
     status: "Active",

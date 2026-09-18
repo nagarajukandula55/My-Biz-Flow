@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createBusinessRecord, updateBusinessRecord, getBusinessRecord, listBusinessRecords } from "@/lib/businessRecords";
+import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import { DEFAULT_APPOINTMENT_DURATION_MINUTES } from "@/lib/sample-data/clinic";
 
 function windowFor(dateTimeIso: string, durationMinutes: number): { start: number; end: number } {
@@ -29,6 +30,7 @@ export async function findClinicSlotConflict(
   durationMinutes: number = DEFAULT_APPOINTMENT_DURATION_MINUTES,
   excludeRecordId?: string
 ): Promise<{ conflict: false } | { conflict: true; withRecordId: string }> {
+  partnerId = await requireSessionPartnerId(partnerId);
   if (!doctor || !appointmentDateTime) return { conflict: false };
   const { start, end } = windowFor(appointmentDateTime, durationMinutes || DEFAULT_APPOINTMENT_DURATION_MINUTES);
   if (Number.isNaN(start)) return { conflict: false };
@@ -58,6 +60,7 @@ export async function findClinicSlotConflict(
  * as RecordForm's `action` prop.
  */
 export async function createClinicAppointmentAction(partnerId: string, values: Record<string, unknown>): Promise<void> {
+  partnerId = await requireSessionPartnerId(partnerId);
   const doctor = String(values["doctor"] ?? "");
   const appointmentDateTime = String(values["appointmentDateTime"] ?? "");
   const durationMinutes = Number(values["durationMinutes"]) || DEFAULT_APPOINTMENT_DURATION_MINUTES;
@@ -85,6 +88,7 @@ export async function updateClinicAppointmentAction(
   recordId: string,
   values: Record<string, unknown>
 ): Promise<void> {
+  partnerId = await requireSessionPartnerId(partnerId);
   const doctor = String(values["doctor"] ?? "");
   const appointmentDateTime = String(values["appointmentDateTime"] ?? "");
   const durationMinutes = Number(values["durationMinutes"]) || DEFAULT_APPOINTMENT_DURATION_MINUTES;
@@ -113,6 +117,7 @@ export async function completeClinicAppointmentAction(
   recordId: string,
   prescriptionNotes: string
 ): Promise<void> {
+  partnerId = await requireSessionPartnerId(partnerId);
   const record = await getBusinessRecord(partnerId, "clinic", recordId);
   if (!record) return;
   await updateBusinessRecord(partnerId, "clinic", recordId, {
@@ -131,6 +136,7 @@ export async function completeClinicAppointmentAction(
  * is read from the server-stored record, never trusted from the client.
  */
 export async function createInvoiceFromAppointmentAction(partnerId: string, recordId: string): Promise<void> {
+  partnerId = await requireSessionPartnerId(partnerId);
   const record = await getBusinessRecord(partnerId, "clinic", recordId);
   if (!record) return;
   if (record["status"] !== "Completed") return;

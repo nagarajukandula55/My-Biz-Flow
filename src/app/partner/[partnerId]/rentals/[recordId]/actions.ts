@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getBusinessRecord, listBusinessRecords, updateBusinessRecord } from "@/lib/businessRecords";
+import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 
 function overlaps(aStart: string, aEnd: string, bStart: string, bEnd: string): boolean {
   return new Date(aStart) < new Date(bEnd) && new Date(bStart) < new Date(aEnd);
@@ -20,6 +21,7 @@ export async function checkAssetAvailabilityAction(
   bookingStart: string,
   bookingEnd: string
 ): Promise<{ conflict: boolean; conflictingBookingId?: string }> {
+  partnerId = await requireSessionPartnerId(partnerId);
   if (!assetName || !bookingStart || !bookingEnd) return { conflict: false };
   const rows = await listBusinessRecords(partnerId, "rentals");
   for (const row of rows) {
@@ -51,6 +53,7 @@ export async function saveBookingDatesAction(
   bookingEnd: string,
   depositAmount?: number
 ): Promise<{ ok: boolean; message?: string }> {
+  partnerId = await requireSessionPartnerId(partnerId);
   const check = await checkAssetAvailabilityAction(partnerId, bookingId, assetName, bookingStart, bookingEnd);
   if (check.conflict) {
     return {
@@ -84,6 +87,7 @@ export async function returnAssetAction(
   damageCharge: number,
   returnNotes?: string
 ): Promise<{ ok: boolean; refundableAmount?: number; message?: string }> {
+  partnerId = await requireSessionPartnerId(partnerId);
   const record = await getBusinessRecord(partnerId, "rentals", bookingId);
   if (!record) return { ok: false, message: "Booking not found." };
   const depositAmount = Number(record["depositAmount"] ?? 0);

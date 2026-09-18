@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getBusinessRecord, updateBusinessRecord } from "@/lib/businessRecords";
+import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import {
   extractHrmsLifecycleFromRecord,
   type AttendanceStatus,
@@ -17,6 +18,7 @@ export async function markAttendanceAction(
   date: string,
   status: AttendanceStatus
 ): Promise<void> {
+  partnerId = await requireSessionPartnerId(partnerId);
   const record = await getBusinessRecord(partnerId, "hrms", employeeId);
   if (!record) return;
   const lifecycle = extractHrmsLifecycleFromRecord(record);
@@ -35,6 +37,7 @@ export async function requestLeaveAction(
   toDate: string,
   reason?: string
 ): Promise<void> {
+  partnerId = await requireSessionPartnerId(partnerId);
   const record = await getBusinessRecord(partnerId, "hrms", employeeId);
   if (!record) return;
   const lifecycle = extractHrmsLifecycleFromRecord(record);
@@ -59,6 +62,7 @@ export async function decideLeaveAction(
   leaveId: string,
   decision: LeaveRequestStatus
 ): Promise<{ error?: string }> {
+  partnerId = await requireSessionPartnerId(partnerId);
   const record = await getBusinessRecord(partnerId, "hrms", employeeId);
   if (!record) return { error: "Employee record not found." };
   const lifecycle = extractHrmsLifecycleFromRecord(record);
@@ -86,6 +90,7 @@ export async function decideLeaveAction(
  * Idempotent per month — re-running replaces that month's payslip.
  */
 export async function runPayrollAction(partnerId: string, employeeId: string, month: string): Promise<void> {
+  partnerId = await requireSessionPartnerId(partnerId);
   const record = await getBusinessRecord(partnerId, "hrms", employeeId);
   if (!record) return;
   const lifecycle = extractHrmsLifecycleFromRecord(record);

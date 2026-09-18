@@ -2,10 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { getBusinessRecord, updateBusinessRecord } from "@/lib/businessRecords";
+import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import { extractLoyaltyLifecycleFromRecord, computeTier, EARN_RATE, type LoyaltyTransaction } from "@/lib/sample-data/loyalty-rewards";
 
 /** Earns points from a linked purchase amount (points = amount * EARN_RATE, rounded). */
 export async function earnPointsAction(partnerId: string, loyaltyId: string, amount: number): Promise<{ error?: string }> {
+  partnerId = await requireSessionPartnerId(partnerId);
   if (!(amount > 0)) return { error: "Enter a purchase amount greater than zero." };
   const record = await getBusinessRecord(partnerId, "loyalty-rewards", loyaltyId);
   if (!record) return { error: "Loyalty record not found." };
@@ -31,6 +33,7 @@ export async function earnPointsAction(partnerId: string, loyaltyId: string, amo
 
 /** Redeems points — fails closed if the balance is insufficient (same pattern as POS's stock check). */
 export async function redeemPointsAction(partnerId: string, loyaltyId: string, points: number): Promise<{ error?: string }> {
+  partnerId = await requireSessionPartnerId(partnerId);
   if (!(points > 0)) return { error: "Enter a points amount greater than zero." };
   const record = await getBusinessRecord(partnerId, "loyalty-rewards", loyaltyId);
   if (!record) return { error: "Loyalty record not found." };
