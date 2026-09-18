@@ -79,26 +79,42 @@ export default async function BillingPage({
     listBusinessRecords(params.partnerId, "billing"),
   ]);
 
-  // Summary cards, computed from the full unfiltered set — invoices created
-  // directly from Billing AND ones Service Centre/POS stamp on workorder
-  // close / sale completion (same "billing" moduleSlug, same table, no
-  // field that would exclude them from this query) all count.
-  //
+  // Summary cards now reflect whatever's currently filtered — same
+  // filters/date-range/search as the table query above, applied here
+  // in-memory against the full set rather than a second DB round trip,
+  // since the criteria are identical. Filter DROPDOWN OPTIONS still come
+  // from the full unfiltered `allRows` below (distinct()) so they don't
+  // shrink as filters narrow the result — only the numeric cards change.
+  const hasSearchMatch = (r: (typeof allRows)[number]) =>
+    !q || SEARCH_FIELDS.some((f) => String(r[f] ?? "").toLowerCase().includes(q.toLowerCase()));
+  const filteredRows = allRows.filter((r) => {
+    if (paymentStatus && String(r["paymentStatus"] ?? "") !== paymentStatus) return false;
+    if (paymentMode && String(r["paymentMode"] ?? "") !== paymentMode) return false;
+    if (invoiceSource && String(r["invoiceSource"] ?? "") !== invoiceSource) return false;
+    const issueDate = String(r["issueDate"] ?? "");
+    if (from && issueDate < from) return false;
+    if (to && issueDate > to) return false;
+    if (!hasSearchMatch(r)) return false;
+    return true;
+  });
+
   // "Collected" and "Overdue" use the same amountPaid-first "money actually
   // collected" convention as src/lib/analyticsData.ts (getAnalyticsSummary,
   // getRevenueBySource) — not a naive sum of totalAmount over
   // paymentStatus === "Paid" rows, which previously undercounted revenue
   // already collected against Partially Paid invoices and could disagree
-  // with the Analytics page's own numbers for the same partner.
-  const totalInvoiced = allRows.reduce((sum, r) => sum + (Number(r["totalAmount"]) || 0), 0);
-  const collectedTotal = allRows.reduce((sum, r) => {
+  // with the Analytics page's own numbers for the same partner (Analytics
+  // itself is always whole-partner/unfiltered, so this only matches when no
+  // filter narrows the Billing list below its own totals).
+  const totalInvoiced = filteredRows.reduce((sum, r) => sum + (Number(r["totalAmount"]) || 0), 0);
+  const collectedTotal = filteredRows.reduce((sum, r) => {
     if (typeof r["amountPaid"] === "number") return sum + (r["amountPaid"] as number);
     if (r["paymentStatus"] === "Paid" && typeof r["totalAmount"] === "number") return sum + (r["totalAmount"] as number);
     return sum;
   }, 0);
-  const collectedCount = allRows.filter((r) => (Number(r["amountPaid"]) || 0) > 0 || r["paymentStatus"] === "Paid").length;
-  const overdueRows = allRows.filter((r) => r["paymentStatus"] === "Overdue");
-  const draftRows = allRows.filter((r) => r["paymentStatus"] === "Draft");
+  const collectedCount = filteredRows.filter((r) => (Number(r["amountPaid"]) || 0) > 0 || r["paymentStatus"] === "Paid").length;
+  const overdueRows = filteredRows.filter((r) => r["paymentStatus"] === "Overdue");
+  const draftRows = filteredRows.filter((r) => r["paymentStatus"] === "Draft");
   const overdueTotal = overdueRows.reduce((sum, r) => {
     if (typeof r["amountDue"] === "number") return sum + (r["amountDue"] as number);
     const total = Number(r["totalAmount"]) || 0;
@@ -129,16 +145,13 @@ export default async function BillingPage({
         <p className="text-sm text-text-muted">{mod?.description}</p>
 
         {/*
-          Total Invoiced / Collected / Overdue / Draft — computed from the
-          same unfiltered set as the filter dropdowns below, so these
-          numbers never disagree with what's actually filterable, and
-          "Collected" uses the same amountPaid-first revenue convention as
-          the Analytics page so the two never disagree either. Mirrors the
-          Open/Closed/Cancelled/Part Pending stat-card row on the Service
-          Centre list (src/app/partner/[partnerId]/service-centre/page.tsx).
+          Total Invoiced / Collected / Overdue / Draft — recompute from
+          whatever's currently filtered (search/date-range/payment status/
+          mode/source), same as the table below. "Collected" uses the same
+          amountPaid-first revenue convention as the Analytics page.
         */}
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <StatCard label="Total Invoiced" value={formatCurrencyINR(totalInvoiced)} sub={`${allRows.length} invoice(s)`} />
+          <StatCard label="Total Invoiced" value={formatCurrencyINR(totalInvoiced)} sub={`${filteredRows.length} invoice(s)`} />
           <StatCard label="Collected" value={formatCurrencyINR(collectedTotal)} sub={`${collectedCount} invoice(s) paid in full or part`} />
           <StatCard label="Overdue (Balance Due)" value={formatCurrencyINR(overdueTotal)} sub={`${overdueRows.length} invoice(s)`} />
           <StatCard label="Draft" value={String(draftRows.length)} sub="not yet sent" />

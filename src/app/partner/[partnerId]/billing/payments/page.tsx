@@ -85,12 +85,26 @@ export default async function BillingPaymentsPage({
   const displayRows = rows.map(withInvoiceNumber);
 
   const modeOptions = Array.from(new Set(allRows.map((r) => String(r["mode"] ?? "")).filter(Boolean)));
-  // Deliberately from `allRows` (the full unfiltered set), not the current
-  // page's filtered `rows` — same global-total convention as Billing's own
-  // invoice list and Service Centre's milestone cards, so this number never
-  // disagrees with the partner's real total collected regardless of the
-  // search/date/mode filter currently applied.
-  const totalCollected = allRows.reduce((sum, r) => sum + (Number(r["amount"]) || 0), 0);
+
+  // Cards recompute from whatever's currently filtered (search/date-range/
+  // mode), same criteria as the table query above, applied in-memory
+  // against the full set rather than a second DB round trip.
+  const filteredRows = allRows.filter((r) => {
+    if (mode && String(r["mode"] ?? "") !== mode) return false;
+    const date = String(r["date"] ?? "");
+    if (from && date < from) return false;
+    if (to && date > to) return false;
+    if (q && !SEARCH_FIELDS.some((f) => String(r[f] ?? "").toLowerCase().includes(q.toLowerCase()))) return false;
+    return true;
+  });
+  const totalCollected = filteredRows.reduce((sum, r) => sum + (Number(r["amount"]) || 0), 0);
+  const averagePayment = filteredRows.length > 0 ? totalCollected / filteredRows.length : 0;
+  const highestPayment = filteredRows.reduce((max, r) => Math.max(max, Number(r["amount"]) || 0), 0);
+
+  const now = new Date();
+  const startOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+  const thisMonthRows = filteredRows.filter((r) => String(r["date"] ?? "") >= startOfMonth);
+  const thisMonthCollected = thisMonthRows.reduce((sum, r) => sum + (Number(r["amount"]) || 0), 0);
 
   const rangeStart = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const rangeEnd = Math.min(total, page * pageSize);
@@ -107,7 +121,10 @@ export default async function BillingPaymentsPage({
     >
       <div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <StatCard label="Total Collected" value={formatCurrencyINR(totalCollected)} sub={`${allRows.length} payment(s)`} />
+          <StatCard label="Total Collected" value={formatCurrencyINR(totalCollected)} sub={`${filteredRows.length} payment(s)`} />
+          <StatCard label="This Month" value={formatCurrencyINR(thisMonthCollected)} sub={`${thisMonthRows.length} payment(s)`} />
+          <StatCard label="Average Payment" value={formatCurrencyINR(averagePayment)} />
+          <StatCard label="Highest Payment" value={formatCurrencyINR(highestPayment)} />
         </div>
 
         <form className="mt-4 flex flex-wrap items-end gap-3 rounded-md border border-border bg-bg-raised p-3" method="get">

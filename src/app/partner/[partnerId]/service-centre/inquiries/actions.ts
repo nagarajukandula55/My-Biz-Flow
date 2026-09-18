@@ -11,6 +11,7 @@ import { getPartner } from "@/lib/partnerData";
 import { prisma } from "@/lib/prisma";
 import { sendWorkorderTelegramAlert } from "@/lib/telegram";
 import { newWorkorderCreatedMessage } from "@/lib/telegramTemplates";
+import { withRecordLock } from "@/lib/withRecordLock";
 
 /** Staff-side "log a call-in inquiry" — bound to InquiryNewButton's modal form. */
 export async function createInquiryAction(
@@ -85,7 +86,13 @@ export async function closeInquiryAction(
  * that action always ends in a redirect() (via createBusinessRecordAction),
  * which would throw before this could mark the inquiry Converted — so this
  * duplicates its minimal create logic instead, in the right order: mint the
- * id, mark the inquiry Converted, THEN create the workorder and redirect.
+ * id, CREATE the workorder, and only once that succeeds mark the inquiry
+ * Converted. (Previously the inquiry was marked Converted first — if the
+ * workorder create then failed for any reason, the inquiry was left
+ * permanently Converted, pointing at a convertedToWorkorderId that was
+ * never actually created, with no way to retry since only an Open inquiry
+ * can be converted. Creating first means a failure here just leaves the
+ * inquiry Open, safely retryable.)
  *
  * `overrides` fills in exactly the workorder-required fields the inquiry
  * itself couldn't already supply (e.g. no address on file, or a pincode
@@ -102,6 +109,25 @@ export async function convertInquiryToWorkorderAction(
 ): Promise<void | { error?: string; missing?: { key: string; label: string }[] }> {
   partnerId = await requireSessionPartnerId(partnerId);
 
+  // Serializes concurrent convert attempts for the SAME inquiry (double-
+  // click on "Convert to Workorder" before the button disables) — without
+  // it, two overlapping calls could both pass the `status !== "Open"`
+  // guard below and both mint a jobId / create a workorder.
+  const jobId = await withRecordLock("service-centre-inquiry-convert", inquiryId, () =>
+    convertInquiryToWorkorderInner(partnerId, inquiryId, overrides)
+  );
+  if (typeof jobId !== "string") return jobId; // { error, missing? } — validation/not-found failure
+
+  revalidatePath(`/partner/${partnerId}/service-centre/inquiries`);
+  revalidatePath(`/partner/${partnerId}/service-centre`);
+  redirect(`/partner/${partnerId}/service-centre/${jobId}?created=1`);
+}
+
+async function convertInquiryToWorkorderInner(
+  partnerId: string,
+  inquiryId: string,
+  overrides?: Record<string, string>
+): Promise<string | { error?: string; missing?: { key: string; label: string }[] }> {
   const inquiry = await getBusinessRecord(partnerId, "service-centre-inquiry", inquiryId);
   if (!inquiry) return { error: "Inquiry not found" };
   if (inquiry["status"] !== "Open") return { error: "Only an Open inquiry can be converted" };
@@ -162,9 +188,23 @@ export async function convertInquiryToWorkorderAction(
       sequenceDigits: 4,
     });
   } catch {
-    jobId = `WO-${Date.now().toString(36).toUpperCase()}`;
+    // Random suffix, not just millisecond time — see serviceCentreCreateAction.ts's identical fallback for why.
+    jobId = `WO-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
   }
   const now = new Date();
+
+  // Create the workorder FIRST — only once this succeeds is the inquiry
+  // marked Converted (below). If createBusinessRecord throws here, the
+  // inquiry is simply left Open and can be converted again; nothing has
+  // committed to a half-real state.
+  await createBusinessRecord(partnerId, "service-centre", {
+    ...values,
+    id: jobId,
+    status: "Created",
+    stage: "Created",
+    receivedDate: now.toISOString().slice(0, 10),
+    customerGstin: "",
+  });
 
   await updateBusinessRecord(partnerId, "service-centre-inquiry", inquiryId, {
     ...inquiry,
@@ -173,6 +213,10 @@ export async function convertInquiryToWorkorderAction(
     convertedAt: now.toISOString(),
   });
 
+  // Best-effort, fired only after both writes above have actually landed —
+  // previously this ran before the workorder record existed, so a
+  // create failure right after could still have notified staff about a job
+  // that was never actually booked.
   const partner = await getPartner(partnerId);
   if (partner) {
     await sendWorkorderTelegramAlert(
@@ -198,16 +242,5 @@ export async function convertInquiryToWorkorderAction(
     );
   }
 
-  await createBusinessRecord(partnerId, "service-centre", {
-    ...values,
-    id: jobId,
-    status: "Created",
-    stage: "Created",
-    receivedDate: now.toISOString().slice(0, 10),
-    customerGstin: "",
-  });
-
-  revalidatePath(`/partner/${partnerId}/service-centre/inquiries`);
-  revalidatePath(`/partner/${partnerId}/service-centre`);
-  redirect(`/partner/${partnerId}/service-centre/${jobId}?created=1`);
+  return jobId;
 }

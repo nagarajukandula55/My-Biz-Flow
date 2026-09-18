@@ -18,6 +18,21 @@ import { buildServiceCentreLines } from "@/lib/serviceCentreLines";
 import { sendWorkorderTelegramAlert, sendPartnerTelegramAlert } from "@/lib/telegram";
 import { workorderClosedMessage, workorderCancelledMessage, lowStockAlertMessage } from "@/lib/telegramTemplates";
 import { findStockRecord, adjustStockQty } from "@/lib/inventoryStock";
+import { withRecordLock } from "@/lib/withRecordLock";
+
+/**
+ * Every mutating action below runs its actual read-modify-write body
+ * through this — see withRecordLock.ts. This app has one login per
+ * business, not per staff member, so two people acting on the same
+ * workorder from two different sessions at once is the normal case, not
+ * an edge case; without this, concurrent patch/cancel/hold/deduct-
+ * inventory/create-invoice calls could double-deduct stock or silently
+ * overwrite each other's edit (each reads the record, merges its own
+ * change, writes the whole thing back — no version check).
+ */
+function withWorkorderLock<T>(workorderId: string, fn: () => Promise<T>): Promise<T> {
+  return withRecordLock("service-centre-workorder", workorderId, fn);
+}
 
 /**
  * Shared lookup for every action below. Previously each action did
@@ -72,7 +87,8 @@ async function assertCanActOnServiceCentre(partnerId: string): Promise<void> {
  */
 function assertLegalStageTransition(
   existing: Record<string, unknown>,
-  nextStage: WorkorderStage
+  nextStage: WorkorderStage,
+  serializedInventoryEnabled: boolean
 ): void {
   const currentStage = (existing["stage"] as WorkorderStage | undefined) ?? "Created";
   if (nextStage === currentStage) return; // no-op patch (e.g. re-saving other fields alongside the current stage)
@@ -119,12 +135,23 @@ function assertLegalStageTransition(
   }
 
   if (nextStage === "Closed") {
-    const partLines = (existing["partLines"] as { serialized?: boolean; serial?: string; pending?: boolean }[] | undefined) ?? [];
-    const unresolvedSerials = partLines.filter((p) => p.serialized && !p.serial && !p.pending);
-    if (unresolvedSerials.length > 0) {
-      throw new Error(
-        `${unresolvedSerials.length} part line(s) are serialized but missing a Serial/IMEI number. Enter the serial or mark the line Pending before closing.`
-      );
+    // `serialized` is stamped onto a part line from the BOM catalog match
+    // (WorkorderLifecycle.tsx's setPartLabel) regardless of whether this
+    // partner has Serialized Inventory turned on — it's a property of the
+    // catalog item, not something the partner controls the meaning of. A
+    // partner who never opted into serial tracking (the default) gets no
+    // stock checking/deduction at all from deductInventoryForWorkorderAction,
+    // so this gate has to respect the same toggle — otherwise a catalog flag
+    // they don't know exists could block Close for a reason with no
+    // corresponding feature turned on for them.
+    if (serializedInventoryEnabled) {
+      const partLines = (existing["partLines"] as { serialized?: boolean; serial?: string; pending?: boolean }[] | undefined) ?? [];
+      const unresolvedSerials = partLines.filter((p) => p.serialized && !p.serial && !p.pending);
+      if (unresolvedSerials.length > 0) {
+        throw new Error(
+          `${unresolvedSerials.length} part line(s) are serialized but missing a Serial/IMEI number. Enter the serial or mark the line Pending before closing.`
+        );
+      }
     }
   }
 }
@@ -144,21 +171,24 @@ export async function patchServiceCentreWorkorderAction(
   patch: Record<string, unknown>
 ): Promise<void> {
   await assertCanActOnServiceCentre(partnerId);
-  const existing = await requireWorkorder(partnerId, workorderId);
-  const extra: Record<string, unknown> = {};
-  if (typeof patch["stage"] === "string") {
-    const nextStage = patch["stage"] as WorkorderStage;
-    assertLegalStageTransition(existing, nextStage);
-    if (nextStage !== existing["stage"]) {
-      // Log the real transition so the activity timeline has something
-      // true to render instead of fabricating a history.
-      extra["stageHistory"] = appendStageHistory(existing, nextStage);
+  await withWorkorderLock(workorderId, async () => {
+    const existing = await requireWorkorder(partnerId, workorderId);
+    const extra: Record<string, unknown> = {};
+    if (typeof patch["stage"] === "string") {
+      const nextStage = patch["stage"] as WorkorderStage;
+      const partner = await getPartner(partnerId);
+      assertLegalStageTransition(existing, nextStage, Boolean(partner?.serializedInventoryEnabled));
+      if (nextStage !== existing["stage"]) {
+        // Log the real transition so the activity timeline has something
+        // true to render instead of fabricating a history.
+        extra["stageHistory"] = appendStageHistory(existing, nextStage);
+      }
     }
-  }
-  if (patch["estimateApproved"] === true && !existing["estimateApproved"]) {
-    extra["customerApprovalAt"] = new Date().toISOString();
-  }
-  await updateBusinessRecord(partnerId, "service-centre", workorderId, { ...existing, ...patch, ...extra });
+    if (patch["estimateApproved"] === true && !existing["estimateApproved"]) {
+      extra["customerApprovalAt"] = new Date().toISOString();
+    }
+    await updateBusinessRecord(partnerId, "service-centre", workorderId, { ...existing, ...patch, ...extra });
+  });
   revalidatePath(`/partner/${partnerId}/service-centre/${workorderId}`);
 }
 
@@ -194,79 +224,90 @@ export async function patchServiceCentreWorkorderAction(
  */
 export async function deductInventoryForWorkorderAction(partnerId: string, workorderId: string): Promise<void> {
   await assertCanActOnServiceCentre(partnerId);
-  const record = await requireWorkorder(partnerId, workorderId);
-  const lifecycle = extractLifecycleFromRecord(record);
-  if (lifecycle.inventoryDeducted) return; // already deducted — don't double-count
+  // The check-then-deduct sequence below reads current stock, then writes
+  // new quantities in a later loop — two concurrent calls for the SAME
+  // workorder (double-click, two staff sessions) could otherwise both pass
+  // the pre-check against the same snapshot and both deduct, double-
+  // consuming stock that adjustStockQty's floor-at-zero would then silently
+  // absorb instead of reject. The lock also protects the final `{ ...record,
+  // inventoryDeducted: true }` write from clobbering an unrelated field
+  // edited by a second session while this ran.
+  await withWorkorderLock(workorderId, async () => {
+    const record = await requireWorkorder(partnerId, workorderId);
+    const lifecycle = extractLifecycleFromRecord(record);
+    if (lifecycle.inventoryDeducted) return; // already deducted — don't double-count
 
-  const partner = await getPartner(partnerId);
-  if (!partner?.serializedInventoryEnabled) {
+    const partner = await getPartner(partnerId);
+    if (!partner?.serializedInventoryEnabled) {
+      await updateBusinessRecord(partnerId, "service-centre", workorderId, { ...record, inventoryDeducted: true });
+      return;
+    }
+
+    if (lifecycle.partLines.length === 0) {
+      await updateBusinessRecord(partnerId, "service-centre", workorderId, { ...record, inventoryDeducted: true });
+      return;
+    }
+
+    // A part line is only stock-tracked when it was matched to a BOM
+    // catalog item (materialId set) — see WorkorderLifecycle.tsx's
+    // setPartLabel(): typing a name that doesn't match anything is a
+    // deliberately supported "free-text, unpriced" line, not an error
+    // state. Without this filter, ANY workorder containing one would fail
+    // the stock pre-check below with "0 available" (findStockRecord("")
+    // never matches a real stock row) and Mark Completed would throw for
+    // every such job.
+    const linesToConsume = lifecycle.partLines.filter((line) => !line.pending && line.materialId);
+
+    // Fail-closed pre-check — every line must have enough stock before ANY of them are deducted.
+    const shortages: string[] = [];
+    for (const line of linesToConsume) {
+      const stock = await findStockRecord(partnerId, line.materialId);
+      const available = Number(stock?.["qtyOnHand"] ?? 0);
+      const needed = line.serialized ? 1 : line.qty || 1;
+      if (available < needed) {
+        shortages.push(`${line.materialLabel || line.materialId}: ${available} available, ${needed} needed`);
+      }
+    }
+    if (shortages.length > 0) {
+      throw new Error(`Not enough stock to complete this job — ${shortages.join("; ")}.`);
+    }
+
+    for (const line of linesToConsume) {
+      const needed = line.serialized ? 1 : line.qty || 1;
+      const before = await findStockRecord(partnerId, line.materialId);
+      const reorderLevel = Number(before?.["reorderLevel"] ?? 0);
+      const currentQty = Number(before?.["qtyOnHand"] ?? 0);
+
+      const newQty = await adjustStockQty(partnerId, line.materialId, line.materialLabel, String(before?.["warehouseName"] ?? ""), -needed);
+
+      if (line.serialized && line.serial && before) {
+        const consumedSerials = Array.isArray(before["consumedSerials"]) ? (before["consumedSerials"] as unknown[]) : [];
+        await updateBusinessRecord(partnerId, "inventory-stock", String(before["id"]), {
+          ...before,
+          qtyOnHand: newQty,
+          consumedSerials: [...consumedSerials, { serial: line.serial, workorderId, consumedAt: new Date().toISOString() }],
+        });
+      }
+
+      // Fire once, right as stock crosses the threshold — not on every
+      // subsequent deduction while it stays low, so this doesn't spam an
+      // alert per workorder for a part nobody's reordered yet.
+      if (partner && reorderLevel > 0 && currentQty > reorderLevel && newQty <= reorderLevel) {
+        await sendPartnerTelegramAlert(
+          partnerId,
+          "lowStock",
+          await lowStockAlertMessage({
+            partnerBusinessName: partner.businessName,
+            itemName: line.materialLabel || line.materialId,
+            quantityRemaining: newQty,
+            reorderThreshold: reorderLevel,
+          })
+        );
+      }
+    }
+
     await updateBusinessRecord(partnerId, "service-centre", workorderId, { ...record, inventoryDeducted: true });
-    return;
-  }
-
-  if (lifecycle.partLines.length === 0) {
-    await updateBusinessRecord(partnerId, "service-centre", workorderId, { ...record, inventoryDeducted: true });
-    return;
-  }
-
-  // A part line is only stock-tracked when it was matched to a BOM catalog
-  // item (materialId set) — see WorkorderLifecycle.tsx's setPartLabel():
-  // typing a name that doesn't match anything is a deliberately supported
-  // "free-text, unpriced" line, not an error state. Without this filter,
-  // ANY workorder containing one would fail the stock pre-check below with
-  // "0 available" (findStockRecord("") never matches a real stock row) and
-  // Mark Completed would throw for every such job.
-  const linesToConsume = lifecycle.partLines.filter((line) => !line.pending && line.materialId);
-
-  // Fail-closed pre-check — every line must have enough stock before ANY of them are deducted.
-  const shortages: string[] = [];
-  for (const line of linesToConsume) {
-    const stock = await findStockRecord(partnerId, line.materialId);
-    const available = Number(stock?.["qtyOnHand"] ?? 0);
-    const needed = line.serialized ? 1 : line.qty || 1;
-    if (available < needed) {
-      shortages.push(`${line.materialLabel || line.materialId}: ${available} available, ${needed} needed`);
-    }
-  }
-  if (shortages.length > 0) {
-    throw new Error(`Not enough stock to complete this job — ${shortages.join("; ")}.`);
-  }
-
-  for (const line of linesToConsume) {
-    const needed = line.serialized ? 1 : line.qty || 1;
-    const before = await findStockRecord(partnerId, line.materialId);
-    const reorderLevel = Number(before?.["reorderLevel"] ?? 0);
-    const currentQty = Number(before?.["qtyOnHand"] ?? 0);
-
-    const newQty = await adjustStockQty(partnerId, line.materialId, line.materialLabel, String(before?.["warehouseName"] ?? ""), -needed);
-
-    if (line.serialized && line.serial && before) {
-      const consumedSerials = Array.isArray(before["consumedSerials"]) ? (before["consumedSerials"] as unknown[]) : [];
-      await updateBusinessRecord(partnerId, "inventory-stock", String(before["id"]), {
-        ...before,
-        qtyOnHand: newQty,
-        consumedSerials: [...consumedSerials, { serial: line.serial, workorderId, consumedAt: new Date().toISOString() }],
-      });
-    }
-
-    // Fire once, right as stock crosses the threshold — not on every
-    // subsequent deduction while it stays low, so this doesn't spam an
-    // alert per workorder for a part nobody's reordered yet.
-    if (partner && reorderLevel > 0 && currentQty > reorderLevel && newQty <= reorderLevel) {
-      await sendPartnerTelegramAlert(
-        partnerId,
-        "lowStock",
-        await lowStockAlertMessage({
-          partnerBusinessName: partner.businessName,
-          itemName: line.materialLabel || line.materialId,
-          quantityRemaining: newQty,
-          reorderThreshold: reorderLevel,
-        })
-      );
-    }
-  }
-
-  await updateBusinessRecord(partnerId, "service-centre", workorderId, { ...record, inventoryDeducted: true });
+  });
   revalidatePath(`/partner/${partnerId}/inventory/stock`);
   revalidatePath(`/partner/${partnerId}/service-centre/${workorderId}`);
 }
@@ -297,6 +338,20 @@ export async function createInvoiceFromWorkorderAction(
   payment?: { collected: boolean; mode?: string; amount?: number }
 ): Promise<void> {
   await assertCanActOnServiceCentre(partnerId);
+  // Same double-fire concern as deductInventoryForWorkorderAction — the
+  // `if (lifecycle.invoiceId) return` guard below only protects against
+  // re-reading a PERSISTED invoiceId, not two in-flight calls racing
+  // before either write lands (e.g. a double-click on Close/"Retry Invoice
+  // Creation" firing this twice). The lock serializes the whole
+  // read-check-mint-number-create-invoice-write-back sequence per workorder.
+  await withWorkorderLock(workorderId, () => createInvoiceFromWorkorderInner(partnerId, workorderId, payment));
+}
+
+async function createInvoiceFromWorkorderInner(
+  partnerId: string,
+  workorderId: string,
+  payment?: { collected: boolean; mode?: string; amount?: number }
+): Promise<void> {
   const record = await requireWorkorder(partnerId, workorderId);
   const lifecycle = extractLifecycleFromRecord(record);
   if (lifecycle.stage !== "Closed") return;
@@ -516,43 +571,45 @@ export async function cancelWorkorderAction(
   if (!trimmedReason) {
     throw new Error("A cancellation reason is required.");
   }
-  const record = await requireWorkorder(partnerId, workorderId);
-  if (record["cancelledAt"]) {
-    throw new Error("This workorder has already been cancelled.");
-  }
-  if (record["stage"] === "Closed") {
-    throw new Error("A closed workorder can no longer be cancelled.");
-  }
+  await withWorkorderLock(workorderId, async () => {
+    const record = await requireWorkorder(partnerId, workorderId);
+    if (record["cancelledAt"]) {
+      throw new Error("This workorder has already been cancelled.");
+    }
+    if (record["stage"] === "Closed") {
+      throw new Error("A closed workorder can no longer be cancelled.");
+    }
 
-  await updateBusinessRecord(partnerId, "service-centre", workorderId, {
-    ...record,
-    cancelReason: trimmedReason,
-    cancelledAt: new Date().toISOString(),
-    onHold: false,
-    holdReason: undefined,
-    holdSince: undefined,
-    stageHistory: appendStageHistory(record, "Cancelled"),
+    await updateBusinessRecord(partnerId, "service-centre", workorderId, {
+      ...record,
+      cancelReason: trimmedReason,
+      cancelledAt: new Date().toISOString(),
+      onHold: false,
+      holdReason: undefined,
+      holdSince: undefined,
+      stageHistory: appendStageHistory(record, "Cancelled"),
+    });
+
+    const partner = await getPartner(partnerId);
+    if (partner) {
+      await sendWorkorderTelegramAlert(
+        partnerId,
+        workorderId,
+        "workorderCancelled",
+        await workorderCancelledMessage({
+          partnerBusinessName: partner.businessName,
+          workorderNumber: workorderId,
+          reason: trimmedReason,
+          customerName: String(record["customer"] ?? ""),
+          customerPhone: String(record["customerPhone"] ?? ""),
+          brandName: String(record["brandName"] ?? ""),
+          modelName: String(record["modelName"] ?? ""),
+          loggedBy: String(record["loggedBy"] ?? ""),
+          receivedDate: String(record["receivedDate"] ?? ""),
+        })
+      );
+    }
   });
-
-  const partner = await getPartner(partnerId);
-  if (partner) {
-    await sendWorkorderTelegramAlert(
-      partnerId,
-      workorderId,
-      "workorderCancelled",
-      await workorderCancelledMessage({
-        partnerBusinessName: partner.businessName,
-        workorderNumber: workorderId,
-        reason: trimmedReason,
-        customerName: String(record["customer"] ?? ""),
-        customerPhone: String(record["customerPhone"] ?? ""),
-        brandName: String(record["brandName"] ?? ""),
-        modelName: String(record["modelName"] ?? ""),
-        loggedBy: String(record["loggedBy"] ?? ""),
-        receivedDate: String(record["receivedDate"] ?? ""),
-      })
-    );
-  }
 
   revalidatePath(`/partner/${partnerId}/service-centre/${workorderId}`);
   revalidatePath(`/partner/${partnerId}/service-centre`);
@@ -570,25 +627,27 @@ export async function setWorkorderHoldAction(
   reason?: string
 ): Promise<void> {
   await assertCanActOnServiceCentre(partnerId);
-  const record = await requireWorkorder(partnerId, workorderId);
-  // The legacy `status` field (serviceCentreColumns / serviceCentreFormFields)
-  // is a completely separate value from the real onHold lifecycle side-state
-  // and was never updated when a job went on/off hold — so the Workorders
-  // list page (which renders `status` raw, not the stage/onHold-derived
-  // milestone the detail page uses) kept showing whatever status was set at
-  // intake even while the job was genuinely on hold waiting for a part.
-  // Sync it here so the list — and anywhere else `status` is displayed —
-  // reflects "Part Pending" while on hold, restoring whatever status was in
-  // effect immediately before the hold once it's resumed.
-  const extra: Record<string, unknown> = hold
-    ? { statusBeforeHold: record["status"], status: PART_PENDING_STATUS_LABEL }
-    : { status: record["statusBeforeHold"] ?? record["status"], statusBeforeHold: undefined };
-  await updateBusinessRecord(partnerId, "service-centre", workorderId, {
-    ...record,
-    onHold: hold,
-    holdReason: hold ? reason ?? "Awaiting parts" : undefined,
-    holdSince: hold ? new Date().toISOString() : undefined,
-    ...extra,
+  await withWorkorderLock(workorderId, async () => {
+    const record = await requireWorkorder(partnerId, workorderId);
+    // The legacy `status` field (serviceCentreColumns / serviceCentreFormFields)
+    // is a completely separate value from the real onHold lifecycle side-state
+    // and was never updated when a job went on/off hold — so the Workorders
+    // list page (which renders `status` raw, not the stage/onHold-derived
+    // milestone the detail page uses) kept showing whatever status was set at
+    // intake even while the job was genuinely on hold waiting for a part.
+    // Sync it here so the list — and anywhere else `status` is displayed —
+    // reflects "Part Pending" while on hold, restoring whatever status was in
+    // effect immediately before the hold once it's resumed.
+    const extra: Record<string, unknown> = hold
+      ? { statusBeforeHold: record["status"], status: PART_PENDING_STATUS_LABEL }
+      : { status: record["statusBeforeHold"] ?? record["status"], statusBeforeHold: undefined };
+    await updateBusinessRecord(partnerId, "service-centre", workorderId, {
+      ...record,
+      onHold: hold,
+      holdReason: hold ? reason ?? "Awaiting parts" : undefined,
+      holdSince: hold ? new Date().toISOString() : undefined,
+      ...extra,
+    });
   });
   revalidatePath(`/partner/${partnerId}/service-centre/${workorderId}`);
   revalidatePath(`/partner/${partnerId}/service-centre`);

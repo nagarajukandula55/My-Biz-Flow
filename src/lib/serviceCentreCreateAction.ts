@@ -78,51 +78,72 @@ export async function createServiceCentreWorkorderAction(
     });
   } catch {
     // A numbering hiccup must never block a walk-in from being booked in.
-    jobId = `WO-${Date.now().toString(36).toUpperCase()}`;
+    // The random suffix (not just millisecond time) is deliberate — two
+    // fallback IDs minted in the same millisecond would otherwise collide
+    // against BusinessRecord's unique(partnerId, moduleSlug, recordKey)
+    // constraint and surface as a raw, unhandled creation failure instead
+    // of a clean workorder.
+    jobId = `WO-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
   }
 
   const now = new Date();
 
-  // Fire the "new workorder" Telegram alert BEFORE createBusinessRecordAction,
-  // since that call ends in redirect() (throws to abort the action) — nothing
-  // after it would ever run. This is the one occasion made fully
-  // workorder-aware end-to-end: sent via sendWorkorderTelegramAlert so the
-  // Bot API's message_id gets tracked (TelegramLogEntry.messageId/workorderId),
-  // letting a reply in Telegram get matched back to this exact workorder by
-  // the webhook route. Every other alert type in TELEGRAM_ALERT_TYPES still
-  // goes through the generic, non-threaded sendPartnerTelegramAlert.
-  const partner = await getPartner(partnerId);
-  if (partner) {
-    await sendWorkorderTelegramAlert(
-      partnerId,
-      jobId,
-      "newWorkorder",
-      await newWorkorderCreatedMessage({
-        partnerBusinessName: partner.businessName,
-        workorderNumber: jobId,
-        customerName: String(values["customer"] ?? ""),
-        customerPhone: String(values["customerPhone"] ?? ""),
-        deviceCategory: String(values["deviceCategory"] ?? ""),
-        brandName: String(values["brandName"] ?? ""),
-        modelName: String(values["modelName"] ?? ""),
-        imeiOrSerialNumber: String(values["imeiOrSerialNumber"] ?? ""),
-        faultDescription: String(values["faultDescription"] ?? ""),
-        priority: String(values["priority"] ?? ""),
-        loggedBy: String(values["loggedBy"] ?? ""),
-        receivedDate: String(values["receivedDate"] ?? now.toISOString().slice(0, 10)),
-        estimatedAmount: values["estimatedAmount"] ? `₹${Number(values["estimatedAmount"]).toLocaleString("en-IN")}` : "",
-        warrantyStatus: String(values["warrantyStatus"] ?? ""),
-      })
-    );
-  }
+  // createBusinessRecordAction ends in redirect(), which Next.js implements
+  // by THROWING a special control-flow error (digest "NEXT_REDIRECT...") —
+  // nothing after a plain `await createBusinessRecordAction(...)` call would
+  // ever run. Previously that forced the Telegram alert to fire BEFORE this
+  // call, which meant a real creation failure (not the redirect) still sent
+  // staff a notification for a workorder that was never actually saved.
+  // Catching the throw and checking its digest — same pattern already used
+  // in PosCheckout.tsx/TableOrderCart.tsx — tells the two cases apart: the
+  // record is only guaranteed to exist once we see the redirect-shaped
+  // throw, so the alert fires there, then the redirect is re-thrown to
+  // actually navigate. Any OTHER throw (a genuine creation failure) skips
+  // the alert and propagates as-is.
+  try {
+    await createBusinessRecordAction(partnerId, "service-centre", {
+      ...values,
+      id: jobId,
+      // System-set at intake, which is why these three aren't on the form.
+      status: values["status"] || "Created",
+      stage: values["stage"] || "Created",
+      receivedDate: values["receivedDate"] || now.toISOString().slice(0, 10),
+      customerGstin: String(values["customerGstin"] ?? "").trim().toUpperCase(),
+    });
+  } catch (e) {
+    const digest = (e as { digest?: string })?.digest;
+    if (!digest?.startsWith("NEXT_REDIRECT")) throw e;
 
-  await createBusinessRecordAction(partnerId, "service-centre", {
-    ...values,
-    id: jobId,
-    // System-set at intake, which is why these three aren't on the form.
-    status: values["status"] || "Created",
-    stage: values["stage"] || "Created",
-    receivedDate: values["receivedDate"] || now.toISOString().slice(0, 10),
-    customerGstin: String(values["customerGstin"] ?? "").trim().toUpperCase(),
-  });
+    // This is the one occasion made fully workorder-aware end-to-end: sent
+    // via sendWorkorderTelegramAlert so the Bot API's message_id gets
+    // tracked (TelegramLogEntry.messageId/workorderId), letting a reply in
+    // Telegram get matched back to this exact workorder by the webhook
+    // route. Every other alert type in TELEGRAM_ALERT_TYPES still goes
+    // through the generic, non-threaded sendPartnerTelegramAlert.
+    const partner = await getPartner(partnerId);
+    if (partner) {
+      await sendWorkorderTelegramAlert(
+        partnerId,
+        jobId,
+        "newWorkorder",
+        await newWorkorderCreatedMessage({
+          partnerBusinessName: partner.businessName,
+          workorderNumber: jobId,
+          customerName: String(values["customer"] ?? ""),
+          customerPhone: String(values["customerPhone"] ?? ""),
+          deviceCategory: String(values["deviceCategory"] ?? ""),
+          brandName: String(values["brandName"] ?? ""),
+          modelName: String(values["modelName"] ?? ""),
+          imeiOrSerialNumber: String(values["imeiOrSerialNumber"] ?? ""),
+          faultDescription: String(values["faultDescription"] ?? ""),
+          priority: String(values["priority"] ?? ""),
+          loggedBy: String(values["loggedBy"] ?? ""),
+          receivedDate: String(values["receivedDate"] ?? now.toISOString().slice(0, 10)),
+          estimatedAmount: values["estimatedAmount"] ? `₹${Number(values["estimatedAmount"]).toLocaleString("en-IN")}` : "",
+          warrantyStatus: String(values["warrantyStatus"] ?? ""),
+        })
+      );
+    }
+    throw e;
+  }
 }
