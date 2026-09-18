@@ -1,6 +1,6 @@
 import { PrintButton } from "@/components/PrintButton";
 import { PrintFrame } from "@/components/PrintFrame";
-import { generateTrackingQrDataUrl, buildTrackingUrl } from "@/lib/trackingQr";
+import { generateTrackingQrDataUrl } from "@/lib/trackingQr";
 
 /**
  * Service Centre's "Print Workorder" document — an exact port of AN-CRM's
@@ -160,7 +160,6 @@ export async function ServiceCentreJobCardDocument({
               <div className="text-xs text-gray-500">
                 <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-700">Track Your Repair</p>
                 <p>Scan this code anytime to check your repair status online.</p>
-                <p className="mt-1 break-all font-mono">{buildTrackingUrl(partnerId, trackingCode)}</p>
               </div>
             </div>
           )}
