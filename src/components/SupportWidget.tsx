@@ -8,6 +8,21 @@ import type { SupportTicketRecord } from "@/lib/supportTickets";
 const POLL_MS = 6000;
 
 /**
+ * One-click canned messages — sends immediately on click (same "one click,
+ * no confirmation" pattern as Telecalling's send-template dropdown), so a
+ * common question doesn't need typing at all. Kept short/deliberate rather
+ * than exhaustive; add more here as real patterns emerge. Several of these
+ * match a rule in supportAutoReply.ts, so clicking one often gets an
+ * instant reply in the thread with no wait on a human.
+ */
+const QUICK_SHORTCUTS = [
+  "I need help with billing",
+  "How do I reset my password?",
+  "I'd like to talk to a human",
+  "Something isn't working",
+];
+
+/**
  * Fixed bottom-right "Support" bubble on every partner page. Real two-way
  * live chat, not a fire-and-forget ticket: a message sent here is pushed
  * to My Biz Flow's own ops Telegram chat within that conversation's own
@@ -15,6 +30,12 @@ const POLL_MS = 6000;
  * replying in that Telegram thread shows up here within POLL_MS, no page
  * reload needed (see src/lib/supportTickets.ts / the Telegram webhook's
  * support-ticket reply case for the full mechanism).
+ *
+ * QUICK_SHORTCUTS above the input send a canned message with one click, no
+ * typing — several match a keyword rule in src/lib/supportAutoReply.ts, so
+ * clicking one often gets an instant "support" reply in the thread before
+ * any human is even involved (still visible to a human in the Telegram
+ * thread as "Auto-reply sent," so nobody duplicates an answer already given).
  *
  * WhatsApp is a second, separate reach-out option alongside the chat: a
  * plain https://wa.me/<number> deep link to MY BIZ FLOW's own platform
@@ -58,8 +79,8 @@ export function SupportWidget({
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
   }, [thread?.messages.length]);
 
-  function handleSend() {
-    const text = draft.trim();
+  function handleSend(overrideText?: string) {
+    const text = (overrideText ?? draft).trim();
     if (!text) return;
     setError(null);
     const formData = new FormData();
@@ -125,6 +146,20 @@ export function SupportWidget({
 
           {error && <p className="px-4 text-xs text-danger">{error}</p>}
 
+          <div className="flex flex-wrap gap-1.5 border-t border-border px-4 py-2">
+            {QUICK_SHORTCUTS.map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => handleSend(s)}
+                disabled={isPending}
+                className="rounded-full border border-border bg-bg px-2.5 py-1 text-[11px] text-text-muted hover:bg-bg-sunken hover:text-text disabled:opacity-50"
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+
           <div className="flex items-center gap-2 border-t border-border p-3">
             <input
               type="text"
@@ -139,7 +174,7 @@ export function SupportWidget({
               placeholder="Type a message…"
               className="flex-1 rounded-md border border-border bg-bg px-3 py-2 text-sm text-text outline-none focus:border-accent"
             />
-            <button type="button" onClick={handleSend} disabled={isPending || !draft.trim()} className="btn-accent px-3 py-2 text-sm disabled:opacity-60">
+            <button type="button" onClick={() => handleSend()} disabled={isPending || !draft.trim()} className="btn-accent px-3 py-2 text-sm disabled:opacity-60">
               Send
             </button>
           </div>

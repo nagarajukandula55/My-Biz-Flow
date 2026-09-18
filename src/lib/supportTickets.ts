@@ -18,6 +18,7 @@ import { prisma } from "@/lib/prisma";
 import { createBusinessRecord, getBusinessRecord, updateBusinessRecord, listBusinessRecords } from "@/lib/businessRecords";
 import { getOpsChatId } from "@/lib/platformSettings";
 import { sendRawTelegramMessage } from "@/lib/telegram";
+import { matchAutoReply } from "@/lib/supportAutoReply";
 
 const MODULE_SLUG = "support-tickets";
 
@@ -99,6 +100,25 @@ export async function sendPartnerSupportMessage(partnerId: string, businessName:
   }
 
   await pushToTelegramThread(ticket, `💬 <b>${businessName}</b> (${partnerId})\n\n${trimmed}`);
+
+  // Instant keyword-matched reply, no human needed — see supportAutoReply.ts.
+  // Runs regardless of whether the Telegram push above succeeded, so the
+  // partner still gets an immediate reply even if ops Telegram is
+  // unreachable; a note is sent to the thread either way so a human doesn't
+  // duplicate an answer that's already been given.
+  const autoReply = matchAutoReply(trimmed);
+  if (autoReply) {
+    const withReply: SupportTicketRecord = { ...ticket, messages: [...ticket.messages, { from: "support", text: autoReply, at: new Date().toISOString() }] };
+    await updateBusinessRecord(partnerId, MODULE_SLUG, ticket.id, {
+      businessName: withReply.businessName ?? businessName,
+      messages: withReply.messages,
+      status: withReply.status,
+      resolvedAt: withReply.resolvedAt,
+    });
+    ticket = withReply;
+    await pushToTelegramThread(ticket, `🤖 <i>Auto-reply sent:</i> ${autoReply}`);
+  }
+
   return ticket;
 }
 
