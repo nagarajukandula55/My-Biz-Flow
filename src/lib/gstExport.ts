@@ -2,28 +2,50 @@
  * Pure helpers for the GST bulk-export feature (see gstExportActions.ts
  * for the Server Actions that call these) — kept in a separate,
  * non-"use server" module because a "use server" file may only export
- * async functions, and buildGstExportRows/gstRowsToCsv are used from both
- * the export page (a plain server component) and the download action.
+ * async functions, and these are used from both the export page (a plain
+ * server component) and the download action.
  *
- * See gstExportActions.ts's top comment for the full rationale on the
- * B2B/B2C join and the CGST/SGST/IGST split's judgement call.
+ * Exports a single ZIP containing:
+ *  - gst-export.json — every invoice with the CGST Rule 46 fields a GST
+ *    return/reconciliation actually needs (place of supply + state code,
+ *    reverse charge, per-invoice CGST/SGST/IGST split), not just a flat
+ *    CSV-shaped row set.
+ *  - gst-export.xlsx — the same rows as a real spreadsheet (via the
+ *    `xlsx` package), for whoever needs to hand this to an accountant
+ *    rather than a script.
+ *
+ * Not a certified GSTR-1 portal upload template — this is a workpaper
+ * export to make preparing one faster, same caveat as before.
  */
 import { listBusinessRecords } from "@/lib/businessRecords";
+import { getPartner } from "@/lib/partnerData";
+import { normalizeState, stateCodeOf } from "@/lib/gstStateCodes";
 
 export type GstFilter = "all" | "b2b" | "b2c";
 
 export type GstExportRow = {
   invoiceNumber: string;
   invoiceDate: string;
+  invoiceType: "B2B" | "B2C";
   customerName: string;
   customerGstin: string;
+  customerStateCode: string;
+  /** Recipient's own state for a registered (B2B) customer, else the supplier's — IGST Act s.12(2). */
+  placeOfSupply: string;
+  placeOfSupplyStateCode: string;
+  /** Always "N" — Billing/Service Centre never raise a reverse-charge-applicable supply. */
+  reverseCharge: "Y" | "N";
   taxableValue: number;
+  /** Approximate — Billing invoices store an invoice-level tax total, not a per-line rate/HSN breakup. */
+  taxRate: number;
+  cgstRate: number;
   cgst: number;
+  sgstRate: number;
   sgst: number;
+  igstRate: number;
   igst: number;
   totalTax: number;
   invoiceValue: number;
-  category: "B2B" | "B2C";
 };
 
 function inRange(date: string, from?: string, to?: string): boolean {
@@ -33,25 +55,9 @@ function inRange(date: string, from?: string, to?: string): boolean {
   return true;
 }
 
-function csvEscape(value: string | number): string {
-  const s = String(value);
-  if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
-  return s;
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
 }
-
-const CSV_HEADERS = [
-  "Invoice Number",
-  "Invoice Date",
-  "Customer Name",
-  "Customer GSTIN",
-  "Taxable Value",
-  "CGST Amount",
-  "SGST Amount",
-  "IGST Amount",
-  "Total Tax",
-  "Invoice Value",
-  "Category",
-];
 
 export async function buildGstExportRows(
   partnerId: string,
@@ -59,45 +65,58 @@ export async function buildGstExportRows(
   to: string,
   filter: GstFilter
 ): Promise<GstExportRow[]> {
-  const [invoices, contacts] = await Promise.all([
+  const [invoices, partner] = await Promise.all([
     listBusinessRecords(partnerId, "billing"),
-    listBusinessRecords(partnerId, "billing-contacts"),
+    getPartner(partnerId),
   ]);
-
-  const gstinByName = new Map<string, string>();
-  for (const c of contacts) {
-    const name = String(c["name"] ?? "").trim();
-    const gstin = String(c["gstin"] ?? "").trim();
-    if (name && gstin) gstinByName.set(name, gstin);
-  }
+  const supplierState = partner?.state ?? "";
 
   const rows: GstExportRow[] = [];
   for (const inv of invoices) {
     const issueDate = String(inv["issueDate"] ?? "");
     if (!inRange(issueDate, from, to)) continue;
 
-    const customerName = String(inv["customer"] ?? "");
-    const gstin = gstinByName.get(customerName) ?? "";
-    const category: "B2B" | "B2C" = gstin ? "B2B" : "B2C";
-    if (filter === "b2b" && category !== "B2B") continue;
-    if (filter === "b2c" && category !== "B2C") continue;
+    // Read the invoice's own stored customer fields directly (set at
+    // creation/edit — see billing/[recordId]/edit/page.tsx) rather than
+    // re-deriving GSTIN/state from a fuzzy name match against Contacts,
+    // which silently produced blanks for any walk-in or renamed customer.
+    const customerGstin = String(inv["customerGstin"] ?? "").trim();
+    const customerState = String(inv["customerState"] ?? "").trim();
+    const invoiceType: "B2B" | "B2C" = customerGstin ? "B2B" : "B2C";
+    if (filter === "b2b" && invoiceType !== "B2B") continue;
+    if (filter === "b2c" && invoiceType !== "B2C") continue;
+
+    const interState =
+      normalizeState(customerState) !== "" &&
+      normalizeState(supplierState) !== "" &&
+      normalizeState(customerState) !== normalizeState(supplierState);
 
     const taxableValue = Number(inv["subtotal"] ?? 0) - Number(inv["discountAmount"] ?? 0);
     const totalTax = Number(inv["taxAmount"] ?? 0);
-    const half = Math.round((totalTax / 2) * 100) / 100;
+    const taxRate = taxableValue > 0 ? round2((totalTax / taxableValue) * 100) : 0;
+
+    const placeOfSupply = customerState || supplierState;
 
     rows.push({
       invoiceNumber: String(inv["id"] ?? ""),
       invoiceDate: issueDate,
-      customerName,
-      customerGstin: gstin,
-      taxableValue,
-      cgst: half,
-      sgst: totalTax - half,
-      igst: 0,
-      totalTax,
-      invoiceValue: Number(inv["totalAmount"] ?? 0),
-      category,
+      invoiceType,
+      customerName: String(inv["customer"] ?? ""),
+      customerGstin,
+      customerStateCode: stateCodeOf(customerState) ?? "",
+      placeOfSupply,
+      placeOfSupplyStateCode: stateCodeOf(placeOfSupply) ?? "",
+      reverseCharge: "N",
+      taxableValue: round2(taxableValue),
+      taxRate,
+      cgstRate: interState ? 0 : round2(taxRate / 2),
+      cgst: interState ? 0 : round2(totalTax / 2),
+      sgstRate: interState ? 0 : round2(taxRate / 2),
+      sgst: interState ? 0 : round2(totalTax - totalTax / 2),
+      igstRate: interState ? taxRate : 0,
+      igst: interState ? round2(totalTax) : 0,
+      totalTax: round2(totalTax),
+      invoiceValue: round2(Number(inv["totalAmount"] ?? 0)),
     });
   }
 
@@ -105,24 +124,72 @@ export async function buildGstExportRows(
   return rows;
 }
 
-export function gstRowsToCsv(rows: GstExportRow[]): string {
-  const lines = [CSV_HEADERS.join(",")];
-  for (const r of rows) {
-    lines.push(
-      [
-        csvEscape(r.invoiceNumber),
-        csvEscape(r.invoiceDate),
-        csvEscape(r.customerName),
-        csvEscape(r.customerGstin),
-        csvEscape(r.taxableValue),
-        csvEscape(r.cgst),
-        csvEscape(r.sgst),
-        csvEscape(r.igst),
-        csvEscape(r.totalTax),
-        csvEscape(r.invoiceValue),
-        csvEscape(r.category),
-      ].join(",")
-    );
-  }
-  return lines.join("\n");
+export type GstExportJson = {
+  supplier: {
+    gstin: string;
+    state: string;
+    stateCode: string;
+  };
+  exportedAt: string;
+  from: string;
+  to: string;
+  filter: GstFilter;
+  invoiceCount: number;
+  invoices: GstExportRow[];
+};
+
+export async function buildGstExportJson(
+  partnerId: string,
+  from: string,
+  to: string,
+  filter: GstFilter
+): Promise<GstExportJson> {
+  const [rows, partner] = await Promise.all([
+    buildGstExportRows(partnerId, from, to, filter),
+    getPartner(partnerId),
+  ]);
+  return {
+    supplier: {
+      gstin: partner?.gstin ?? "",
+      state: partner?.state ?? "",
+      stateCode: stateCodeOf(partner?.state) ?? "",
+    },
+    exportedAt: new Date().toISOString(),
+    from,
+    to,
+    filter,
+    invoiceCount: rows.length,
+    invoices: rows,
+  };
+}
+
+const XLSX_HEADERS: { key: keyof GstExportRow; label: string }[] = [
+  { key: "invoiceNumber", label: "Invoice Number" },
+  { key: "invoiceDate", label: "Invoice Date" },
+  { key: "invoiceType", label: "Invoice Type" },
+  { key: "customerName", label: "Customer Name" },
+  { key: "customerGstin", label: "Customer GSTIN" },
+  { key: "customerStateCode", label: "Customer State Code" },
+  { key: "placeOfSupply", label: "Place of Supply" },
+  { key: "placeOfSupplyStateCode", label: "Place of Supply State Code" },
+  { key: "reverseCharge", label: "Reverse Charge" },
+  { key: "taxableValue", label: "Taxable Value" },
+  { key: "taxRate", label: "Tax Rate (%)" },
+  { key: "cgstRate", label: "CGST Rate (%)" },
+  { key: "cgst", label: "CGST Amount" },
+  { key: "sgstRate", label: "SGST Rate (%)" },
+  { key: "sgst", label: "SGST Amount" },
+  { key: "igstRate", label: "IGST Rate (%)" },
+  { key: "igst", label: "IGST Amount" },
+  { key: "totalTax", label: "Total Tax" },
+  { key: "invoiceValue", label: "Invoice Value" },
+];
+
+/** Builds the "Invoices" sheet's rows as plain objects keyed by header label — what XLSX.utils.json_to_sheet expects. */
+export function gstRowsToSheetData(rows: GstExportRow[]): Record<string, string | number>[] {
+  return rows.map((r) => {
+    const out: Record<string, string | number> = {};
+    for (const h of XLSX_HEADERS) out[h.label] = r[h.key];
+    return out;
+  });
 }

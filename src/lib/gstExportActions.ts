@@ -1,28 +1,43 @@
 "use server";
 
+import * as XLSX from "xlsx";
+import JSZip from "jszip";
 import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
-import { buildGstExportRows, gstRowsToCsv, type GstFilter } from "@/lib/gstExport";
+import { buildGstExportJson, gstRowsToSheetData, type GstFilter } from "@/lib/gstExport";
 
 export type { GstFilter };
 
 /**
- * Server Action invoked by the client "Download CSV" button — returns the
- * CSV text, which the client turns into a Blob and downloads via a plain
- * `<a download>` link. No new API route: this is the standard Next.js
- * Server-Action-returns-a-string, client-does-the-Blob pattern. See
- * src/lib/gstExport.ts for the row-building/CSV logic and the judgement
- * calls behind the B2B/B2C split and the CGST/SGST/IGST columns.
+ * Server Action invoked by the client "Download GST Export (ZIP)" button —
+ * returns a base64-encoded ZIP (the standard Next.js "Server Action
+ * returns data, client does the Blob" pattern — no new API route). The
+ * ZIP contains:
+ *  - gst-export.json — every invoice with the full set of GST-required
+ *    fields (see gstExport.ts's GstExportRow), for anyone reconciling
+ *    programmatically or feeding another tool.
+ *  - gst-export.xlsx — the same rows as a real spreadsheet, built with
+ *    the `xlsx` package, for handing to an accountant.
  */
-export async function downloadGstExportAction(
+export async function downloadGstExportZipAction(
   partnerId: string,
   from: string,
   to: string,
   filter: GstFilter
-): Promise<{ csv: string; filename: string; count: number }> {
+): Promise<{ zipBase64: string; filename: string; count: number }> {
   await requireSessionPartnerId(partnerId);
-  const rows = await buildGstExportRows(partnerId, from, to, filter);
-  const csv = gstRowsToCsv(rows);
+  const json = await buildGstExportJson(partnerId, from, to, filter);
+
+  const workbook = XLSX.utils.book_new();
+  const sheet = XLSX.utils.json_to_sheet(gstRowsToSheetData(json.invoices));
+  XLSX.utils.book_append_sheet(workbook, sheet, "Invoices");
+  const xlsxBuffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" }) as Buffer;
+
+  const zip = new JSZip();
+  zip.file("gst-export.json", JSON.stringify(json, null, 2));
+  zip.file("gst-export.xlsx", xlsxBuffer);
+  const zipBuffer = await zip.generateAsync({ type: "nodebuffer" });
+
   const label = filter === "all" ? "all" : filter;
-  const filename = `gst-export-${label}-${from || "start"}-to-${to || "end"}.csv`;
-  return { csv, filename, count: rows.length };
+  const filename = `gst-export-${label}-${from || "start"}-to-${to || "end"}.zip`;
+  return { zipBase64: zipBuffer.toString("base64"), filename, count: json.invoiceCount };
 }

@@ -13,7 +13,7 @@ registerPage({
   superAdminOnly: false,
   customizableRegions: [],
   explanation:
-    "Bulk, GST-workpaper-style CSV export of Billing invoices for a date range, split by B2B (customer has a GSTIN on file in billing-contacts) vs B2C (no GSTIN) — meant to make filling a GSTR-1 upload template faster, not a certified portal-exact export. Preview table + a Download CSV button that calls a Server Action returning CSV text, turned into a file download client-side (no new API route).",
+    "Bulk, GST-workpaper-style export of Billing invoices for a date range, split by B2B (invoice carries a customer GSTIN) vs B2C (no GSTIN) — meant to make filling a GSTR-1 upload template faster, not a certified portal-exact export. Preview table + a Download GST Export (ZIP) button that calls a Server Action returning a base64 ZIP (gst-export.json with every CGST Rule 46 field per invoice — place of supply + state code, reverse charge, correct CGST/SGST-vs-IGST split by comparing customer/supplier state — plus gst-export.xlsx, the same rows as a spreadsheet), turned into a file download client-side (no new API route).",
   sourceFile: "src/app/partner/[partnerId]/billing/reports/gst-export/page.tsx",
 });
 
@@ -24,7 +24,8 @@ const PREVIEW_COLUMNS: Column[] = [
   { key: "invoiceDate", label: "Date", type: "date" },
   { key: "customerName", label: "Customer", type: "text" },
   { key: "customerGstin", label: "GSTIN", type: "text" },
-  { key: "category", label: "Category", type: "select-chip" },
+  { key: "invoiceType", label: "Type", type: "select-chip" },
+  { key: "placeOfSupply", label: "Place of Supply", type: "text" },
   { key: "taxableValue", label: "Taxable Value", type: "currency" },
   { key: "cgst", label: "CGST", type: "currency" },
   { key: "sgst", label: "SGST", type: "currency" },
