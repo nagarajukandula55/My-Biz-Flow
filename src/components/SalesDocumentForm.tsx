@@ -9,6 +9,7 @@ import {
   type SalesDocKind,
 } from "@/lib/sample-data/billing-sales-documents";
 import type { ContactOption } from "./BillingInvoiceForm";
+import { InlineTypeahead } from "./InlineTypeahead";
 
 export type SalesDocumentValues = {
   contact: string;
@@ -88,27 +89,17 @@ export function SalesDocumentForm({
     });
   }
 
-  const listId = `${docKind}-contact-options`;
-
   return (
     <form onSubmit={handleSubmit} className="max-w-4xl">
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         <Field label="Contact" required>
-          <input
+          <InlineTypeahead
             value={contact}
-            onChange={(e) => setContact(e.target.value)}
+            onChange={setContact}
             placeholder="Customer or partner name"
-            required
-            list={contactOptions ? listId : undefined}
+            options={(contactOptions ?? []).map((c) => ({ value: c.id, label: c.label }))}
             className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text outline-none focus:border-teal"
           />
-          {contactOptions && (
-            <datalist id={listId}>
-              {contactOptions.map((c) => (
-                <option key={c.id} value={c.label} />
-              ))}
-            </datalist>
-          )}
         </Field>
 
         <Field label="Issue Date" required>

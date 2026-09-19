@@ -9,6 +9,7 @@ import { Modal } from "@/components/Modal";
 import { DeleteBusinessRecordButton } from "@/components/DeleteBusinessRecordButton";
 import { PrintPopupLink } from "@/components/PrintPopupLink";
 import { SearchSelectModal, type SearchSelectOption } from "@/components/SearchSelectModal";
+import { InlineTypeahead } from "@/components/InlineTypeahead";
 import { CustomerDataOtpGate } from "../customers/CustomerDataOtpGate";
 import {
   WORKORDER_STAGES,
@@ -672,11 +673,12 @@ export function WorkorderLifecycle({
   }
 
   /**
-   * The "Part / service name" free-text input is backed by the
-   * `wo-bom-materials` <datalist> below (bomMaterialsState) — same
-   * type-or-pick pattern RecordForm's own `suggestions`/`suggestionsByParent`
-   * fields use elsewhere in this app (a plain HTML datalist, no picker
-   * component). Typing a value that matches an existing material's label
+   * The "Part / service name" free-text input is backed by an
+   * InlineTypeahead over bomMaterialsState (a styled suggestion dropdown
+   * this app renders itself, not a native `<datalist>` popup — a
+   * datalist's list is drawn by the OS/browser and can't be styled,
+   * which is why it used to show up as a plain unstyled dark box).
+   * Typing a value that matches an existing material's label
    * exactly (i.e. the user picked the suggestion, or typed the name of a
    * material that's already in the BOM) stamps that material's own catalog
    * price onto the line — materialId/serialized/unitPrice/taxRate — the
@@ -1637,14 +1639,6 @@ export function WorkorderLifecycle({
           </div>
         </div>
 
-        {/* Backs the "Part / service name" free-text input's typeahead — see
-            setPartLabel()'s comment. Suggestions only, inert when empty. */}
-        <datalist id="wo-bom-materials">
-          {bomMaterialsState.map((m) => (
-            <option key={m.id} value={m.label} />
-          ))}
-        </datalist>
-
         {editable && bomMaterialsState.length === 0 && (
           <div className="mt-3 rounded-md border border-warning bg-warning-soft px-3 py-2 text-sm text-warning">
             No materials found in your BOM yet — add parts under Material Catalog to have them listed here for quick
@@ -1771,16 +1765,17 @@ export function WorkorderLifecycle({
               return (
                 <div key={line.id} className="rounded-md border border-border bg-bg px-3 py-2 text-sm">
                   <div className="flex flex-wrap items-end gap-2">
-                    <input
-                      type="text"
-                      list="wo-bom-materials"
-                      placeholder="Part / service name"
-                      value={line.materialLabel}
-                      disabled={!editable || line.pending}
-                      onChange={(e) => setPartLabel(line.id, e.target.value)}
-                      onBlur={persistPartQty}
-                      className="min-w-[10rem] flex-1 rounded-md border border-border bg-bg-raised px-2 py-1.5 text-sm text-text disabled:opacity-60"
-                    />
+                    <div className="min-w-[10rem] flex-1">
+                      <InlineTypeahead
+                        placeholder="Part / service name"
+                        value={line.materialLabel}
+                        disabled={!editable || line.pending}
+                        onChange={(v) => setPartLabel(line.id, v)}
+                        onBlur={persistPartQty}
+                        options={bomMaterialsState.map((m) => ({ value: m.id, label: m.label }))}
+                        className="w-full rounded-md border border-border bg-bg-raised px-2 py-1.5 text-sm text-text disabled:opacity-60"
+                      />
+                    </div>
                     <label className="flex shrink-0 flex-col gap-0.5 text-[10px] font-semibold uppercase tracking-wide text-text-muted">
                       Qty
                       <input

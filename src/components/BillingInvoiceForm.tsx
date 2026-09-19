@@ -8,6 +8,7 @@ import type { LineItem } from "@/lib/sample-data/billing";
 import { formatCurrencyINR } from "@/lib/format";
 import { INDIAN_STATES } from "@/lib/sample-data/geo";
 import { SearchSelectModal, type SearchSelectOption } from "./SearchSelectModal";
+import { InlineTypeahead } from "./InlineTypeahead";
 
 /** This partner's own Bank Details (Partner.bankAccountName/bankName/bankAccountNumber/bankIfsc,
  * set from Settings → Bank Details) — passed in so the "On this Invoice" footer preview
@@ -445,22 +446,21 @@ export function BillingInvoiceForm({
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           <Field label="Customer" required>
             <div className="flex gap-2">
-              <input
+              <InlineTypeahead
                 value={customer}
-                onChange={(e) => {
-                  setCustomer(e.target.value);
+                onChange={(v) => {
+                  setCustomer(v);
                   // The field stays free-text (see the contactOptions doc below), so a
                   // linked contact only exists when the typed value exactly matches a
                   // suggestion's label. Any further edit — including picking a
                   // different suggestion — re-evaluates this and drops the link if it
                   // no longer matches, so a free-typed name never carries a stale id.
-                  const match = contactOptions?.find((c) => c.label === e.target.value);
+                  const match = contactOptions?.find((c) => c.label === v);
                   if (match) applyContact(match);
                   else setCustomerContactId(null);
                 }}
                 placeholder="Customer or partner name"
-                required
-                list={contactOptions ? "billing-contact-options" : undefined}
+                options={(contactOptions ?? []).map((c) => ({ value: c.id, label: c.label }))}
                 className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text outline-none focus:border-teal"
               />
               {customerOptions && (
@@ -473,13 +473,6 @@ export function BillingInvoiceForm({
                 </button>
               )}
             </div>
-            {contactOptions && (
-              <datalist id="billing-contact-options">
-                {contactOptions.map((c) => (
-                  <option key={c.id} value={c.label} />
-                ))}
-              </datalist>
-            )}
             {customerContactId && (
               <p className="mt-1 text-[11px] text-success">Existing contact — details prefilled from directory.</p>
             )}

@@ -3,6 +3,7 @@
 import type { LineItem } from "@/lib/sample-data/billing";
 import { formatCurrencyINR } from "@/lib/format";
 import { HSN_CODES } from "@/lib/sample-data/bom";
+import { InlineTypeahead } from "@/components/InlineTypeahead";
 
 const EMPTY_ITEM: LineItem = { description: "", quantity: 1, unit: "pcs", unitPrice: 0, taxRate: 18, priceMode: "excl" };
 
@@ -188,17 +189,18 @@ export function LineItemsEditor({
                   </td>
                   {showHsn && (
                     <td className="px-3 py-2">
-                      {/* Pick-from-list-or-type-your-own, same convention as
-                          RecordForm's `suggestions` combobox fields: a plain
-                          text input with a `list` pointing at a shared
-                          <datalist>, not a closed <select> — real GST HSN
-                          data is broader than HSN_CODES's curated list, so
-                          a code that isn't in it must still be enterable. */}
-                      <input
+                      {/* Pick-from-list-or-type-your-own — real GST HSN data
+                          is broader than HSN_CODES's curated list, so a code
+                          that isn't in it must still be enterable. Uses
+                          InlineTypeahead (a styled dropdown this app renders
+                          itself) rather than a native <datalist>, whose
+                          popup is drawn by the OS/browser and can't be
+                          styled to match the design system. */}
+                      <InlineTypeahead
                         value={item.hsnCode ?? ""}
-                        onChange={(e) => updateItem(i, { hsnCode: e.target.value })}
+                        onChange={(v) => updateItem(i, { hsnCode: v })}
                         placeholder="HSN"
-                        list="line-item-hsn-codes"
+                        options={HSN_CODES.map((h) => ({ value: h.code, label: h.code }))}
                         className="w-full rounded-md border border-border bg-bg px-2.5 py-1.5 text-sm text-text outline-none focus:border-accent"
                       />
                     </td>
@@ -300,15 +302,6 @@ export function LineItemsEditor({
           </tbody>
         </table>
       </div>
-      {showHsn && (
-        <datalist id="line-item-hsn-codes">
-          {HSN_CODES.map((h) => (
-            <option key={h.code} value={h.code}>
-              {h.description}
-            </option>
-          ))}
-        </datalist>
-      )}
 
       <button type="button" onClick={addItem} className="btn-outline mt-3 px-3 py-1.5 text-xs">
         + Add line item

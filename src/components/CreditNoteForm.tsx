@@ -5,6 +5,7 @@ import { LineItemsEditor, computeTotals, type ItemOption } from "./LineItemsEdit
 import type { LineItem } from "@/lib/sample-data/billing";
 import { NOTE_TYPES, NOTE_REASONS } from "@/lib/sample-data/billing-credit-notes";
 import type { ContactOption } from "./BillingInvoiceForm";
+import { InlineTypeahead } from "./InlineTypeahead";
 
 export type NoteType = (typeof NOTE_TYPES)[number];
 
@@ -90,37 +91,22 @@ export function CreditNoteForm({
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         <Field label="Contact" required>
-          <input
+          <InlineTypeahead
             value={contact}
-            onChange={(e) => setContact(e.target.value)}
+            onChange={setContact}
             placeholder="Customer or partner name"
-            required
-            list={contactOptions ? "credit-note-contact-options" : undefined}
+            options={(contactOptions ?? []).map((c) => ({ value: c.id, label: c.label }))}
             className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text outline-none focus:border-teal"
           />
-          {contactOptions && (
-            <datalist id="credit-note-contact-options">
-              {contactOptions.map((c) => (
-                <option key={c.id} value={c.label} />
-              ))}
-            </datalist>
-          )}
         </Field>
         <Field label="Against Invoice (optional)">
-          <input
+          <InlineTypeahead
             value={linkedInvoiceId}
-            onChange={(e) => setLinkedInvoiceId(e.target.value)}
+            onChange={setLinkedInvoiceId}
             placeholder="INV-3301"
-            list={invoiceOptions ? "credit-note-invoice-options" : undefined}
+            options={(invoiceOptions ?? []).map((id) => ({ value: id, label: id }))}
             className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text font-mono outline-none focus:border-teal"
           />
-          {invoiceOptions && (
-            <datalist id="credit-note-invoice-options">
-              {invoiceOptions.map((id) => (
-                <option key={id} value={id} />
-              ))}
-            </datalist>
-          )}
         </Field>
         <Field label="Reason" required>
           <select

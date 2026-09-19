@@ -5,6 +5,7 @@ import { LineItemsEditor, computeTotals, type ItemOption } from "./LineItemsEdit
 import type { LineItem } from "@/lib/sample-data/billing";
 import { RECURRING_FREQUENCIES, type RecurringFrequency } from "@/lib/sample-data/billing-recurring";
 import type { ContactOption } from "./BillingInvoiceForm";
+import { InlineTypeahead } from "./InlineTypeahead";
 
 export type RecurringInvoiceValues = {
   customer: string;
@@ -72,21 +73,13 @@ export function RecurringInvoiceForm({
     <form onSubmit={handleSubmit} className="max-w-4xl">
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         <Field label="Customer" required>
-          <input
+          <InlineTypeahead
             value={customer}
-            onChange={(e) => setCustomer(e.target.value)}
+            onChange={setCustomer}
             placeholder="Customer or partner name"
-            required
-            list={contactOptions ? "recurring-contact-options" : undefined}
+            options={(contactOptions ?? []).map((c) => ({ value: c.id, label: c.label }))}
             className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text outline-none focus:border-teal"
           />
-          {contactOptions && (
-            <datalist id="recurring-contact-options">
-              {contactOptions.map((c) => (
-                <option key={c.id} value={c.label} />
-              ))}
-            </datalist>
-          )}
         </Field>
         <Field label="Frequency" required>
           <select
