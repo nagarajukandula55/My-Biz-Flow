@@ -8,6 +8,7 @@ import type { Row } from "@/components/DataTable";
 import { getPartner } from "@/lib/partnerData";
 import { runBulkImport, type BulkImportResult } from "@/lib/bulkImportCsv";
 import { getStockTransferFormFields } from "@/lib/sample-data/warehouse";
+import { adjustStockQty, getQtyOnHand } from "@/lib/inventoryStock";
 
 /**
  * Creates a stock transfer — same generic create for an intra-partner
@@ -30,12 +31,21 @@ export async function createStockTransferAction(
 
   const toPartnerId = String(values["toPartnerId"] ?? "").trim();
   const toWarehouseName = String(values["toWarehouseName"] ?? "").trim();
+  const materialId = String(values["materialId"] ?? "").trim();
+  const fromWarehouseName = String(values["fromWarehouseName"] ?? "").trim();
+  const quantity = Number(values["quantity"] ?? 0);
 
   if (!toPartnerId && !toWarehouseName) {
     return { error: "Choose a destination warehouse OR a destination Partner ID." };
   }
   if (toPartnerId && toWarehouseName) {
     return { error: "Choose only one: a destination warehouse (own transfer) or a destination Partner ID (partner-to-partner transfer), not both." };
+  }
+  if (!materialId || !fromWarehouseName || !Number.isFinite(quantity) || quantity <= 0) {
+    return { error: "Material, From Warehouse and a positive Quantity are required." };
+  }
+  if (toWarehouseName && toWarehouseName === fromWarehouseName) {
+    return { error: "From Warehouse and To Warehouse can't be the same." };
   }
 
   let record: Row;
@@ -49,14 +59,30 @@ export async function createStockTransferAction(
       toPartnerId,
       status: "Pending Super Admin Approval",
     });
+    // Partner-to-partner: this side's own stock isn't touched until Super
+    // Admin approves the transfer (see /admin/stock-transfers in
+    // My-Biz-Flow-Admin), which is what actually moves stock on both sides.
   } else {
+    // Same-partner, warehouse-to-warehouse: real stock moves at creation
+    // time (there's no separate approval step to gate on here) —
+    // fail-closed against the source warehouse's real Available Qty
+    // rather than letting a transfer silently go negative.
+    const available = await getQtyOnHand(partnerId, materialId, fromWarehouseName);
+    if (available < quantity) {
+      return { error: `Cannot transfer ${quantity} — only ${available} available at ${fromWarehouseName}.` };
+    }
+
     record = await createBusinessRecord(partnerId, "inventory-stock-transfers", {
       ...values,
       toPartnerId: "",
+      status: "Completed",
     });
+    await adjustStockQty(partnerId, materialId, materialId, fromWarehouseName, -quantity);
+    await adjustStockQty(partnerId, materialId, materialId, toWarehouseName, quantity);
   }
 
   revalidatePath(`/partner/${partnerId}/inventory/stock-transfers`);
+  revalidatePath(`/partner/${partnerId}/inventory/stock`);
   redirect(`/partner/${partnerId}/inventory/stock-transfers/${record["id"]}?created=1`);
 }
 

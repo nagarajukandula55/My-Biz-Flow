@@ -89,6 +89,29 @@ export async function adjustStockQty(
   return newQty;
 }
 
+/**
+ * Every material's Available Qty broken down per warehouse it has any
+ * stock in — e.g. `{ "MAT-1001": "Central Warehouse — Bengaluru: 42 avail, Local Store — Indiranagar: 3 avail" }`.
+ * Used to embed live availability straight into a Material dropdown's
+ * option label (Stock Transfers/Return Orders) so a user can see what's
+ * actually available before picking a quantity, without a separate
+ * client-side lookup.
+ */
+export async function getAvailabilityByMaterial(partnerId: string): Promise<Map<string, string>> {
+  const rows = await listBusinessRecords(partnerId, "inventory-stock");
+  const byMaterial = new Map<string, string[]>();
+  for (const r of rows) {
+    const code = materialCode(r["materialId"]);
+    const available = Number(r["availableQty"] ?? r["qtyOnHand"] ?? 0);
+    if (available <= 0) continue;
+    const entry = `${r["warehouseName"]}: ${available} avail`;
+    byMaterial.set(code, [...(byMaterial.get(code) ?? []), entry]);
+  }
+  const result = new Map<string, string>();
+  for (const [code, entries] of byMaterial) result.set(code, entries.join(", "));
+  return result;
+}
+
 /** Sets a material's on-hand quantity to an exact value (Stock Take reconciliation) rather than adjusting by a delta. */
 export async function setStockQty(
   partnerId: string,

@@ -1,7 +1,7 @@
 "use client";
 
 import { RecordFormModal, useRecordFormModal } from "@/components/RecordFormModal";
-import { createBusinessRecordAction } from "@/lib/businessRecordActions";
+import { createReturnOrderAction } from "./actions";
 import type { FormFieldDef } from "@/components/RecordForm";
 
 /** Create-as-modal for inventory/return-orders (see src/components/RecordFormModal.tsx). `fields` is fetched server-side by the parent page (getReturnOrderFormFields, partner-scoped). */
@@ -18,7 +18,7 @@ export function ReturnOrdersNewButton({ partnerId, fields }: { partnerId: string
         title="New Return Order"
         fields={fields}
         submitLabel="Create Return Order"
-        action={(values: Record<string, unknown>) => createBusinessRecordAction(partnerId, "inventory-return-orders", values, "inventory/return-orders")}
+        action={createReturnOrderAction.bind(null, partnerId)}
       />
     </>
   );

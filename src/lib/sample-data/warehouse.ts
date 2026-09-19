@@ -4,6 +4,16 @@ import type { StatusVariant } from "@/components/StatusChip";
 import type { FormFieldDef } from "@/components/RecordForm";
 import { listBusinessRecords } from "@/lib/businessRecords";
 import { getBomOptionsForPartner } from "./bom";
+import { getAvailabilityByMaterial } from "@/lib/inventoryStock";
+
+/** Appends each option's live per-warehouse Available Qty (from getAvailabilityByMaterial) onto its label, so a Material dropdown shows what's actually on hand before a quantity is typed in. A material with no stock anywhere is left unlabeled (nothing available). */
+function withAvailability(options: { value: string; label: string }[], availability: Map<string, string>): string[] {
+  return options.map((o) => {
+    const code = o.label.split(" — ")[0].trim();
+    const avail = availability.get(code);
+    return avail ? `${o.label} [${avail}]` : o.label;
+  });
+}
 
 /**
  * Warehouse + everything that hangs off it: Inventory (per-warehouse stock
@@ -395,14 +405,15 @@ export const returnOrderRows: Row[] = [
 
 /** Partner-scoped — see getBomOptionsForPartner/getWarehouseOptionsForPartner's doc comments for why this can't be a plain array. */
 export async function getReturnOrderFormFields(partnerId: string): Promise<FormFieldDef[]> {
-  const [bomOptions, warehouseOptions] = await Promise.all([
+  const [bomOptions, warehouseOptions, availability] = await Promise.all([
     getBomOptionsForPartner(partnerId),
     getWarehouseOptionsForPartner(partnerId),
+    getAvailabilityByMaterial(partnerId),
   ]);
   return [
     { key: "workorderRef", label: "Workorder", type: "text", required: false },
     { key: "returnType", label: "Return Type", type: "select", required: true, options: [...RETURN_TYPES] },
-    { key: "materialId", label: "Material", type: "select", required: true, options: bomOptions.map((o) => o.label) },
+    { key: "materialId", label: "Material", type: "select", required: true, options: withAvailability(bomOptions, availability) },
     { key: "quantity", label: "Quantity", type: "number", required: true },
     { key: "sourceLocation", label: "Source Location", type: "text", required: true },
     { key: "destinationWarehouseName", label: "Destination Warehouse", type: "select", required: true, options: warehouseOptions.map((o) => o.label) },
@@ -567,12 +578,13 @@ export const stockTransferColumns: Column[] = [
 
 /** Partner-scoped — see getBomOptionsForPartner/getWarehouseOptionsForPartner's doc comments for why this can't be a plain array. */
 export async function getStockTransferFormFields(partnerId: string): Promise<FormFieldDef[]> {
-  const [bomOptions, warehouseOptions] = await Promise.all([
+  const [bomOptions, warehouseOptions, availability] = await Promise.all([
     getBomOptionsForPartner(partnerId),
     getWarehouseOptionsForPartner(partnerId),
+    getAvailabilityByMaterial(partnerId),
   ]);
   return [
-    { key: "materialId", label: "Material", type: "select", required: true, options: bomOptions.map((o) => o.label) },
+    { key: "materialId", label: "Material — [warehouse: available qty]", type: "select", required: true, options: withAvailability(bomOptions, availability) },
     { key: "fromWarehouseName", label: "From Warehouse", type: "select", required: true, options: warehouseOptions.map((o) => o.label) },
     { key: "toWarehouseName", label: "To Warehouse (leave blank for a partner-to-partner transfer)", type: "select", required: false, options: warehouseOptions.map((o) => o.label) },
     { key: "toPartnerId", label: "OR Transfer To Partner ID (e.g. SC0042) — requires Super Admin approval", type: "text", required: false },
