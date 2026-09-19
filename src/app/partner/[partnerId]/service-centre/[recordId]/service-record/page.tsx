@@ -39,6 +39,15 @@ export default async function ServiceCentreServiceRecordPage({
   // Same workorder id as the Job Card print, not a second peeked sequence —
   // see document/page.tsx's identical comment.
   const documentNumber = params.recordId;
+  // The Service Record documents completed work, so its date is when the
+  // repair was actually finished — the workorder's own "Completed" stage
+  // transition (stageHistory, appended by patchServiceCentreWorkorderAction),
+  // not intake/creation. Falls back to handover/receipt for any workorder
+  // that predates stageHistory or never passed through Completed.
+  const stageHistory = (r.stageHistory as { at: string; stage: string }[] | undefined) ?? [];
+  const completedAt = [...stageHistory].reverse().find((h) => h.stage === "Completed")?.at;
+  const serviceRecordDate =
+    completedAt || (r.handedOverAt as string | undefined) || (r.receivedDate as string) || (r.recordCreatedAt as string);
   const companyAddress = [partner?.addressLine, partner?.city, partner?.state, partner?.pincode]
     .filter((v) => typeof v === "string" && v.trim())
     .join(", ");
@@ -49,7 +58,7 @@ export default async function ServiceCentreServiceRecordPage({
   return (
     <ServiceCentreServiceRecordDocument
       docNumber={documentNumber}
-      date={fmtDateEnIN((r.receivedDate as string) || (r.recordCreatedAt as string))}
+      date={fmtDateEnIN(serviceRecordDate)}
       companyName={partner?.businessName ?? "Your Business"}
       companyAddress={companyAddress || undefined}
       companyPhone={partner?.businessContact}
