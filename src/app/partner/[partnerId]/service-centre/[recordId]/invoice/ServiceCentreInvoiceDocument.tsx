@@ -20,6 +20,29 @@ function normalizeState(value?: string): string {
   return (value ?? "").trim().toLowerCase();
 }
 
+/**
+ * GST state codes (the 2-digit prefix of every GSTIN issued in that state/UT)
+ * — used to print "Place of Supply: <State> (Code: NN)", the CGST Rule 46(m)
+ * field this invoice was missing entirely. Keyed lowercase to match
+ * normalizeState(); a state this app doesn't recognise (typo, UT not yet
+ * added) just omits the code rather than guessing.
+ */
+const GST_STATE_CODES: Record<string, string> = {
+  "jammu and kashmir": "01", "himachal pradesh": "02", "punjab": "03", "chandigarh": "04",
+  "uttarakhand": "05", "haryana": "06", "delhi": "07", "rajasthan": "08", "uttar pradesh": "09",
+  "bihar": "10", "sikkim": "11", "arunachal pradesh": "12", "nagaland": "13", "manipur": "14",
+  "mizoram": "15", "tripura": "16", "meghalaya": "17", "assam": "18", "west bengal": "19",
+  "jharkhand": "20", "odisha": "21", "chhattisgarh": "22", "madhya pradesh": "23", "gujarat": "24",
+  "dadra and nagar haveli and daman and diu": "26", "maharashtra": "27", "andhra pradesh": "28",
+  "karnataka": "29", "goa": "30", "lakshadweep": "31", "kerala": "32", "tamil nadu": "33",
+  "puducherry": "34", "andaman and nicobar islands": "35", "telangana": "36",
+  "andhra pradesh (new)": "37", "ladakh": "38",
+};
+
+function stateCodeOf(stateName?: string): string | undefined {
+  return GST_STATE_CODES[normalizeState(stateName)];
+}
+
 const safe = (v: string | number | undefined | null) => (v === undefined || v === null || v === "" ? "—" : String(v));
 const money = (n?: number) => `₹${(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -61,6 +84,10 @@ export function ServiceCentreInvoiceDocument({
   termsText,
   upiId,
   logoDataUrl,
+  irn,
+  ackNumber,
+  ackDate,
+  einvoiceQrDataUrl,
 }: {
   partnerName: string;
   partnerGstin?: string;
@@ -97,6 +124,19 @@ export function ServiceCentreInvoiceDocument({
   /** The partner's own UPI VPA. When set (and the invoice is non-zero) a scannable payment QR is printed, same as AN-CRM's own "QR only if UPI ID set" rule. */
   upiId?: string | null;
   logoDataUrl?: string | null;
+  /**
+   * e-Invoice (IRP) fields — Invoice Reference Number, Acknowledgement
+   * Number/Date and the IRP's own signed QR — printed only when all are
+   * supplied. Nothing in this app calls the GST e-Invoice API yet (that's a
+   * real GSP/IRP integration, a separate piece of work), so these are
+   * always undefined today; the fields exist now so that integration can
+   * hand this component real values later without another layout change.
+   * Until then this invoice deliberately looks/behaves exactly as before.
+   */
+  irn?: string | null;
+  ackNumber?: string | null;
+  ackDate?: string | null;
+  einvoiceQrDataUrl?: string | null;
 }) {
   const [qr, setQr] = useState("");
   const accent = "#111827";
@@ -130,6 +170,15 @@ export function ServiceCentreInvoiceDocument({
   const gstTotal = cgstTotal + sgstTotal + igstTotal;
   const grandTotal = taxableTotal + gstTotal;
   const hasGstSplit = !!(cgstTotal || sgstTotal || igstTotal);
+
+  // Place of supply for a service, per IGST Act s.12(2): the registered
+  // recipient's own state; falls back to the supplier's state when the
+  // customer's state wasn't captured (e.g. an older record) rather than
+  // printing nothing for a field GST rules require on every tax invoice.
+  const placeOfSupplyState = customerState?.trim() || partnerState?.trim() || "";
+  const placeOfSupplyCode = stateCodeOf(placeOfSupplyState);
+  const partnerStateCode = stateCodeOf(partnerState);
+  const customerStateCode = stateCodeOf(customerState);
 
   const isB2B = !!customerGstin?.trim();
   const isPayableDoc = true; // Sales Invoice is always a payable document, unlike Estimate/Workorder/Service Record.
@@ -211,7 +260,9 @@ export function ServiceCentreInvoiceDocument({
             <div>
               <div className="ric-companyName">{safe(partnerName)}</div>
               <div>{safe(companyAddress)}</div>
-              {partnerGstin && <div>GSTIN: {partnerGstin}</div>}
+              {partnerGstin && (
+                <div>GSTIN: {partnerGstin}{partnerStateCode && ` (State Code: ${partnerStateCode})`}</div>
+              )}
               {partnerPhone && <div>Phone: {partnerPhone}</div>}
             </div>
           </div>
@@ -226,8 +277,33 @@ export function ServiceCentreInvoiceDocument({
               non-chargeable/zero-tax job is still a B2C invoice, just one
               with no tax lines. */}
           <div><b>Document Type:</b> {isB2B ? "B2B" : "B2C"}</div>
+          {/* CGST Rule 46(m): every tax invoice must state the place of
+              supply, with the state name, whenever it differs from the
+              supplier's own location (and it's standard practice to print
+              it even when it doesn't). */}
+          <div>
+            <b>Place of Supply:</b> {safe(placeOfSupplyState)}
+            {placeOfSupplyCode && ` (${placeOfSupplyCode})`}
+          </div>
+          {/* Rule 46(e): every tax invoice states whether GST is payable
+              under reverse charge. Always "No" here -- Service Centre never
+              raises a reverse-charge-applicable supply. */}
+          <div><b>Reverse Charge:</b> No</div>
         </div>
       </div>
+
+      {irn && ackNumber && ackDate && (
+        <div className="ric-einvoiceBand">
+          <div className="ric-einvoiceText">
+            <div><b>IRN:</b> {irn}</div>
+            <div><b>Ack No:</b> {ackNumber} &nbsp; <b>Ack Date:</b> {ackDate}</div>
+          </div>
+          {einvoiceQrDataUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={einvoiceQrDataUrl} alt="e-Invoice QR" width={72} height={72} />
+          )}
+        </div>
+      )}
 
       <div className="ric-grid2">
         <div className="ric-box">
@@ -235,7 +311,12 @@ export function ServiceCentreInvoiceDocument({
           <div>{safe(customerName)}</div>
           <div>{safe(customerPhone)}</div>
           <div>{safe(customerFullAddress)}</div>
-          {isB2B && <div>GSTIN: {safe(customerGstin)}</div>}
+          {isB2B && (
+            <div>
+              GSTIN: {safe(customerGstin)}
+              {customerStateCode && ` (State Code: ${customerStateCode})`}
+            </div>
+          )}
         </div>
         <div className="ric-box">
           {hasDevice && (
@@ -385,6 +466,7 @@ const RIC_STYLES = `
 .ric-page { max-width: 900px; margin: 0 auto; padding: 16px; font-family: Arial, sans-serif; color: #111827; font-size: 11px; border: 2px solid #111827; border-radius: 4px; }
 .ric-invoiceTitle { text-align: center; font-size: 22px; font-weight: 800; margin-bottom: 12px; letter-spacing: 1px; }
 .ric-header { display: flex; justify-content: space-between; gap: 12px; border-bottom: 2px solid #111827; padding-bottom: 10px; }
+.ric-einvoiceBand { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; padding: 8px 10px; border: 1.5px solid #111827; border-radius: 8px; background: #f8fafc; font-size: 10px; line-height: 1.6; }
 .ric-companyCard { background: #f8fafc; padding: 12px; border-radius: 8px; border: 1.5px solid #111827; line-height: 1.5; max-width: 340px; }
 .ric-companyRow { display: flex; align-items: flex-start; gap: 10px; }
 .ric-companyLogo { width: 44px; height: 44px; flex-shrink: 0; object-fit: contain; border-radius: 6px; }
