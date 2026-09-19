@@ -16,7 +16,7 @@ import { getPartner } from "@/lib/partnerData";
 import { notifyCentralApiBillingInvoice } from "@/lib/centralApi";
 import { buildServiceCentreLines } from "@/lib/serviceCentreLines";
 import { sendWorkorderTelegramAlert, sendPartnerTelegramAlert } from "@/lib/telegram";
-import { workorderClosedMessage, workorderCancelledMessage, lowStockAlertMessage } from "@/lib/telegramTemplates";
+import { workorderClosedMessage, workorderCancelledMessage, lowStockAlertMessage, pnaLoggedMessage } from "@/lib/telegramTemplates";
 import { findStockRecord, adjustStockQty } from "@/lib/inventoryStock";
 import { withRecordLock } from "@/lib/withRecordLock";
 
@@ -190,6 +190,27 @@ export async function patchServiceCentreWorkorderAction(
     await updateBusinessRecord(partnerId, "service-centre", workorderId, { ...existing, ...patch, ...extra });
   });
   revalidatePath(`/partner/${partnerId}/service-centre/${workorderId}`);
+  // A workorder closing with a part still marked Not Available means that
+  // job proceeded without ever getting the part (worked around another
+  // way, or the customer moved on) — its PNA entry is no longer something
+  // staff need to chase, but it also isn't the same outcome as actually
+  // sourcing the part, so it gets its own distinct status rather than
+  // silently becoming indistinguishable from a real "Fulfilled".
+  if (patch["stage"] === "Closed") {
+    await closeLinkedPnaEntries(partnerId, workorderId);
+  }
+}
+
+async function closeLinkedPnaEntries(partnerId: string, workorderId: string): Promise<void> {
+  const pnaRows = await listBusinessRecords(partnerId, "service-centre-pna");
+  const open = pnaRows.filter((r) => r["workorderId"] === workorderId && r["status"] === "Open");
+  for (const row of open) {
+    await updateBusinessRecord(partnerId, "service-centre-pna", String(row["id"]), {
+      ...row,
+      status: "Closed (Workorder Closed)",
+    });
+  }
+  if (open.length > 0) revalidatePath(`/partner/${partnerId}/service-centre/pna`);
 }
 
 /**
@@ -687,4 +708,21 @@ export async function createPnaEntryAction(
     createdDate: new Date().toISOString().slice(0, 10),
   });
   revalidatePath(`/partner/${partnerId}/service-centre/pna`);
+
+  const partner = await getPartner(partnerId);
+  if (partner) {
+    await sendWorkorderTelegramAlert(
+      partnerId,
+      payload.workorderId,
+      "pnaLogged",
+      await pnaLoggedMessage({
+        partnerBusinessName: partner.businessName,
+        workorderId: payload.workorderId,
+        materialLabel: payload.materialLabel,
+        qty: payload.qty,
+        customerName: payload.customerName,
+        brandJobNo: payload.brandJobNo,
+      })
+    );
+  }
 }

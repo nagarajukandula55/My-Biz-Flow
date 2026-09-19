@@ -2,7 +2,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { DashboardWidget } from "@/components/DashboardWidget";
 import { getVisibleModuleSlugs, getVisibleModules } from "@/lib/designer/entitlements";
-import { getServiceCentreOverview, getInquiryOverview, getRevenueBreakdown, getCallsThisMonth } from "@/lib/analyticsData";
+import { getServiceCentreOverview, getInquiryOverview, getRevenueBreakdown, getCallsThisMonth, getPnaOverview } from "@/lib/analyticsData";
 import { formatCurrencyINR } from "@/lib/format";
 import { registerPage } from "@/lib/designer/registry";
 
@@ -36,11 +36,12 @@ export default async function PartnerDashboardPage({ params }: { params: { partn
   // module never shifts anything else.
   const hasServiceCentre = enabledSlugs.includes("service-centre");
   const hasTelecalling = enabledSlugs.includes("telecalling");
-  const [scOverview, inquiryOverview, revenueBreakdown, callsThisMonth] = await Promise.all([
+  const [scOverview, inquiryOverview, revenueBreakdown, callsThisMonth, pnaOverview] = await Promise.all([
     hasServiceCentre ? getServiceCentreOverview(params.partnerId) : Promise.resolve(null),
     hasServiceCentre ? getInquiryOverview(params.partnerId) : Promise.resolve(null),
     getRevenueBreakdown(params.partnerId),
     hasTelecalling ? getCallsThisMonth(params.partnerId) : Promise.resolve(null),
+    hasServiceCentre ? getPnaOverview(params.partnerId) : Promise.resolve(null),
   ]);
 
   return (
@@ -122,6 +123,15 @@ export default async function PartnerDashboardPage({ params }: { params: { partn
               <Link href={`/partner/${params.partnerId}/service-centre`}>
                 <DashboardWidget label="Cancelled" value={String(scOverview.cancelledWorkorders)} />
               </Link>
+              {pnaOverview && (
+                <Link href={`/partner/${params.partnerId}/service-centre/pna`}>
+                  <DashboardWidget
+                    label="Parts Not Available"
+                    value={String(pnaOverview.open)}
+                    trend={pnaOverview.availableNow > 0 ? { direction: "up", label: `${pnaOverview.availableNow} now in stock` } : undefined}
+                  />
+                </Link>
+              )}
             </div>
           </div>
         )}

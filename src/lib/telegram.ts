@@ -24,6 +24,7 @@ export const TELEGRAM_ALERT_TYPES = [
   { key: "paymentReceived", label: "Payment received" },
   { key: "paymentDue", label: "Payment due" },
   { key: "lowStock", label: "Low stock alert" },
+  { key: "pnaLogged", label: "Part Not Available logged" },
   { key: "subscriptionExpiring", label: "Subscription expiring" },
   { key: "generalAnnouncement", label: "General announcement" },
 ] as const;

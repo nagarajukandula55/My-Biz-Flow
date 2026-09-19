@@ -113,6 +113,15 @@ export const TELEGRAM_TEMPLATE_DEFS: TelegramTemplateDef[] = [
       "📉 <b>Low Stock — {{businessName}}</b>\n\n<pre>\nItem          {{itemName}}\nRemaining     {{quantityRemaining}}\nThreshold     {{reorderThreshold}}\n</pre>\n<i>Time to reorder this item.</i>",
   },
   {
+    key: "pna_logged",
+    label: "Part Not Available logged",
+    group: "Event alert",
+    command: "/test_pna_logged",
+    variables: ["businessName", "workorderId", "materialLabel", "qty", "customerName", "brandJobNo"],
+    defaultBody:
+      "🧩 <b>Part Not Available — {{businessName}}</b>\n\n<pre>\nWorkorder     {{workorderId}}\nPart          {{materialLabel}}\nQty needed    {{qty}}\nCustomer      {{customerName}}\nBrand Job No. {{brandJobNo}}\n</pre>\n<i>Added to the Parts Not Available list — go source it from Inventory.</i>",
+  },
+  {
     key: "inquiry_assigned",
     label: "Inquiry assigned",
     group: "Event alert",

@@ -20,6 +20,7 @@ import {
   computeWorkorderTat,
 } from "@/lib/sample-data/service-centre";
 import { listBusinessRecords } from "@/lib/businessRecords";
+import { getAvailabilityByMaterial } from "@/lib/inventoryStock";
 import type { ComboTrendPoint } from "@/components/charts/ComboTrendCard";
 
 export async function computeModuleStat(
@@ -203,6 +204,41 @@ export async function getServiceCentreOverview(partnerId: string): Promise<Servi
     closedThisMonth,
     revenueThisMonth,
   };
+}
+
+export interface PnaOverview {
+  /** Still needs sourcing, no stock anywhere yet. */
+  open: number;
+  /** Open, but the real Stock ledger now shows something available for it — actionable right now. */
+  availableNow: number;
+  /** A Part Order was raised from this entry (see raisePartOrdersFromPnaAction) — awaiting receipt, not just sitting untouched. */
+  ordered: number;
+  fulfilled: number;
+}
+
+/** Same counts the Parts Not Available page's own summary cards show — kept in one place so the Dashboard card and that page's cards can never disagree. */
+export async function getPnaOverview(partnerId: string): Promise<PnaOverview> {
+  const [rows, availability] = await Promise.all([
+    listBusinessRecords(partnerId, "service-centre-pna"),
+    getAvailabilityByMaterial(partnerId),
+  ]);
+  let open = 0;
+  let availableNow = 0;
+  let ordered = 0;
+  let fulfilled = 0;
+  for (const r of rows) {
+    const status = r["status"];
+    if (status === "Open") {
+      open++;
+      const code = String(r["materialId"] ?? "").split(" — ")[0].trim();
+      if (availability.get(code)) availableNow++;
+    } else if (status === "Ordered") {
+      ordered++;
+    } else if (status === "Fulfilled") {
+      fulfilled++;
+    }
+  }
+  return { open, availableNow, ordered, fulfilled };
 }
 
 export interface InquiryOverview {

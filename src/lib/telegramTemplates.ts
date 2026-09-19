@@ -176,6 +176,26 @@ export async function lowStockAlertMessage(opts: {
   });
 }
 
+/** A part on a workorder was marked Not Available — see createPnaEntryAction. */
+export async function pnaLoggedMessage(opts: {
+  partnerBusinessName: string;
+  workorderId: string;
+  materialLabel: string;
+  qty: number;
+  customerName?: string;
+  brandJobNo?: string;
+}): Promise<string> {
+  const body = await getTelegramTemplateBody("pna_logged");
+  return renderTelegramTemplate(body, {
+    businessName: opts.partnerBusinessName,
+    workorderId: opts.workorderId,
+    materialLabel: opts.materialLabel,
+    qty: String(opts.qty),
+    customerName: dash(opts.customerName),
+    brandJobNo: dash(opts.brandJobNo),
+  });
+}
+
 /** A new public Book Appointment inquiry was auto-assigned to this partner. */
 export async function inquiryAssignedMessage(opts: {
   partnerBusinessName: string;
