@@ -696,10 +696,21 @@ export async function createPnaEntryAction(
   }
 ): Promise<void> {
   await assertCanActOnServiceCentre(partnerId);
+  // materialLabel arrives as "CODE — Description" (the BOM option's own
+  // label shape) when picked from the typeahead, or plain free text when
+  // typed with no catalog match — split it into a real Material Code and
+  // Part Name kept as SEPARATE fields, not the combined string, so staff
+  // ordering the part from a supplier can read/search/export the part name
+  // on its own instead of parsing "MAT-1001 — Description" by hand.
+  const [rawCode, ...rest] = payload.materialLabel.split(" — ");
+  const materialCode = (rawCode || payload.materialId).trim();
+  const materialName = rest.join(" — ").trim();
   await createBusinessRecord(partnerId, "service-centre-pna", {
     workorderId: payload.workorderId,
     materialId: payload.materialId,
     materialLabel: payload.materialLabel,
+    materialCode,
+    materialName,
     qty: payload.qty,
     customerName: payload.customerName ?? "",
     customerPhone: payload.customerPhone ?? "",

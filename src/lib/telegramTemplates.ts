@@ -196,6 +196,22 @@ export async function pnaLoggedMessage(opts: {
   });
 }
 
+/** On-demand "/pna_report" pull — real current Parts Not Available data (see computePnaTelegramReport, analyticsData.ts), same "real data on demand" pattern report_daily/weekly/monthly already use. */
+export async function pnaReportMessage(opts: {
+  partnerBusinessName: string;
+  totalOpen: number;
+  totalQty: number;
+  lines: string;
+}): Promise<string> {
+  const body = await getTelegramTemplateBody("pna_report");
+  return renderTelegramTemplate(body, {
+    businessName: opts.partnerBusinessName,
+    totalOpen: String(opts.totalOpen),
+    totalQty: String(opts.totalQty),
+    lines: opts.lines,
+  });
+}
+
 /** A new public Book Appointment inquiry was auto-assigned to this partner. */
 export async function inquiryAssignedMessage(opts: {
   partnerBusinessName: string;

@@ -188,7 +188,20 @@ export function RecordForm({ fields: allFields, initialValues, submitLabel, onSu
     for (const f of fields) {
       base[f.key] =
         initialValues?.[f.key] ??
-        (f.type === "boolean" ? false : f.type === "multi-select" ? [] : "");
+        (f.type === "boolean"
+          ? false
+          : f.type === "multi-select"
+            ? []
+            // A date field with nothing to prefill defaults to today rather
+            // than sitting blank — matches how every real paper form/other
+            // business app's date picker behaves, and covers every date
+            // field across the app (Stock Adjustment/Part Order/Stock
+            // Take/etc.) in one place instead of each module hand-rolling
+            // its own "default to today" default value. An edit form is
+            // unaffected — initialValues always wins when present.
+            : f.type === "date"
+              ? new Date().toISOString().slice(0, 10)
+              : "");
     }
     return base;
   });

@@ -166,6 +166,15 @@ export const TELEGRAM_TEMPLATE_DEFS: TelegramTemplateDef[] = [
     defaultBody: "📢 <b>Announcement</b>\n\n{{text}}",
   },
   {
+    key: "pna_report",
+    label: "Parts Not Available report",
+    group: "System",
+    command: "/pna_report",
+    variables: ["businessName", "totalOpen", "totalQty", "lines"],
+    defaultBody:
+      "🧩 <b>{{businessName}} — Parts Not Available</b>\n\nOpen entries: {{totalOpen}} · Total qty needed: {{totalQty}}\n\n{{lines}}",
+  },
+  {
     key: "report_daily",
     label: "Daily business report",
     group: "Business report",

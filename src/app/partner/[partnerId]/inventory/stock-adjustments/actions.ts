@@ -6,15 +6,7 @@ import { createBusinessRecord } from "@/lib/businessRecords";
 import { runBulkImport, type BulkImportResult } from "@/lib/bulkImportCsv";
 import { getStockAdjustmentFormFields } from "@/lib/sample-data/warehouse";
 import { getBomOptionsForPartner } from "@/lib/sample-data/bom";
-import { adjustStockQty, getQtyOnHand } from "@/lib/inventoryStock";
-
-/** Splits the free-text "one per line" serial-numbers textarea into a clean, deduped-by-position array. */
-function parseSerialNumbers(raw: unknown): string[] {
-  return String(raw ?? "")
-    .split(/\r?\n|,/)
-    .map((s) => s.trim())
-    .filter(Boolean);
-}
+import { adjustStockQty, getQtyOnHand, parseSerialNumbers, validateSerialNumbers } from "@/lib/inventoryStock";
 
 /**
  * Creates a Stock Adjustment record AND actually applies it to the real
@@ -51,20 +43,13 @@ export async function createStockAdjustmentAction(
 
   // A serialized material (BOM's own "Serialized" flag) needs one barcode/
   // serial collected per unit, not just a bare quantity — a non-serialized
-  // material goes through on quantity alone, same as before.
+  // material goes through on quantity alone, nothing else asked.
   const bomOptions = await getBomOptionsForPartner(partnerId);
   const isSerialized = bomOptions.some((o) => o.label === materialId && o.serialized);
   const serialNumbers = parseSerialNumbers(values["serialNumbers"]);
   if (isSerialized) {
-    if (serialNumbers.length !== quantity) {
-      return {
-        error: `${materialId} is a serialized material — enter exactly ${quantity} serial/barcode number${quantity === 1 ? "" : "s"} (one per line), got ${serialNumbers.length}.`,
-      };
-    }
-    const unique = new Set(serialNumbers);
-    if (unique.size !== serialNumbers.length) {
-      return { error: "Duplicate serial/barcode numbers entered — each unit needs a distinct one." };
-    }
+    const error = validateSerialNumbers(serialNumbers, quantity, materialId);
+    if (error) return { error };
   }
 
   await createBusinessRecord(partnerId, "inventory-stock-adjustments", {
@@ -82,16 +67,24 @@ export async function bulkImportStockAdjustmentsAction(partnerId: string, formDa
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) throw new Error("Choose a CSV file to upload");
 
+  const bomOptions = await getBomOptionsForPartner(partnerId);
   const fields = await getStockAdjustmentFormFields(partnerId);
   const result = await runBulkImport(partnerId, "inventory-stock-adjustments", file, fields, async (values) => {
     const materialId = String(values["materialId"] ?? "").trim();
     const warehouseName = String(values["warehouseName"] ?? "").trim();
     const quantity = Number(values["quantity"] ?? 0);
-    if (materialId && warehouseName && Number.isFinite(quantity) && quantity > 0) {
-      const delta = values["adjustmentType"] === "Decrease" ? -quantity : quantity;
-      await adjustStockQty(partnerId, materialId, materialId, warehouseName, delta);
+    if (!materialId || !warehouseName || !Number.isFinite(quantity) || quantity <= 0) return values;
+
+    const isSerialized = bomOptions.some((o) => o.label === materialId && o.serialized);
+    const serialNumbers = parseSerialNumbers(values["serialNumbers"]);
+    if (isSerialized) {
+      const error = validateSerialNumbers(serialNumbers, quantity, materialId);
+      if (error) throw new Error(`Row for "${materialId}": ${error}`);
     }
-    return values;
+
+    const delta = values["adjustmentType"] === "Decrease" ? -quantity : quantity;
+    await adjustStockQty(partnerId, materialId, materialId, warehouseName, delta);
+    return { ...values, serialNumbers: isSerialized ? serialNumbers : [] };
   });
   revalidatePath(`/partner/${partnerId}/inventory/stock-adjustments`);
   revalidatePath(`/partner/${partnerId}/inventory/stock`);

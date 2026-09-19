@@ -12,8 +12,9 @@ import {
 } from "@/lib/telegram";
 import { findTelegramTemplateDefByCommand, TELEGRAM_TEMPLATE_DEFS } from "@/lib/telegramTemplateDefs";
 import { getTelegramTemplateBody, renderTelegramTemplate } from "@/lib/telegramTemplatesData";
-import { businessReportMessage, helpMessageText, connectConfirmationMessage, type ReportFrequency } from "@/lib/telegramTemplates";
+import { businessReportMessage, helpMessageText, connectConfirmationMessage, pnaReportMessage, type ReportFrequency } from "@/lib/telegramTemplates";
 import { computePartnerReportComparison } from "@/lib/telegramReportData";
+import { computePnaTelegramReport } from "@/lib/analyticsData";
 import { findSupportTicketByReplyMessageId, appendSupportReply } from "@/lib/supportTickets";
 
 function formatInr(n: number): string {
@@ -84,6 +85,13 @@ async function handleTemplateCommand(chatId: string, text: string): Promise<bool
       priorWorkorderCount: prior.workorderCount,
       changePct,
     });
+    await sendRawTelegramMessage(chatId, message);
+    return true;
+  }
+
+  if (def.key === "pna_report") {
+    const { totalOpen, totalQty, lines } = await computePnaTelegramReport(partnerId);
+    const message = await pnaReportMessage({ partnerBusinessName: partner.businessName, totalOpen, totalQty, lines });
     await sendRawTelegramMessage(chatId, message);
     return true;
   }

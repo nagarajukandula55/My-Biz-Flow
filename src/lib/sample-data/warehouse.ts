@@ -533,6 +533,13 @@ export async function getPartOrderFormFields(partnerId: string): Promise<FormFie
     { key: "sourceWarehouseName", label: "Source Warehouse", type: "select", required: true, options: warehouseOptions.map((o) => o.label) },
     { key: "destinationLocation", label: "Destination Location", type: "text", required: true },
     { key: "status", label: "Status", type: "select", required: true, options: ["Pending", "Dispatched", "Delivered"] },
+    {
+      key: "serialNumbers",
+      label: "Serial / Barcode Numbers",
+      type: "textarea",
+      required: false,
+      placeholder: "One serial/barcode per line. Only required once Status is Dispatched/Delivered AND the selected Material is Serialized in BOM — count must match Quantity exactly. Leave blank for non-serialized materials.",
+    },
     { key: "dispatchedDate", label: "Dispatched Date", type: "date", required: false },
   ];
 }
@@ -694,6 +701,13 @@ export async function getStockTakeFormFields(partnerId: string): Promise<FormFie
     { key: "warehouseName", label: "Warehouse", type: "select", required: true, options: warehouseOptions.map((o) => o.label) },
     { key: "expectedQty", label: "Expected Qty", type: "number", required: true, help: "Type the system's current quantity for this Material at this Warehouse — shown in the Material dropdown above — before counting." },
     { key: "countedQty", label: "Counted Qty", type: "number", required: true },
+    {
+      key: "serialNumbers",
+      label: "Serial / Barcode Numbers",
+      type: "textarea",
+      required: false,
+      placeholder: "One serial/barcode per line, as physically counted. Only required once Status is Reconciled AND the selected Material is Serialized in BOM — count must match Counted Qty exactly. Leave blank for non-serialized materials.",
+    },
     { key: "countedDate", label: "Counted Date", type: "date", required: true },
     { key: "countedBy", label: "Counted By", type: "text", required: false },
     { key: "note", label: "Note", type: "text", required: false },

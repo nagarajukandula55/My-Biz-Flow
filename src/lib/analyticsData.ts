@@ -241,6 +241,62 @@ export async function getPnaOverview(partnerId: string): Promise<PnaOverview> {
   return { open, availableNow, ordered, fulfilled };
 }
 
+export interface PnaReport {
+  totalOpen: number;
+  totalQty: number;
+  /** Pre-formatted plain-text lines, one per distinct material, ready to drop into the Telegram pna_report template's {{lines}} token. */
+  lines: string;
+}
+
+/**
+ * Groups every Open PNA entry by material (not one line per workorder —
+ * the same part needed on three different jobs shows as one line with the
+ * combined qty, since that's how staff actually go source it) and looks up
+ * each material's Brand/Model from its BOM catalog record when it has one,
+ * so the Telegram report is immediately actionable without anyone having
+ * to cross-reference Inventory separately.
+ */
+export async function computePnaTelegramReport(partnerId: string): Promise<PnaReport> {
+  const [pnaRows, bomRows] = await Promise.all([
+    listBusinessRecords(partnerId, "service-centre-pna"),
+    listBusinessRecords(partnerId, "inventory-bom"),
+  ]);
+  const bomByCode = new Map(bomRows.map((r) => [String(r["id"]), r]));
+
+  const open = pnaRows.filter((r) => r["status"] === "Open");
+  const byMaterial = new Map<string, { name: string; qty: number; brand: string; model: string }>();
+  for (const r of open) {
+    const code = String(r["materialCode"] ?? String(r["materialId"] ?? "").split(" — ")[0]).trim();
+    const name = String(r["materialName"] ?? "").trim();
+    const qty = Number(r["qty"] ?? 0);
+    const bom = bomByCode.get(code);
+    const existing = byMaterial.get(code) ?? {
+      name: name || String(bom?.["description"] ?? ""),
+      qty: 0,
+      brand: String(bom?.["brandName"] ?? "").trim(),
+      model: String(bom?.["modelName"] ?? "").trim(),
+    };
+    existing.qty += qty;
+    byMaterial.set(code, existing);
+  }
+
+  const lines = Array.from(byMaterial.entries())
+    .sort((a, b) => b[1].qty - a[1].qty)
+    .map(([code, m]) => {
+      const namePart = m.name ? ` — ${m.name}` : "";
+      const bm = [m.brand, m.model].filter(Boolean).join(" / ");
+      const bmPart = bm ? ` (${bm})` : "";
+      return `${code}${namePart}${bmPart}: ${m.qty} needed`;
+    })
+    .join("\n");
+
+  return {
+    totalOpen: open.length,
+    totalQty: open.reduce((sum, r) => sum + Number(r["qty"] ?? 0), 0),
+    lines: lines || "Nothing pending — all clear.",
+  };
+}
+
 export interface InquiryOverview {
   open: number;
   converted: number;

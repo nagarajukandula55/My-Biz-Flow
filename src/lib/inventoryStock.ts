@@ -29,6 +29,25 @@ function materialCode(value: unknown): string {
   return String(value ?? "").split(" — ")[0].trim();
 }
 
+/** Splits a "one per line" (or comma-separated) serial-numbers textarea into a clean array — shared by every document (Stock Adjustments, Part Orders, Stock Take) that captures per-unit serials for a Serialized material. */
+export function parseSerialNumbers(raw: unknown): string[] {
+  return String(raw ?? "")
+    .split(/\r?\n|,/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+/** Validates a parsed serial-numbers list against the quantity it must cover exactly (one serial per unit, no duplicates) — returns an error string, or null when valid. Shared fail-closed check for every serialized-material transaction. */
+export function validateSerialNumbers(serials: string[], quantity: number, materialLabel: string): string | null {
+  if (serials.length !== quantity) {
+    return `${materialLabel} is a serialized material — enter exactly ${quantity} serial/barcode number${quantity === 1 ? "" : "s"} (one per line), got ${serials.length}.`;
+  }
+  if (new Set(serials).size !== serials.length) {
+    return "Duplicate serial/barcode numbers entered — each unit needs a distinct one.";
+  }
+  return null;
+}
+
 /** Finds the stock record for a given material (+ optionally a specific warehouse). Matches on the record's own `materialId` field (normalized to its bare code), not its `id`. */
 export async function findStockRecord(
   partnerId: string,
@@ -98,17 +117,33 @@ export async function adjustStockQty(
  * client-side lookup.
  */
 export async function getAvailabilityByMaterial(partnerId: string): Promise<Map<string, string>> {
+  const detail = await getAvailabilityDetailByMaterial(partnerId);
+  const result = new Map<string, string>();
+  for (const [code, { text }] of detail) result.set(code, text);
+  return result;
+}
+
+/**
+ * Same per-warehouse breakdown as getAvailabilityByMaterial, plus the
+ * summed total across every warehouse — used wherever a caller needs to
+ * actually compare availability against a required quantity (e.g. the PNA
+ * list deciding "Inventory Available" vs "Partially Available" vs "Still
+ * Unavailable"), not just show a text hint.
+ */
+export async function getAvailabilityDetailByMaterial(partnerId: string): Promise<Map<string, { text: string; total: number }>> {
   const rows = await listBusinessRecords(partnerId, "inventory-stock");
-  const byMaterial = new Map<string, string[]>();
+  const byMaterial = new Map<string, { entries: string[]; total: number }>();
   for (const r of rows) {
     const code = materialCode(r["materialId"]);
     const available = Number(r["availableQty"] ?? r["qtyOnHand"] ?? 0);
     if (available <= 0) continue;
-    const entry = `${r["warehouseName"]}: ${available} avail`;
-    byMaterial.set(code, [...(byMaterial.get(code) ?? []), entry]);
+    const existing = byMaterial.get(code) ?? { entries: [], total: 0 };
+    existing.entries.push(`${r["warehouseName"]}: ${available} avail`);
+    existing.total += available;
+    byMaterial.set(code, existing);
   }
-  const result = new Map<string, string>();
-  for (const [code, entries] of byMaterial) result.set(code, entries.join(", "));
+  const result = new Map<string, { text: string; total: number }>();
+  for (const [code, { entries, total }] of byMaterial) result.set(code, { text: entries.join(", "), total });
   return result;
 }
 
