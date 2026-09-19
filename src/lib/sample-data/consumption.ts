@@ -21,6 +21,7 @@ export const consumptionColumns: Column[] = [
   { key: "serial", label: "Serial / Barcode", type: "text" },
   { key: "customerName", label: "Customer", type: "text" },
   { key: "consumedDate", label: "Consumed Date", type: "date" },
+  { key: "reversedAt", label: "Returned to Inventory On", type: "date" },
 ];
 
 /** Sums qty by material code over the given rows — the basis for the "Top consumed parts" ranking shown on the Parts Consumption page. */

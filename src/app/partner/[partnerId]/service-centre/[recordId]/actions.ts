@@ -595,6 +595,41 @@ async function createInvoiceFromWorkorderInner(
 }
 
 /**
+ * Reverses every not-yet-reversed "inventory-consumption" entry for this
+ * workorder — adds each line's qty back to the real Stock ledger
+ * (adjustStockQty with a positive delta) and stamps `reversedAt` on the
+ * consumption record so it can't be double-reversed and so Parts
+ * Consumption reporting can tell a genuinely-reversed line apart from a
+ * still-standing one. Used whenever a workorder moves backward off a
+ * stage that already consumed stock (cancelling a Completed job, or a
+ * Super Admin reopening one) — parts that were pulled for a job that
+ * didn't end up happening/being kept should go back on the shelf, not
+ * just vanish from the count. Returns a plain-text summary per line for
+ * the caller to fold into the workorder's own stageHistory entry.
+ */
+async function reverseConsumptionForWorkorder(partnerId: string, workorderId: string): Promise<string[]> {
+  const consumptionRows = await listBusinessRecords(partnerId, "inventory-consumption");
+  const toReverse = consumptionRows.filter((r) => r["workorderId"] === workorderId && !r["reversedAt"]);
+  const summaries: string[] = [];
+  for (const row of toReverse) {
+    const materialId = String(row["materialId"] ?? "");
+    const materialLabel = String(row["materialLabel"] ?? materialId);
+    const warehouseName = String(row["warehouseName"] ?? "");
+    const qty = Number(row["qty"] ?? 0);
+    if (materialId && warehouseName && qty > 0) {
+      await adjustStockQty(partnerId, materialId, materialLabel, warehouseName, qty);
+      summaries.push(`${materialLabel} x${qty}`);
+    }
+    await updateBusinessRecord(partnerId, "inventory-consumption", String(row["id"]), {
+      ...row,
+      reversedAt: new Date().toISOString(),
+      reversedReason: "Workorder status changed",
+    });
+  }
+  return summaries;
+}
+
+/**
  * Terminal cancellation of a workorder — the "CANCELLED" milestone
  * (MILESTONE_STATUSES in service-centre.ts) previously had no way of ever
  * being reached: no action, no button, no reason field. A reason is
@@ -623,6 +658,23 @@ export async function cancelWorkorderAction(
       throw new Error("A closed workorder can no longer be cancelled.");
     }
 
+    // A job cancelled AFTER it was already Completed already had its parts
+    // deducted from real Stock — cancelling it doesn't undo that on its
+    // own, so the consumed parts return to Stock here, and the return
+    // itself is logged onto the workorder's own activity timeline (not
+    // just a silent stock-ledger change) so anyone looking at this job
+    // later can see exactly what came back and when.
+    let history = appendStageHistory(record, "Cancelled");
+    if (record["inventoryDeducted"]) {
+      const returned = await reverseConsumptionForWorkorder(partnerId, workorderId);
+      if (returned.length > 0) {
+        history = [
+          ...history,
+          { at: new Date().toISOString(), stage: `Parts returned to Inventory on cancel: ${returned.join(", ")}` },
+        ];
+      }
+    }
+
     await updateBusinessRecord(partnerId, "service-centre", workorderId, {
       ...record,
       cancelReason: trimmedReason,
@@ -630,7 +682,8 @@ export async function cancelWorkorderAction(
       onHold: false,
       holdReason: undefined,
       holdSince: undefined,
-      stageHistory: appendStageHistory(record, "Cancelled"),
+      inventoryDeducted: false,
+      stageHistory: history,
     });
 
     const partner = await getPartner(partnerId);
@@ -656,6 +709,8 @@ export async function cancelWorkorderAction(
 
   revalidatePath(`/partner/${partnerId}/service-centre/${workorderId}`);
   revalidatePath(`/partner/${partnerId}/service-centre`);
+  revalidatePath(`/partner/${partnerId}/inventory/stock`);
+  revalidatePath(`/partner/${partnerId}/inventory/consumption`);
 }
 
 /**

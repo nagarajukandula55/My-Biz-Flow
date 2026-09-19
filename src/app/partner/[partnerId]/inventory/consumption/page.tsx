@@ -34,7 +34,12 @@ export default async function ConsumptionPage({ params }: { params: { partnerId:
 
   const now = Date.now();
   const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+  // Reversed lines (a cancelled/reopened workorder returning its parts —
+  // see reverseConsumptionForWorkorder in the workorder actions) don't
+  // count as real usage for the totals/forecast below, even though they
+  // still show in the raw history table for audit purposes.
   const last30 = rows.filter((r) => {
+    if (r["reversedAt"]) return false;
     const d = new Date(String(r["consumedDate"] ?? ""));
     return !Number.isNaN(d.getTime()) && now - d.getTime() <= THIRTY_DAYS_MS;
   });
