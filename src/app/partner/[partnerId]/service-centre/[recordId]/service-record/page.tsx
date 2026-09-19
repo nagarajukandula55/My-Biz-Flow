@@ -50,12 +50,11 @@ export default async function ServiceCentreServiceRecordPage({
     <ServiceCentreServiceRecordDocument
       docNumber={documentNumber}
       date={fmtDateEnIN((r.receivedDate as string) || (r.recordCreatedAt as string))}
-      status={r.status as string | undefined}
       companyName={partner?.businessName ?? "Your Business"}
       companyAddress={companyAddress || undefined}
       companyPhone={partner?.businessContact}
       companyGstin={partner?.gstin}
-      logoUrl={partner?.logoDataUrl}
+      logoUrl={partner?.showLogoOnDocuments ? partner?.logoDataUrl : null}
       termsText={resolveDocumentTerms(partner, "serviceRecord")}
       customerName={(r.customer as string) || "—"}
       customerPhone={r.customerPhone as string | undefined}

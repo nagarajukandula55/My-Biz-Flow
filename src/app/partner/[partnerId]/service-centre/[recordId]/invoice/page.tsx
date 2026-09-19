@@ -106,7 +106,7 @@ export default async function ServiceCentreInvoicePage({
       notes={String(record["handoverNotes"] ?? "")}
       termsText={resolveDocumentTerms(partner, "invoice")}
       upiId={partner?.upiId}
-      logoDataUrl={partner?.logoDataUrl}
+      logoDataUrl={partner?.showLogoOnDocuments ? partner?.logoDataUrl : null}
     />
   );
 }

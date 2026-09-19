@@ -203,10 +203,18 @@ export function ServiceCentreInvoiceDocument({
 
       <div className="ric-header">
         <div className="ric-companyCard">
-          <div className="ric-companyName">{safe(partnerName)}</div>
-          <div>{safe(companyAddress)}</div>
-          {partnerGstin && <div>GSTIN: {partnerGstin}</div>}
-          {partnerPhone && <div>Phone: {partnerPhone}</div>}
+          <div className="ric-companyRow">
+            {logoDataUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={logoDataUrl} alt={partnerName} className="ric-companyLogo" />
+            )}
+            <div>
+              <div className="ric-companyName">{safe(partnerName)}</div>
+              <div>{safe(companyAddress)}</div>
+              {partnerGstin && <div>GSTIN: {partnerGstin}</div>}
+              {partnerPhone && <div>Phone: {partnerPhone}</div>}
+            </div>
+          </div>
         </div>
 
         <div className="ric-invoiceBox">
@@ -374,35 +382,37 @@ export function ServiceCentreInvoiceDocument({
 }
 
 const RIC_STYLES = `
-.ric-page { max-width: 900px; margin: 0 auto; padding: 4px; font-family: Arial, sans-serif; color: #111827; font-size: 11px; }
+.ric-page { max-width: 900px; margin: 0 auto; padding: 16px; font-family: Arial, sans-serif; color: #111827; font-size: 11px; border: 2px solid #111827; border-radius: 4px; }
 .ric-invoiceTitle { text-align: center; font-size: 22px; font-weight: 800; margin-bottom: 12px; letter-spacing: 1px; }
 .ric-header { display: flex; justify-content: space-between; gap: 12px; border-bottom: 2px solid #111827; padding-bottom: 10px; }
-.ric-companyCard { background: #f8fafc; padding: 12px; border-radius: 10px; border: 1px solid #e5e7eb; line-height: 1.5; max-width: 320px; }
+.ric-companyCard { background: #f8fafc; padding: 12px; border-radius: 8px; border: 1.5px solid #111827; line-height: 1.5; max-width: 340px; }
+.ric-companyRow { display: flex; align-items: flex-start; gap: 10px; }
+.ric-companyLogo { width: 44px; height: 44px; flex-shrink: 0; object-fit: contain; border-radius: 6px; }
 .ric-companyName { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
-.ric-invoiceBox { border: 1px solid #111827; border-radius: 8px; padding: 10px; min-width: 240px; line-height: 1.6; font-size: 12px; }
-.ric-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0; padding-bottom: 8px; border-bottom: 1px solid #e5e7eb; }
-.ric-box { padding: 8px 10px; font-size: 11px; line-height: 1.5; background: #fafafa; border-radius: 8px; }
-.ric-sectionTitle { font-size: 11px; font-weight: 700; margin-bottom: 4px; border-bottom: 1px solid #ddd; padding-bottom: 2px; }
-.ric-productHeader { margin-top: 8px; padding-top: 6px; border-top: 1px solid #111827; font-size: 13px; font-weight: 700; text-decoration: underline; margin-bottom: 6px; }
-.ric-table { width: 100%; border-collapse: collapse; font-size: 10px; }
+.ric-invoiceBox { border: 1.5px solid #111827; border-radius: 8px; padding: 10px; min-width: 240px; line-height: 1.6; font-size: 12px; }
+.ric-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0; padding-bottom: 8px; border-bottom: 1.5px solid #111827; }
+.ric-box { padding: 8px 10px; font-size: 11px; line-height: 1.5; background: #fafafa; border: 1px solid #d1d5db; border-radius: 8px; }
+.ric-sectionTitle { font-size: 11px; font-weight: 700; margin-bottom: 4px; border-bottom: 1px solid #9ca3af; padding-bottom: 2px; }
+.ric-productHeader { margin-top: 8px; padding-top: 6px; border-top: 2px solid #111827; font-size: 13px; font-weight: 700; text-decoration: underline; margin-bottom: 6px; }
+.ric-table { width: 100%; border-collapse: collapse; font-size: 10px; border: 1.5px solid #111827; }
 .ric-table th { background: #111827; color: #fff; padding: 6px; border: 1px solid #111827; }
-.ric-table td { border: 1px solid #d1d5db; padding: 5px; text-align: center; }
+.ric-table td { border: 1px solid #9ca3af; padding: 5px; text-align: center; }
 .ric-descCell { text-align: left !important; padding-left: 8px !important; }
 .ric-hsnSummary { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 8px; font-size: 10px; }
-.ric-hsnChip { background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 6px; padding: 3px 8px; }
+.ric-hsnChip { background: #f1f5f9; border: 1px solid #9ca3af; border-radius: 6px; padding: 3px 8px; }
 .ric-summaryRow { display: flex; justify-content: space-between; gap: 16px; margin-top: 16px; align-items: flex-start; }
 .ric-qrBlock { text-align: center; }
 .ric-qrCaption { font-size: 9px; color: #6b7280; margin-top: 4px; }
-.ric-summary { width: 260px; background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 10px; padding: 14px; }
+.ric-summary { width: 260px; background: #f8fafc; border: 1.5px solid #111827; border-radius: 10px; padding: 14px; }
 .ric-summary > div { display: flex; justify-content: space-between; padding: 2px 0; }
-.ric-grand { font-size: 14px; font-weight: 800; border-top: 1px solid #111827; margin-top: 6px; padding-top: 6px !important; }
-.ric-signatureRow { display: flex; justify-content: space-between; gap: 20px; margin-top: 26px; }
+.ric-grand { font-size: 14px; font-weight: 800; border-top: 2px solid #111827; margin-top: 6px; padding-top: 6px !important; }
+.ric-signatureRow { display: flex; justify-content: space-between; gap: 20px; margin-top: 26px; padding-top: 16px; border-top: 2px solid #111827; }
 .ric-signatureBox { width: 45%; text-align: center; }
-.ric-signatureLine { height: 55px; border-bottom: 1px solid #111827; }
+.ric-signatureLine { height: 55px; border-bottom: 2px solid #111827; }
 .ric-digitalNotice { height: 55px; display: flex; align-items: flex-end; justify-content: center; font-size: 10px; color: #555; font-style: italic; padding-bottom: 4px; }
-.ric-signatoryText { margin-top: 4px; border-top: 1px solid #111827; padding-top: 3px; font-size: 11px; font-weight: 600; }
+.ric-signatoryText { margin-top: 4px; border-top: 2px solid #111827; padding-top: 3px; font-size: 11px; font-weight: 600; }
 .ric-footer { text-align: center; margin-top: 16px; font-size: 11px; }
-.ric-declaration { margin-top: 14px; border-top: 1px solid #e5e7eb; padding-top: 10px; font-size: 10px; color: #4b5563; }
+.ric-declaration { margin-top: 14px; border-top: 2px solid #9ca3af; padding-top: 10px; font-size: 10px; color: #4b5563; }
 .ric-printBtn { margin-top: 20px; padding: 10px 20px; background: #111827; color: #fff; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; }
 @media print {
   .ric-table th { background: #111827 !important; color: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
