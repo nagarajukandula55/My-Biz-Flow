@@ -75,11 +75,17 @@ export async function adjustStockQty(
       warehouseName,
       qtyOnHand,
       reservedQty: 0,
+      availableQty: qtyOnHand,
     });
     return qtyOnHand;
   }
   const newQty = Math.max(0, Number(existing["qtyOnHand"] ?? 0) + delta);
-  await updateBusinessRecord(partnerId, "inventory-stock", String(existing["id"]), { ...existing, qtyOnHand: newQty });
+  const reservedQty = Number(existing["reservedQty"] ?? 0);
+  await updateBusinessRecord(partnerId, "inventory-stock", String(existing["id"]), {
+    ...existing,
+    qtyOnHand: newQty,
+    availableQty: Math.max(0, newQty - reservedQty),
+  });
   return newQty;
 }
 
@@ -92,17 +98,21 @@ export async function setStockQty(
   qty: number
 ): Promise<void> {
   const existing = await findStockRecord(partnerId, materialId, warehouseName);
+  const clamped = Math.max(0, qty);
   if (!existing) {
     await createBusinessRecord(partnerId, "inventory-stock", {
       materialId: materialLabel || materialId,
       warehouseName,
-      qtyOnHand: Math.max(0, qty),
+      qtyOnHand: clamped,
       reservedQty: 0,
+      availableQty: clamped,
     });
     return;
   }
+  const reservedQty = Number(existing["reservedQty"] ?? 0);
   await updateBusinessRecord(partnerId, "inventory-stock", String(existing["id"]), {
     ...existing,
-    qtyOnHand: Math.max(0, qty),
+    qtyOnHand: clamped,
+    availableQty: Math.max(0, clamped - reservedQty),
   });
 }

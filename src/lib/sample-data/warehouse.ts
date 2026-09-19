@@ -293,11 +293,50 @@ export async function getStockAdjustmentFormFields(partnerId: string): Promise<F
     { key: "materialId", label: "Material", type: "select", required: true, options: bomOptions.map((o) => o.label) },
     { key: "adjustmentType", label: "Type", type: "select", required: true, options: [...ADJUSTMENT_TYPES] },
     { key: "quantity", label: "Quantity", type: "number", required: true },
+    {
+      key: "serialNumbers",
+      label: "Serial / Barcode Numbers",
+      type: "textarea",
+      required: false,
+      placeholder: "One serial/barcode per line. Only required if the selected Material is marked Serialized in BOM — count must match Quantity exactly. Leave blank for non-serialized materials.",
+    },
     { key: "reason", label: "Reason", type: "select", required: true, options: [...ADJUSTMENT_REASONS] },
     { key: "adjustedBy", label: "Adjusted By", type: "text", required: false },
     { key: "date", label: "Date", type: "date", required: true },
   ];
 }
+
+export function getStockAdjustmentDetailFields(record: Row): RecordField[] {
+  const r = record;
+  return [
+    { label: "Adjustment ID", value: r["id"], type: "text" },
+    { label: "Warehouse", value: r["warehouseName"], type: "text" },
+    { label: "Material", value: r["materialId"], type: "text" },
+    { label: "Type", value: r["adjustmentType"], type: "select" },
+    { label: "Quantity", value: r["quantity"], type: "text" },
+    {
+      label: "Serial / Barcode Numbers",
+      value: Array.isArray(r["serialNumbers"]) && r["serialNumbers"].length > 0 ? r["serialNumbers"].join(", ") : "—",
+      type: "text",
+    },
+    { label: "Reason", value: r["reason"], type: "text" },
+    { label: "Adjusted By", value: r["adjustedBy"], type: "text" },
+    { label: "Date", value: r["date"], type: "date" },
+  ];
+}
+
+export function getStockAdjustmentTimeline(record: Row): TimelineEntry[] {
+  return [
+    {
+      id: "t1",
+      label: `Stock ${String(record["adjustmentType"] ?? "").toLowerCase()}d by ${record["quantity"]} for ${record["materialId"]} at ${record["warehouseName"]} — reason: ${record["reason"]}`,
+      timestamp: `${record["date"] ?? new Date().toISOString().slice(0, 10)}T00:00:00`,
+      actor: String(record["adjustedBy"] ?? "System"),
+    },
+  ];
+}
+
+export const stockAdjustmentRelated: RelatedRecord[] = [];
 
 // ---------------------------------------------------------------------
 // Return Orders — defective/good material sent back from a Service

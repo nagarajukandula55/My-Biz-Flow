@@ -222,8 +222,25 @@ export function getBomRecord(recordId: string): Row {
   return bomRows.find((r) => String(r["id"]) === recordId) ?? bomRows[0];
 }
 
+/**
+ * Derives the actual excl./incl.-tax rate and tax amount from the stored
+ * `rate` + `rateType` + `taxPercent` — previously the three fields were
+ * only ever displayed side by side with nothing computed from them, so a
+ * "With Tax" rate and a "Without Tax" rate looked like the same kind of
+ * number even though they mean different things.
+ */
+export function computeBomRateBreakdown(record: Row): { rateExclTax: number; taxAmount: number; rateInclTax: number } {
+  const rate = Number(record["rate"] ?? 0);
+  const taxPercent = Number(record["taxPercent"] ?? 0);
+  const isInclusive = record["rateType"] === "With Tax";
+  const rateExclTax = isInclusive ? rate / (1 + taxPercent / 100) : rate;
+  const rateInclTax = isInclusive ? rate : rate * (1 + taxPercent / 100);
+  return { rateExclTax, taxAmount: rateInclTax - rateExclTax, rateInclTax };
+}
+
 export function getBomDetailFields(record: Row): RecordField[] {
   const r = record;
+  const { rateExclTax, taxAmount, rateInclTax } = computeBomRateBreakdown(r);
   return [
     { label: "Material Code", value: r["id"], type: "text" },
     { label: "Material Description", value: r["description"], type: "text" },
@@ -234,6 +251,9 @@ export function getBomDetailFields(record: Row): RecordField[] {
     { label: "Rate", value: r["rate"], type: "currency" },
     { label: "Rate Type", value: r["rateType"], type: "text" },
     { label: "Tax %", value: r["taxPercent"], type: "percentage" },
+    { label: "Rate (Excl. Tax)", value: Math.round(rateExclTax * 100) / 100, type: "currency" },
+    { label: "Tax Amount", value: Math.round(taxAmount * 100) / 100, type: "currency" },
+    { label: "Rate (Incl. Tax)", value: Math.round(rateInclTax * 100) / 100, type: "currency" },
     { label: "MRP", value: r["mrp"], type: "currency" },
     { label: "Serialized", value: r["serialized"], type: "boolean" },
     { label: "Category", value: r["category"], type: "text" },
@@ -282,9 +302,9 @@ export function getBomOptions(): { value: string; label: string }[] {
  * (materialCode() in inventoryStock.ts splits on " — ", so this "CODE —
  * Description" shape is load-bearing, not cosmetic).
  */
-export async function getBomOptionsForPartner(partnerId: string): Promise<{ value: string; label: string }[]> {
+export async function getBomOptionsForPartner(partnerId: string): Promise<{ value: string; label: string; serialized: boolean }[]> {
   const rows = await listBusinessRecords(partnerId, "inventory-bom");
   return rows
     .filter((r) => (r["status"] ?? "Active") === "Active")
-    .map((r) => ({ value: String(r["id"]), label: `${r["id"]} — ${r["description"]}` }));
+    .map((r) => ({ value: String(r["id"]), label: `${r["id"]} — ${r["description"]}`, serialized: Boolean(r["serialized"]) }));
 }

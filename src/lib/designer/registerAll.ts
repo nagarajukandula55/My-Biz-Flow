@@ -142,6 +142,7 @@ import "@/app/partner/[partnerId]/inventory/stock/page";
 import "@/app/partner/[partnerId]/inventory/stock/[recordId]/page";
 import "@/app/partner/[partnerId]/inventory/stock/[recordId]/edit/page";
 import "@/app/partner/[partnerId]/inventory/stock-adjustments/page";
+import "@/app/partner/[partnerId]/inventory/stock-adjustments/[recordId]/page";
 import "@/app/partner/[partnerId]/inventory/stock-transfers/page";
 import "@/app/partner/[partnerId]/inventory/stock-transfers/new/page";
 import "@/app/partner/[partnerId]/inventory/stock-transfers/[recordId]/page";

@@ -5,7 +5,16 @@ import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import { createBusinessRecord } from "@/lib/businessRecords";
 import { runBulkImport, type BulkImportResult } from "@/lib/bulkImportCsv";
 import { getStockAdjustmentFormFields } from "@/lib/sample-data/warehouse";
+import { getBomOptionsForPartner } from "@/lib/sample-data/bom";
 import { adjustStockQty, getQtyOnHand } from "@/lib/inventoryStock";
+
+/** Splits the free-text "one per line" serial-numbers textarea into a clean, deduped-by-position array. */
+function parseSerialNumbers(raw: unknown): string[] {
+  return String(raw ?? "")
+    .split(/\r?\n|,/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
 
 /**
  * Creates a Stock Adjustment record AND actually applies it to the real
@@ -40,7 +49,28 @@ export async function createStockAdjustmentAction(
     }
   }
 
-  await createBusinessRecord(partnerId, "inventory-stock-adjustments", values);
+  // A serialized material (BOM's own "Serialized" flag) needs one barcode/
+  // serial collected per unit, not just a bare quantity — a non-serialized
+  // material goes through on quantity alone, same as before.
+  const bomOptions = await getBomOptionsForPartner(partnerId);
+  const isSerialized = bomOptions.some((o) => o.label === materialId && o.serialized);
+  const serialNumbers = parseSerialNumbers(values["serialNumbers"]);
+  if (isSerialized) {
+    if (serialNumbers.length !== quantity) {
+      return {
+        error: `${materialId} is a serialized material — enter exactly ${quantity} serial/barcode number${quantity === 1 ? "" : "s"} (one per line), got ${serialNumbers.length}.`,
+      };
+    }
+    const unique = new Set(serialNumbers);
+    if (unique.size !== serialNumbers.length) {
+      return { error: "Duplicate serial/barcode numbers entered — each unit needs a distinct one." };
+    }
+  }
+
+  await createBusinessRecord(partnerId, "inventory-stock-adjustments", {
+    ...values,
+    serialNumbers: isSerialized ? serialNumbers : [],
+  });
   await adjustStockQty(partnerId, materialId, materialId, warehouseName, delta);
 
   revalidatePath(`/partner/${partnerId}/inventory/stock-adjustments`);
