@@ -257,6 +257,8 @@ export function WorkorderLifecycle({
   addSolutionAction,
   addStaffNameAction,
   customerDataUnlocked,
+  materialAvailability,
+  createPnaAction,
 }: {
   partnerId: string;
   workorderId: string;
@@ -382,6 +384,18 @@ export function WorkorderLifecycle({
    * shows the real value, matching today's behaviour.
    */
   customerDataUnlocked: boolean;
+  /** Material code (e.g. "MAT-1001") -> live per-warehouse Available Qty text, same shape getAvailabilityByMaterial (src/lib/inventoryStock.ts) returns elsewhere — shown under each part line's material input so staff can see what's actually on hand before promising a part. */
+  materialAvailability: Record<string, string>;
+  /** Creates a "Part Not Available" tracking entry (service-centre-pna) — see PnaModal below. */
+  createPnaAction: (payload: {
+    workorderId: string;
+    materialId: string;
+    materialLabel: string;
+    qty: number;
+    customerName?: string;
+    customerPhone?: string;
+    brandJobNo?: string;
+  }) => Promise<void>;
 }) {
   const [stage, setStage] = useState<WorkorderStage>(initialStage);
   const [partLines, setPartLines] = useState<PartLine[]>(initialPartLines);
@@ -445,6 +459,8 @@ export function WorkorderLifecycle({
   // already there before deciding to add a new material.
   const [bomBrowseFilter, setBomBrowseFilter] = useState("");
   const [pendingLineId, setPendingLineId] = useState<string | null>(null);
+  const [pnaBrandJobNoDraft, setPnaBrandJobNoDraft] = useState("");
+  const [pnaSubmitting, setPnaSubmitting] = useState(false);
   const [closeBlockedMessage, setCloseBlockedMessage] = useState<string | null>(null);
   const [confirmCloseOpen, setConfirmCloseOpen] = useState(false);
   const [handoverNotes, setHandoverNotes] = useState(initialHandoverNotes ?? "");
@@ -828,6 +844,42 @@ export function WorkorderLifecycle({
     setPartLines(next);
     setPendingLineId(null);
     persist({ partLines: next });
+  }
+
+  /**
+   * "Part Not Available" — the actual staff-facing action behind the
+   * per-line Mark Pending flow: creates a real service-centre-pna tracking
+   * record (so owner/staff have a list to go source the part from, not
+   * just a flag on this one workorder) AND marks the line pending, same as
+   * markPending above. Optionally carries the supplier's own Brand Job No.
+   * reference if one was raised while marking it.
+   */
+  async function markPna(lineId: string) {
+    const line = partLines.find((p) => p.id === lineId);
+    if (!line) return;
+    setPnaSubmitting(true);
+    try {
+      await createPnaAction({
+        workorderId,
+        materialId: line.materialId || line.materialLabel,
+        materialLabel: line.materialLabel,
+        qty: line.qty || 1,
+        customerName,
+        customerPhone,
+        brandJobNo: pnaBrandJobNoDraft.trim() || undefined,
+      });
+      markPending(lineId);
+    } finally {
+      setPnaSubmitting(false);
+      setPnaBrandJobNoDraft("");
+    }
+  }
+
+  /** "Close Line" — the other PNA option: drop the part line entirely rather than track it for sourcing, e.g. the customer declined the repair for that part. */
+  function closePnaLine(lineId: string) {
+    removePartLine(lineId);
+    setPendingLineId(null);
+    setPnaBrandJobNoDraft("");
   }
 
   function setSerial(lineId: string, serial: string) {
@@ -1775,6 +1827,18 @@ export function WorkorderLifecycle({
                         options={bomMaterialsState.map((m) => ({ value: m.id, label: m.label }))}
                         className="w-full rounded-md border border-border bg-bg-raised px-2 py-1.5 text-sm text-text disabled:opacity-60"
                       />
+                      {/* Live Available Qty for the currently-selected material, so
+                          staff can see before typing a Qty whether Stock can
+                          actually cover it — same data source (getAvailabilityByMaterial)
+                          the Inventory forms show in their own Material dropdowns. */}
+                      {line.materialId && materialAvailability[line.materialId.split(" — ")[0].trim()] && (
+                        <p className="mt-0.5 text-[11px] text-text-muted">
+                          Avail: {materialAvailability[line.materialId.split(" — ")[0].trim()]}
+                        </p>
+                      )}
+                      {line.materialId && !materialAvailability[line.materialId.split(" — ")[0].trim()] && (
+                        <p className="mt-0.5 text-[11px] text-danger">No stock available for this part.</p>
+                      )}
                     </div>
                     <label className="flex shrink-0 flex-col gap-0.5 text-[10px] font-semibold uppercase tracking-wide text-text-muted">
                       Qty
@@ -1858,7 +1922,7 @@ export function WorkorderLifecycle({
                     {line.pending && <StatusChip label="Pending" variant="warning" />}
                     {editable && !line.pending && (
                       <button type="button" className="text-xs text-danger hover:underline" onClick={() => setPendingLineId(line.id)}>
-                        Mark Pending
+                        Part Not Available
                       </button>
                     )}
                   </div>
@@ -2356,26 +2420,55 @@ export function WorkorderLifecycle({
           </div>
         </div>
       </Modal>
+      {/* Part Not Available (PNA) — two real choices, not just a bare confirm:
+          track it (creates a service-centre-pna record owner/staff can work
+          from to go source the part, via createPnaAction) or drop the line
+          entirely (closePnaLine). Brand Job No. is optional and only
+          matters for the Track path. */}
       <Modal
         open={pendingLineId !== null}
         onClose={() => setPendingLineId(null)}
-        title="Mark Part Pending"
+        title="Part Not Available"
         size="sm"
         footer={
           <>
-            <button type="button" className="btn-outline" onClick={() => setPendingLineId(null)}>
+            <button type="button" className="btn-outline" onClick={() => setPendingLineId(null)} disabled={pnaSubmitting}>
               Cancel
             </button>
-            <button type="button" className="btn-accent" onClick={() => pendingLineId && markPending(pendingLineId)}>
-              Mark Pending
+            <button
+              type="button"
+              className="btn-outline text-danger"
+              onClick={() => pendingLineId && closePnaLine(pendingLineId)}
+              disabled={pnaSubmitting}
+            >
+              Close This Line
+            </button>
+            <button
+              type="button"
+              className="btn-accent disabled:opacity-50"
+              onClick={() => pendingLineId && markPna(pendingLineId)}
+              disabled={pnaSubmitting}
+            >
+              {pnaSubmitting ? "Saving…" : "Track as Part Not Available"}
             </button>
           </>
         }
       >
         <p className="text-sm text-text-muted">
-          This part will be marked pending — a Return/Purchase Order can be raised from Inventory to fulfill it.
-          Continue?
+          This part isn&apos;t available right now. Either track it so owner/staff can go source it (adds it to the
+          PNA list, with the supplier reference below if you have one), or close this line if it&apos;s no longer
+          needed on this job.
         </p>
+        <label className="mt-3 block text-xs font-semibold uppercase tracking-wide text-text-muted">
+          Brand Job No. <span className="font-normal normal-case">(optional — the supplier&apos;s part-order reference)</span>
+          <input
+            type="text"
+            value={pnaBrandJobNoDraft}
+            onChange={(e) => setPnaBrandJobNoDraft(e.target.value)}
+            placeholder="e.g. supplier order ref"
+            className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm font-normal normal-case tracking-normal text-text"
+          />
+        </label>
       </Modal>
       {/* Mark Part Pending — captures the reason and the brand's part-order
           reference, matching the reference app's own Part Pending modal. */}

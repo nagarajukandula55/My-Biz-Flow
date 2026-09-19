@@ -652,3 +652,39 @@ export async function setWorkorderHoldAction(
   revalidatePath(`/partner/${partnerId}/service-centre/${workorderId}`);
   revalidatePath(`/partner/${partnerId}/service-centre`);
 }
+
+/**
+ * Creates a "Part Not Available" tracking entry when a part line on this
+ * workorder can't be fulfilled from current Stock — a real BusinessRecord
+ * (moduleSlug "service-centre-pna"), not just a UI-only "pending" flag, so
+ * owner/staff have an actual list to work from to go source the part
+ * (Purchase/Part Order from Inventory), separate from the workorder itself.
+ * Carries the customer + part + optional supplier Brand Job No. reference
+ * so it's actionable without having to reopen the original workorder.
+ */
+export async function createPnaEntryAction(
+  partnerId: string,
+  payload: {
+    workorderId: string;
+    materialId: string;
+    materialLabel: string;
+    qty: number;
+    customerName?: string;
+    customerPhone?: string;
+    brandJobNo?: string;
+  }
+): Promise<void> {
+  await assertCanActOnServiceCentre(partnerId);
+  await createBusinessRecord(partnerId, "service-centre-pna", {
+    workorderId: payload.workorderId,
+    materialId: payload.materialId,
+    materialLabel: payload.materialLabel,
+    qty: payload.qty,
+    customerName: payload.customerName ?? "",
+    customerPhone: payload.customerPhone ?? "",
+    brandJobNo: payload.brandJobNo ?? "",
+    status: "Open",
+    createdDate: new Date().toISOString().slice(0, 10),
+  });
+  revalidatePath(`/partner/${partnerId}/service-centre/pna`);
+}

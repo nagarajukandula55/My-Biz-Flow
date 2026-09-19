@@ -18,6 +18,7 @@ import "@/app/partner/[partnerId]/service-centre/new/page";
 import "@/app/partner/[partnerId]/service-centre/[recordId]/page";
 import "@/app/partner/[partnerId]/service-centre/[recordId]/edit/page";
 import "@/app/partner/[partnerId]/service-centre/inquiries/page";
+import "@/app/partner/[partnerId]/service-centre/pna/page";
 import "@/app/partner/[partnerId]/service-centre/inquiries/[recordId]/page";
 import "@/app/partner/[partnerId]/service-centre/solutions/page";
 import "@/app/partner/[partnerId]/service-centre/solutions/new/page";

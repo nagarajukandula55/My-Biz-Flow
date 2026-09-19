@@ -1,6 +1,5 @@
 import { AppShell } from "@/components/AppShell";
 import { DashboardWidget } from "@/components/DashboardWidget";
-import { DataTable } from "@/components/DataTable";
 import { LineChartCard, BarChartCard, PieChartCard, PeriodComparisonCard } from "@/components/charts";
 import { ComboTrendCard } from "@/components/charts/ComboTrendCard";
 import { getVisibleModuleSlugs } from "@/lib/designer/entitlements";
@@ -8,8 +7,6 @@ import { formatCurrencyINR } from "@/lib/format";
 import {
   getRevenueTrend,
   getWorkorderStatusBreakdown,
-  recentActivityColumns,
-  getRecentActivity,
   getPeriodComparison,
   getRevenueBySource,
   getInvoiceStatusBreakdown,
@@ -35,7 +32,6 @@ registerPage({
     { key: "period-comparison-chart", label: "Daily/Weekly/Monthly/Yearly year-on-date comparison" },
     { key: "revenue-by-source-chart", label: "Revenue by source (pie chart)" },
     { key: "invoice-status-chart", label: "Invoice status breakdown (pie chart)" },
-    { key: "activity-table", label: "Recent activity table" },
     { key: "summary-widgets", label: "Summary stat row" },
     { key: "summary-cards", label: "Revenue/Invoices/Workorders summary cards" },
     { key: "six-month-trend-chart", label: "Revenue & Workorders trend (last 6 months, combo line chart)" },
@@ -43,7 +39,7 @@ registerPage({
     { key: "average-tat-card", label: "Average turnaround time — closed workorders (Service Centre)" },
   ],
   explanation:
-    "A common page every Partner has (like Settings) — same structure, different data. This is also the Designer's showcase for every chart type: line (trend), bar (Service Centre top brands), pie (composition), a DataTable (raw rows), and DashboardWidget summaries all together — all business-facing (revenue, invoices, workorders, calls-adjacent activity), with no widget showcasing the platform's own module/access-group plumbing to a partner. Modules are first narrowed to this partner's active access keys (getVisibleModuleSlugs, src/lib/designer/entitlements.ts), then charts are filtered again through filterByAccessibleModules() using the viewer's Role -> Access Groups -> module chain (src/lib/rbac.ts) — the filtering logic is real, its input (getDemoViewerRole) is a stopgap until partner-user sessions exist. The top summary row (Total Revenue, This Month, Invoices, Total/Open/Closed Workorders — getAnalyticsSummary in analyticsData.ts) reuses computeDisplayStatus() from sample-data/service-centre.ts for its Open/Closed Workorder counts — the SAME milestone computation the Workorders list page's own stat cards use — so the two pages can never disagree. Also includes a 6-month combined Revenue+Workorders trend line chart (getSixMonthTrend), a Daily/Weekly/Monthly/Yearly year-on-date comparison (this period vs. the same period one calendar year earlier, for both revenue and workorder volume — getPeriodComparison in analyticsData.ts), plus Revenue-by-Source (grouped by Billing paymentMode, the one real cross-record field this app has for 'where the money came in through') and Invoice Status breakdown pies.",
+    "A common page every Partner has (like Settings) — same structure, different data. This is also the Designer's showcase for every chart type: line (trend), bar (Service Centre top brands), pie (composition), and DashboardWidget summaries all together — all business-facing (revenue, invoices, workorders), with no widget showcasing the platform's own module/access-group plumbing to a partner. Modules are first narrowed to this partner's active access keys (getVisibleModuleSlugs, src/lib/designer/entitlements.ts), then charts are filtered again through filterByAccessibleModules() using the viewer's Role -> Access Groups -> module chain (src/lib/rbac.ts) — the filtering logic is real, its input (getDemoViewerRole) is a stopgap until partner-user sessions exist. The top summary row (Total Revenue, This Month, Invoices, Total/Open/Closed Workorders — getAnalyticsSummary in analyticsData.ts) reuses computeDisplayStatus() from sample-data/service-centre.ts for its Open/Closed Workorder counts — the SAME milestone computation the Workorders list page's own stat cards use — so the two pages can never disagree. Also includes a 6-month combined Revenue+Workorders trend line chart (getSixMonthTrend), a Daily/Weekly/Monthly/Yearly year-on-date comparison (this period vs. the same period one calendar year earlier, for both revenue and workorder volume — getPeriodComparison in analyticsData.ts), plus Revenue-by-Source (grouped by Billing paymentMode, the one real cross-record field this app has for 'where the money came in through') and Invoice Status breakdown pies.",
   sourceFile: "src/app/partner/[partnerId]/analytics/page.tsx",
 });
 
@@ -74,7 +70,6 @@ export default async function AnalyticsPage({ params }: { params: { partnerId: s
   const [
     revenueTrend,
     workorderStatusBreakdown,
-    recentActivityRows,
     revenueBySource,
     invoiceStatusBreakdown,
     periodComparison,
@@ -83,7 +78,6 @@ export default async function AnalyticsPage({ params }: { params: { partnerId: s
   ] = await Promise.all([
     getRevenueTrend(params.partnerId),
     getWorkorderStatusBreakdown(params.partnerId),
-    getRecentActivity(params.partnerId, visibleModules),
     showRevenueBySource ? getRevenueBySource(params.partnerId) : Promise.resolve([]),
     showInvoiceStatus ? getInvoiceStatusBreakdown(params.partnerId) : Promise.resolve([]),
     showPeriodComparison ? getPeriodComparison(params.partnerId) : Promise.resolve(null),
@@ -200,10 +194,6 @@ export default async function AnalyticsPage({ params }: { params: { partnerId: s
           </div>
         )}
 
-        <div className="mt-6">
-          <div className="mb-2 text-sm font-semibold text-text">Recent activity</div>
-          <DataTable columns={recentActivityColumns} rows={recentActivityRows} />
-        </div>
       </div>
     </AppShell>
   );

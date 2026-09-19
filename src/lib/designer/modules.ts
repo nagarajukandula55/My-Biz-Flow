@@ -157,6 +157,12 @@ export const MODULE_SUB_NAV: Record<string, PartnerNavSubItem[]> = {
     { key: "service-centre.list", label: "Workorders", href: "service-centre", section: "Workorders" },
     { key: "service-centre.new", label: "+ New Workorder", href: "service-centre/new", section: "Workorders" },
     { key: "service-centre.inquiries.list", label: "Inquiries", href: "service-centre/inquiries", section: "Workorders" },
+    // Parts marked "Part Not Available" on a workorder (WorkorderLifecycle's
+    // per-line PNA flow, createPnaEntryAction) land here — a real work
+    // queue for owner/staff to go source them, distinct from the workorder
+    // they were raised on. Lives at top level next to Workorders/Inquiries
+    // rather than under Masters (it's a queue to action, not a catalog).
+    { key: "service-centre.pna", label: "Parts Not Available", href: "service-centre/pna", section: "Workorders" },
     // Masters used to be five (six, with Staff Names) flat rows each
     // repeating the "Masters" section heading — collapsed into one nested
     // nav item instead, so the module's sub-nav reads as one section

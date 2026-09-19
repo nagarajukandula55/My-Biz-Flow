@@ -22,6 +22,8 @@ import {
   createServiceCentreSolutionInlineAction,
   createServiceCentreStaffNameInlineAction,
 } from "@/lib/serviceCentreCatalogActions";
+import { getAvailabilityByMaterial } from "@/lib/inventoryStock";
+import { createPnaEntryAction } from "./actions";
 
 registerPage({
   id: "service-centre.detail",
@@ -70,6 +72,7 @@ export default async function ServiceCentreDetailPage({
   const solutionOptions = activeSolutions.map((r) => ({ value: String(r["id"]), label: String(r["title"] ?? r["id"]) }));
   const partner = await getPartner(params.partnerId);
   const customerDataUnlocked = await isCustomerDataUnlocked(params.partnerId);
+  const materialAvailability = Object.fromEntries(await getAvailabilityByMaterial(params.partnerId));
 
   const brandRecords = await listBusinessRecords(params.partnerId, "service-centre-brands");
   const brandOptions = brandRecords
@@ -162,6 +165,8 @@ export default async function ServiceCentreDetailPage({
             staffNamesTier.allowed ? createServiceCentreStaffNameInlineAction.bind(null, params.partnerId) : undefined
           }
           customerDataUnlocked={customerDataUnlocked}
+          materialAvailability={materialAvailability}
+          createPnaAction={createPnaEntryAction.bind(null, params.partnerId)}
         />
 
         {/* Everything below is secondary detail, not a second page header —
