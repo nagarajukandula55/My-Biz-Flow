@@ -135,6 +135,10 @@ export const MODULE_SUB_NAV: Record<string, PartnerNavSubItem[]> = {
     { key: "inventory.stock-take", label: "Stock Take", href: "inventory/stock-take" },
     { key: "inventory.return-orders", label: "Return Orders", href: "inventory/return-orders" },
     { key: "inventory.part-orders", label: "Part Orders", href: "inventory/part-orders" },
+    // Real per-workorder consumption history (deductInventoryForWorkorderAction
+    // writes one row per part line actually deducted) — so a partner can see
+    // usage trends and reorder ahead, not just the current on-hand snapshot.
+    { key: "inventory.consumption", label: "Parts Consumption", href: "inventory/consumption" },
   ],
   // Suggested Basic/Pro/Ultimate split for Super Admin to configure in
   // PartnerType.planTierByPage (/admin/partner-types) — config-only

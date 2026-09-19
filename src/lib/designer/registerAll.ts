@@ -152,6 +152,7 @@ import "@/app/partner/[partnerId]/inventory/stock-take/new/page";
 import "@/app/partner/[partnerId]/inventory/return-orders/page";
 import "@/app/partner/[partnerId]/inventory/return-orders/[recordId]/page";
 import "@/app/partner/[partnerId]/inventory/part-orders/page";
+import "@/app/partner/[partnerId]/inventory/consumption/page";
 import "@/app/partner/[partnerId]/inventory/part-orders/[recordId]/page";
 import "@/app/partner/[partnerId]/accounting-gst/page";
 import "@/app/partner/[partnerId]/accounting-gst/new/page";

@@ -222,26 +222,29 @@ async function closeLinkedPnaEntries(partnerId: string, workorderId: string): Pr
  * modify-write against BusinessRecord's JSON blob — same documented
  * limitation as completeSaleAction, not a DB-level atomic decrement.
  * Guarded by `inventoryDeducted` on the workorder record so re-entering
- * Completed (e.g. after a later edit) never double-deducts.
- */
-/**
- * Deducts every non-pending part line's quantity from live Inventory stock
- * when a workorder is completed. Fail-closed: if ANY line would consume
- * more than is actually on hand, nothing is deducted and the caller gets
- * an error instead of some lines silently going negative — same posture
- * completeSaleAction (POS) already uses. A serialized line always consumes
- * exactly 1 unit (a serial number identifies one physical unit, so a
- * serialized line's `qty` is not read for the deduction amount) and its
- * entered serial is recorded on the stock row's `consumedSerials` list for
- * traceability; a non-serialized line deducts its own `qty`.
+ * Completed (e.g. after a later edit) never double-deducts. Every line
+ * actually deducted also gets its own "inventory-consumption" record (see
+ * bottom of the loop) — a real, queryable history of what got used on
+ * which job, for the Inventory > Parts Consumption report.
  *
- * Gated entirely by Partner.serializedInventoryEnabled (the "Serialized
- * Inventory" toggle on /partner/<id>/settings). Off (the default) means
- * this is a complete no-op: free-text parts, BOM catalog parts, and their
- * pricing all flow through to Mark Completed/Close with no stock
- * validation or deduction at all — inventory tracking simply isn't part of
- * this partner's workflow. Only when explicitly turned on does this
- * fail-closed check/deduct against real stock.
+ * Real quantity ALWAYS gets deducted here — this used to be a complete
+ * no-op whenever Partner.serializedInventoryEnabled (the "Serialized
+ * Inventory" toggle) was off, the default, which meant every workorder
+ * closed under default settings never actually consumed stock at all, no
+ * matter how many parts it used. That was correct for what was asked at
+ * the time (don't let missing serial numbers or a stock shortage block a
+ * job from closing when a partner isn't tracking serials), but it also
+ * meant real consumption silently never happened. Fixed: the toggle now
+ * only controls how STRICT this is —
+ *  - ON: fail-closed (a shortage blocks the whole deduction, same as
+ *    before) and a serialized line's entered serial is recorded.
+ *  - OFF (default): still deducts every line's real quantity, just
+ *    without blocking on a shortage (adjustStockQty floors at 0) and
+ *    without requiring a serial.
+ * A serialized line always consumes exactly 1 unit regardless of either
+ * mode (a serial number identifies one physical unit, so its `qty` isn't
+ * read for the deduction amount); a non-serialized line deducts its own
+ * `qty`.
  */
 export async function deductInventoryForWorkorderAction(partnerId: string, workorderId: string): Promise<void> {
   await assertCanActOnServiceCentre(partnerId);
@@ -259,10 +262,7 @@ export async function deductInventoryForWorkorderAction(partnerId: string, worko
     if (lifecycle.inventoryDeducted) return; // already deducted — don't double-count
 
     const partner = await getPartner(partnerId);
-    if (!partner?.serializedInventoryEnabled) {
-      await updateBusinessRecord(partnerId, "service-centre", workorderId, { ...record, inventoryDeducted: true });
-      return;
-    }
+    const strict = Boolean(partner?.serializedInventoryEnabled);
 
     if (lifecycle.partLines.length === 0) {
       await updateBusinessRecord(partnerId, "service-centre", workorderId, { ...record, inventoryDeducted: true });
@@ -279,29 +279,35 @@ export async function deductInventoryForWorkorderAction(partnerId: string, worko
     // every such job.
     const linesToConsume = lifecycle.partLines.filter((line) => !line.pending && line.materialId);
 
-    // Fail-closed pre-check — every line must have enough stock before ANY of them are deducted.
-    const shortages: string[] = [];
-    for (const line of linesToConsume) {
-      const stock = await findStockRecord(partnerId, line.materialId);
-      const available = Number(stock?.["qtyOnHand"] ?? 0);
-      const needed = line.serialized ? 1 : line.qty || 1;
-      if (available < needed) {
-        shortages.push(`${line.materialLabel || line.materialId}: ${available} available, ${needed} needed`);
+    // Fail-closed pre-check — strict mode only. In non-strict (default)
+    // mode a shortage still deducts (floored at 0 by adjustStockQty) rather
+    // than blocking the job from closing.
+    if (strict) {
+      const shortages: string[] = [];
+      for (const line of linesToConsume) {
+        const stock = await findStockRecord(partnerId, line.materialId);
+        const available = Number(stock?.["qtyOnHand"] ?? 0);
+        const needed = line.serialized ? 1 : line.qty || 1;
+        if (available < needed) {
+          shortages.push(`${line.materialLabel || line.materialId}: ${available} available, ${needed} needed`);
+        }
+      }
+      if (shortages.length > 0) {
+        throw new Error(`Not enough stock to complete this job — ${shortages.join("; ")}.`);
       }
     }
-    if (shortages.length > 0) {
-      throw new Error(`Not enough stock to complete this job — ${shortages.join("; ")}.`);
-    }
 
+    const customerName = typeof record["customer"] === "string" ? (record["customer"] as string) : "";
     for (const line of linesToConsume) {
       const needed = line.serialized ? 1 : line.qty || 1;
       const before = await findStockRecord(partnerId, line.materialId);
       const reorderLevel = Number(before?.["reorderLevel"] ?? 0);
       const currentQty = Number(before?.["qtyOnHand"] ?? 0);
+      const warehouseName = String(before?.["warehouseName"] ?? "");
 
-      const newQty = await adjustStockQty(partnerId, line.materialId, line.materialLabel, String(before?.["warehouseName"] ?? ""), -needed);
+      const newQty = await adjustStockQty(partnerId, line.materialId, line.materialLabel, warehouseName, -needed);
 
-      if (line.serialized && line.serial && before) {
+      if (strict && line.serialized && line.serial && before) {
         const consumedSerials = Array.isArray(before["consumedSerials"]) ? (before["consumedSerials"] as unknown[]) : [];
         await updateBusinessRecord(partnerId, "inventory-stock", String(before["id"]), {
           ...before,
@@ -309,6 +315,21 @@ export async function deductInventoryForWorkorderAction(partnerId: string, worko
           consumedSerials: [...consumedSerials, { serial: line.serial, workorderId, consumedAt: new Date().toISOString() }],
         });
       }
+
+      // Real consumption history — one row per part line actually deducted,
+      // independent of the strict/non-strict mode above, so Inventory >
+      // Parts Consumption always reflects what actually left stock and a
+      // partner can see usage trends to reorder ahead of running out.
+      await createBusinessRecord(partnerId, "inventory-consumption", {
+        workorderId,
+        materialId: line.materialId,
+        materialLabel: line.materialLabel,
+        warehouseName,
+        qty: needed,
+        serial: strict && line.serialized ? line.serial ?? "" : "",
+        customerName,
+        consumedDate: new Date().toISOString().slice(0, 10),
+      });
 
       // Fire once, right as stock crosses the threshold — not on every
       // subsequent deduction while it stays low, so this doesn't spam an
@@ -330,6 +351,7 @@ export async function deductInventoryForWorkorderAction(partnerId: string, worko
     await updateBusinessRecord(partnerId, "service-centre", workorderId, { ...record, inventoryDeducted: true });
   });
   revalidatePath(`/partner/${partnerId}/inventory/stock`);
+  revalidatePath(`/partner/${partnerId}/inventory/consumption`);
   revalidatePath(`/partner/${partnerId}/service-centre/${workorderId}`);
 }
 
