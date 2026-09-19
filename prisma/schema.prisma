@@ -228,6 +228,13 @@ model Partner {
   /// Business Details block. Shown in the partner's own sidebar header
   /// and printed documents when set; null renders the app's own logo.
   logoDataUrl        String? @db.Text
+  /// Settings' "Show logo on printed documents" toggle — gates whether
+  /// `logoDataUrl` is actually printed on customer-facing documents (e.g.
+  /// the Service Centre workorder print). Defaults to true so partners who
+  /// already uploaded a logo keep seeing it print, same as before this
+  /// toggle existed; a partner can turn it off without deleting the logo
+  /// itself (which is still used in the sidebar header regardless).
+  showLogoOnDocuments Boolean @default(true)
   businessEmail      String
   businessContact    String
   loginContact       String  @unique

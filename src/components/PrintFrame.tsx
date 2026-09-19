@@ -19,6 +19,8 @@ export function PrintFrame({ sizes, children }: { sizes: PrintSize[]; children: 
 
   return (
     <div className="flex flex-col items-center">
+      {/* Drives the actual physical print output (not just the on-screen preview width) — @page size is global per print job, which is fine since only one document prints at a time. margin: 0 lets each document control its own page padding instead of the browser's default. */}
+      <style>{`@page { size: ${size === "a5" ? "A5" : "A4"}; margin: 0; }`}</style>
       {sizes.length > 1 && (
         <div className="mb-3 flex items-center gap-1.5 print:hidden">
           {sizes.map((s) => (

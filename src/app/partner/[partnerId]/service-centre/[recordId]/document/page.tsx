@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { registerPage } from "@/lib/designer/registry";
 import { getPartner, resolveDocumentTerms } from "@/lib/partnerData";
 import { getBusinessRecord } from "@/lib/businessRecords";
+import { WARRANTY_STATUS_LABELS } from "@/lib/sample-data/service-centre";
 import { ServiceCentreJobCardDocument } from "./ServiceCentreJobCardDocument";
 
 registerPage({
@@ -54,12 +55,11 @@ export default async function ServiceCentreDocumentPage({
       trackingCode={params.recordId}
       docNumber={documentNumber}
       date={fmtDateEnIN((r.receivedDate as string) || (r.recordCreatedAt as string))}
-      status={r.status as string | undefined}
       companyName={partner?.businessName ?? "Your Business"}
       companyAddress={companyAddress || undefined}
       companyPhone={partner?.businessContact}
       companyGstin={partner?.gstin}
-      logoUrl={partner?.logoDataUrl}
+      logoUrl={partner?.showLogoOnDocuments ? partner?.logoDataUrl : null}
       termsText={resolveDocumentTerms(partner, "workorder")}
       customerName={(r.customer as string) || "—"}
       customerPhone={r.customerPhone as string | undefined}
@@ -68,10 +68,8 @@ export default async function ServiceCentreDocumentPage({
       model={(r.modelName as string) || (r.device as string) || undefined}
       imeiOrSerial={r.imeiOrSerialNumber as string | undefined}
       issueTitle={r.faultDescription as string | undefined}
-      issueDescription={r.issueDescription as string | undefined}
-      workPerformed={r.workPerformed as string | undefined}
-      loggedBy={r.loggedBy as string | undefined}
-      engineerName={r.engineerName as string | undefined}
+      warrantyStatus={WARRANTY_STATUS_LABELS[String(r.warrantyStatus)] ?? (r.warrantyStatus as string | undefined)}
+      remark={r.remark as string | undefined}
     />
   );
 }

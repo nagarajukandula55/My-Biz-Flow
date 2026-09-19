@@ -8,6 +8,7 @@ import {
   updatePartnerConfig,
   updatePartnerBusinessDetails,
   updatePartnerLogo,
+  updatePartnerShowLogoOnDocuments,
   updatePartnerServiceArea,
   updatePartnerSerializedInventoryEnabled,
 } from "@/lib/partnerData";
@@ -83,6 +84,17 @@ export async function saveLogoAction(partnerId: string, dataUrl: string | null):
   }
   revalidatePath(`/partner/${partnerId}/settings`);
   revalidatePath(`/partner/${partnerId}`, "layout");
+}
+
+/**
+ * Settings' "Show logo on printed documents" checkbox — a plain function
+ * call from a client event handler (not a <form>), same pattern as
+ * saveSerializedInventoryEnabledAction below.
+ */
+export async function saveShowLogoOnDocumentsAction(partnerId: string, show: boolean): Promise<void> {
+  await requireSessionPartnerId(partnerId);
+  await updatePartnerShowLogoOnDocuments(partnerId, show);
+  revalidatePath(`/partner/${partnerId}/settings`);
 }
 
 /** Real, persisted save — distinct from SettingsPageClient's demo-stub form above it on the same page. */

@@ -53,6 +53,7 @@ export function SettingsPageClient({
     timezone: string;
     currency: string;
     logoDataUrl: string | null;
+    showLogoOnDocuments: boolean;
   };
   /** Partner.serializedInventoryEnabled — real, persisted value; see the toggle below. */
   serializedInventoryEnabled: boolean;
@@ -92,7 +93,11 @@ export function SettingsPageClient({
         />
       </div>
 
-      <LogoUploadForm partnerId={partnerId} currentLogoDataUrl={businessDetails.logoDataUrl} />
+      <LogoUploadForm
+        partnerId={partnerId}
+        currentLogoDataUrl={businessDetails.logoDataUrl}
+        showLogoOnDocuments={businessDetails.showLogoOnDocuments}
+      />
 
       {SHOW_ENABLED_MODULES && (
         <div className="mt-8">

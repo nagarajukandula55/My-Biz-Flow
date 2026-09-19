@@ -35,6 +35,7 @@ export type PartnerRecord = {
   timezone: string;
   currency: string;
   logoDataUrl: string | null;
+  showLogoOnDocuments: boolean;
   businessEmail: string;
   businessContact: string;
   loginContact: string;
@@ -93,6 +94,7 @@ function toRecord(row: {
   timezone: string;
   currency: string;
   logoDataUrl: string | null;
+  showLogoOnDocuments: boolean;
   businessEmail: string;
   businessContact: string;
   loginContact: string;
@@ -225,6 +227,14 @@ export async function updatePartnerLogo(partnerId: string, dataUrl: string | nul
   await prisma.partner.update({
     where: { id: partnerId },
     data: { logoDataUrl: dataUrl },
+  });
+}
+
+/** Persists Settings' "Show logo on printed documents" checkbox — see schema.prisma's comment on the column. */
+export async function updatePartnerShowLogoOnDocuments(partnerId: string, show: boolean): Promise<void> {
+  await prisma.partner.update({
+    where: { id: partnerId },
+    data: { showLogoOnDocuments: show },
   });
 }
 

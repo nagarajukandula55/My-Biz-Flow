@@ -59,6 +59,7 @@ export default async function SettingsPage({ params }: { params: { partnerId: st
           timezone: partner?.timezone ?? "Asia/Kolkata",
           currency: partner?.currency ?? "INR",
           logoDataUrl: partner?.logoDataUrl ?? null,
+          showLogoOnDocuments: partner?.showLogoOnDocuments ?? true,
         }}
         serializedInventoryEnabled={partner?.serializedInventoryEnabled ?? false}
       />
