@@ -862,6 +862,7 @@ export function WorkorderLifecycle({
     const line = partLines.find((p) => p.id === lineId);
     if (!line) return;
     const brandJobNo = pnaBrandJobNoDraft.trim() || undefined;
+    const reason = `Part Not Available: ${line.materialLabel || line.materialId}`;
     setActionError(null);
     setPnaSubmitting(true);
     try {
@@ -874,9 +875,26 @@ export function WorkorderLifecycle({
         customerPhone,
         brandJobNo,
       });
+      // Marking a part PNA is a real job-level hold, not just a per-line
+      // flag — the workorder itself moves to Part Pending (same
+      // setWorkorderHoldAction confirmHold's "Mark Part Pending" button
+      // uses), so its status everywhere (Workorders list, stat cards,
+      // Analytics) actually reflects that the job is stalled on a part,
+      // not sitting in an ambiguous "In Progress" state with no visible
+      // reason. Only fires when the job isn't already on hold — a second
+      // PNA line on an already-Part-Pending job doesn't need to hold it
+      // again, just add another tracking entry.
+      if (!hold) {
+        await setWorkorderHoldAction(partnerId, workorderId, true, reason);
+        setHold(true);
+        if (brandJobNo) {
+          await patchServiceCentreWorkorderAction(partnerId, workorderId, { brandJobNoForPartOrder: brandJobNo });
+          setBrandJobNo(brandJobNo);
+        }
+      }
       setPnaBrandJobNoDraft("");
       markPending(lineId);
-      announceSuccess("Part marked Not Available and added to the PNA list.");
+      announceSuccess("Part marked Not Available, added to the PNA list, and the workorder is now Part Pending.");
     } catch (error) {
       setActionError(error instanceof Error ? error.message : "Couldn't save the PNA entry. Please try again.");
     } finally {
