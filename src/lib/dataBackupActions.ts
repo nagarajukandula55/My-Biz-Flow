@@ -8,11 +8,12 @@ import { getPartner } from "@/lib/partnerData";
  * Self-service "export my own data" download for a partner's peace of mind
  * — NOT a sync/backup pipeline to any other system. Dumps every
  * BusinessRecord row this partner owns (every module — POS, Billing,
- * Service Centre, Inventory, etc.) as one JSON file, same
- * "Server Action returns the file content as text, client turns it into a
- * Blob and downloads it" pattern as downloadGstExportAction
- * (src/lib/gstExportActions.ts). Deliberately scoped to THIS partner's own
- * rows only (requireSessionPartnerId enforces that) — this is a local
+ * Service Centre, Inventory, etc.) as one JSON file, the "Server Action
+ * returns the file content as text, client turns it into a Blob and
+ * downloads it" pattern (the GST Export feature, src/app/api/gst-export/
+ * route.ts, moved off this pattern onto a Route Handler instead — see
+ * that route's header comment for why). Deliberately scoped to THIS
+ * partner's own rows only (requireSessionPartnerId enforces that) — this is a local
  * export a partner can keep for themselves, not a cross-tenant database
  * sync to AN-Accounting or anywhere else. See docs/DEPLOYMENT.md and the
  * task notes this was built from for why a real live-DB-to-DB sync feature

@@ -1,22 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { downloadGstExportZipAction, type GstFilter } from "@/lib/gstExportActions";
-
-function base64ToBlob(base64: string, type: string): Blob {
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return new Blob([bytes], { type });
-}
+import type { GstFilter } from "@/lib/gstExport";
 
 /**
- * Triggers the ZIP-building Server Action and turns its base64 result into
- * a download — the standard Next.js "Server Action returns data, client
- * does the Blob + <a download>" pattern. No new API route, no client
- * fetch to a new endpoint. The ZIP contains gst-export.json (every GST-
- * required field per invoice) and gst-export.xlsx (the same rows as a
- * spreadsheet) — see gstExport.ts/gstExportActions.ts.
+ * Downloads the ZIP from /api/gst-export (a standalone Route Handler, not
+ * a Server Action) — a plain `fetch` + Blob download. Deliberately NOT a
+ * Server Action here: keeping this button's own module graph free of
+ * `xlsx`/`jszip` matters because this component is imported by this
+ * feature's page.tsx, which src/lib/designer/registerAll.ts side-effect-
+ * imports for the Designer registry, which src/lib/rbac.ts imports, which
+ * every /partner/[partnerId]/* page pulls in via PartnerLayout. Anything
+ * heavy reachable from here would get traced into every partner route's
+ * Serverless Function bundle, not just this one page — see
+ * src/app/api/gst-export/route.ts's header comment for the full story.
  */
 export function GstExportDownloadButton({
   partnerId,
@@ -36,12 +33,17 @@ export function GstExportDownloadButton({
     setBusy(true);
     setMessage(null);
     try {
-      const { zipBase64, filename, count } = await downloadGstExportZipAction(partnerId, from, to, filter);
-      if (count === 0) {
-        setMessage("No invoices match this date range / filter.");
+      const params = new URLSearchParams({ partnerId, from, to, filter });
+      const res = await fetch(`/api/gst-export?${params.toString()}`);
+      const contentType = res.headers.get("Content-Type") ?? "";
+      if (!res.ok || contentType.includes("application/json")) {
+        const body = await res.json().catch(() => ({}));
+        setMessage(body.error || "Could not generate the export.");
         return;
       }
-      const blob = base64ToBlob(zipBase64, "application/zip");
+      const blob = await res.blob();
+      const disposition = res.headers.get("Content-Disposition") ?? "";
+      const filename = /filename="([^"]+)"/.exec(disposition)?.[1] ?? "gst-export.zip";
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -50,7 +52,7 @@ export function GstExportDownloadButton({
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
-      setMessage(`Downloaded ${count} invoice${count === 1 ? "" : "s"}.`);
+      setMessage("Downloaded.");
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "Could not generate the export.");
     } finally {

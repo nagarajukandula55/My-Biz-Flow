@@ -13,7 +13,7 @@ registerPage({
   superAdminOnly: false,
   customizableRegions: [],
   explanation:
-    "Bulk, GST-workpaper-style export of Billing invoices for a date range, split by B2B (invoice carries a customer GSTIN) vs B2C (no GSTIN) — meant to make filling a GSTR-1 upload template faster, not a certified portal-exact export. Preview table + a Download GST Export (ZIP) button that calls a Server Action returning a base64 ZIP (gst-export.json with every CGST Rule 46 field per invoice — place of supply + state code, reverse charge, correct CGST/SGST-vs-IGST split by comparing customer/supplier state — plus gst-export.xlsx, the same rows as a spreadsheet), turned into a file download client-side (no new API route).",
+    "Bulk, GST-workpaper-style export of Billing invoices for a date range, split by B2B (invoice carries a customer GSTIN) vs B2C (no GSTIN) — meant to make filling a GSTR-1 upload template faster, not a certified portal-exact export. Preview table + a Download GST Export (ZIP) button that fetches /api/gst-export (a standalone Route Handler, deliberately not a Server Action in a shared lib file — see that route's header comment) which returns a ZIP: gst-export.json with every CGST Rule 46 field per invoice (place of supply + state code, reverse charge, correct CGST/SGST-vs-IGST split by comparing customer/supplier state) plus gst-export.xlsx, the same rows as a spreadsheet.",
   sourceFile: "src/app/partner/[partnerId]/billing/reports/gst-export/page.tsx",
 });
 

@@ -1,9 +1,8 @@
 /**
- * Pure helpers for the GST bulk-export feature (see gstExportActions.ts
- * for the Server Actions that call these) — kept in a separate,
- * non-"use server" module because a "use server" file may only export
- * async functions, and these are used from both the export page (a plain
- * server component) and the download action.
+ * Pure helpers for the GST bulk-export feature (see
+ * src/app/api/gst-export/route.ts, the Route Handler that calls these to
+ * build the downloadable ZIP) — used from both that route and the export
+ * page's own preview table (a plain server component).
  *
  * Exports a single ZIP containing:
  *  - gst-export.json — every invoice with the CGST Rule 46 fields a GST
