@@ -852,11 +852,17 @@ export function WorkorderLifecycle({
    * record (so owner/staff have a list to go source the part from, not
    * just a flag on this one workorder) AND marks the line pending, same as
    * markPending above. Optionally carries the supplier's own Brand Job No.
-   * reference if one was raised while marking it.
+   * reference if one was raised while marking it. A rejected createPnaAction
+   * (a real failure, e.g. a dropped session) is caught and surfaced as an
+   * actionError banner — same mechanism run() uses elsewhere in this file —
+   * instead of vanishing silently and leaving the modal looking like it
+   * worked when nothing was actually saved.
    */
   async function markPna(lineId: string) {
     const line = partLines.find((p) => p.id === lineId);
     if (!line) return;
+    const brandJobNo = pnaBrandJobNoDraft.trim() || undefined;
+    setActionError(null);
     setPnaSubmitting(true);
     try {
       await createPnaAction({
@@ -866,12 +872,15 @@ export function WorkorderLifecycle({
         qty: line.qty || 1,
         customerName,
         customerPhone,
-        brandJobNo: pnaBrandJobNoDraft.trim() || undefined,
+        brandJobNo,
       });
+      setPnaBrandJobNoDraft("");
       markPending(lineId);
+      announceSuccess("Part marked Not Available and added to the PNA list.");
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Couldn't save the PNA entry. Please try again.");
     } finally {
       setPnaSubmitting(false);
-      setPnaBrandJobNoDraft("");
     }
   }
 
