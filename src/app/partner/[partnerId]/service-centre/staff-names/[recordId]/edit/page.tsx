@@ -39,7 +39,7 @@ export default async function EditScStaffNamePage({ params }: { params: { partne
             fields={fields}
             initialValues={record}
             submitLabel="Save changes"
-            action={updateBusinessRecordAction.bind(null, params.partnerId, "service-centre-staff-names", params.recordId)}
+            action={(values: Record<string, unknown>) => updateBusinessRecordAction(params.partnerId, "service-centre-staff-names", params.recordId, values, "service-centre/staff-names")}
           />
         </div>
       </div>

@@ -7,11 +7,26 @@ import { getPartner } from "@/lib/partnerData";
 import { notifyCentralApiBillingInvoice } from "@/lib/centralApi";
 import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 
-/** Bind with .bind(null, partnerId, moduleSlug) before passing as a RecordForm `action` prop. */
+/**
+ * Bind with .bind(null, partnerId, moduleSlug) before passing as a
+ * RecordForm `action` prop — or .bind(null, partnerId, moduleSlug, urlPath)
+ * when moduleSlug (the DB partition key, e.g. "inventory-warehouses")
+ * differs from the module's real nested URL segment (e.g.
+ * "inventory/warehouses"). This assumed the two always matched — true for
+ * every single-segment module (billing, brand, hrms, ...) but false for
+ * every nested one, so a hyphenated moduleSlug used unmodified in the
+ * post-create redirect below sent the browser to a route that doesn't
+ * exist (e.g. /partner/<id>/inventory-warehouses/<recordId> instead of
+ * /partner/<id>/inventory/warehouses/<recordId>), landing on not-found.tsx
+ * AFTER the record had already been created — the record is real, only the
+ * redirect target was wrong. `urlPath` defaults to `moduleSlug` so every
+ * existing single-segment caller is unaffected.
+ */
 export async function createBusinessRecordAction(
   partnerId: string,
   moduleSlug: string,
-  values: Record<string, unknown>
+  values: Record<string, unknown>,
+  urlPath: string = moduleSlug
 ) {
   // Every module's create/edit/patch form binds this generic action with a
   // partnerId taken from the page's own URL — but a Server Action is its own
@@ -85,26 +100,32 @@ export async function createBusinessRecordAction(
     }
   }
 
-  revalidatePath(`/partner/${partnerId}/${moduleSlug}`);
+  revalidatePath(`/partner/${partnerId}/${urlPath}`);
   // ?created=1 is read by RecordDetail (via each detail page's own
   // searchParams prop) to render a real "<record> created" acknowledgment
   // on arrival, instead of a silent redirect to the new record.
-  redirect(`/partner/${partnerId}/${moduleSlug}/${record.id}?created=1`);
+  redirect(`/partner/${partnerId}/${urlPath}/${record.id}?created=1`);
 }
 
-/** Bind with .bind(null, partnerId, moduleSlug, recordKey) before passing as a RecordForm `action` prop. */
+/**
+ * Bind with .bind(null, partnerId, moduleSlug, recordKey) — or
+ * .bind(null, partnerId, moduleSlug, recordKey, urlPath) when moduleSlug
+ * differs from the real nested URL segment. See createBusinessRecordAction's
+ * doc comment above for why this exists; same bug, same fix, on the edit path.
+ */
 export async function updateBusinessRecordAction(
   partnerId: string,
   moduleSlug: string,
   recordKey: string,
-  values: Record<string, unknown>
+  values: Record<string, unknown>,
+  urlPath: string = moduleSlug
 ) {
   partnerId = await requireSessionPartnerId(partnerId);
   await updateBusinessRecord(partnerId, moduleSlug, recordKey, values);
-  revalidatePath(`/partner/${partnerId}/${moduleSlug}`);
-  revalidatePath(`/partner/${partnerId}/${moduleSlug}/${recordKey}`);
+  revalidatePath(`/partner/${partnerId}/${urlPath}`);
+  revalidatePath(`/partner/${partnerId}/${urlPath}/${recordKey}`);
   // ?updated=1 — same acknowledgment mechanism as the create action above.
-  redirect(`/partner/${partnerId}/${moduleSlug}/${recordKey}?updated=1`);
+  redirect(`/partner/${partnerId}/${urlPath}/${recordKey}?updated=1`);
 }
 
 /**

@@ -24,7 +24,7 @@ export function BomNewButton({ partnerId }: { partnerId: string }) {
         title="New Material"
         fields={bomFormFields}
         submitLabel="Create Material"
-        action={createBusinessRecordAction.bind(null, partnerId, "inventory-bom")}
+        action={(values: Record<string, unknown>) => createBusinessRecordAction(partnerId, "inventory-bom", values, "inventory/bom")}
       />
     </>
   );

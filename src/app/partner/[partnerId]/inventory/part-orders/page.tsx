@@ -5,7 +5,7 @@ import { PartOrdersNewButton } from "./PartOrdersNewButton";
 import { BulkUploadButton } from "@/components/BulkUploadButton";
 import { bulkImportPartOrdersAction } from "./actions";
 import { applyCustomizations } from "@/lib/designer/customizations";
-import { partOrderColumns, partOrderFormFields } from "@/lib/sample-data/warehouse";
+import { partOrderColumns, getPartOrderFormFields } from "@/lib/sample-data/warehouse";
 import { listBusinessRecords } from "@/lib/businessRecords";
 
 registerPage({
@@ -28,6 +28,7 @@ export const dynamic = "force-dynamic";
 export default async function PartOrdersPage({ params }: { params: { partnerId: string } }) {
   const columns = await applyCustomizations("inventory.part-orders.list", partOrderColumns);
   const rows = await listBusinessRecords(params.partnerId, "inventory-part-orders");
+  const formFields = await getPartOrderFormFields(params.partnerId);
 
   return (
     <AppShell
@@ -36,13 +37,13 @@ export default async function PartOrdersPage({ params }: { params: { partnerId: 
         <div className="flex items-center gap-3">
           <BulkUploadButton
             title="Bulk Upload Part Orders"
-            columns={partOrderFormFields.map((f) => f.key)}
+            columns={formFields.map((f) => f.key)}
             requiredColumnsNote="Material, Quantity, Source Warehouse and Status are required per row."
             sampleRow={["", "USB-C Charging Port Flex Cable", "5", "Central Warehouse — Bengaluru", "Indiranagar Service Centre", "Pending", ""]}
             templateFilename="part-orders-template.csv"
             importAction={bulkImportPartOrdersAction.bind(null, params.partnerId)}
           />
-          <PartOrdersNewButton partnerId={params.partnerId} />
+          <PartOrdersNewButton partnerId={params.partnerId} fields={formFields} />
         </div>
       }
     >

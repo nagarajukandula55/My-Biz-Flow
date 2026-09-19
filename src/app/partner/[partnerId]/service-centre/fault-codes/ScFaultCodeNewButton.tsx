@@ -17,7 +17,7 @@ export function ScFaultCodeNewButton({ partnerId }: { partnerId: string }) {
         title="New Fault Code"
         fields={scFaultCodeFormFields}
         submitLabel="Create Fault Code"
-        action={createBusinessRecordAction.bind(null, partnerId, "service-centre-fault-codes")}
+        action={(values: Record<string, unknown>) => createBusinessRecordAction(partnerId, "service-centre-fault-codes", values, "service-centre/fault-codes")}
       />
     </>
   );

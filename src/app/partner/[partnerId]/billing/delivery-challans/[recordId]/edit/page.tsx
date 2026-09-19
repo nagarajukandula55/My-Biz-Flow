@@ -54,7 +54,7 @@ export default async function EditDeliveryChallanPage({ params }: { params: { pa
               items,
             }}
             submitLabel="Save changes"
-            action={updateBusinessRecordAction.bind(null, params.partnerId, "billing-delivery-challans", params.recordId)}
+            action={(values: Record<string, unknown>) => updateBusinessRecordAction(params.partnerId, "billing-delivery-challans", params.recordId, values, "billing/delivery-challans")}
             contactOptions={contactOptions}
             itemOptions={itemOptions}
           />

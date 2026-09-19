@@ -17,7 +17,7 @@ export function ScStaffNameNewButton({ partnerId }: { partnerId: string }) {
         title="New Staff Name"
         fields={scStaffNameFormFields}
         submitLabel="Add Name"
-        action={createBusinessRecordAction.bind(null, partnerId, "service-centre-staff-names")}
+        action={(values: Record<string, unknown>) => createBusinessRecordAction(partnerId, "service-centre-staff-names", values, "service-centre/staff-names")}
       />
     </>
   );

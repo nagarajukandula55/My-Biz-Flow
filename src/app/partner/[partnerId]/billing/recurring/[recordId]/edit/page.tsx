@@ -50,7 +50,7 @@ export default async function EditRecurringInvoicePage({ params }: { params: { p
               items,
             }}
             submitLabel="Save changes"
-            action={updateBusinessRecordAction.bind(null, params.partnerId, "billing-recurring", params.recordId)}
+            action={(values: Record<string, unknown>) => updateBusinessRecordAction(params.partnerId, "billing-recurring", params.recordId, values, "billing/recurring")}
             contactOptions={contactOptions}
             itemOptions={itemOptions}
           />

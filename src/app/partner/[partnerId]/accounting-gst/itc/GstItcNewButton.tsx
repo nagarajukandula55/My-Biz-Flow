@@ -18,7 +18,7 @@ export function GstItcNewButton({ partnerId }: { partnerId: string }) {
         title="New ITC Entry"
         fields={gstItcFormFields}
         submitLabel="Record Entry"
-        action={createBusinessRecordAction.bind(null, partnerId, "accounting-gst-itc")}
+        action={(values: Record<string, unknown>) => createBusinessRecordAction(partnerId, "accounting-gst-itc", values, "accounting-gst/itc")}
       />
     </>
   );

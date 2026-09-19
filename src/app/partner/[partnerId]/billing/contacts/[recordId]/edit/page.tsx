@@ -38,7 +38,7 @@ export default async function EditBillingContactPage({ params }: { params: { par
             fields={fields}
             initialValues={record}
             submitLabel="Save changes"
-            action={updateBusinessRecordAction.bind(null, params.partnerId, "billing-contacts", params.recordId)}
+            action={(values: Record<string, unknown>) => updateBusinessRecordAction(params.partnerId, "billing-contacts", params.recordId, values, "billing/contacts")}
           />
         </div>
       </div>

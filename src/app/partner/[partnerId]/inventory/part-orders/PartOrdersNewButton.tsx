@@ -2,10 +2,10 @@
 
 import { RecordFormModal, useRecordFormModal } from "@/components/RecordFormModal";
 import { createPartOrderAction } from "./actions";
-import { partOrderFormFields } from "@/lib/sample-data/warehouse";
+import type { FormFieldDef } from "@/components/RecordForm";
 
-/** Create-as-modal for inventory/part-orders (see src/components/RecordFormModal.tsx). */
-export function PartOrdersNewButton({ partnerId }: { partnerId: string }) {
+/** Create-as-modal for inventory/part-orders (see src/components/RecordFormModal.tsx). `fields` is fetched server-side by the parent page (getPartOrderFormFields, partner-scoped). */
+export function PartOrdersNewButton({ partnerId, fields }: { partnerId: string; fields: FormFieldDef[] }) {
   const { open, openModal, closeModal } = useRecordFormModal();
   return (
     <>
@@ -16,7 +16,7 @@ export function PartOrdersNewButton({ partnerId }: { partnerId: string }) {
         open={open}
         onClose={closeModal}
         title="New Part Order"
-        fields={partOrderFormFields}
+        fields={fields}
         submitLabel="Create Part Order"
         action={createPartOrderAction.bind(null, partnerId)}
       />

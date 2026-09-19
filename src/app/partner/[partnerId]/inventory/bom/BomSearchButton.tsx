@@ -3,10 +3,9 @@
 import { useState } from "react";
 import { Search } from "lucide-react";
 import { SearchSelectModal } from "@/components/SearchSelectModal";
-import { getBomOptions } from "@/lib/sample-data/bom";
 
-/** Live proof of the search-and-select picker (see SearchSelectModal.tsx). */
-export function BomSearchButton() {
+/** Search-and-select picker over this partner's own BOM catalog (see SearchSelectModal.tsx). `options` is fetched server-side by the parent page — a Client Component can't call the partner-scoped getBomOptionsForPartner itself. */
+export function BomSearchButton({ options }: { options: { value: string; label: string }[] }) {
   const [open, setOpen] = useState(false);
   const [picked, setPicked] = useState<string | null>(null);
 
@@ -21,7 +20,7 @@ export function BomSearchButton() {
         open={open}
         onClose={() => setOpen(false)}
         title="Find a material"
-        options={getBomOptions()}
+        options={options}
         onSelect={(o) => setPicked(o.label)}
         searchPlaceholder="Search by code or description…"
       />

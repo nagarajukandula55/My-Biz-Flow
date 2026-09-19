@@ -2,7 +2,7 @@ import type { Column, Row } from "@/components/DataTable";
 import type { RecordField, TimelineEntry, RelatedRecord } from "@/components/RecordDetail";
 import type { StatusVariant } from "@/components/StatusChip";
 import type { FormFieldDef } from "@/components/RecordForm";
-import { getWarehouseOptions } from "./warehouse";
+import { getWarehouseOptions, getWarehouseOptionsForPartner } from "./warehouse";
 
 // Location sample data for the brand module — realistic field modeling,
 // no backend wired up in this pass (see CLAUDE.md).
@@ -82,6 +82,14 @@ export const brandRows: Row[] = [
   },
 ];
 
+/**
+ * Field-shape-only version — Designer's field-customization schema
+ * introspection (src/lib/designer/fieldSchema.ts) needs a synchronous
+ * FormFieldDef[] and only reads key/label/type/required/options for its
+ * own SUPER-ADMIN-facing editor UI, not a real partner form, so the
+ * DEMO/PLACEHOLDER warehouse list is the correct (and only feasible) choice
+ * here — see getWarehouseOptions()'s doc comment.
+ */
 export const brandFormFields: FormFieldDef[] = [
   { key: "id", label: "Location ID", type: "text", required: true },
   { key: "brandName", label: "Brand", type: "relation", required: true },
@@ -91,9 +99,26 @@ export const brandFormFields: FormFieldDef[] = [
   { key: "modulesEnabled", label: "Modules Enabled", type: "textarea", required: false },
   { key: "mappedWarehouse", label: "Mapped Warehouse", type: "select", required: false, options: getWarehouseOptions().map((o) => o.label) },
   { key: "monthlyRevenue", label: "Monthly Revenue", type: "currency", required: false },
-  { key: "status", label: "Status", type: "select", required: true, options: ["Active","Onboarding","Suspended"] },
+  { key: "status", label: "Status", type: "select", required: true, options: ["Active", "Onboarding", "Suspended"] },
   { key: "openedDate", label: "Opened Date", type: "date", required: false },
 ];
+
+/** Partner-scoped — Mapped Warehouse previously pulled warehouse.ts's hardcoded dummy list (a cross-module leak: every partner saw the same fixed warehouses regardless of what they'd actually created under Inventory > Warehouses). See getWarehouseOptionsForPartner's doc comment. */
+export async function getBrandFormFields(partnerId: string): Promise<FormFieldDef[]> {
+  const warehouseOptions = await getWarehouseOptionsForPartner(partnerId);
+  return [
+    { key: "id", label: "Location ID", type: "text", required: true },
+    { key: "brandName", label: "Brand", type: "relation", required: true },
+    { key: "partnerName", label: "Partner", type: "text", required: false },
+    { key: "locationName", label: "Location Name", type: "text", required: true },
+    { key: "city", label: "City", type: "text", required: true },
+    { key: "modulesEnabled", label: "Modules Enabled", type: "textarea", required: false },
+    { key: "mappedWarehouse", label: "Mapped Warehouse", type: "select", required: false, options: warehouseOptions.map((o) => o.label) },
+    { key: "monthlyRevenue", label: "Monthly Revenue", type: "currency", required: false },
+    { key: "status", label: "Status", type: "select", required: true, options: ["Active", "Onboarding", "Suspended"] },
+    { key: "openedDate", label: "Opened Date", type: "date", required: false },
+  ];
+}
 
 export function getBrandRecord(recordId: string): Row {
   return brandRows.find((r) => String(r["id"]) === recordId) ?? brandRows[0];

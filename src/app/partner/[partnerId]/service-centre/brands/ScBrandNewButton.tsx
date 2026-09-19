@@ -17,7 +17,7 @@ export function ScBrandNewButton({ partnerId }: { partnerId: string }) {
         title="New Brand"
         fields={scBrandFormFields}
         submitLabel="Create Brand"
-        action={createBusinessRecordAction.bind(null, partnerId, "service-centre-brands")}
+        action={(values: Record<string, unknown>) => createBusinessRecordAction(partnerId, "service-centre-brands", values, "service-centre/brands")}
       />
     </>
   );

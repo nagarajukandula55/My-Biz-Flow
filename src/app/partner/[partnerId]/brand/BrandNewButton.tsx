@@ -2,10 +2,10 @@
 
 import { RecordFormModal, useRecordFormModal } from "@/components/RecordFormModal";
 import { createBusinessRecordAction } from "@/lib/businessRecordActions";
-import { brandFormFields } from "@/lib/sample-data/brand";
+import type { FormFieldDef } from "@/components/RecordForm";
 
-/** Create-as-modal for brand (see src/components/RecordFormModal.tsx). */
-export function BrandNewButton({ partnerId }: { partnerId: string }) {
+/** Create-as-modal for brand (see src/components/RecordFormModal.tsx). `fields` is fetched server-side by the parent page (getBrandFormFields, partner-scoped). */
+export function BrandNewButton({ partnerId, fields }: { partnerId: string; fields: FormFieldDef[] }) {
   const { open, openModal, closeModal } = useRecordFormModal();
   return (
     <>
@@ -16,7 +16,7 @@ export function BrandNewButton({ partnerId }: { partnerId: string }) {
         open={open}
         onClose={closeModal}
         title="New Location"
-        fields={brandFormFields}
+        fields={fields}
         submitLabel="Create Location"
         action={createBusinessRecordAction.bind(null, partnerId, "brand")}
       />

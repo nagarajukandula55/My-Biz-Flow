@@ -38,7 +38,7 @@ export default async function EditExpensePage({ params }: { params: { partnerId:
             fields={fields}
             initialValues={record}
             submitLabel="Save changes"
-            action={updateBusinessRecordAction.bind(null, params.partnerId, "billing-expenses", params.recordId)}
+            action={(values: Record<string, unknown>) => updateBusinessRecordAction(params.partnerId, "billing-expenses", params.recordId, values, "billing/expenses")}
           />
         </div>
       </div>

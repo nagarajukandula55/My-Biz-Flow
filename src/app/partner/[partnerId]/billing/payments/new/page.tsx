@@ -43,7 +43,7 @@ export default async function NewBillingPaymentPage({ params }: { params: { part
           <RecordForm
             fields={fields}
             submitLabel="Record Payment"
-            action={createBusinessRecordAction.bind(null, params.partnerId, "billing-payments")}
+            action={(values: Record<string, unknown>) => createBusinessRecordAction(params.partnerId, "billing-payments", values, "billing/payments")}
           />
         </div>
       </div>

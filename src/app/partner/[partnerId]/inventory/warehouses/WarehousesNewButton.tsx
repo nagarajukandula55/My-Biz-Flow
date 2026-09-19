@@ -18,7 +18,7 @@ export function WarehousesNewButton({ partnerId }: { partnerId: string }) {
         title="New Warehouse"
         fields={warehouseFormFields}
         submitLabel="Create Warehouse"
-        action={createBusinessRecordAction.bind(null, partnerId, "inventory-warehouses")}
+        action={(values: Record<string, unknown>) => createBusinessRecordAction(partnerId, "inventory-warehouses", values, "inventory/warehouses")}
       />
     </>
   );

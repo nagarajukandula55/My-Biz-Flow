@@ -38,7 +38,7 @@ export default async function EditScBrandPage({ params }: { params: { partnerId:
             fields={fields}
             initialValues={record}
             submitLabel="Save changes"
-            action={updateBusinessRecordAction.bind(null, params.partnerId, "service-centre-brands", params.recordId)}
+            action={(values: Record<string, unknown>) => updateBusinessRecordAction(params.partnerId, "service-centre-brands", params.recordId, values, "service-centre/brands")}
           />
         </div>
       </div>

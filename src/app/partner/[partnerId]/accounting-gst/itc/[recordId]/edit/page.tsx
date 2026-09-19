@@ -38,7 +38,7 @@ export default async function EditGstItcPage({ params }: { params: { partnerId: 
             fields={fields}
             initialValues={record}
             submitLabel="Save changes"
-            action={updateBusinessRecordAction.bind(null, params.partnerId, "accounting-gst-itc", params.recordId)}
+            action={(values: Record<string, unknown>) => updateBusinessRecordAction(params.partnerId, "accounting-gst-itc", params.recordId, values, "accounting-gst/itc")}
           />
         </div>
       </div>

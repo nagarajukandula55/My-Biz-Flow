@@ -7,7 +7,7 @@ import { createBusinessRecord } from "@/lib/businessRecords";
 import type { Row } from "@/components/DataTable";
 import { getPartner } from "@/lib/partnerData";
 import { runBulkImport, type BulkImportResult } from "@/lib/bulkImportCsv";
-import { stockTransferFormFields } from "@/lib/sample-data/warehouse";
+import { getStockTransferFormFields } from "@/lib/sample-data/warehouse";
 
 /**
  * Creates a stock transfer — same generic create for an intra-partner
@@ -65,7 +65,8 @@ export async function bulkImportStockTransfersAction(partnerId: string, formData
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) throw new Error("Choose a CSV file to upload");
 
-  const result = await runBulkImport(partnerId, "inventory-stock-transfers", file, stockTransferFormFields);
+  const fields = await getStockTransferFormFields(partnerId);
+  const result = await runBulkImport(partnerId, "inventory-stock-transfers", file, fields);
   revalidatePath(`/partner/${partnerId}/inventory/stock-transfers`);
   return result;
 }

@@ -42,7 +42,7 @@ export default async function NewDeliveryChallanPage({ params }: { params: { par
             docKind="delivery-challan"
             docLabel="Delivery Challan"
             submitLabel="Create Delivery Challan"
-            action={createBusinessRecordAction.bind(null, params.partnerId, "billing-delivery-challans")}
+            action={(values: Record<string, unknown>) => createBusinessRecordAction(params.partnerId, "billing-delivery-challans", values, "billing/delivery-challans")}
             contactOptions={contactOptions}
             itemOptions={itemOptions}
           />

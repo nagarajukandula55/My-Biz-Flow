@@ -17,7 +17,7 @@ export function ExpensesNewButton({ partnerId }: { partnerId: string }) {
         title="New Expense"
         fields={expenseFormFields}
         submitLabel="Record Expense"
-        action={createBusinessRecordAction.bind(null, partnerId, "billing-expenses")}
+        action={(values: Record<string, unknown>) => createBusinessRecordAction(partnerId, "billing-expenses", values, "billing/expenses")}
       />
     </>
   );

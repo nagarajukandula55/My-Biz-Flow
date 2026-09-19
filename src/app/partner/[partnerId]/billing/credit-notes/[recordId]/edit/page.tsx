@@ -51,7 +51,7 @@ export default async function EditCreditNotePage({ params }: { params: { partner
               items,
             }}
             submitLabel="Save changes"
-            action={updateBusinessRecordAction.bind(null, params.partnerId, "billing-credit-notes", params.recordId)}
+            action={(values: Record<string, unknown>) => updateBusinessRecordAction(params.partnerId, "billing-credit-notes", params.recordId, values, "billing/credit-notes")}
             contactOptions={contactOptions}
             itemOptions={itemOptions}
             invoiceOptions={invoiceOptions}

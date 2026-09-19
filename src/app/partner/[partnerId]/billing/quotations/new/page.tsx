@@ -42,7 +42,7 @@ export default async function NewQuotationPage({ params }: { params: { partnerId
             docKind="quotation"
             docLabel="Quotation"
             submitLabel="Create Quotation"
-            action={createBusinessRecordAction.bind(null, params.partnerId, "billing-quotations")}
+            action={(values: Record<string, unknown>) => createBusinessRecordAction(params.partnerId, "billing-quotations", values, "billing/quotations")}
             contactOptions={contactOptions}
             itemOptions={itemOptions}
           />

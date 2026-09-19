@@ -54,7 +54,7 @@ export default async function EditQuotationPage({ params }: { params: { partnerI
               items,
             }}
             submitLabel="Save changes"
-            action={updateBusinessRecordAction.bind(null, params.partnerId, "billing-quotations", params.recordId)}
+            action={(values: Record<string, unknown>) => updateBusinessRecordAction(params.partnerId, "billing-quotations", params.recordId, values, "billing/quotations")}
             contactOptions={contactOptions}
             itemOptions={itemOptions}
           />

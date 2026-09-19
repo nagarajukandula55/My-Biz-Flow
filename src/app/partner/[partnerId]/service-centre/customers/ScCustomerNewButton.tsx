@@ -17,7 +17,7 @@ export function ScCustomerNewButton({ partnerId }: { partnerId: string }) {
         title="New Customer"
         fields={customersFormFields}
         submitLabel="Create Customer"
-        action={createBusinessRecordAction.bind(null, partnerId, "service-centre-customers")}
+        action={(values: Record<string, unknown>) => createBusinessRecordAction(partnerId, "service-centre-customers", values, "service-centre/customers")}
       />
     </>
   );

@@ -2,10 +2,10 @@
 
 import { RecordFormModal, useRecordFormModal } from "@/components/RecordFormModal";
 import { createBusinessRecordAction } from "@/lib/businessRecordActions";
-import { returnOrderFormFields } from "@/lib/sample-data/warehouse";
+import type { FormFieldDef } from "@/components/RecordForm";
 
-/** Create-as-modal for inventory/return-orders (see src/components/RecordFormModal.tsx). */
-export function ReturnOrdersNewButton({ partnerId }: { partnerId: string }) {
+/** Create-as-modal for inventory/return-orders (see src/components/RecordFormModal.tsx). `fields` is fetched server-side by the parent page (getReturnOrderFormFields, partner-scoped). */
+export function ReturnOrdersNewButton({ partnerId, fields }: { partnerId: string; fields: FormFieldDef[] }) {
   const { open, openModal, closeModal } = useRecordFormModal();
   return (
     <>
@@ -16,9 +16,9 @@ export function ReturnOrdersNewButton({ partnerId }: { partnerId: string }) {
         open={open}
         onClose={closeModal}
         title="New Return Order"
-        fields={returnOrderFormFields}
+        fields={fields}
         submitLabel="Create Return Order"
-        action={createBusinessRecordAction.bind(null, partnerId, "inventory-return-orders")}
+        action={(values: Record<string, unknown>) => createBusinessRecordAction(partnerId, "inventory-return-orders", values, "inventory/return-orders")}
       />
     </>
   );

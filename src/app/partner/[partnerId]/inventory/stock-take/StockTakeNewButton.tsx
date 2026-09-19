@@ -2,10 +2,10 @@
 
 import { RecordFormModal, useRecordFormModal } from "@/components/RecordFormModal";
 import { createStockTakeAction } from "./actions";
-import { stockTakeFormFields } from "@/lib/sample-data/warehouse";
+import type { FormFieldDef } from "@/components/RecordForm";
 
-/** Create-as-modal for inventory/stock-take (see src/components/RecordFormModal.tsx). */
-export function StockTakeNewButton({ partnerId }: { partnerId: string }) {
+/** Create-as-modal for inventory/stock-take (see src/components/RecordFormModal.tsx). `fields` is fetched server-side by the parent page (getStockTakeFormFields, partner-scoped). */
+export function StockTakeNewButton({ partnerId, fields }: { partnerId: string; fields: FormFieldDef[] }) {
   const { open, openModal, closeModal } = useRecordFormModal();
   return (
     <>
@@ -16,7 +16,7 @@ export function StockTakeNewButton({ partnerId }: { partnerId: string }) {
         open={open}
         onClose={closeModal}
         title="New Stock Take"
-        fields={stockTakeFormFields}
+        fields={fields}
         submitLabel="Save Count"
         action={createStockTakeAction.bind(null, partnerId)}
       />

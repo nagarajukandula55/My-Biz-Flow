@@ -28,13 +28,18 @@ export const dynamic = "force-dynamic";
 export default async function BomPage({ params }: { params: { partnerId: string } }) {
   const columns = await applyCustomizations("inventory.bom.list", bomColumns);
   const rows = await listBusinessRecords(params.partnerId, "inventory-bom");
+  // Same shape as getBomOptionsForPartner — derived from the already-fetched
+  // `rows` instead of a second query, since this page needs them anyway.
+  const bomOptions = rows
+    .filter((r) => (r["status"] ?? "Active") === "Active")
+    .map((r) => ({ value: String(r["id"]), label: `${r["id"]} — ${r["description"]}` }));
 
   return (
     <AppShell
       topbarTitle="Material Catalog (BOM)"
       topbarActions={
         <div className="flex items-center gap-3">
-          <BomSearchButton />
+          <BomSearchButton options={bomOptions} />
           <BomBulkUploadButton partnerId={params.partnerId} />
           <BomNewButton partnerId={params.partnerId} />
         </div>

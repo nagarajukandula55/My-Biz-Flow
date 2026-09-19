@@ -18,7 +18,7 @@ export function SolutionsNewButton({ partnerId }: { partnerId: string }) {
         title="New Solution"
         fields={solutionsFormFields}
         submitLabel="Create Solution"
-        action={createBusinessRecordAction.bind(null, partnerId, "service-centre-solutions")}
+        action={(values: Record<string, unknown>) => createBusinessRecordAction(partnerId, "service-centre-solutions", values, "service-centre/solutions")}
       />
     </>
   );

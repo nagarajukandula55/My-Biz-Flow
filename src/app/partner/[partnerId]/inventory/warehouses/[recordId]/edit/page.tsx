@@ -38,7 +38,7 @@ export default async function EditWarehousesPage({ params }: { params: { partner
             fields={fields}
             initialValues={record}
             submitLabel="Save changes"
-            action={updateBusinessRecordAction.bind(null, params.partnerId, "inventory-warehouses", params.recordId)}
+            action={(values: Record<string, unknown>) => updateBusinessRecordAction(params.partnerId, "inventory-warehouses", params.recordId, values, "inventory/warehouses")}
           />
         </div>
       </div>

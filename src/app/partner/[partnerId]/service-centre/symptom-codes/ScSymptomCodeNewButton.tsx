@@ -17,7 +17,7 @@ export function ScSymptomCodeNewButton({ partnerId }: { partnerId: string }) {
         title="New Symptom Code"
         fields={scSymptomCodeFormFields}
         submitLabel="Create Symptom Code"
-        action={createBusinessRecordAction.bind(null, partnerId, "service-centre-symptom-codes")}
+        action={(values: Record<string, unknown>) => createBusinessRecordAction(partnerId, "service-centre-symptom-codes", values, "service-centre/symptom-codes")}
       />
     </>
   );

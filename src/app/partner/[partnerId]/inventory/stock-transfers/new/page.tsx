@@ -1,7 +1,7 @@
 import { AppShell } from "@/components/AppShell";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
-import { stockTransferFormFields } from "@/lib/sample-data/warehouse";
+import { getStockTransferFormFields } from "@/lib/sample-data/warehouse";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { createStockTransferAction } from "../actions";
 
@@ -22,7 +22,8 @@ registerPage({
 });
 
 export default async function NewStockTransferPage({ params }: { params: { partnerId: string } }) {
-  const fields = await applyCustomizations("inventory.stock-transfers.create", stockTransferFormFields);
+  const formFields = await getStockTransferFormFields(params.partnerId);
+  const fields = await applyCustomizations("inventory.stock-transfers.create", formFields);
 
   return (
     <AppShell topbarTitle="New Transfer — Stock Transfers">

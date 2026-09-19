@@ -18,7 +18,7 @@ export function ItemsNewButton({ partnerId }: { partnerId: string }) {
         title="New Item"
         fields={billingItemFormFields}
         submitLabel="Create Item"
-        action={createBusinessRecordAction.bind(null, partnerId, "billing-items")}
+        action={(values: Record<string, unknown>) => createBusinessRecordAction(partnerId, "billing-items", values, "billing/items")}
       />
     </>
   );

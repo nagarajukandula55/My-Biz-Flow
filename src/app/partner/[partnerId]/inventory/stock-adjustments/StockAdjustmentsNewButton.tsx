@@ -2,10 +2,16 @@
 
 import { RecordFormModal, useRecordFormModal } from "@/components/RecordFormModal";
 import { createStockAdjustmentAction } from "./actions";
-import { stockAdjustmentFormFields } from "@/lib/sample-data/warehouse";
+import type { FormFieldDef } from "@/components/RecordForm";
 
-/** Create-as-modal for inventory/stock-adjustments (see src/components/RecordFormModal.tsx). */
-export function StockAdjustmentsNewButton({ partnerId }: { partnerId: string }) {
+/**
+ * Create-as-modal for inventory/stock-adjustments (see
+ * src/components/RecordFormModal.tsx). `fields` is fetched server-side by
+ * the parent page (getStockAdjustmentFormFields, partner-scoped) and
+ * passed in — this is a Client Component, so it can't call that async
+ * function itself.
+ */
+export function StockAdjustmentsNewButton({ partnerId, fields }: { partnerId: string; fields: FormFieldDef[] }) {
   const { open, openModal, closeModal } = useRecordFormModal();
   return (
     <>
@@ -16,7 +22,7 @@ export function StockAdjustmentsNewButton({ partnerId }: { partnerId: string }) 
         open={open}
         onClose={closeModal}
         title="New Adjustment"
-        fields={stockAdjustmentFormFields}
+        fields={fields}
         submitLabel="Create Adjustment"
         action={createStockAdjustmentAction.bind(null, partnerId)}
       />

@@ -5,7 +5,7 @@ import { StockAdjustmentsNewButton } from "./StockAdjustmentsNewButton";
 import { BulkUploadButton } from "@/components/BulkUploadButton";
 import { bulkImportStockAdjustmentsAction } from "./actions";
 import { applyCustomizations } from "@/lib/designer/customizations";
-import { stockAdjustmentColumns, stockAdjustmentFormFields } from "@/lib/sample-data/warehouse";
+import { stockAdjustmentColumns, getStockAdjustmentFormFields } from "@/lib/sample-data/warehouse";
 import { listBusinessRecords } from "@/lib/businessRecords";
 
 registerPage({
@@ -28,6 +28,8 @@ export const dynamic = "force-dynamic";
 export default async function StockAdjustmentsPage({ params }: { params: { partnerId: string } }) {
   const columns = await applyCustomizations("inventory.stock-adjustments.list", stockAdjustmentColumns);
   const rows = await listBusinessRecords(params.partnerId, "inventory-stock-adjustments");
+  // Partner-scoped Warehouse/Material options — see getWarehouseOptionsForPartner/getBomOptionsForPartner's doc comments.
+  const formFields = await getStockAdjustmentFormFields(params.partnerId);
 
   return (
     <AppShell
@@ -36,13 +38,13 @@ export default async function StockAdjustmentsPage({ params }: { params: { partn
         <div className="flex items-center gap-3">
           <BulkUploadButton
             title="Bulk Upload Stock Adjustments"
-            columns={stockAdjustmentFormFields.map((f) => f.key)}
+            columns={formFields.map((f) => f.key)}
             requiredColumnsNote="Warehouse, Material, Type, Quantity, Reason and Date are required per row."
             sampleRow={["Central Warehouse — Bengaluru", "USB-C Charging Port Flex Cable", "Increase", "10", "Stock Count Correction", "", "2026-09-19"]}
             templateFilename="stock-adjustments-template.csv"
             importAction={bulkImportStockAdjustmentsAction.bind(null, params.partnerId)}
           />
-          <StockAdjustmentsNewButton partnerId={params.partnerId} />
+          <StockAdjustmentsNewButton partnerId={params.partnerId} fields={formFields} />
         </div>
       }
     >

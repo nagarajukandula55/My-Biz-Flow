@@ -54,7 +54,7 @@ export default async function EditProformaInvoicePage({ params }: { params: { pa
               items,
             }}
             submitLabel="Save changes"
-            action={updateBusinessRecordAction.bind(null, params.partnerId, "billing-proforma-invoices", params.recordId)}
+            action={(values: Record<string, unknown>) => updateBusinessRecordAction(params.partnerId, "billing-proforma-invoices", params.recordId, values, "billing/proforma-invoices")}
             contactOptions={contactOptions}
             itemOptions={itemOptions}
           />

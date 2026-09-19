@@ -2,7 +2,7 @@ import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
-import { brandFormFields } from "@/lib/sample-data/brand";
+import { getBrandFormFields } from "@/lib/sample-data/brand";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { createBusinessRecordAction } from "@/lib/businessRecordActions";
 
@@ -24,7 +24,8 @@ registerPage({
 
 export default async function NewBrandPage({ params }: { params: { partnerId: string } }) {
   const mod = await getModule("brand");
-  const fields = await applyCustomizations("brand.create", brandFormFields);
+  const formFields = await getBrandFormFields(params.partnerId);
+  const fields = await applyCustomizations("brand.create", formFields);
 
   return (
     <AppShell topbarTitle={`New Location — ${mod?.label ?? "Brand"}`}>

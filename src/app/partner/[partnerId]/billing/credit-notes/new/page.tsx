@@ -42,7 +42,7 @@ export default async function NewCreditNotePage({ params }: { params: { partnerI
         <div className="mt-6">
           <CreditNoteForm
             submitLabel="Create Note"
-            action={createBusinessRecordAction.bind(null, params.partnerId, "billing-credit-notes")}
+            action={(values: Record<string, unknown>) => createBusinessRecordAction(params.partnerId, "billing-credit-notes", values, "billing/credit-notes")}
             contactOptions={contactOptions}
             itemOptions={itemOptions}
             invoiceOptions={invoiceOptions}

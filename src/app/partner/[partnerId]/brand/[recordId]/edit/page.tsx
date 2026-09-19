@@ -3,7 +3,7 @@ import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { notFound } from "next/navigation";
-import { brandFormFields } from "@/lib/sample-data/brand";
+import { getBrandFormFields } from "@/lib/sample-data/brand";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { getBusinessRecord } from "@/lib/businessRecords";
 import { updateBusinessRecordAction } from "@/lib/businessRecordActions";
@@ -28,7 +28,8 @@ export default async function EditBrandPage({ params }: { params: { partnerId: s
   const mod = await getModule("brand");
   const record = await getBusinessRecord(params.partnerId, "brand", params.recordId);
   if (!record) notFound();
-  const fields = await applyCustomizations("brand.edit", brandFormFields);
+  const formFields = await getBrandFormFields(params.partnerId);
+  const fields = await applyCustomizations("brand.edit", formFields);
 
   return (
     <AppShell topbarTitle={`Edit Location — ${mod?.label ?? "Brand"}`}>

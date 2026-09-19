@@ -2,6 +2,7 @@ import type { Column, Row } from "@/components/DataTable";
 import type { RecordField, TimelineEntry, RelatedRecord } from "@/components/RecordDetail";
 import type { StatusVariant } from "@/components/StatusChip";
 import type { FormFieldDef } from "@/components/RecordForm";
+import { listBusinessRecords } from "@/lib/businessRecords";
 
 /**
  * BOM (Bill of Materials) — the flat material/item master catalog shared
@@ -255,9 +256,35 @@ export function getBomTimeline(record: Row): TimelineEntry[] {
 
 export const bomRelated: RelatedRecord[] = [];
 
-/** Convenience lookup for other modules (Billing/POS/Service Centre dropdowns). */
+/**
+ * DEMO/PLACEHOLDER ONLY — returns the hardcoded `bomRows` sample data
+ * above, identical for every partner. Was used directly as `options` on
+ * several real forms (Stock Adjustment, Return/Part Orders, Stock
+ * Transfers/Take, Service Centre's Brand "Mapped Warehouse"), which meant
+ * every partner saw the same fixed dummy material list regardless of what
+ * they'd actually entered into their own BOM catalog, and a real BOM item
+ * they'd added never appeared. Use `getBomOptionsForPartner` instead for
+ * anything actually facing a partner — this only remains for the Design
+ * System reference page and any other place that genuinely wants
+ * placeholder data.
+ */
 export function getBomOptions(): { value: string; label: string }[] {
   return bomRows
     .filter((r) => r["status"] === "Active")
+    .map((r) => ({ value: String(r["id"]), label: `${r["id"]} — ${r["description"]}` }));
+}
+
+/**
+ * The real, partner-scoped material list — every Active row in THIS
+ * partner's own "inventory-bom" catalog, nothing more (no dummy rows) and
+ * nothing less (every real BOM item they've added). Label format matches
+ * what part-line/stock-lookup code elsewhere normalizes against
+ * (materialCode() in inventoryStock.ts splits on " — ", so this "CODE —
+ * Description" shape is load-bearing, not cosmetic).
+ */
+export async function getBomOptionsForPartner(partnerId: string): Promise<{ value: string; label: string }[]> {
+  const rows = await listBusinessRecords(partnerId, "inventory-bom");
+  return rows
+    .filter((r) => (r["status"] ?? "Active") === "Active")
     .map((r) => ({ value: String(r["id"]), label: `${r["id"]} — ${r["description"]}` }));
 }

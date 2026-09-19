@@ -1,7 +1,7 @@
 import { AppShell } from "@/components/AppShell";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
-import { stockTakeFormFields } from "@/lib/sample-data/warehouse";
+import { getStockTakeFormFields } from "@/lib/sample-data/warehouse";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { createStockTakeAction } from "../actions";
 
@@ -22,7 +22,8 @@ registerPage({
 });
 
 export default async function NewStockTakePage({ params }: { params: { partnerId: string } }) {
-  const fields = await applyCustomizations("inventory.stock-take.create", stockTakeFormFields);
+  const formFields = await getStockTakeFormFields(params.partnerId);
+  const fields = await applyCustomizations("inventory.stock-take.create", formFields);
 
   return (
     <AppShell topbarTitle="New Stock Take">

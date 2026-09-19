@@ -32,7 +32,7 @@ export default async function NewEducationBatchPage({ params }: { params: { part
           <RecordForm
             fields={fields}
             submitLabel="Create Batch"
-            action={createBusinessRecordAction.bind(null, params.partnerId, "education-batches")}
+            action={(values: Record<string, unknown>) => createBusinessRecordAction(params.partnerId, "education-batches", values, "education/batches")}
           />
         </div>
       </div>

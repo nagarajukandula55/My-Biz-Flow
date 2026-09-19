@@ -1,12 +1,9 @@
 import { AppShell } from "@/components/AppShell";
 import { registerPage } from "@/lib/designer/registry";
 import { StockClientTable } from "./StockClientTable";
-import { StockNewButton } from "./StockNewButton";
-import { BulkUploadButton } from "@/components/BulkUploadButton";
 import { RecordCsvExportButton } from "@/components/RecordCsvExportButton";
-import { bulkImportStockAction } from "./actions";
 import { applyCustomizations } from "@/lib/designer/customizations";
-import { stockColumns, stockFormFields } from "@/lib/sample-data/warehouse";
+import { stockColumns } from "@/lib/sample-data/warehouse";
 import { listBusinessRecords } from "@/lib/businessRecords";
 
 registerPage({
@@ -20,7 +17,8 @@ registerPage({
     { key: "columns", label: "Table columns" },
     { key: "filters", label: "List filters" },
   ],
-  explanation: "Lists every per-warehouse stock ledger entry, with a \"+ New\" action to create one and row-click navigation into the record's detail view.",
+  explanation:
+    "Lists every per-warehouse stock ledger entry — read-only, no \"+ New\"/bulk-upload here by deliberate design. A stock quantity only ever enters this module through an audited flow that has a reason attached: Stock Adjustment (including its own \"Initial Stock\" reason for opening balances), Part Order receiving, or Stock Take reconciliation — never a bare create/import straight onto this list, which used to let a quantity appear with no record of why.",
   sourceFile: "src/app/partner/[partnerId]/inventory/stock/page.tsx",
 });
 
@@ -35,20 +33,11 @@ export default async function StockPage({ params }: { params: { partnerId: strin
       topbarTitle="Inventory (Stock)"
       topbarActions={
         <div className="flex items-center gap-3">
-          <BulkUploadButton
-            title="Bulk Upload Stock"
-            columns={stockFormFields.map((f) => f.key)}
-            requiredColumnsNote="Material, Warehouse and Qty on Hand are required per row."
-            sampleRow={["USB-C Charging Port Flex Cable", "Central Warehouse — Bengaluru", "25", "0", "10"]}
-            templateFilename="stock-template.csv"
-            importAction={bulkImportStockAction.bind(null, params.partnerId)}
-          />
           <RecordCsvExportButton
             columns={columns.map((c) => c.key)}
             rows={rows}
             filename={`stock-${params.partnerId}-${new Date().toISOString().slice(0, 10)}.csv`}
           />
-          <StockNewButton partnerId={params.partnerId} />
         </div>
       }
     >

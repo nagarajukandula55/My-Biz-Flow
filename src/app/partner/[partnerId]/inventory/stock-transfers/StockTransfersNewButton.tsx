@@ -1,11 +1,20 @@
 "use client";
 
 import { RecordFormModal, useRecordFormModal } from "@/components/RecordFormModal";
-import { createBusinessRecordAction } from "@/lib/businessRecordActions";
-import { stockTransferFormFields } from "@/lib/sample-data/warehouse";
+import { createStockTransferAction } from "./actions";
+import type { FormFieldDef } from "@/components/RecordForm";
 
-/** Create-as-modal for inventory/stock-transfers (see src/components/RecordFormModal.tsx). */
-export function StockTransfersNewButton({ partnerId }: { partnerId: string }) {
+/**
+ * Create-as-modal for inventory/stock-transfers (see
+ * src/components/RecordFormModal.tsx). Was bound to the generic
+ * createBusinessRecordAction, which skipped createStockTransferAction's
+ * own gating — a partner-to-partner transfer (toPartnerId set to a
+ * different partner) needs to land as "Pending Super Admin Approval", not
+ * whatever status the raw form submitted, and the generic action has no
+ * idea that rule exists. `fields` is fetched server-side by the parent
+ * page (getStockTransferFormFields, partner-scoped).
+ */
+export function StockTransfersNewButton({ partnerId, fields }: { partnerId: string; fields: FormFieldDef[] }) {
   const { open, openModal, closeModal } = useRecordFormModal();
   return (
     <>
@@ -16,9 +25,9 @@ export function StockTransfersNewButton({ partnerId }: { partnerId: string }) {
         open={open}
         onClose={closeModal}
         title="New Transfer"
-        fields={stockTransferFormFields}
+        fields={fields}
         submitLabel="Create Transfer"
-        action={createBusinessRecordAction.bind(null, partnerId, "inventory-stock-transfers")}
+        action={createStockTransferAction.bind(null, partnerId)}
       />
     </>
   );

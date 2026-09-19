@@ -4,7 +4,7 @@ import { registerPage } from "@/lib/designer/registry";
 import { BrandClientTable } from "./BrandClientTable";
 import { BrandNewButton } from "./BrandNewButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
-import { brandColumns } from "@/lib/sample-data/brand";
+import { brandColumns, getBrandFormFields } from "@/lib/sample-data/brand";
 import { listBusinessRecords } from "@/lib/businessRecords";
 
 registerPage({
@@ -29,12 +29,13 @@ export default async function BrandPage({ params }: { params: { partnerId: strin
   const mod = await getModule("brand");
   const columns = await applyCustomizations("brand.list", brandColumns);
   const rows = await listBusinessRecords(params.partnerId, "brand");
+  const formFields = await getBrandFormFields(params.partnerId);
 
   return (
     <AppShell
       topbarTitle={mod?.label ?? "Brand"}
       topbarActions={
-        <BrandNewButton partnerId={params.partnerId} />
+        <BrandNewButton partnerId={params.partnerId} fields={formFields} />
       }
     >
       <div>

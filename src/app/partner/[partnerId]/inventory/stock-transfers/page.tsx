@@ -5,7 +5,7 @@ import { StockTransfersNewButton } from "./StockTransfersNewButton";
 import { BulkUploadButton } from "@/components/BulkUploadButton";
 import { bulkImportStockTransfersAction } from "./actions";
 import { applyCustomizations } from "@/lib/designer/customizations";
-import { stockTransferColumns, stockTransferFormFields } from "@/lib/sample-data/warehouse";
+import { stockTransferColumns, getStockTransferFormFields } from "@/lib/sample-data/warehouse";
 import { listBusinessRecords } from "@/lib/businessRecords";
 
 registerPage({
@@ -28,6 +28,7 @@ export const dynamic = "force-dynamic";
 export default async function StockTransfersPage({ params }: { params: { partnerId: string } }) {
   const columns = await applyCustomizations("inventory.stock-transfers.list", stockTransferColumns);
   const rows = await listBusinessRecords(params.partnerId, "inventory-stock-transfers");
+  const formFields = await getStockTransferFormFields(params.partnerId);
 
   return (
     <AppShell
@@ -36,13 +37,13 @@ export default async function StockTransfersPage({ params }: { params: { partner
         <div className="flex items-center gap-3">
           <BulkUploadButton
             title="Bulk Upload Stock Transfers"
-            columns={stockTransferFormFields.map((f) => f.key)}
+            columns={formFields.map((f) => f.key)}
             requiredColumnsNote="Material, From Warehouse, Quantity, Transfer Date and Status are required per row. Bulk upload only supports own-warehouse transfers — use + New Transfer for a partner-to-partner request."
             sampleRow={["USB-C Charging Port Flex Cable", "Central Warehouse — Bengaluru", "Secondary Warehouse — Mumbai", "", "5", "2026-09-19", "Rebalancing stock", "Pending"]}
             templateFilename="stock-transfers-template.csv"
             importAction={bulkImportStockTransfersAction.bind(null, params.partnerId)}
           />
-          <StockTransfersNewButton partnerId={params.partnerId} />
+          <StockTransfersNewButton partnerId={params.partnerId} fields={formFields} />
         </div>
       }
     >

@@ -1,7 +1,7 @@
 import { AppShell } from "@/components/AppShell";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
-import { stockFormFields } from "@/lib/sample-data/warehouse";
+import { getStockFormFields } from "@/lib/sample-data/warehouse";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { notFound } from "next/navigation";
 import { getBusinessRecord } from "@/lib/businessRecords";
@@ -24,14 +24,14 @@ registerPage({
   sourceFile: "src/app/partner/[partnerId]/inventory/stock/[recordId]/edit/page.tsx",
 });
 
-// Qty on Hand is excluded — see the explanation above. Every other field
-// (Material, Warehouse, Reserved Qty, Reorder Level) stays editable.
-const EDITABLE_FIELDS = stockFormFields.filter((f) => f.key !== "qtyOnHand");
-
 export default async function EditStockPage({ params }: { params: { partnerId: string; recordId: string } }) {
   const record = await getBusinessRecord(params.partnerId, "inventory-stock", params.recordId);
   if (!record) notFound();
-  const fields = await applyCustomizations("inventory.stock.edit", EDITABLE_FIELDS);
+  // Qty on Hand is excluded — see the explanation above. Every other field
+  // (Material, Warehouse, Reserved Qty, Reorder Level) stays editable.
+  const allFields = await getStockFormFields(params.partnerId);
+  const editableFields = allFields.filter((f) => f.key !== "qtyOnHand");
+  const fields = await applyCustomizations("inventory.stock.edit", editableFields);
 
   return (
     <AppShell topbarTitle="Edit Stock Entry — Inventory (Stock)">
@@ -46,7 +46,7 @@ export default async function EditStockPage({ params }: { params: { partnerId: s
             fields={fields}
             initialValues={record}
             submitLabel="Save changes"
-            action={updateBusinessRecordAction.bind(null, params.partnerId, "inventory-stock", params.recordId)}
+            action={(values: Record<string, unknown>) => updateBusinessRecordAction(params.partnerId, "inventory-stock", params.recordId, values, "inventory/stock")}
           />
         </div>
       </div>

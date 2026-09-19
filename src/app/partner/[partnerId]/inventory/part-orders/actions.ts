@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import { createBusinessRecord } from "@/lib/businessRecords";
 import { runBulkImport, type BulkImportResult } from "@/lib/bulkImportCsv";
-import { partOrderFormFields } from "@/lib/sample-data/warehouse";
+import { getPartOrderFormFields } from "@/lib/sample-data/warehouse";
 import { adjustStockQty, getQtyOnHand } from "@/lib/inventoryStock";
 
 /**
@@ -52,7 +52,8 @@ export async function bulkImportPartOrdersAction(partnerId: string, formData: Fo
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) throw new Error("Choose a CSV file to upload");
 
-  const result = await runBulkImport(partnerId, "inventory-part-orders", file, partOrderFormFields, async (values) => {
+  const fields = await getPartOrderFormFields(partnerId);
+  const result = await runBulkImport(partnerId, "inventory-part-orders", file, fields, async (values) => {
     const materialId = String(values["materialId"] ?? "").trim();
     const sourceWarehouseName = String(values["sourceWarehouseName"] ?? "").trim();
     const quantity = Number(values["quantity"] ?? 0);

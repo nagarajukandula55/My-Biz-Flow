@@ -33,7 +33,7 @@ export default async function NewGstItcPage({ params }: { params: { partnerId: s
           <RecordForm
             fields={fields}
             submitLabel="Record Entry"
-            action={createBusinessRecordAction.bind(null, params.partnerId, "accounting-gst-itc")}
+            action={(values: Record<string, unknown>) => createBusinessRecordAction(params.partnerId, "accounting-gst-itc", values, "accounting-gst/itc")}
           />
         </div>
       </div>

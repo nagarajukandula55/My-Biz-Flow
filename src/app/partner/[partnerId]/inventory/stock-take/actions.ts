@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { createBusinessRecord } from "@/lib/businessRecords";
 import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import { runBulkImport, type BulkImportResult } from "@/lib/bulkImportCsv";
-import { stockTakeFormFields } from "@/lib/sample-data/warehouse";
+import { getStockTakeFormFields } from "@/lib/sample-data/warehouse";
 import { setStockQty } from "@/lib/inventoryStock";
 
 /**
@@ -44,7 +44,8 @@ export async function bulkImportStockTakeAction(partnerId: string, formData: For
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) throw new Error("Choose a CSV file to upload");
 
-  const result = await runBulkImport(partnerId, "inventory-stock-take", file, stockTakeFormFields, async (values) => {
+  const fields = await getStockTakeFormFields(partnerId);
+  const result = await runBulkImport(partnerId, "inventory-stock-take", file, fields, async (values) => {
     const materialId = String(values["materialId"] ?? "").trim();
     const warehouseName = String(values["warehouseName"] ?? "").trim();
     const countedQty = Number(values["countedQty"] ?? 0);
