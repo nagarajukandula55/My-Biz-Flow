@@ -43,7 +43,7 @@ jobs:
           set -euo pipefail
           sudo apt-get update
           sudo apt-get install -y postgresql-common
-          yes '' | sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
           sudo apt-get install -y postgresql-client-18
 
       - name: Dump Postgres database
