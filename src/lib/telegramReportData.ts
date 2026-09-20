@@ -10,9 +10,10 @@
  */
 import { prisma } from "@/lib/prisma";
 import { businessReportMessage, type ReportFrequency } from "@/lib/telegramTemplates";
-import { getPartner } from "@/lib/partnerData";
+import { getPartner, listPartners } from "@/lib/partnerData";
 import { listPartnersWithReportsEnabled, sendPartnerTelegramReport, sendRawTelegramMessage } from "@/lib/telegram";
 import { getOpsChatId } from "@/lib/platformSettings";
+import { logReportRun } from "@/lib/reportRunLog";
 
 /** True when `now` falls on the last calendar day of its month. */
 function isLastDayOfMonth(now: Date): boolean {
@@ -84,7 +85,7 @@ export type PartnerReportStats = {
  * this digest simply not covering it yet — see this function's own
  * per-module comments for exactly what's included and why.
  */
-async function statsForRange(partnerId: string, start: Date, end: Date): Promise<PartnerReportStats> {
+export async function statsForRange(partnerId: string, start: Date, end: Date): Promise<PartnerReportStats> {
   const dateFilter = { gte: start, lt: end };
   const [billingRows, posRows, workorderCount] = await Promise.all([
     prisma.businessRecord.findMany({
@@ -147,11 +148,18 @@ export async function computePartnerReportComparison(
   return { current, prior, changePct };
 }
 
-function formatInr(n: number): string {
+export function formatInr(n: number): string {
   return `₹${Math.round(n).toLocaleString("en-IN")}`;
 }
 
-export type ReportPushDetail = { partnerId: string; businessName: string; ok: boolean; error?: string };
+export type ReportPushDetail = {
+  partnerId: string;
+  businessName: string;
+  ok: boolean;
+  /** True when this partner was never attempted (not due today / already sent today for this cadence) rather than attempted-and-failed. */
+  skipped?: boolean;
+  error?: string;
+};
 export type ReportPushResult = {
   cadence: ReportFrequency;
   attempted: number;
@@ -238,31 +246,69 @@ export async function pushTelegramReportsNow(
 }
 
 /**
- * Best-effort ops digest to the Super Admin's own Telegram (TELEGRAM_OPS_CHAT_ID,
- * NOT any partner's chat) after a report run — automatic cron or manual push.
- * Must never throw: a summary-send failure should never break the cron
- * response or the manual push's own success response.
+ * Ops digest to the Super Admin's own Telegram (TELEGRAM_OPS_CHAT_ID, NOT
+ * any partner's chat) after a report run — automatic cron or manual push —
+ * AND the persisted row behind the My Biz Flow Admin app's report-run
+ * summary (src/lib/reportRunLog.ts / /api/admin/report-runs). Every
+ * report-triggering path funnels through here so "was this run triggered,
+ * and did it succeed" has exactly one place it's recorded from.
+ *
+ * Reports how many partners exist on the whole platform (listPartners, not
+ * just the ones with a connected Telegram chat) alongside how many were
+ * actually due/attempted for this cadence, and names every partner that
+ * didn't get a send with why — not just a bare failed count. Must never
+ * throw: a summary-send failure should never break the cron response or the
+ * manual push's own success response.
  */
 export async function sendReportRunOpsSummary(params: {
   trigger: "cron" | "manual";
   cadence: string;
-  attempted: number;
-  sent: number;
-  failed: number;
+  details: ReportPushDetail[];
   now?: Date;
 }): Promise<void> {
+  const sent = params.details.filter((d) => d.ok).length;
+  const failed = params.details.filter((d) => !d.ok && !d.skipped).length;
+  const skipped = params.details.filter((d) => d.skipped).length;
+  const notReceived = params.details.filter((d) => !d.ok);
+
+  try {
+    await logReportRun({
+      cadence: params.cadence,
+      trigger: params.trigger,
+      attempted: params.details.length,
+      sent,
+      failed,
+      skipped,
+      details: params.details,
+    });
+  } catch (err) {
+    console.error("[sendReportRunOpsSummary] failed to persist run log:", err);
+  }
+
   try {
     const opsChatId = await getOpsChatId();
     if (!opsChatId) return;
-    const when = (params.now ?? new Date()).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" });
+    const now = params.now ?? new Date();
+    const when = now.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" });
+    const totalPartnersOnPlatform = (await listPartners()).length;
+
     const lines = [
       `📊 Telegram report run (${params.trigger === "manual" ? "manual push" : "cron"})`,
       `Cadence: ${params.cadence}`,
-      `Attempted: ${params.attempted} · Sent: ${params.sent} · Failed: ${params.failed}`,
-      when,
+      `Partners on platform: ${totalPartnersOnPlatform} · Considered this run: ${params.details.length}`,
+      `Sent: ${sent} · Failed: ${failed} · Skipped: ${skipped}`,
     ];
+
+    if (notReceived.length > 0) {
+      lines.push("", "Did not receive:");
+      for (const d of notReceived) {
+        lines.push(`• ${d.businessName} — ${d.error ?? (d.skipped ? "skipped" : "unknown reason")}`);
+      }
+    }
+
+    lines.push("", when);
     await sendRawTelegramMessage(opsChatId, lines.join("\n"));
   } catch (err) {
-    console.error("[sendReportRunOpsSummary] failed:", err);
+    console.error("[sendReportRunOpsSummary] failed to send Telegram summary:", err);
   }
 }

@@ -11,6 +11,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { env } from "@/lib/env";
+import type { ReportFrequency } from "@/lib/telegramTemplates";
 
 const SETTINGS_ID = "platform";
 
@@ -66,5 +67,31 @@ export async function setWhatsappTriggerEnabled(triggerKey: string, enabled: boo
     where: { id: SETTINGS_ID },
     create: { id: SETTINGS_ID, enabledWhatsappTriggers: next },
     update: { enabledWhatsappTriggers: next },
+  });
+}
+
+/** Per-cadence last-sent stamp for the platform's own growth digest (src/lib/platformReportData.ts) — mirrors TelegramSettings.lastReportSentAt's shape, just for the one platform-wide "account" instead of per-partner. */
+export async function getLastPlatformReportSentAt(): Promise<Partial<Record<ReportFrequency, Date>>> {
+  const row = await getSettings();
+  const raw = row?.lastPlatformReportSentAt;
+  const out: Partial<Record<ReportFrequency, Date>> = {};
+  if (raw && typeof raw === "object") {
+    for (const cadence of ["DAILY", "WEEKLY", "MONTHLY"] as ReportFrequency[]) {
+      const value = (raw as Record<string, unknown>)[cadence];
+      if (typeof value === "string" && value) out[cadence] = new Date(value);
+    }
+  }
+  return out;
+}
+
+export async function setLastPlatformReportSentAt(cadence: ReportFrequency, sentAt: Date): Promise<void> {
+  const current = await getLastPlatformReportSentAt();
+  const next: Record<string, string> = {};
+  for (const [c, d] of Object.entries(current)) next[c] = d.toISOString();
+  next[cadence] = sentAt.toISOString();
+  await prisma.platformSettings.upsert({
+    where: { id: SETTINGS_ID },
+    create: { id: SETTINGS_ID, lastPlatformReportSentAt: next },
+    update: { lastPlatformReportSentAt: next },
   });
 }

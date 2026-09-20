@@ -2,8 +2,16 @@ import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 import { env } from "@/lib/env";
-import { listPartnersWithReportsEnabled, TELEGRAM_REPORT_CADENCES } from "@/lib/telegram";
-import { shouldSendReportToday, alreadySentToday, sendOnePartnerReport, sendReportRunOpsSummary } from "@/lib/telegramReportData";
+import { listPartnersWithReportsEnabled, TELEGRAM_REPORT_CADENCES, type TelegramReportCadence } from "@/lib/telegram";
+import { getPartner } from "@/lib/partnerData";
+import {
+  shouldSendReportToday,
+  alreadySentToday,
+  sendOnePartnerReport,
+  sendReportRunOpsSummary,
+  type ReportPushDetail,
+} from "@/lib/telegramReportData";
+import { maybeSendPlatformReport } from "@/lib/platformReportData";
 
 /**
  * GitHub Actions cron entry point (.github/workflows/cron.yml, 9 PM IST
@@ -33,41 +41,59 @@ export async function GET(request: Request) {
 
   const now = new Date();
   const candidates = await listPartnersWithReportsEnabled();
-  let sentCount = 0;
-  let skippedCount = 0;
-  let failedCount = 0;
-  const cadencesRun = new Set<string>();
+
+  // One details[] per cadence — each cadence is its own "run" (its own due
+  // day), so a WEEKLY run on an off-day shouldn't blend into DAILY's summary.
+  const detailsByCadence = new Map<TelegramReportCadence, ReportPushDetail[]>(
+    TELEGRAM_REPORT_CADENCES.map((c) => [c, []])
+  );
 
   for (const settings of candidates) {
+    const partner = await getPartner(settings.partnerId);
+    const businessName = partner?.businessName ?? settings.partnerId;
+
     for (const cadence of TELEGRAM_REPORT_CADENCES) {
+      const details = detailsByCadence.get(cadence)!;
+
       if (!shouldSendReportToday(cadence, now)) {
-        skippedCount += 1;
+        details.push({ partnerId: settings.partnerId, businessName, ok: false, skipped: true, error: "Not due today for this cadence" });
         continue;
       }
       if (alreadySentToday(settings.lastReportSentAt[cadence] ?? null, now)) {
-        skippedCount += 1;
+        details.push({ partnerId: settings.partnerId, businessName, ok: false, skipped: true, error: "Already sent today" });
         continue;
       }
 
       try {
         await sendOnePartnerReport(settings.partnerId, cadence, now);
-        sentCount += 1;
-        cadencesRun.add(cadence);
-      } catch {
-        failedCount += 1;
+        details.push({ partnerId: settings.partnerId, businessName, ok: true });
+      } catch (err) {
+        details.push({ partnerId: settings.partnerId, businessName, ok: false, error: err instanceof Error ? err.message : "Send failed" });
       }
     }
   }
 
-  if (sentCount > 0 || failedCount > 0) {
-    await sendReportRunOpsSummary({
-      trigger: "cron",
-      cadence: cadencesRun.size > 0 ? Array.from(cadencesRun).join(", ") : "—",
-      attempted: sentCount + failedCount,
-      sent: sentCount,
-      failed: failedCount,
-      now,
-    });
+  let sentCount = 0;
+  let failedCount = 0;
+  let skippedCount = 0;
+  for (const [cadence, details] of detailsByCadence) {
+    const dueDetails = details.filter((d) => !d.skipped);
+    sentCount += dueDetails.filter((d) => d.ok).length;
+    failedCount += dueDetails.filter((d) => !d.ok).length;
+    skippedCount += details.filter((d) => d.skipped).length;
+
+    // Only log/notify a cadence that actually had at least one partner due
+    // today — a WEEKLY run on a Tuesday would otherwise post an all-skipped
+    // summary to ops every single day for nothing.
+    if (dueDetails.length > 0) {
+      await sendReportRunOpsSummary({ trigger: "cron", cadence, details, now });
+    }
+  }
+
+  // The platform's own growth digest — same three cadences, independent of
+  // any partner's schedule, sent to the ops chat (see platformReportData.ts).
+  for (const cadence of TELEGRAM_REPORT_CADENCES) {
+    await maybeSendPlatformReport(cadence, now, { trigger: "cron" });
   }
 
   return NextResponse.json({ ok: true, partnersConsidered: candidates.length, sent: sentCount, failed: failedCount, skipped: skippedCount });

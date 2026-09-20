@@ -97,9 +97,9 @@ model NumberingCounter {
 /// the separate My-Biz-Flow-Admin app against this same physical DB; either
 /// field falling back to its env var when unset (see src/lib/platformSettings.ts).
 model PlatformSettings {
-  id          String  @id @default("platform")
-  opsChatId   String?
-  errorChatId String?
+  id                      String  @id @default("platform")
+  opsChatId               String?
+  errorChatId             String?
   /// Which WhatsApp automated-message trigger points are turned on,
   /// platform-wide — a JSON string array of trigger keys (e.g.
   /// ["telecalling.leadAccepted"]), edited from the separate
@@ -108,7 +108,12 @@ model PlatformSettings {
   /// one extensible list rather than a boolean-per-trigger column so a new
   /// trigger point can be added in code and toggled on from Admin without
   /// a schema migration each time.
-  enabledWhatsappTriggers Json @default("[]")
+  enabledWhatsappTriggers Json    @default("[]")
+  /// Per-cadence last-sent stamp for the platform's own growth digest (see
+  /// src/lib/platformReportData.ts) — same {DAILY?, WEEKLY?, MONTHLY?} ISO
+  /// map shape as TelegramSettings.lastReportSentAt, just platform-scoped
+  /// instead of per-partner, since there's only ever one "platform".
+  lastPlatformReportSentAt Json  @default("{}")
 
   @@map("platform_settings")
 }
@@ -204,30 +209,30 @@ model PartnerType {
 /// shown to the partner. businessId is fixed to "BIZ002" (this business's
 /// central-api id) until real cross-business support exists.
 model Partner {
-  id                 String  @id
-  internalKey        String  @unique
-  businessId         String  @default("BIZ002")
-  partnerTypeId      String
-  businessName       String
-  addressLine        String?
-  city               String
-  state              String
-  pincode            String
-  gstin              String?
+  id                  String  @id
+  internalKey         String  @unique
+  businessId          String  @default("BIZ002")
+  partnerTypeId       String
+  businessName        String
+  addressLine         String?
+  city                String
+  state               String
+  pincode             String
+  gstin               String?
   /// IANA timezone, e.g. "Asia/Kolkata" — editable from Settings' Business
   /// Details block. Purely a label today (no scheduling/report logic reads
   /// it yet), same status as `currency` below.
-  timezone           String  @default("Asia/Kolkata")
+  timezone            String  @default("Asia/Kolkata")
   /// Display currency code shown on Settings; actual money formatting
   /// elsewhere in the app is hardcoded to INR (see formatCurrencyINR) —
   /// this does not yet drive that, same caveat as `timezone`.
-  currency           String  @default("INR")
+  currency            String  @default("INR")
   /// Partner-uploaded logo, stored as a `data:` URL. There is no
   /// file-storage/S3 pipeline anywhere in this app yet, so this is the
   /// minimal real option rather than inventing one — see Settings'
   /// Business Details block. Shown in the partner's own sidebar header
   /// and printed documents when set; null renders the app's own logo.
-  logoDataUrl        String? @db.Text
+  logoDataUrl         String? @db.Text
   /// Settings' "Show logo on printed documents" toggle — gates whether
   /// `logoDataUrl` is actually printed on customer-facing documents (e.g.
   /// the Service Centre workorder print). Defaults to true so partners who
@@ -235,15 +240,15 @@ model Partner {
   /// toggle existed; a partner can turn it off without deleting the logo
   /// itself (which is still used in the sidebar header regardless).
   showLogoOnDocuments Boolean @default(true)
-  businessEmail      String
-  businessContact    String
-  loginContact       String  @unique
-  passwordHash       String
+  businessEmail       String
+  businessContact     String
+  loginContact        String  @unique
+  passwordHash        String
   /// True until the partner completes their first forced password change
   /// (signup never collects a password directly — one is generated and
   /// shown/emailed once).
-  mustChangePassword Boolean @default(true)
-  status             String  @default("Active")
+  mustChangePassword  Boolean @default(true)
+  status              String  @default("Active")
 
   /// --- Business profile (editable by the partner from /partner/<id>/settings) ---
   /// Signup only ever collected the bare minimum needed to create an
@@ -252,9 +257,9 @@ model Partner {
   /// partner can complete their profile after the fact. All nullable —
   /// every existing Partner row predates them and none are required to
   /// operate the account.
-  contactPerson      String?
-  pan                String?
-  businessCategory   String?
+  contactPerson              String?
+  pan                        String?
+  businessCategory           String?
   /// Which product domain(s) this partner deals in — a JSON string array of
   /// ProductDomain codes, e.g. ["ELECTRONICS"] or ["ELECTRONICS","AUTOMOBILE"]
   /// (src/lib/catalog/productDomains.ts, which also carries the reasoning
@@ -264,7 +269,7 @@ model Partner {
   /// Brand/Model catalog rows the Service Centre module offers. Empty for
   /// every row that predates the column, which reads as ELECTRONICS-only —
   /// what the module has always been.
-  productDomains     Json    @default("[]")
+  productDomains             Json    @default("[]")
   /// Which Service Centre service types this partner offers — a JSON string
   /// array, e.g. ["ONSITE","WALK_IN"] (src/lib/serviceTypes.ts). Drives the
   /// public Book Appointment form (a customer only sees this partner as an
@@ -272,14 +277,14 @@ model Partner {
   /// field on an Inquiry. Editable from /partner/<id>/settings' Service
   /// Centre tab. Empty reads as "not yet configured" (excluded from
   /// auto-assignment until the partner sets at least one).
-  serviceCentreServiceTypes Json @default("[]")
+  serviceCentreServiceTypes  Json    @default("[]")
   /// Pincodes this partner covers for Service Centre inquiries/appointments
   /// — a JSON string array of 6-digit pincodes, editable from the same
   /// Service Centre settings tab as serviceCentreServiceTypes. Used by the
   /// public Book Appointment form's auto-assignment: pincode match first,
   /// falling back to a partner in the same city/state (see
   /// src/lib/serviceCentreInquiryAssignment.ts).
-  serviceCentrePincodes     Json @default("[]")
+  serviceCentrePincodes      Json    @default("[]")
   /// "Serialized Inventory" toggle on /partner/<id>/settings. When false
   /// (the default — every existing partner reads as off), Service Centre
   /// workorders can use free-text parts, BOM catalog parts, and pricing
@@ -296,33 +301,33 @@ model Partner {
   /// this general field are both blank prints no terms block at all (rather
   /// than empty boilerplate). Same fallback rule as AN-CRM's
   /// Business.termsAndConditions (src/models/Business.ts).
-  serviceTerms       String? @db.Text
+  serviceTerms               String? @db.Text
   /// --- Per-document-type Terms & Conditions overrides ---
   /// One per printable Service Centre document, each falling back to
   /// serviceTerms above. Kept as separate nullable columns rather than a
   /// JSON blob so the fallback is a plain `?? serviceTerms` at the point of
   /// render and nothing has to parse/defend against a malformed shape.
-  workorderTerms     String? @db.Text
-  estimateTerms      String? @db.Text
-  invoiceTerms       String? @db.Text
-  serviceRecordTerms String? @db.Text
+  workorderTerms             String? @db.Text
+  estimateTerms              String? @db.Text
+  invoiceTerms               String? @db.Text
+  serviceRecordTerms         String? @db.Text
   /// Default labour charge, in WHOLE RUPEES (this app stores money in
   /// rupees, not paise — see Plan.price and ServiceLine.laborCharge, both
   /// plain rupee amounts). Used to pre-fill the labour figure on a new
   /// workorder service line. Null/0 means "no default" — the field is left
   /// blank rather than pre-filled with a zero that reads as a real quote.
-  defaultLaborCharge Int?
+  defaultLaborCharge         Int?
   /// The partner's own UPI VPA, e.g. "yourshop@okhdfcbank". Printed on the
   /// Sales Invoice as a scannable UPI payment QR (src/lib/upiQr.ts). There
   /// is no gateway, webhook or reconciliation behind it: the customer scans
   /// and pays the partner directly, and matching the payment against the
   /// invoice stays manual.
-  upiId              String?
+  upiId                      String?
   /// e.g. "Mon-Sat, 9:30am - 7:00pm"
-  serviceHours       String?
+  serviceHours               String?
   /// A public support number, distinct from businessContact (the number we
   /// reach the partner on).
-  supportHotline     String?
+  supportHotline             String?
 
   /// --- Bank details (for payouts/settlement; display + record only) ---
   /// Deliberately stored as plain nullable columns matching AN-CRM's four
@@ -757,7 +762,7 @@ model FieldForceSettings {
 /// send no-ops with a console log, exactly like src/lib/sms.ts does without
 /// SMS_API_KEY. Nothing here fabricates a bot connection.
 model TelegramSettings {
-  partnerId        String    @id
+  partnerId        String   @id
   chatId           String?
   /// The partner's group chat id — connected independently of `chatId`
   /// (the personal/DM chat) via its own deep-link slot (see
@@ -783,7 +788,7 @@ model TelegramSettings {
   /// to whichever of chatId/groupChatId is set); "none" is the replacement
   /// for the old per-type enable/disable checkbox (removed — every type is
   /// always "on", routing is the only on/off/where control now).
-  routing          Json      @default("{}")
+  routing          Json     @default("{}")
   /// Every partner with a connected chat gets ALL THREE report cadences
   /// (daily, weekly, and monthly digests — see
   /// src/lib/telegramTemplates.ts's businessReportMessage()), not a single
@@ -794,8 +799,8 @@ model TelegramSettings {
   /// the cron's idempotency guard, since Vercel Cron does not guarantee
   /// exactly-once delivery and this route may run more than
   /// once on the same calendar day/week/month.
-  lastReportSentAt Json      @default("{}")
-  updatedAt        DateTime  @updatedAt
+  lastReportSentAt Json     @default("{}")
+  updatedAt        DateTime @updatedAt
 
   @@map("telegram_settings")
 }
@@ -831,6 +836,36 @@ model TelegramLogEntry {
   /// originally sent for.
   @@index([chatId, messageId])
   @@map("telegram_log_entries")
+}
+
+/// One row per scheduled/manual report *run* (cron invocation or a Super
+/// Admin "push now"), not per partner-send — see ReportRunPartnerResult for
+/// the per-partner breakdown nested inside `details`. Lets the My Biz Flow
+/// Admin app show "was today's DAILY run triggered, and did it fully
+/// succeed" without re-deriving that from TelegramLogEntry (which is
+/// per-alert-send, not scoped to the report digest specifically, and has no
+/// concept of a "run" grouping several partners together).
+model ReportRunLogEntry {
+  id        String   @id
+  cadence   String
+  trigger   String
+  /// Total partners considered for this run (due + already-sent-today +
+  /// opted-out all count here, per `skipped`/`sent`/`failed` below), so a 0
+  /// here immediately shows "nobody was even considered", not just "nobody
+  /// succeeded".
+  attempted Int
+  sent      Int
+  failed    Int
+  skipped   Int      @default(0)
+  /// [{partnerId, businessName, ok, error?}] for every partner actually
+  /// attempted this run (excludes skipped-as-not-due) — the "who, and why
+  /// not" the ops summary needs. See ReportPushDetail in
+  /// src/lib/telegramReportData.ts, same shape.
+  details   Json
+  createdAt DateTime @default(now())
+
+  @@index([cadence, createdAt])
+  @@map("report_run_log_entries")
 }
 
 /// Admin-editable override for a Telegram message template's body text —
