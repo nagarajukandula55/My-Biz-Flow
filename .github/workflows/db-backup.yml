@@ -1,25 +1,25 @@
 name: Database backup
 
-# Dumps the production Postgres DB (Neon) every 6 hours and stores the
-# compressed dump as a GitHub Release asset in this (private) repo, tagged
-# db-backup-<UTC timestamp>. A cleanup job then deletes any db-backup-*
-# release older than 7 days, so storage stays bounded.
+# Dumps the production Postgres DB (Neon) and the MongoDB cluster every 6
+# hours and stores both as GitHub Release assets in this (private) repo,
+# tagged backup-<UTC timestamp>. A cleanup job then deletes any backup-*
+# release older than 7 days, so storage stays bounded. A final job posts a
+# success/failure confirmation to a Telegram group.
 #
-# Requires one repo secret (Settings -> Secrets and variables -> Actions):
-#   BACKUP_DATABASE_URL - the DIRECT (unpooled) Postgres connection string,
-#   i.e. the same value as DATABASE_URL_UNPOOLED in Vercel. pg_dump needs a
-#   direct connection, not the pooled one used by the app at runtime.
+# Requires these repo secrets (Settings -> Secrets and variables -> Actions):
+#   BACKUP_DATABASE_URL    - the DIRECT (unpooled) Postgres connection
+#     string, i.e. the same value as DATABASE_URL_UNPOOLED in Vercel.
+#     pg_dump needs a direct connection, not the pooled one the app uses.
+#   BACKUP_MONGODB_URI     - the MongoDB connection string (mongodb+srv://...)
+#   TELEGRAM_BOT_TOKEN     - the bot token from @BotFather
+#   TELEGRAM_GROUP_CHAT_ID - the group chat id to post backup status to
 #
 # Uses the default GITHUB_TOKEN (via the `contents: write` permission below)
 # to create/delete releases - no extra secret needed for that part.
 #
-# Restore: download the .sql.gz asset from the Release, then
-#   gunzip -c backup.sql.gz | psql "$DATABASE_URL_UNPOOLED"
-#
-# Also sends a Telegram confirmation (success or failure) to the ops group
-# via two more repo secrets:
-#   TELEGRAM_BOT_TOKEN     - the bot token from @BotFather
-#   TELEGRAM_GROUP_CHAT_ID - the group chat id to post backup status to
+# Restore:
+#   Postgres: gunzip -c db-backup-<ts>.sql.gz | psql "$DATABASE_URL_UNPOOLED"
+#   MongoDB:  mongorestore --uri="$MONGODB_URI" --archive=mongo-backup-<ts>.archive --gzip
 
 on:
   schedule:
@@ -35,10 +35,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set timestamp
+        run: echo "TIMESTAMP=$(date -u +%Y%m%d-%H%M%S)" >> "$GITHUB_ENV"
+
       - name: Install postgresql-client
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
 
-      - name: Dump database
+      - name: Dump Postgres database
         env:
           DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
         run: |
@@ -47,20 +50,40 @@ jobs:
             echo "BACKUP_DATABASE_URL secret is not set - see comment at top of this workflow." >&2
             exit 1
           fi
-          TIMESTAMP=$(date -u +%Y%m%d-%H%M%S)
-          echo "TIMESTAMP=$TIMESTAMP" >> "$GITHUB_ENV"
           pg_dump "$DATABASE_URL" --format=plain --no-owner --no-privileges | gzip -9 > "db-backup-$TIMESTAMP.sql.gz"
 
-      - name: Upload backup as a GitHub Release
+      - name: Install MongoDB database tools
+        run: |
+          set -euo pipefail
+          curl -sL -o mongo-tools.tgz https://fastdl.mongodb.org/tools/db/mongodb-database-tools-ubuntu2204-x86_64-100.9.4.tgz
+          tar xf mongo-tools.tgz
+          echo "$PWD/mongodb-database-tools-ubuntu2204-x86_64-100.9.4/bin" >> "$GITHUB_PATH"
+
+      - name: Dump MongoDB database
+        env:
+          MONGODB_URI: ${{ secrets.BACKUP_MONGODB_URI }}
+        run: |
+          set -euo pipefail
+          if [ -z "${MONGODB_URI:-}" ]; then
+            echo "BACKUP_MONGODB_URI secret is not set - skipping Mongo dump." >&2
+            exit 0
+          fi
+          mongodump --uri="$MONGODB_URI" --archive="mongo-backup-$TIMESTAMP.archive" --gzip
+
+      - name: Upload backups as a GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          gh release create "db-backup-$TIMESTAMP" \
-            "db-backup-$TIMESTAMP.sql.gz" \
+          ASSETS="db-backup-$TIMESTAMP.sql.gz"
+          if [ -f "mongo-backup-$TIMESTAMP.archive" ]; then
+            ASSETS="$ASSETS mongo-backup-$TIMESTAMP.archive"
+          fi
+          gh release create "backup-$TIMESTAMP" \
+            $ASSETS \
             --repo "$GITHUB_REPOSITORY" \
-            --title "DB backup $TIMESTAMP" \
-            --notes "Automated Postgres dump, retained 7 days." \
+            --title "Backup $TIMESTAMP" \
+            --notes "Automated Postgres + MongoDB dump, retained 7 days." \
             --latest=false
 
   cleanup:
@@ -75,7 +98,7 @@ jobs:
           cutoff=$(date -u -d '7 days ago' +%s)
           gh release list --repo "$GITHUB_REPOSITORY" --limit 200 \
             | awk -F'\t' '{print $3}' \
-            | grep '^db-backup-' | while read -r tag; do
+            | grep '^backup-' | while read -r tag; do
               created=$(gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json publishedAt --jq .publishedAt)
               created_epoch=$(date -u -d "$created" +%s)
               if [ "$created_epoch" -lt "$cutoff" ]; then
@@ -102,7 +125,7 @@ jobs:
             exit 0
           fi
           if [ "$BACKUP_RESULT" = "success" ] && [ "$CLEANUP_RESULT" = "success" ]; then
-            STATUS="✅ DB backup succeeded"
+            STATUS="✅ DB backup succeeded (Postgres + MongoDB)"
           else
             STATUS="❌ DB backup FAILED (backup: $BACKUP_RESULT, cleanup: $CLEANUP_RESULT)"
           fi
