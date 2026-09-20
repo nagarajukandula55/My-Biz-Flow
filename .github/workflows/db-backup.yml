@@ -55,7 +55,7 @@ jobs:
             echo "BACKUP_DATABASE_URL secret is not set - see comment at top of this workflow." >&2
             exit 1
           fi
-          pg_dump "$DATABASE_URL" --format=plain --no-owner --no-privileges | gzip -9 > "db-backup-$TIMESTAMP.sql.gz"
+          /usr/lib/postgresql/18/bin/pg_dump "$DATABASE_URL" --format=plain --no-owner --no-privileges | gzip -9 > "db-backup-$TIMESTAMP.sql.gz"
 
       - name: Install MongoDB database tools
         run: |
