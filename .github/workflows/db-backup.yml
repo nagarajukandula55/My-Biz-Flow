@@ -15,6 +15,11 @@ name: Database backup
 #
 # Restore: download the .sql.gz asset from the Release, then
 #   gunzip -c backup.sql.gz | psql "$DATABASE_URL_UNPOOLED"
+#
+# Also sends a Telegram confirmation (success or failure) to the ops group
+# via two more repo secrets:
+#   TELEGRAM_BOT_TOKEN     - the bot token from @BotFather
+#   TELEGRAM_GROUP_CHAT_ID - the group chat id to post backup status to
 
 on:
   schedule:
@@ -78,3 +83,32 @@ jobs:
                 gh release delete "$tag" --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag
               fi
             done
+
+  notify:
+    needs: [backup, cleanup]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Telegram confirmation
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_GROUP_CHAT_ID: ${{ secrets.TELEGRAM_GROUP_CHAT_ID }}
+          BACKUP_RESULT: ${{ needs.backup.result }}
+          CLEANUP_RESULT: ${{ needs.cleanup.result }}
+        run: |
+          set -euo pipefail
+          if [ -z "${TELEGRAM_BOT_TOKEN:-}" ] || [ -z "${TELEGRAM_GROUP_CHAT_ID:-}" ]; then
+            echo "TELEGRAM_BOT_TOKEN / TELEGRAM_GROUP_CHAT_ID not set - skipping notification." >&2
+            exit 0
+          fi
+          if [ "$BACKUP_RESULT" = "success" ] && [ "$CLEANUP_RESULT" = "success" ]; then
+            STATUS="✅ DB backup succeeded"
+          else
+            STATUS="❌ DB backup FAILED (backup: $BACKUP_RESULT, cleanup: $CLEANUP_RESULT)"
+          fi
+          RUN_URL="https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          NOW=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          TEXT=$(printf '%s\nRepo: %s\nTime: %s\nRun: %s' "$STATUS" "$GITHUB_REPOSITORY" "$NOW" "$RUN_URL")
+          curl -sf -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TELEGRAM_GROUP_CHAT_ID}" \
+            --data-urlencode "text=${TEXT}"
