@@ -1,0 +1,80 @@
+name: Database backup
+
+# Dumps the production Postgres DB (Neon) every 6 hours and stores the
+# compressed dump as a GitHub Release asset in this (private) repo, tagged
+# db-backup-<UTC timestamp>. A cleanup job then deletes any db-backup-*
+# release older than 7 days, so storage stays bounded.
+#
+# Requires one repo secret (Settings -> Secrets and variables -> Actions):
+#   BACKUP_DATABASE_URL - the DIRECT (unpooled) Postgres connection string,
+#   i.e. the same value as DATABASE_URL_UNPOOLED in Vercel. pg_dump needs a
+#   direct connection, not the pooled one used by the app at runtime.
+#
+# Uses the default GITHUB_TOKEN (via the `contents: write` permission below)
+# to create/delete releases - no extra secret needed for that part.
+#
+# Restore: download the .sql.gz asset from the Release, then
+#   gunzip -c backup.sql.gz | psql "$DATABASE_URL_UNPOOLED"
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install postgresql-client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Dump database
+        env:
+          DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${DATABASE_URL:-}" ]; then
+            echo "BACKUP_DATABASE_URL secret is not set - see comment at top of this workflow." >&2
+            exit 1
+          fi
+          TIMESTAMP=$(date -u +%Y%m%d-%H%M%S)
+          echo "TIMESTAMP=$TIMESTAMP" >> "$GITHUB_ENV"
+          pg_dump "$DATABASE_URL" --format=plain --no-owner --no-privileges | gzip -9 > "db-backup-$TIMESTAMP.sql.gz"
+
+      - name: Upload backup as a GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release create "db-backup-$TIMESTAMP" \
+            "db-backup-$TIMESTAMP.sql.gz" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "DB backup $TIMESTAMP" \
+            --notes "Automated Postgres dump, retained 7 days." \
+            --latest=false
+
+  cleanup:
+    needs: backup
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete backups older than 7 days
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cutoff=$(date -u -d '7 days ago' +%s)
+          gh release list --repo "$GITHUB_REPOSITORY" --limit 200 \
+            | awk -F'\t' '{print $3}' \
+            | grep '^db-backup-' | while read -r tag; do
+              created=$(gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json publishedAt --jq .publishedAt)
+              created_epoch=$(date -u -d "$created" +%s)
+              if [ "$created_epoch" -lt "$cutoff" ]; then
+                echo "Deleting old backup release: $tag"
+                gh release delete "$tag" --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag
+              fi
+            done
