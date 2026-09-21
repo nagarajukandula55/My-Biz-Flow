@@ -69,6 +69,17 @@ export function SearchSelectModal({
           autoFocus
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => {
+            // A barcode scanner types the code then sends Enter, same as a
+            // real keyboard — if the current query narrows the list to
+            // exactly one match, Enter picks it immediately instead of
+            // requiring a manual click, so scanning an item straight into
+            // this box (no mouse) works like a real register.
+            if (e.key === "Enter" && filtered.length === 1) {
+              e.preventDefault();
+              handleSelect(filtered[0]);
+            }
+          }}
           placeholder={searchPlaceholder}
           className="w-full rounded-md border border-border bg-bg py-2 pl-9 pr-3 text-sm text-text outline-none focus:border-accent"
         />

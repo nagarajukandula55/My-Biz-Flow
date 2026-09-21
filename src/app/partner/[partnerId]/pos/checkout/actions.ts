@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createBusinessRecord, getBusinessRecord, updateBusinessRecord, listBusinessRecords } from "@/lib/businessRecords";
 import { computeSaleTotals, extractSaleFromRecord, type SaleLine, type Tender } from "@/lib/sample-data/pos";
+import type { LineItem } from "@/lib/sample-data/billing";
 import { requirePosStaffAction } from "@/lib/pos/posAuth";
 import { getOpenTillSession } from "@/lib/pos/posTill";
 
@@ -90,11 +91,28 @@ export async function completeSaleAction(partnerId: string, input: CompleteSaleI
     transactionTimestamp: new Date().toISOString(),
   });
 
+  // Real itemized lines (not just the flat lineItemsSummary string) so the
+  // printed/viewed Billing document (BillingInvoiceDocument.tsx) shows a
+  // proper per-line GST breakdown for a POS sale exactly like any other
+  // invoice — it reads record["items"], which nothing here populated
+  // before. No customerState is ever captured for a walk-in sale, so that
+  // component's own interState check (customerState vs partnerState)
+  // naturally falls back to intra-state CGST+SGST, the correct default
+  // for a retail counter sale.
+  const items: LineItem[] = input.lines.map((l) => ({
+    description: l.productName,
+    quantity: l.qty,
+    unit: "pcs",
+    unitPrice: Math.max(0, (l.qty * l.unitPrice - (l.discount || 0)) / l.qty),
+    taxRate: l.taxRate || 0,
+  }));
+
   const invoice = await createBusinessRecord(partnerId, "billing", {
     customer: "Walk-in Customer",
     issueDate: new Date().toISOString().slice(0, 10),
     dueDate: new Date().toISOString().slice(0, 10),
     lineItemsSummary: input.lines.map((l) => `${l.productName} x${l.qty}`).join(", "),
+    items,
     subtotal: totals.subtotal,
     taxAmount: totals.taxAmount,
     totalAmount: totals.totalAmount,

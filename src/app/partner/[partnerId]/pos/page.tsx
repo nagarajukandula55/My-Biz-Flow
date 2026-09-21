@@ -48,6 +48,9 @@ export default async function PosPage({ params }: { params: { partnerId: string 
           <Link href={`/partner/${params.partnerId}/pos/till`} className="btn-outline">
             Till
           </Link>
+          <Link href={`/partner/${params.partnerId}/pos/reports`} className="btn-outline">
+            Reports
+          </Link>
           <PosNewButton partnerId={params.partnerId} />
         </div>
       }
