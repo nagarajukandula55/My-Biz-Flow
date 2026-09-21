@@ -2,6 +2,7 @@ import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
 import { listBusinessRecords } from "@/lib/businessRecords";
+import { requirePosStaff } from "@/lib/pos/posAuth";
 import { PosCheckout } from "./PosCheckout";
 
 registerPage({
@@ -13,13 +14,14 @@ registerPage({
   superAdminOnly: false,
   customizableRegions: [],
   explanation:
-    "The real till: a multi-item cart built by searching/scanning this partner's own live Inventory > Stock, server-computed subtotal/tax/discount/total (never trusted from the client), multi-tender payment capture (supports a split payment), and on completion — stock deduction against Inventory (blocked if insufficient, no partial deduction) plus a real Billing invoice creation, mirroring the Service Centre workorder-close invoice flow. Replaces the old single-product generic-form 'New Sale' page.",
+    "The real till: a multi-item cart built by searching/scanning this partner's own live Inventory > Stock, server-computed subtotal/tax/discount/total (never trusted from the client), multi-tender payment capture (supports a split payment), and on completion — stock deduction against Inventory (blocked if insufficient, no partial deduction) plus a real Billing invoice creation, mirroring the Service Centre workorder-close invoice flow. Gated behind POS's own staff login — the Cashier field is the logged-in staff member's real name/staff code, not free text.",
   sourceFile: "src/app/partner/[partnerId]/pos/checkout/page.tsx",
 });
 
 export const dynamic = "force-dynamic";
 
 export default async function PosCheckoutPage({ params }: { params: { partnerId: string } }) {
+  const staff = await requirePosStaff(params.partnerId);
   const mod = await getModule("pos");
   const [stockRecords, materialRecords] = await Promise.all([
     listBusinessRecords(params.partnerId, "inventory-stock"),
@@ -60,7 +62,7 @@ export default async function PosCheckoutPage({ params }: { params: { partnerId:
           </p>
         ) : (
           <div className="mt-6">
-            <PosCheckout partnerId={params.partnerId} stockItems={stockItems} />
+            <PosCheckout partnerId={params.partnerId} stockItems={stockItems} cashier={`${staff.name} (${staff.staffCode})`} />
           </div>
         )}
       </div>

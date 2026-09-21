@@ -1255,3 +1255,53 @@ model UnassignedInquiry {
   @@index([resolvedAt])
   @@map("unassigned_inquiries")
 }
+
+/// POS is its own standalone module with its own login identity, separate
+/// from the main partner session every other module (Service Centre,
+/// Billing, Inventory...) uses — no customer-facing side at all (unlike
+/// Field Force's customer+provider split), just staff/cashiers running the
+/// till. One PosAccount per partner that has POS enabled, identified by a
+/// human-readable accountNumber ("POS0001" — see getNextNumber("pos.account",
+/// partnerId, ...) in src/lib/pos/posAuth.ts), under which individual staff
+/// (PosStaff) get their own login with a composite staffCode
+/// ("POS0001-01") built from the account number plus a per-account
+/// sequence (getNextNumber(`pos.staff.${posAccountId}`, ...)).
+model PosAccount {
+  id            String   @id @default(cuid())
+  partnerId     String   @unique
+  accountNumber String
+  outletName    String?
+  status        String   @default("Active") // Active | Suspended
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  staff PosStaff[]
+
+  @@index([partnerId])
+  @@map("pos_accounts")
+}
+
+/// A POS staff login — deliberately its own credential, not the main
+/// partner session. `staffCode` (e.g. "POS0001-01") is what a cashier
+/// types in to log in, not a phone number (unlike Field Force's Provider,
+/// which is customer/technician-facing) — this is an internal employee
+/// code. `role` gates till-session and void/report actions
+/// (src/lib/pos/posAuth.ts's requirePosRole) without needing a full
+/// permission matrix: "Cashier" runs sales, "Manager" additionally opens/
+/// closes till sessions, approves returns, and views reports.
+model PosStaff {
+  id           String     @id @default(cuid())
+  posAccountId String
+  posAccount   PosAccount @relation(fields: [posAccountId], references: [id])
+  staffCode    String     @unique
+  name         String
+  phone        String?
+  role         String     @default("Cashier") // Cashier | Manager
+  passwordHash String
+  status       String     @default("Active") // Active | Inactive
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([posAccountId])
+  @@map("pos_staff")
+}

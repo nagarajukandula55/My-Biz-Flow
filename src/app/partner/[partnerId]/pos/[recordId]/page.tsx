@@ -8,6 +8,7 @@ import { DeleteBusinessRecordButton } from "@/components/DeleteBusinessRecordBut
 import { getPosDetailFields, getPosTimeline, posRelated, posColumns, extractSaleFromRecord } from "@/lib/sample-data/pos";
 import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
 import { getBusinessRecord } from "@/lib/businessRecords";
+import { requirePosStaff } from "@/lib/pos/posAuth";
 import { SaleLinesTable } from "./SaleLinesTable";
 
 export const dynamic = "force-dynamic";
@@ -35,6 +36,7 @@ export default async function PosDetailPage({
   params: { partnerId: string; recordId: string };
   searchParams?: { created?: string; updated?: string };
 }) {
+  await requirePosStaff(params.partnerId);
   const mod = await getModule("pos");
   const record = await getBusinessRecord(params.partnerId, "pos", params.recordId);
   if (!record) notFound();

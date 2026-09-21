@@ -4,6 +4,7 @@ import { registerPage } from "@/lib/designer/registry";
 import { notFound } from "next/navigation";
 import { getPartner } from "@/lib/partnerData";
 import { getBusinessRecord, getBusinessRecordSequenceIndex } from "@/lib/businessRecords";
+import { requirePosStaff } from "@/lib/pos/posAuth";
 
 registerPage({
   id: "pos.document",
@@ -23,6 +24,7 @@ export default async function PosDocumentPage({
 }: {
   params: { partnerId: string; recordId: string };
 }) {
+  await requirePosStaff(params.partnerId);
   const record = await getBusinessRecord(params.partnerId, "pos", params.recordId);
   if (!record) notFound();
   const partner = await getPartner(params.partnerId);

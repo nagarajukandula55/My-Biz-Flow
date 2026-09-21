@@ -20,6 +20,20 @@ import { env } from "@/lib/env";
 const STAFF_AUTH_ROUTE_SUFFIXES = ["/telecalling/login", "/telecalling/change-password"];
 
 /**
+ * Entire module subtrees that are staff-only, with their OWN separate login
+ * — not gated by the main partner session at all, unlike every other
+ * module. Currently just POS (src/lib/pos/posAuth.ts's requirePosStaff,
+ * called by each page under this prefix) — POS has no customer-facing side
+ * and deliberately isn't reachable via the main partner login, so
+ * PartnerLayout must skip requirePartnerSessionForPage for the whole
+ * prefix, not just its own login/signup pages (unlike
+ * STAFF_AUTH_ROUTE_SUFFIXES above, which only ever exempts the login pages
+ * themselves — every other page in that module still expects the main
+ * partner session once past login).
+ */
+const STAFF_ONLY_MODULE_PREFIXES = ["/pos"];
+
+/**
  * Per-role home path a staff session lands on when it tries to reach a page
  * outside the module its role belongs to (see PageSession's "staff" doc
  * comment in requirePartnerSession.ts). Only Telecaller is wired up today.
@@ -74,6 +88,10 @@ export default async function PartnerLayout({
   const pathname = headers().get("x-pathname");
 
   if (STAFF_AUTH_ROUTE_SUFFIXES.some((suffix) => pathname?.endsWith(suffix))) {
+    return <>{children}</>;
+  }
+
+  if (STAFF_ONLY_MODULE_PREFIXES.some((prefix) => pathname?.startsWith(`/partner/${params.partnerId}${prefix}`))) {
     return <>{children}</>;
   }
 
