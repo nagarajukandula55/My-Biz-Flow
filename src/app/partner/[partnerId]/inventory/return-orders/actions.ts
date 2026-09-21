@@ -3,10 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
-import { createBusinessRecord } from "@/lib/businessRecords";
+import { createBusinessRecord, getBusinessRecord, updateBusinessRecord } from "@/lib/businessRecords";
 import { runBulkImport, type BulkImportResult } from "@/lib/bulkImportCsv";
-import { getReturnOrderFormFields, getWarehouseOptionsForPartner } from "@/lib/sample-data/warehouse";
+import { getReturnOrderFormFields, getWarehouseOptionsForPartner, RETURN_ORDER_FINAL_STATUSES } from "@/lib/sample-data/warehouse";
 import { adjustStockQty, getQtyOnHand, type StockCondition } from "@/lib/inventoryStock";
+
+function isFinalReturnOrderStatus(status: unknown): boolean {
+  return (RETURN_ORDER_FINAL_STATUSES as readonly string[]).includes(String(status ?? ""));
+}
 
 /** RETURN_TYPES is ["Defective", "Good"] (see warehouse.ts) — both happen to be valid StockCondition values, so the record's own returnType routes straight to the matching stock bucket; anything else (unset/free text) defaults to Good. */
 function returnStockCondition(returnType: unknown): StockCondition {
@@ -105,6 +109,68 @@ export async function createReturnOrderAction(
   revalidatePath(`/partner/${partnerId}/inventory/return-orders`);
   revalidatePath(`/partner/${partnerId}/inventory/stock`);
   redirect(`/partner/${partnerId}/inventory/return-orders/${record["id"]}?created=1`);
+}
+
+/**
+ * Edits a Return Order that hasn't been finalized yet — status still
+ * Pending/In Transit, i.e. its real Stock effect (see
+ * applyReturnOrderStockEffect) has never been applied. Once a Return Order
+ * reaches Received/Dispatched/Rejected/Cancelled it's locked: no edit page
+ * is reachable for it (see [recordId]/edit/page.tsx's own guard) and this
+ * action refuses too, so a crafted request can't bypass the UI gate and
+ * silently re-run/duplicate a stock movement or reopen a closed record.
+ * Re-runs the exact same validation + stock-effect sequence createReturnOrderAction
+ * does, since the edited values might change direction/quantity/status
+ * (e.g. editing a Pending Outbound straight to Dispatched applies the
+ * deduction here, exactly as if it had been created that way).
+ */
+export async function updateReturnOrderAction(
+  partnerId: string,
+  recordId: string,
+  values: Record<string, unknown>
+): Promise<void | { error?: string }> {
+  partnerId = await requireSessionPartnerId(partnerId);
+
+  const existing = await getBusinessRecord(partnerId, "inventory-return-orders", recordId);
+  if (!existing) return { error: "Return Order not found." };
+  if (isFinalReturnOrderStatus(existing["status"])) {
+    return { error: `This Return Order is already ${existing["status"]} — it can no longer be edited.` };
+  }
+
+  const { error, normalized } = await applyReturnOrderStockEffect(partnerId, values);
+  if (error) return { error };
+
+  await updateBusinessRecord(partnerId, "inventory-return-orders", recordId, normalized);
+
+  revalidatePath(`/partner/${partnerId}/inventory/return-orders`);
+  revalidatePath(`/partner/${partnerId}/inventory/return-orders/${recordId}`);
+  revalidatePath(`/partner/${partnerId}/inventory/stock`);
+  redirect(`/partner/${partnerId}/inventory/return-orders/${recordId}?updated=1`);
+}
+
+/**
+ * Cancels a Return Order that hasn't been finalized yet — same "before
+ * submission only" gate as updateReturnOrderAction, and for the same
+ * reason: Received/Dispatched already moved real Stock, so there is
+ * nothing left to safely cancel (that would need a real reversal, not a
+ * cancel) — see the code-review note this was scoped down from ("bad
+ * outbound → handle via adjustment", not an automatic reversal feature).
+ * No stock effect ever applies here since a non-final order by definition
+ * never had one yet.
+ */
+export async function cancelReturnOrderAction(partnerId: string, recordId: string): Promise<void | { error?: string }> {
+  partnerId = await requireSessionPartnerId(partnerId);
+
+  const existing = await getBusinessRecord(partnerId, "inventory-return-orders", recordId);
+  if (!existing) return { error: "Return Order not found." };
+  if (isFinalReturnOrderStatus(existing["status"])) {
+    return { error: `This Return Order is already ${existing["status"]} — it can no longer be cancelled.` };
+  }
+
+  await updateBusinessRecord(partnerId, "inventory-return-orders", recordId, { ...existing, status: "Cancelled" });
+
+  revalidatePath(`/partner/${partnerId}/inventory/return-orders`);
+  revalidatePath(`/partner/${partnerId}/inventory/return-orders/${recordId}`);
 }
 
 export async function bulkImportReturnOrdersAction(partnerId: string, formData: FormData): Promise<BulkImportResult> {

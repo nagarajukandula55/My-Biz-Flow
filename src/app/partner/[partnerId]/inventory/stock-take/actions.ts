@@ -7,7 +7,11 @@ import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import { runBulkImport, type BulkImportResult } from "@/lib/bulkImportCsv";
 import { getStockTakeFormFields } from "@/lib/sample-data/warehouse";
 import { getBomOptionsForPartner } from "@/lib/sample-data/bom";
-import { setStockQty, parseSerialNumbers, validateSerialNumbers } from "@/lib/inventoryStock";
+import { setStockQty, parseSerialNumbers, validateSerialNumbers, type StockCondition } from "@/lib/inventoryStock";
+
+function stockCondition(condition: unknown): StockCondition {
+  return condition === "Defective" ? "Defective" : "Good";
+}
 
 /**
  * Same shape as createBusinessRecordAction (bind with .bind(null, partnerId)
@@ -50,7 +54,7 @@ export async function createStockTakeAction(
     serialNumbers: isSerialized ? serialNumbers : [],
   });
   if (isReconciled && materialId && warehouseName) {
-    await setStockQty(partnerId, materialId, materialId, warehouseName, countedQty);
+    await setStockQty(partnerId, materialId, materialId, warehouseName, countedQty, stockCondition(values["condition"]));
   }
   revalidatePath(`/partner/${partnerId}/inventory/stock-take`);
   revalidatePath(`/partner/${partnerId}/inventory/stock`);
@@ -82,7 +86,7 @@ export async function bulkImportStockTakeAction(partnerId: string, formData: For
     }
 
     if (isReconciled && materialId && warehouseName) {
-      await setStockQty(partnerId, materialId, materialId, warehouseName, countedQty);
+      await setStockQty(partnerId, materialId, materialId, warehouseName, countedQty, stockCondition(values["condition"]));
     }
     return {
       ...values,

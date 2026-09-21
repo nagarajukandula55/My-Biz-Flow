@@ -198,21 +198,34 @@ export async function getAvailabilityDetailByMaterial(partnerId: string): Promis
   return result;
 }
 
-/** Sets a material's on-hand quantity to an exact value (Stock Take reconciliation) rather than adjusting by a delta. */
+/**
+ * Sets a material's on-hand quantity to an exact value (Stock Take
+ * reconciliation) rather than adjusting by a delta — the ONE place a
+ * physical recount can correct EITHER bucket, Good or Defective. This is
+ * deliberately not the same thing as a Stock Adjustment: a Stock Take
+ * reconciles the system's number to a genuine physical count with its own
+ * audit fields (expected/counted/variance/counted by/date), it isn't a free-
+ * form "type a reason, change the quantity" adjustment — which is exactly
+ * why Defective stock is allowed to be corrected here even though every
+ * other manual path (Stock Adjustments, Stock Transfers, the Stock edit
+ * page) is deliberately locked to Good-only. A Defective count still can't
+ * be freely inflated/deflated outside of an actual counted reconciliation.
+ */
 export async function setStockQty(
   partnerId: string,
   materialId: string,
   materialLabel: string,
   warehouseName: string,
-  qty: number
+  qty: number,
+  condition: StockCondition = "Good"
 ): Promise<void> {
-  const existing = await findStockRecord(partnerId, materialId, warehouseName, "Good");
+  const existing = await findStockRecord(partnerId, materialId, warehouseName, condition);
   const clamped = Math.max(0, qty);
   if (!existing) {
     await createBusinessRecord(partnerId, "inventory-stock", {
       materialId: materialLabel || materialId,
       warehouseName,
-      condition: "Good",
+      condition,
       qtyOnHand: clamped,
       reservedQty: 0,
       availableQty: clamped,

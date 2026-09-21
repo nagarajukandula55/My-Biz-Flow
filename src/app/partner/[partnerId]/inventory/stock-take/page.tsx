@@ -19,7 +19,8 @@ registerPage({
     { key: "columns", label: "Table columns" },
     { key: "filters", label: "List filters" },
   ],
-  explanation: "Lists every physical stock count, with a \"+ New\" action to log one and its variance against the system's expected quantity.",
+  explanation:
+    "Lists every physical stock count, with a \"+ New\" action to log one and its variance against the system's expected quantity. Material Type (Good/Defective) is counted and reconciled as two separate buckets — this is the one manual path allowed to correct a Defective count, since it's a genuine physical recount with its own audit trail (expected/counted/variance/counted by/date), not a free-form quantity override.",
   sourceFile: "src/app/partner/[partnerId]/inventory/stock-take/page.tsx",
 });
 
@@ -38,8 +39,8 @@ export default async function StockTakePage({ params }: { params: { partnerId: s
           <BulkUploadButton
             title="Bulk Upload Stock Take"
             columns={formFields.map((f) => f.key)}
-            requiredColumnsNote="Material, Warehouse, Expected Qty, Counted Qty, Counted Date and Status are required per row. Variance is computed automatically."
-            sampleRow={["USB-C Charging Port Flex Cable", "Central Warehouse — Bengaluru", "50", "48", "2026-09-19", "Store Manager", "Short by 2 on physical count", "Pending"]}
+            requiredColumnsNote="Material, Warehouse, Material Type (Good/Defective), Expected Qty, Counted Qty, Counted Date and Status are required per row. Variance is computed automatically."
+            sampleRow={["USB-C Charging Port Flex Cable", "Central Warehouse — Bengaluru", "Good", "50", "48", "", "2026-09-19", "Store Manager", "Short by 2 on physical count", "Pending"]}
             templateFilename="stock-take-template.csv"
             importAction={bulkImportStockTakeAction.bind(null, params.partnerId)}
           />

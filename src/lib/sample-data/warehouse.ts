@@ -392,7 +392,11 @@ const RETURN_STATUS_VARIANT: Record<string, StatusVariant> = {
   Received: "success",
   Dispatched: "teal",
   Rejected: "danger",
+  Cancelled: "neutral",
 };
+
+/** Once a Return Order reaches one of these, its real Stock effect has either already been applied (Received/Dispatched) or it's a closed-out record (Rejected/Cancelled) — editing or cancelling it is no longer allowed from here on. See createReturnOrderAction's doc comment for why this exists (never silently re-apply/duplicate a stock movement, and never let a closed record be reopened). */
+export const RETURN_ORDER_FINAL_STATUSES = ["Received", "Dispatched", "Rejected", "Cancelled"] as const;
 
 export const returnOrderColumns: Column[] = [
   { key: "id", label: "Return Order ID", type: "text" },
@@ -732,6 +736,7 @@ export const stockTakeColumns: Column[] = [
   { key: "id", label: "Stock Take ID", type: "text" },
   { key: "materialId", label: "Material", type: "text" },
   { key: "warehouseName", label: "Warehouse", type: "text" },
+  { key: "condition", label: "Material Type", type: "text" },
   { key: "expectedQty", label: "Expected Qty", type: "text" },
   { key: "countedQty", label: "Counted Qty", type: "text" },
   { key: "variance", label: "Variance", type: "text" },
@@ -752,7 +757,8 @@ export async function getStockTakeFormFields(partnerId: string): Promise<FormFie
   return [
     { key: "materialId", label: "Material — [warehouse: available qty]", type: "select", required: true, options: materialAvailability.options, optionLabels: materialAvailability.optionLabels },
     { key: "warehouseName", label: "Warehouse", type: "select", required: true, options: warehouseOptions.map((o) => o.label) },
-    { key: "expectedQty", label: "Expected Qty", type: "number", required: true, help: "Type the system's current quantity for this Material at this Warehouse — shown in the Material dropdown above — before counting." },
+    { key: "condition", label: "Material Type", type: "select", required: true, options: ["Good", "Defective"], help: "Which bucket you're physically counting — Good and Defective stock are counted and reconciled separately." },
+    { key: "expectedQty", label: "Expected Qty", type: "number", required: true, help: "Type the system's current quantity for this Material/Warehouse/Material Type — shown in the Material dropdown above (Good availability only) — before counting." },
     { key: "countedQty", label: "Counted Qty", type: "number", required: true },
     {
       key: "serialNumbers",
