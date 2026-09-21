@@ -216,12 +216,13 @@ async function closeLinkedPnaEntries(partnerId: string, workorderId: string): Pr
 
 /**
  * Deducts consumed part-line quantities from live Inventory stock
- * ("inventory-stock" module, keyed by BOM material id — same module/keying
- * completeSaleAction in pos/checkout/actions.ts already deducts against),
- * fired once per workorder as a side effect of the Completed stage
- * transition (mirrors how POS checkout deducts at sale completion). Read-
- * modify-write against BusinessRecord's JSON blob — same documented
- * limitation as completeSaleAction, not a DB-level atomic decrement.
+ * ("inventory-stock" module, keyed by BOM material id), fired once per
+ * workorder as a side effect of the Completed stage transition. Service
+ * Centre is its own standalone module — not connected to POS or any other
+ * vertical, only to the cross-cutting Inventory infrastructure every
+ * module shares (see src/lib/inventoryStock.ts). Read-modify-write against
+ * BusinessRecord's JSON blob — a documented limitation, not a DB-level
+ * atomic decrement.
  * Guarded by `inventoryDeducted` on the workorder record so re-entering
  * Completed (e.g. after a later edit) never double-deducts. Every line
  * actually deducted also gets its own "inventory-consumption" record (see

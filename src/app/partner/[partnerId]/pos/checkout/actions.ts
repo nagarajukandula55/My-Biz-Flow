@@ -16,12 +16,13 @@ export type CompleteSaleInput = {
 /**
  * Completes a sale: recomputes totals server-side (never trusts client
  * math), checks + deducts Inventory stock for every line, persists the
- * sale, and creates a real Billing invoice — mirrors
- * createInvoiceFromWorkorderAction in
- * service-centre/[recordId]/actions.ts. Read-then-write against
- * BusinessRecord's JSON blob (not a DB-level atomic decrement) — same
- * documented limitation as that module until per-SKU stock becomes a
- * real relational column.
+ * sale, and creates a real Billing invoice. POS is its own standalone
+ * module — not connected to Service Centre or any other vertical, only to
+ * the cross-cutting Inventory and Billing infrastructure every module
+ * shares (see src/lib/inventoryStock.ts). Read-then-write against
+ * BusinessRecord's JSON blob (not a DB-level atomic decrement) — a
+ * documented limitation until per-SKU stock becomes a real relational
+ * column.
  */
 export async function completeSaleAction(partnerId: string, input: CompleteSaleInput) {
   await requireSessionPartnerId(partnerId);
