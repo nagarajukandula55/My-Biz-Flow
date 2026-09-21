@@ -8,11 +8,7 @@ import type { Row } from "@/components/DataTable";
 import { getPartner } from "@/lib/partnerData";
 import { runBulkImport, type BulkImportResult } from "@/lib/bulkImportCsv";
 import { getStockTransferFormFields } from "@/lib/sample-data/warehouse";
-import { adjustStockQty, getQtyOnHand, type StockCondition } from "@/lib/inventoryStock";
-
-function stockCondition(condition: unknown): StockCondition {
-  return condition === "Defective" ? "Defective" : "Good";
-}
+import { adjustStockQty, getQtyOnHand } from "@/lib/inventoryStock";
 
 /**
  * Creates a stock transfer — same generic create for an intra-partner
@@ -71,10 +67,9 @@ export async function createStockTransferAction(
     // time (there's no separate approval step to gate on here) —
     // fail-closed against the source warehouse's real Available Qty
     // rather than letting a transfer silently go negative.
-    const condition = stockCondition(values["condition"]);
-    const available = await getQtyOnHand(partnerId, materialId, fromWarehouseName, condition);
+    const available = await getQtyOnHand(partnerId, materialId, fromWarehouseName);
     if (available < quantity) {
-      return { error: `Cannot transfer ${quantity} — only ${available} ${condition} available at ${fromWarehouseName}.` };
+      return { error: `Cannot transfer ${quantity} — only ${available} available at ${fromWarehouseName}.` };
     }
 
     record = await createBusinessRecord(partnerId, "inventory-stock-transfers", {
@@ -82,8 +77,8 @@ export async function createStockTransferAction(
       toPartnerId: "",
       status: "Completed",
     });
-    await adjustStockQty(partnerId, materialId, materialId, fromWarehouseName, -quantity, condition);
-    await adjustStockQty(partnerId, materialId, materialId, toWarehouseName, quantity, condition);
+    await adjustStockQty(partnerId, materialId, materialId, fromWarehouseName, -quantity);
+    await adjustStockQty(partnerId, materialId, materialId, toWarehouseName, quantity);
   }
 
   revalidatePath(`/partner/${partnerId}/inventory/stock-transfers`);

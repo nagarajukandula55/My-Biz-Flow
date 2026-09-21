@@ -6,11 +6,7 @@ import { createBusinessRecord } from "@/lib/businessRecords";
 import { runBulkImport, type BulkImportResult } from "@/lib/bulkImportCsv";
 import { getStockAdjustmentFormFields } from "@/lib/sample-data/warehouse";
 import { getBomOptionsForPartner } from "@/lib/sample-data/bom";
-import { adjustStockQty, getQtyOnHand, parseSerialNumbers, validateSerialNumbers, type StockCondition } from "@/lib/inventoryStock";
-
-function stockCondition(condition: unknown): StockCondition {
-  return condition === "Defective" ? "Defective" : "Good";
-}
+import { adjustStockQty, getQtyOnHand, parseSerialNumbers, validateSerialNumbers } from "@/lib/inventoryStock";
 
 /**
  * Creates a Stock Adjustment record AND actually applies it to the real
@@ -21,6 +17,13 @@ function stockCondition(condition: unknown): StockCondition {
  * an editable field, precisely so every quantity change has a reason and
  * a paper trail here (or via Part Orders / Stock Take) instead of a bare
  * number overwrite with no record of why.
+ *
+ * Deliberately Good-stock-only, no condition field, no way to touch a
+ * Defective bucket from here — a partner cannot manually add/remove/write
+ * off Defective stock by any path. The ONLY way Defective stock ever
+ * decreases is an Outbound Return Order with a Challan Number (see
+ * inventory/return-orders/actions.ts), which is itself auditable and
+ * requires the shipping paperwork to exist before stock moves.
  */
 export async function createStockAdjustmentAction(
   partnerId: string,
@@ -37,12 +40,11 @@ export async function createStockAdjustmentAction(
     return { error: "Material, Warehouse and a positive Quantity are required." };
   }
 
-  const condition = stockCondition(values["condition"]);
   const delta = adjustmentType === "Decrease" ? -quantity : quantity;
   if (delta < 0) {
-    const available = await getQtyOnHand(partnerId, materialId, warehouseName, condition);
+    const available = await getQtyOnHand(partnerId, materialId, warehouseName);
     if (available < quantity) {
-      return { error: `Cannot decrease by ${quantity} — only ${available} ${condition} on hand for this material at this warehouse.` };
+      return { error: `Cannot decrease by ${quantity} — only ${available} on hand for this material at this warehouse.` };
     }
   }
 
@@ -61,7 +63,7 @@ export async function createStockAdjustmentAction(
     ...values,
     serialNumbers: isSerialized ? serialNumbers : [],
   });
-  await adjustStockQty(partnerId, materialId, materialId, warehouseName, delta, condition);
+  await adjustStockQty(partnerId, materialId, materialId, warehouseName, delta);
 
   revalidatePath(`/partner/${partnerId}/inventory/stock-adjustments`);
   revalidatePath(`/partner/${partnerId}/inventory/stock`);
@@ -88,7 +90,7 @@ export async function bulkImportStockAdjustmentsAction(partnerId: string, formDa
     }
 
     const delta = values["adjustmentType"] === "Decrease" ? -quantity : quantity;
-    await adjustStockQty(partnerId, materialId, materialId, warehouseName, delta, stockCondition(values["condition"]));
+    await adjustStockQty(partnerId, materialId, materialId, warehouseName, delta);
     return { ...values, serialNumbers: isSerialized ? serialNumbers : [] };
   });
   revalidatePath(`/partner/${partnerId}/inventory/stock-adjustments`);

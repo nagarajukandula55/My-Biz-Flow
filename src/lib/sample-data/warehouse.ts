@@ -285,7 +285,6 @@ export const stockAdjustmentColumns: Column[] = [
   { key: "warehouseName", label: "Warehouse", type: "text" },
   { key: "materialId", label: "Material", type: "text" },
   { key: "adjustmentType", label: "Type", type: "select-chip" },
-  { key: "condition", label: "Material Type", type: "text" },
   { key: "quantity", label: "Quantity", type: "text" },
   { key: "reason", label: "Reason", type: "text" },
   { key: "adjustedBy", label: "Adjusted By", type: "text" },
@@ -327,7 +326,6 @@ export async function getStockAdjustmentFormFields(partnerId: string): Promise<F
     { key: "warehouseName", label: "Warehouse", type: "select", required: true, options: warehouseOptions.map((o) => o.label) },
     { key: "materialId", label: "Material — [warehouse: available qty]", type: "select", required: true, options: materialAvailability.options, optionLabels: materialAvailability.optionLabels },
     { key: "adjustmentType", label: "Type", type: "select", required: true, options: [...ADJUSTMENT_TYPES] },
-    { key: "condition", label: "Material Type", type: "select", required: true, options: ["Good", "Defective"] },
     { key: "quantity", label: "Quantity", type: "number", required: true },
     {
       key: "serialNumbers",
@@ -349,7 +347,6 @@ export function getStockAdjustmentDetailFields(record: Row): RecordField[] {
     { label: "Warehouse", value: r["warehouseName"], type: "text" },
     { label: "Material", value: r["materialId"], type: "text" },
     { label: "Type", value: r["adjustmentType"], type: "select" },
-    { label: "Material Type", value: r["condition"] || "Good", type: "text" },
     { label: "Quantity", value: r["quantity"], type: "text" },
     {
       label: "Serial / Barcode Numbers",
@@ -376,27 +373,38 @@ export function getStockAdjustmentTimeline(record: Row): TimelineEntry[] {
 export const stockAdjustmentRelated: RelatedRecord[] = [];
 
 // ---------------------------------------------------------------------
-// Return Orders — defective/good material sent back from a Service
-// Centre location to its mapped Warehouse
+// Return Orders — Inbound: defective/good material sent back from a
+// Service Centre location to its mapped Warehouse. Outbound: the ONLY
+// way Defective stock is ever allowed to leave the system — a warehouse
+// shipping written-off/defective material out to a vendor/OEM (for
+// replacement, credit, or scrap), gated on a Challan Number so the
+// stock deduction always has real shipping paperwork behind it. No
+// Stock Adjustment/Transfer/edit-page path may touch Defective stock —
+// see src/app/partner/[partnerId]/inventory/return-orders/actions.ts.
 // ---------------------------------------------------------------------
 
 export const RETURN_TYPES = ["Defective", "Good"] as const;
+export const RETURN_DIRECTIONS = ["Inbound", "Outbound"] as const;
 
 const RETURN_STATUS_VARIANT: Record<string, StatusVariant> = {
   Pending: "warning",
   "In Transit": "teal",
   Received: "success",
+  Dispatched: "teal",
   Rejected: "danger",
 };
 
 export const returnOrderColumns: Column[] = [
   { key: "id", label: "Return Order ID", type: "text" },
+  { key: "direction", label: "Direction", type: "select-chip" },
   { key: "workorderRef", label: "Workorder", type: "relation-link" },
   { key: "returnType", label: "Return Type", type: "select-chip" },
   { key: "materialId", label: "Material", type: "text" },
   { key: "quantity", label: "Quantity", type: "text" },
   { key: "sourceLocation", label: "Source Location", type: "text" },
   { key: "destinationWarehouseName", label: "Destination Warehouse", type: "text" },
+  { key: "vendorName", label: "Vendor / OEM", type: "text" },
+  { key: "challanNumber", label: "Challan No.", type: "text" },
   { key: "status", label: "Status", type: "select-chip", chipVariantMap: RETURN_STATUS_VARIANT },
   { key: "createdDate", label: "Created", type: "date" },
 ];
@@ -404,6 +412,7 @@ export const returnOrderColumns: Column[] = [
 export const returnOrderRows: Row[] = [
   {
     id: "RTN-4001",
+    direction: "Inbound",
     workorderRef: "WO202608080002",
     returnType: "Defective",
     materialId: "MAT-1002 — Li-ion Battery 4000mAh — Generic",
@@ -417,6 +426,7 @@ export const returnOrderRows: Row[] = [
   },
   {
     id: "RTN-4000",
+    direction: "Inbound",
     workorderRef: "WO202608080001",
     returnType: "Good",
     materialId: "MAT-1003 — USB-C Charging Port Flex Cable",
@@ -430,7 +440,25 @@ export const returnOrderRows: Row[] = [
   },
 ];
 
-/** Partner-scoped — see getBomOptionsForPartner/getWarehouseOptionsForPartner's doc comments for why this can't be a plain array. */
+/**
+ * Partner-scoped — see getBomOptionsForPartner/getWarehouseOptionsForPartner's
+ * doc comments for why this can't be a plain array. One flat form covers
+ * both directions (RecordForm has no conditional-field-visibility support);
+ * createReturnOrderAction enforces which fields actually matter per
+ * direction rather than the field list itself:
+ *  - Inbound (Service Centre → Warehouse): Source Location is the SC
+ *    location (free text), Destination Warehouse is required, Vendor/OEM
+ *    and Challan Number are ignored. Stock is ADDED to the destination
+ *    warehouse's Good or Defective bucket (per Return Type) once Received.
+ *  - Outbound (Warehouse → Vendor/OEM): Source Location must be one of
+ *    this partner's own real warehouse names (validated against
+ *    getWarehouseOptionsForPartner, since that's the bucket being
+ *    deducted), Return Type is forced to Defective (only Defective stock
+ *    is ever allowed to leave this way), Vendor/OEM Name and Challan
+ *    Number are both required. Stock is DEDUCTED from that warehouse's
+ *    Defective bucket once Dispatched — the only path in the whole app
+ *    that can reduce Defective stock.
+ */
 export async function getReturnOrderFormFields(partnerId: string): Promise<FormFieldDef[]> {
   const [bomOptions, warehouseOptions, availability] = await Promise.all([
     getBomOptionsForPartner(partnerId),
@@ -439,13 +467,16 @@ export async function getReturnOrderFormFields(partnerId: string): Promise<FormF
   ]);
   const materialAvailability = withAvailability(bomOptions, availability);
   return [
-    { key: "workorderRef", label: "Workorder", type: "text", required: false },
+    { key: "direction", label: "Direction", type: "select", required: true, options: [...RETURN_DIRECTIONS], optionLabels: { Inbound: "Inbound — Service Centre returns material to Warehouse", Outbound: "Outbound — Warehouse ships Defective stock out to a Vendor/OEM" } },
+    { key: "workorderRef", label: "Workorder (Inbound only)", type: "text", required: false },
     { key: "returnType", label: "Return Type", type: "select", required: true, options: [...RETURN_TYPES] },
     { key: "materialId", label: "Material — [warehouse: available qty]", type: "select", required: true, options: materialAvailability.options, optionLabels: materialAvailability.optionLabels },
     { key: "quantity", label: "Quantity", type: "number", required: true },
-    { key: "sourceLocation", label: "Source Location", type: "text", required: true },
-    { key: "destinationWarehouseName", label: "Destination Warehouse", type: "select", required: true, options: warehouseOptions.map((o) => o.label) },
-    { key: "status", label: "Status", type: "select", required: true, options: ["Pending", "In Transit", "Received", "Rejected"] },
+    { key: "sourceLocation", label: "Source Location (Inbound: Service Centre name; Outbound: your own Warehouse name, exactly)", type: "text", required: true },
+    { key: "destinationWarehouseName", label: "Destination Warehouse (Inbound only)", type: "select", required: false, options: warehouseOptions.map((o) => o.label) },
+    { key: "vendorName", label: "Vendor / OEM Name (Outbound only)", type: "text", required: false },
+    { key: "challanNumber", label: "Challan / Delivery Note Number (required for Outbound before stock is deducted)", type: "text", required: false },
+    { key: "status", label: "Status", type: "select", required: true, options: ["Pending", "In Transit", "Received", "Dispatched", "Rejected"] },
     { key: "createdDate", label: "Created Date", type: "date", required: true },
   ];
 }
@@ -458,12 +489,15 @@ export function getReturnOrderDetailFields(record: Row): RecordField[] {
   const r = record;
   return [
     { label: "Return Order ID", value: r["id"], type: "text" },
+    { label: "Direction", value: r["direction"] || "Inbound", type: "text" },
     { label: "Workorder", value: r["workorderRef"], type: "relation" },
     { label: "Return Type", value: r["returnType"], type: "text" },
     { label: "Material", value: r["materialId"], type: "text" },
     { label: "Quantity", value: r["quantity"], type: "text" },
     { label: "Source Location", value: r["sourceLocation"], type: "text" },
-    { label: "Destination Warehouse", value: r["destinationWarehouseName"], type: "text" },
+    { label: "Destination Warehouse", value: r["destinationWarehouseName"] || "—", type: "text" },
+    { label: "Vendor / OEM", value: r["vendorName"] || "—", type: "text" },
+    { label: "Challan / Delivery Note No.", value: r["challanNumber"] || "—", type: "text" },
     { label: "Status", value: r["status"], type: "select", chipVariant: RETURN_STATUS_VARIANT[String(r["status"])] ?? "neutral" },
     { label: "Created Date", value: r["createdDate"], type: "date" },
     { label: "Received Date", value: r["receivedDate"], type: "date" },
@@ -471,6 +505,16 @@ export function getReturnOrderDetailFields(record: Row): RecordField[] {
 }
 
 export function getReturnOrderTimeline(record: Row): TimelineEntry[] {
+  if (record["direction"] === "Outbound") {
+    return [
+      {
+        id: "t1",
+        label: `Outbound Return Order created — ${String(record["quantity"] ?? "")} x ${String(record["materialId"] ?? "")} to ${String(record["vendorName"] ?? "vendor")}${record["challanNumber"] ? ` (Challan ${record["challanNumber"]})` : ""}`,
+        timestamp: `${record["createdDate"]}T10:00:00`,
+        actor: "Warehouse",
+      },
+    ];
+  }
   return [
     { id: "t1", label: `Return Order created against ${String(record["workorderRef"] ?? "workorder")}`, timestamp: `${record["createdDate"]}T10:00:00`, actor: "Service Centre" },
   ];
@@ -607,7 +651,6 @@ export const stockTransferColumns: Column[] = [
   { key: "fromWarehouseName", label: "From Warehouse", type: "text" },
   { key: "toWarehouseName", label: "To Warehouse", type: "text" },
   { key: "toPartnerId", label: "To Partner", type: "text" },
-  { key: "condition", label: "Material Type", type: "text" },
   { key: "quantity", label: "Quantity", type: "text" },
   { key: "transferDate", label: "Transfer Date", type: "date" },
   { key: "reason", label: "Reason / Note", type: "text" },
@@ -627,7 +670,6 @@ export async function getStockTransferFormFields(partnerId: string): Promise<For
     { key: "fromWarehouseName", label: "From Warehouse", type: "select", required: true, options: warehouseOptions.map((o) => o.label) },
     { key: "toWarehouseName", label: "To Warehouse (leave blank for a partner-to-partner transfer)", type: "select", required: false, options: warehouseOptions.map((o) => o.label) },
     { key: "toPartnerId", label: "OR Transfer To Partner ID (e.g. SC0042) — requires Super Admin approval", type: "text", required: false },
-    { key: "condition", label: "Material Type", type: "select", required: true, options: ["Good", "Defective"] },
     { key: "quantity", label: "Quantity", type: "number", required: true },
     { key: "transferDate", label: "Transfer Date", type: "date", required: true },
     { key: "reason", label: "Reason / Note", type: "text", required: false },
@@ -643,7 +685,6 @@ export function getStockTransferDetailFields(record: Row): RecordField[] {
     { label: "From Warehouse", value: r["fromWarehouseName"], type: "text" },
     { label: "To Warehouse", value: r["toWarehouseName"] || "—", type: "text" },
     { label: "To Partner", value: r["toPartnerId"] || "—", type: "text" },
-    { label: "Material Type", value: r["condition"] || "Good", type: "text" },
     { label: "Quantity", value: r["quantity"], type: "text" },
     { label: "Transfer Date", value: r["transferDate"], type: "date" },
     { label: "Reason / Note", value: r["reason"], type: "text" },

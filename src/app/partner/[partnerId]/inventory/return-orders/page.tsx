@@ -19,7 +19,8 @@ registerPage({
     { key: "columns", label: "Table columns" },
     { key: "filters", label: "List filters" },
   ],
-  explanation: "Lists every return order (defective/good material back to the mapped warehouse), with a \"+ New\" action to create one and row-click navigation into the record's detail view.",
+  explanation:
+    "Lists every return order, both directions: Inbound (defective/good material a Service Centre location sends back to its mapped Warehouse — adds to Stock once Received) and Outbound (a Warehouse shipping Defective stock out to a Vendor/OEM, gated on a Vendor Name and Challan Number — deducts from Stock once Dispatched). Outbound is the ONLY path in the app that can reduce Defective stock; no Stock Adjustment, Stock Transfer, or Stock edit-page path is allowed to touch it. \"+ New\" creates one; row-click navigates into the record's detail view.",
   sourceFile: "src/app/partner/[partnerId]/inventory/return-orders/page.tsx",
 });
 
@@ -38,8 +39,8 @@ export default async function ReturnOrdersPage({ params }: { params: { partnerId
           <BulkUploadButton
             title="Bulk Upload Return Orders"
             columns={formFields.map((f) => f.key)}
-            requiredColumnsNote="Return Type, Material, Quantity, Source Location, Destination Warehouse, Status and Created Date are required per row."
-            sampleRow={["WO202608080002", "Defective", "Li-ion Battery 4000mAh — Generic", "1", "Indiranagar Service Centre", "Central Warehouse — Bengaluru", "Pending", "2026-09-19"]}
+            requiredColumnsNote="Direction, Return Type, Material, Quantity, Source Location and Status are always required. Inbound also requires Destination Warehouse; Outbound also requires Vendor/OEM Name and a Challan Number (no stock is deducted without one)."
+            sampleRow={["Inbound", "WO202608080002", "Defective", "Li-ion Battery 4000mAh — Generic", "1", "Indiranagar Service Centre", "Central Warehouse — Bengaluru", "", "", "Pending", "2026-09-19"]}
             templateFilename="return-orders-template.csv"
             importAction={bulkImportReturnOrdersAction.bind(null, params.partnerId)}
           />

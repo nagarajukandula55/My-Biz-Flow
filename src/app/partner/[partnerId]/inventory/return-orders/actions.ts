@@ -5,8 +5,8 @@ import { redirect } from "next/navigation";
 import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import { createBusinessRecord } from "@/lib/businessRecords";
 import { runBulkImport, type BulkImportResult } from "@/lib/bulkImportCsv";
-import { getReturnOrderFormFields } from "@/lib/sample-data/warehouse";
-import { adjustStockQty, type StockCondition } from "@/lib/inventoryStock";
+import { getReturnOrderFormFields, getWarehouseOptionsForPartner } from "@/lib/sample-data/warehouse";
+import { adjustStockQty, getQtyOnHand, type StockCondition } from "@/lib/inventoryStock";
 
 /** RETURN_TYPES is ["Defective", "Good"] (see warehouse.ts) — both happen to be valid StockCondition values, so the record's own returnType routes straight to the matching stock bucket; anything else (unset/free text) defaults to Good. */
 function returnStockCondition(returnType: unknown): StockCondition {
@@ -14,14 +14,82 @@ function returnStockCondition(returnType: unknown): StockCondition {
 }
 
 /**
- * Creates a Return Order AND adds it to the destination warehouse's real
- * Stock — but only once it's marked Received; a Pending/In Transit return
- * hasn't physically arrived at the warehouse yet, so it doesn't touch
- * stock until its status says otherwise (same gate PartOrders uses on
- * dispatch, mirrored here on receipt). Previously this module had no
- * dedicated action at all — it ran on the generic createBusinessRecordAction,
- * which only ever wrote the document and never touched the real Stock
- * ledger, so a "Received" return never actually became available stock.
+ * Validates and applies the real Stock effect for one Return Order, for
+ * either direction. Returns an error string, or null on success (including
+ * "nothing to apply yet" — e.g. still Pending).
+ *
+ * This is the ONLY function in the whole app allowed to decrease Defective
+ * stock — see the Outbound branch. No Stock Adjustment, Stock Transfer, or
+ * Stock edit-page path may touch a Defective bucket (deliberately, by
+ * partner policy: a partner must never be able to manually erase/write off
+ * Defective stock — only ship it out against a real Challan Number, which
+ * this records and requires before the deduction happens).
+ */
+async function applyReturnOrderStockEffect(
+  partnerId: string,
+  values: Record<string, unknown>
+): Promise<{ error: string | null; normalized: Record<string, unknown> }> {
+  const direction = values["direction"] === "Outbound" ? "Outbound" : "Inbound";
+  const materialId = String(values["materialId"] ?? "").trim();
+  const quantity = Number(values["quantity"] ?? 0);
+  const status = String(values["status"] ?? "Pending");
+
+  if (!materialId || !Number.isFinite(quantity) || quantity <= 0) {
+    return { error: "Material and a positive Quantity are required.", normalized: values };
+  }
+
+  if (direction === "Outbound") {
+    const sourceWarehouseName = String(values["sourceLocation"] ?? "").trim();
+    const vendorName = String(values["vendorName"] ?? "").trim();
+    const challanNumber = String(values["challanNumber"] ?? "").trim();
+
+    const warehouseOptions = await getWarehouseOptionsForPartner(partnerId);
+    if (!warehouseOptions.some((w) => w.label === sourceWarehouseName)) {
+      return {
+        error: `Source Location must exactly match one of your own Warehouse names for an Outbound return — "${sourceWarehouseName}" isn't one.`,
+        normalized: values,
+      };
+    }
+    if (!vendorName) return { error: "Vendor / OEM Name is required for an Outbound return.", normalized: values };
+    if (!challanNumber) {
+      return { error: "Challan / Delivery Note Number is required for an Outbound return — no manual write-off of Defective stock is allowed.", normalized: values };
+    }
+
+    // Only Defective stock is ever allowed to leave this way — force it
+    // rather than trust whatever Return Type the form happened to submit.
+    const normalized = { ...values, returnType: "Defective", destinationWarehouseName: "" };
+
+    if (status === "Dispatched") {
+      const available = await getQtyOnHand(partnerId, materialId, sourceWarehouseName, "Defective");
+      if (available < quantity) {
+        return { error: `Cannot dispatch ${quantity} — only ${available} Defective on hand at ${sourceWarehouseName}.`, normalized };
+      }
+      await adjustStockQty(partnerId, materialId, materialId, sourceWarehouseName, -quantity, "Defective");
+    }
+    return { error: null, normalized };
+  }
+
+  // Inbound — unchanged from the original behaviour: stock is added to the
+  // destination warehouse's Good or Defective bucket (per Return Type)
+  // once the return is marked Received.
+  const destinationWarehouseName = String(values["destinationWarehouseName"] ?? "").trim();
+  if (!destinationWarehouseName) {
+    return { error: "Destination Warehouse is required for an Inbound return.", normalized: values };
+  }
+  const normalized = { ...values, vendorName: "", challanNumber: "" };
+  if (status === "Received") {
+    await adjustStockQty(partnerId, materialId, materialId, destinationWarehouseName, quantity, returnStockCondition(values["returnType"]));
+  }
+  return { error: null, normalized };
+}
+
+/**
+ * Creates a Return Order AND applies its real Stock effect — Inbound adds
+ * to the destination warehouse once Received; Outbound (the only path that
+ * can reduce Defective stock) deducts from the source warehouse once
+ * Dispatched, gated on a Vendor/OEM name and a Challan Number. A
+ * Pending/In Transit order hasn't physically moved yet, so it doesn't
+ * touch stock until its status says otherwise.
  */
 export async function createReturnOrderAction(
   partnerId: string,
@@ -29,26 +97,10 @@ export async function createReturnOrderAction(
 ): Promise<void | { error?: string }> {
   partnerId = await requireSessionPartnerId(partnerId);
 
-  const materialId = String(values["materialId"] ?? "").trim();
-  const destinationWarehouseName = String(values["destinationWarehouseName"] ?? "").trim();
-  const quantity = Number(values["quantity"] ?? 0);
-  const status = String(values["status"] ?? "Pending");
+  const { error, normalized } = await applyReturnOrderStockEffect(partnerId, values);
+  if (error) return { error };
 
-  if (!materialId || !destinationWarehouseName || !Number.isFinite(quantity) || quantity <= 0) {
-    return { error: "Material, Destination Warehouse and a positive Quantity are required." };
-  }
-
-  const record = await createBusinessRecord(partnerId, "inventory-return-orders", values);
-  if (status === "Received") {
-    await adjustStockQty(
-      partnerId,
-      materialId,
-      materialId,
-      destinationWarehouseName,
-      quantity,
-      returnStockCondition(values["returnType"])
-    );
-  }
+  const record = await createBusinessRecord(partnerId, "inventory-return-orders", normalized);
 
   revalidatePath(`/partner/${partnerId}/inventory/return-orders`);
   revalidatePath(`/partner/${partnerId}/inventory/stock`);
@@ -62,20 +114,9 @@ export async function bulkImportReturnOrdersAction(partnerId: string, formData: 
 
   const fields = await getReturnOrderFormFields(partnerId);
   const result = await runBulkImport(partnerId, "inventory-return-orders", file, fields, async (values) => {
-    const materialId = String(values["materialId"] ?? "").trim();
-    const destinationWarehouseName = String(values["destinationWarehouseName"] ?? "").trim();
-    const quantity = Number(values["quantity"] ?? 0);
-    if (materialId && destinationWarehouseName && Number.isFinite(quantity) && quantity > 0 && values["status"] === "Received") {
-      await adjustStockQty(
-        partnerId,
-        materialId,
-        materialId,
-        destinationWarehouseName,
-        quantity,
-        returnStockCondition(values["returnType"])
-      );
-    }
-    return values;
+    const { error, normalized } = await applyReturnOrderStockEffect(partnerId, values);
+    if (error) throw new Error(`Row for "${values["materialId"]}": ${error}`);
+    return normalized;
   });
   revalidatePath(`/partner/${partnerId}/inventory/return-orders`);
   revalidatePath(`/partner/${partnerId}/inventory/stock`);
