@@ -214,6 +214,20 @@ export async function notifyCentralApiBillingInvoice(
     issueDate?: string;
   },
 ): Promise<boolean> {
+  // Disabled 2026-09-21: this was mirroring EVERY partner's own Billing/
+  // Service Centre/Wholesale B2B customer invoice into AN-Accounting under
+  // AN Group's single GSTIN, as if AN Group itself had made each sale —
+  // co-mingling unrelated partners' independent sales into one GSTIN's
+  // turnover/GST liability, which is wrong. Confirmed with the business
+  // owner this was not the intended design (see AN-Accounting invoices
+  // AN-2627-0007/0008/0010, which were deleted as a result). Only
+  // notifyCentralApiSale (My-Biz-Flow's own subscription revenue, which
+  // genuinely IS AN Group's sale) should push here. Re-enable only after a
+  // real per-partner invoicing design (e.g. a separate GSTIN/business per
+  // partner, or an explicit invoicing-as-a-service agreement) exists.
+  return false;
+
+  // eslint-disable-next-line no-unreachable
   let url: string;
   let key: string;
   try {
