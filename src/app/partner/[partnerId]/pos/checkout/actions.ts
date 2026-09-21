@@ -4,12 +4,11 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createBusinessRecord, getBusinessRecord, updateBusinessRecord, listBusinessRecords } from "@/lib/businessRecords";
 import { computeSaleTotals, extractSaleFromRecord, type SaleLine, type Tender } from "@/lib/sample-data/pos";
-import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
+import { requirePosStaffAction } from "@/lib/pos/posAuth";
 
 export type CompleteSaleInput = {
   lines: SaleLine[];
   tenders: Tender[];
-  cashier?: string;
   branch?: string;
 };
 
@@ -22,10 +21,14 @@ export type CompleteSaleInput = {
  * shares (see src/lib/inventoryStock.ts). Read-then-write against
  * BusinessRecord's JSON blob (not a DB-level atomic decrement) — a
  * documented limitation until per-SKU stock becomes a real relational
- * column.
+ * column. Gated by requirePosStaffAction (POS's own staff session), not
+ * requireSessionPartnerId — a POS staff member has no main partner
+ * session at all (see PartnerLayout's STAFF_ONLY_MODULE_PREFIXES). The
+ * cashier name is taken from the verified session, never trusted from the
+ * client, same posture as the totals recompute below.
  */
 export async function completeSaleAction(partnerId: string, input: CompleteSaleInput) {
-  await requireSessionPartnerId(partnerId);
+  const staff = await requirePosStaffAction(partnerId);
   if (input.lines.length === 0) throw new Error("Cart is empty");
 
   const totals = computeSaleTotals(input.lines);
@@ -63,7 +66,8 @@ export async function completeSaleAction(partnerId: string, input: CompleteSaleI
     tenders: input.tenders,
     amountTendered,
     changeDue,
-    cashier: input.cashier || "",
+    cashier: `${staff.name} (${staff.staffCode})`,
+    posStaffId: staff.id,
     branch: input.branch || "",
     stockDeducted: true,
     paymentSummary,
@@ -95,10 +99,12 @@ export async function completeSaleAction(partnerId: string, input: CompleteSaleI
  * Voids a Completed sale — restores deducted stock and marks the sale
  * Voided. Does not touch the linked Billing invoice (a real credit-note/
  * refund flow is Billing's own scope) — leaves a clear void marker so
- * reports read correctly.
+ * reports read correctly. Open to any logged-in POS staff for now (not
+ * Manager-gated) — a natural follow-up once a real permission matrix is
+ * wanted, same posture requirePosManager already exists for elsewhere.
  */
 export async function voidSaleAction(partnerId: string, saleId: string, reason: string): Promise<void> {
-  await requireSessionPartnerId(partnerId);
+  await requirePosStaffAction(partnerId);
   const record = await getBusinessRecord(partnerId, "pos", saleId);
   if (!record) return;
   const sale = extractSaleFromRecord(record);

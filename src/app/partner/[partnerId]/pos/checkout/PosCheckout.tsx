@@ -84,7 +84,10 @@ export function PosCheckout({
 
   function completeSale() {
     setError(null);
-    const input: CompleteSaleInput = { lines, tenders: tenders.filter((t) => t.amount > 0), cashier, branch };
+    // Cashier is derived server-side from the POS staff session
+    // (requirePosStaffAction), never trusted from the client — this prop
+    // is display-only (shown below).
+    const input: CompleteSaleInput = { lines, tenders: tenders.filter((t) => t.amount > 0), branch };
     startTransition(async () => {
       try {
         await completeSaleAction(partnerId, input);

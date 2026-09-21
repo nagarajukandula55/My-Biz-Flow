@@ -52,3 +52,19 @@ export function requirePosManager(staff: { role: string } | null): void {
   if (!staff) throw new Error("Not logged in as POS staff.");
   if (staff.role !== "Manager") throw new Error("Only a Manager can do this.");
 }
+
+/**
+ * Server Action gate for POS — the equivalent of
+ * requireSessionPartnerId/requireSessionOrStaffPartnerId in
+ * requirePartnerSession.ts, but for POS's own separate staff session
+ * instead of the main partner session (which a POS staff member never has
+ * — see PartnerLayout's STAFF_ONLY_MODULE_PREFIXES). Every mutating POS
+ * Server Action (completeSaleAction, voidSaleAction, ...) must call this
+ * instead of requireSessionPartnerId, or it would throw for every real POS
+ * staff caller.
+ */
+export async function requirePosStaffAction(partnerId: string) {
+  const staff = await getCurrentPosStaff(partnerId);
+  if (!staff) throw new Error("Not signed in as POS staff.");
+  return staff;
+}
