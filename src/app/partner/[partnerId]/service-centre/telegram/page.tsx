@@ -255,7 +255,9 @@ export default async function TelegramAlertsPage({ params }: { params: { partner
               A real, per-business revenue/invoice/workorder summary digest — daily (for the prior day), weekly
               (every Saturday, for the prior week), and monthly (last day of the month, for the prior month) — sent
               automatically by a daily scheduled job to whichever chat(s) you pick below. Still needs a real bot
-              connection to actually deliver.
+              connection to actually deliver. Every attempt is followed by a short separate confirmation message —
+              "✅ sent" or "❌ not delivered" — so you always know whether that day's report actually went out,
+              never just silence.
             </p>
             <div className="mt-2 flex items-center justify-between gap-2 text-sm text-text">
               <span>Daily + weekly + monthly report</span>

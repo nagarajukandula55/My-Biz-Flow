@@ -66,14 +66,26 @@ const FREQUENCY_LABEL: Record<ReportFrequency, string> = { DAILY: "Daily", WEEKL
  * ever one "target" (the platform itself), so the run/log/notify sequence
  * lives directly in this one function rather than being split the way the
  * per-partner cron loop needs to be.
+ *
+ * `sendRawTelegramMessage` never throws — it returns null on ANY failure
+ * (no bot token, chat unreachable, bot blocked, API error). Previously that
+ * return value was discarded and `ok` stayed hardcoded true as long as
+ * nothing else threw, so a genuinely undelivered digest was logged and
+ * treated as a success with no way for the owner to find out. Now the
+ * real message_id result decides `ok`, and on failure a short, separate
+ * "did NOT go out" alert is attempted to the same ops chat (best-effort —
+ * if the chat itself is unreachable this will fail too, same as the
+ * digest, which is an inherent Telegram-side limit, not a bug here).
  */
 export async function sendPlatformReport(frequency: ReportFrequency, now: Date, trigger: "cron" | "manual" = "cron"): Promise<void> {
   let ok = true;
   let error: string | undefined;
+  let opsChatId: string | undefined;
+  const when = now.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" });
 
   try {
     const { current, prior, changePct } = await computePlatformReportComparison(frequency, now);
-    const opsChatId = await getOpsChatId();
+    opsChatId = await getOpsChatId();
     if (!opsChatId) throw new Error("No ops chat configured (PlatformSettings.opsChatId / TELEGRAM_OPS_CHAT_ID)");
 
     const lines = [
@@ -84,14 +96,21 @@ export async function sendPlatformReport(frequency: ReportFrequency, now: Date, 
       `Invoices/bills: ${current.invoiceCount} (prior: ${prior.invoiceCount})`,
       `Workorders/sales: ${current.workorderCount} (prior: ${prior.workorderCount})`,
       "",
-      now.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }),
+      `✅ Delivered — ${when}`,
     ];
-    await sendRawTelegramMessage(opsChatId, lines.join("\n"));
+    const messageId = await sendRawTelegramMessage(opsChatId, lines.join("\n"));
+    if (messageId === null) throw new Error("Telegram delivery failed (bot not configured, chat unreachable, or bot blocked)");
     await setLastPlatformReportSentAt(frequency, now);
   } catch (err) {
     ok = false;
     error = err instanceof Error ? err.message : "Platform report send failed";
     console.error("[sendPlatformReport] failed:", err);
+    if (opsChatId) {
+      await sendRawTelegramMessage(
+        opsChatId,
+        `❌ My Biz Flow — ${FREQUENCY_LABEL[frequency]} Growth Report did NOT go out today (${when}): ${error}`
+      ).catch(() => {});
+    }
   }
 
   await logReportRun({

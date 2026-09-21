@@ -11,7 +11,7 @@
 import { prisma } from "@/lib/prisma";
 import { businessReportMessage, type ReportFrequency } from "@/lib/telegramTemplates";
 import { getPartner, listPartners } from "@/lib/partnerData";
-import { listPartnersWithReportsEnabled, sendPartnerTelegramReport, sendRawTelegramMessage } from "@/lib/telegram";
+import { listPartnersWithReportsEnabled, sendPartnerTelegramAlert, sendPartnerTelegramReport, sendRawTelegramMessage } from "@/lib/telegram";
 import { getOpsChatId } from "@/lib/platformSettings";
 import { logReportRun } from "@/lib/reportRunLog";
 
@@ -168,12 +168,29 @@ export type ReportPushResult = {
   details: ReportPushDetail[];
 };
 
+const FREQUENCY_LABEL: Record<ReportFrequency, string> = { DAILY: "Daily", WEEKLY: "Weekly", MONTHLY: "Monthly" };
+
 /**
  * Builds and sends one partner's digest for the given frequency — the exact
  * send this frequency's automatic cron run performs for a due partner,
  * pulled out so the manual "push report now" bridge (src/app/api/admin/
  * push-reports/route.ts) can reuse it without duplicating the
  * comparison/template/send sequence.
+ *
+ * Always follows up with an explicit, separate confirmation message to the
+ * partner's own Telegram — "✅ sent" or "❌ not delivered" — so a partner
+ * never has to infer from silence whether today's report actually went
+ * out. Uses sendPartnerTelegramReport's real delivery result (not just
+ * "an attempt was made"), since a broken/disconnected chat previously
+ * looked identical to a successful send from the caller's side.
+ *
+ * Throws on any failure — building the report (partner not found, stats
+ * query failed) same as before, AND now also a genuine delivery failure
+ * (chat disconnected, bot blocked/token missing) — so pushTelegramReportsNow
+ * and the cron route's per-partner ReportPushDetail (and therefore the ops
+ * summary's "Did not receive" list) stay accurate. The confirmation message
+ * is always sent first regardless, so the partner's own Telegram reflects
+ * the outcome independently of what the caller does with the thrown error.
  */
 export async function sendOnePartnerReport(partnerId: string, frequency: ReportFrequency, now: Date): Promise<void> {
   const partner = await getPartner(partnerId);
@@ -191,7 +208,19 @@ export async function sendOnePartnerReport(partnerId: string, frequency: ReportF
     priorWorkorderCount: prior.workorderCount,
     changePct,
   });
-  await sendPartnerTelegramReport(partnerId, frequency, message);
+  const delivered = await sendPartnerTelegramReport(partnerId, frequency, message);
+
+  const when = now.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" });
+  const confirmation = delivered
+    ? `✅ Your ${FREQUENCY_LABEL[frequency]} business report was sent successfully — ${when}.`
+    : `❌ Your ${FREQUENCY_LABEL[frequency]} business report could NOT be delivered today (${when}) — no Telegram chat connected, or the bot was blocked/removed. Reconnect Telegram from Service Centre › Telegram Alerts.`;
+  // Best-effort — a confirmation-send hiccup itself never masks/replaces
+  // the report delivery outcome already determined above.
+  await sendPartnerTelegramAlert(partnerId, "report", confirmation).catch(() => {});
+
+  if (!delivered) {
+    throw new Error("Report built but not delivered — no Telegram chat connected, bot blocked, or bot not configured");
+  }
 }
 
 /**

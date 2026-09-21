@@ -234,6 +234,13 @@ async function recordTelegramLog(input: {
  * recorded to TelegramLogEntry so the settings page has a real activity
  * history. Never throws — this is best-effort, matching sendSms()'s posture.
  *
+ * Returns whether at least one chat actually got a confirmed delivery
+ * (Telegram Bot API responded `ok: true`) — NOT just "an attempt was made".
+ * Callers that need to tell a partner/admin whether something really went
+ * out (e.g. the report-send confirmation in telegramReportData.ts) must use
+ * this return value rather than assuming success from the absence of a
+ * thrown error, since this function deliberately never throws.
+ *
  * When `workorderId` is given, the sent message's own Bot API message_id is
  * captured onto the log row alongside it — that's the reply-threading key
  * findWorkorderByReplyMessageId() below reads from, so a later reply in the
@@ -247,13 +254,13 @@ async function sendTelegramAlertInternal(
   type: TelegramRoutingKey | "test",
   message: string,
   workorderId: string | null
-): Promise<void> {
+): Promise<boolean> {
   const settings = await getTelegramSettings(partnerId);
   const chatIds = resolveChatIdsForType(settings, type);
 
   if (chatIds.length === 0) {
     await recordTelegramLog({ partnerId, type, message, chatId: null, sent: false, reason: "no chat id configured", workorderId });
-    return;
+    return false;
   }
 
   const botToken = env.telegramBotToken();
@@ -265,13 +272,14 @@ async function sendTelegramAlertInternal(
         reason: "not configured — no TELEGRAM_BOT_TOKEN", workorderId,
       });
     }
-    return;
+    return false;
   }
 
   // Routing can resolve to more than one chat (a "both" alert type with
   // personal and group both connected) — send and log each independently so
   // a failure delivering to one chat doesn't affect the other, and so
   // reply-threading (findWorkorderByReplyMessageId) still resolves per-chat.
+  let delivered = false;
   for (const chatId of chatIds) {
     try {
       const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
@@ -304,6 +312,7 @@ async function sendTelegramAlertInternal(
           partnerId, type, message, chatId, sent: true, reason: null,
           messageId: sentMessageId, workorderId,
         });
+        delivered = true;
       } else {
         const reason = body?.description || `Telegram API error (status ${res.status})`;
         await recordTelegramLog({ partnerId, type, message, chatId, sent: false, reason, workorderId });
@@ -313,6 +322,7 @@ async function sendTelegramAlertInternal(
       await recordTelegramLog({ partnerId, type, message, chatId, sent: false, reason: "send failed", workorderId });
     }
   }
+  return delivered;
 }
 
 /** Reasons recordTelegramLog can carry that reflect a partner-fixable
@@ -365,15 +375,20 @@ export async function getRecentTelegramConnectionIssue(partnerId: string, sample
   return { count, reason, chatId };
 }
 
-/** Generic alert send — not tied to a specific workorder. Kept for occasions
+/**
+ * Generic alert send — not tied to a specific workorder. Kept for occasions
  * that don't (yet) need reply-threading: paymentReceived, paymentDue,
- * lowStock, subscriptionExpiring, generalAnnouncement, and the test button. */
+ * lowStock, subscriptionExpiring, generalAnnouncement, the test button, and
+ * "report" (the report-send confirmation message in telegramReportData.ts,
+ * which reuses the same routing["report"] destination the digest itself
+ * went to rather than a separate always-on alert type).
+ */
 export async function sendPartnerTelegramAlert(
   partnerId: string,
-  type: TelegramAlertType | "test",
+  type: TelegramRoutingKey | "test",
   message: string
-): Promise<void> {
-  await sendTelegramAlertInternal(partnerId, type, message, null);
+): Promise<boolean> {
+  return sendTelegramAlertInternal(partnerId, type, message, null);
 }
 
 /**
@@ -390,8 +405,8 @@ export async function sendWorkorderTelegramAlert(
   workorderId: string,
   type: TelegramAlertType,
   message: string
-): Promise<void> {
-  await sendTelegramAlertInternal(partnerId, type, message, workorderId);
+): Promise<boolean> {
+  return sendTelegramAlertInternal(partnerId, type, message, workorderId);
 }
 
 /**
@@ -403,10 +418,13 @@ export async function sendWorkorderTelegramAlert(
  * (Vercel Cron doesn't guarantee exactly-once). Stamped regardless of
  * whether a chat is actually connected/a bot token is configured --
  * "attempted for this period" is the right idempotency signal, not
- * "successfully delivered".
+ * "successfully delivered". Returns the real delivery result (true only if
+ * at least one chat actually confirmed receipt) so callers can tell a
+ * partner/admin whether today's report genuinely went out — see
+ * sendOnePartnerReport in telegramReportData.ts.
  */
-export async function sendPartnerTelegramReport(partnerId: string, cadence: TelegramReportCadence, message: string): Promise<void> {
-  await sendTelegramAlertInternal(partnerId, "report", message, null);
+export async function sendPartnerTelegramReport(partnerId: string, cadence: TelegramReportCadence, message: string): Promise<boolean> {
+  const delivered = await sendTelegramAlertInternal(partnerId, "report", message, null);
   const existing = await getTelegramSettings(partnerId);
   // Json column -- store ISO strings, not Date objects, so the round-trip
   // through parseLastReportSentAt() above stays well-defined.
@@ -418,6 +436,7 @@ export async function sendPartnerTelegramReport(partnerId: string, cadence: Tele
   await prisma.telegramSettings
     .update({ where: { partnerId }, data: { lastReportSentAt: nextStamps } })
     .catch(() => {});
+  return delivered;
 }
 
 /**
