@@ -10,12 +10,13 @@ registerPage({
   kind: "dashboard",
   superAdminOnly: false,
   customizableRegions: [],
-  explanation: "Hub linking to Billing's report pages (Outstanding/AR aging, Sales register, Tax summary, Contact statement, Profit & Loss, GST Export) — each aggregates live BusinessRecord data in-memory, no separate reporting infrastructure.",
+  explanation: "Hub linking to Billing's report pages (Outstanding/AR aging, Credit Accounts, Sales register, Tax summary, Contact statement, Profit & Loss, GST Export) — each aggregates live BusinessRecord data in-memory, no separate reporting infrastructure.",
   sourceFile: "src/app/partner/[partnerId]/billing/reports/page.tsx",
 });
 
 const REPORTS = [
   { href: "outstanding", title: "Outstanding / AR Aging", description: "Unpaid balance per contact, bucketed by days overdue." },
+  { href: "credit-accounts", title: "Credit Accounts", description: "Outstanding balance vs. each contact's Credit Limit, colour-banded green to red." },
   { href: "sales", title: "Sales Register", description: "Every invoice with subtotal, tax and total, and a running sum." },
   { href: "tax-summary", title: "Tax Summary", description: "Taxable value and tax collected, grouped by GST rate." },
   { href: "contact-statement", title: "Contact Statement", description: "Per-contact ledger of invoices, notes and payments." },

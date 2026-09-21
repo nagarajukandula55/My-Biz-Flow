@@ -1,6 +1,7 @@
 import { AppShell } from "@/components/AppShell";
 import { registerPage } from "@/lib/designer/registry";
 import { DataTable, type Column, type Row } from "@/components/DataTable";
+import type { StatusVariant } from "@/components/StatusChip";
 import { listBusinessRecords } from "@/lib/businessRecords";
 import { getInvoiceBalance } from "@/lib/sample-data/billing-payments";
 
@@ -12,18 +13,26 @@ registerPage({
   kind: "dashboard",
   superAdminOnly: false,
   customizableRegions: [{ key: "columns", label: "Table columns" }],
-  explanation: "Every invoice with a balance greater than zero, aggregated per contact and bucketed by days overdue (0-30 / 31-60 / 61-90 / 90+) — computed in-memory from Billing invoices + payments, no separate ledger table.",
+  explanation: "Every invoice with a balance greater than zero, aggregated per contact and bucketed by days overdue (0-30 / 31-60 / 61-90 / 90+) — computed in-memory from Billing invoices + payments, no separate ledger table. Bucket is colour-coded green (Not Due) through red (90+) so the oldest debt reads at a glance; see Credit Accounts for the per-contact credit-limit rollup.",
   sourceFile: "src/app/partner/[partnerId]/billing/reports/outstanding/page.tsx",
 });
 
 export const dynamic = "force-dynamic";
+
+const BUCKET_VARIANT: Record<string, StatusVariant> = {
+  "Not Due": "success",
+  "0-30": "teal",
+  "31-60": "warning",
+  "61-90": "amber",
+  "90+": "danger",
+};
 
 const AGING_COLUMNS: Column[] = [
   { key: "invoiceId", label: "Invoice", type: "relation-link" },
   { key: "contact", label: "Contact", type: "text" },
   { key: "dueDate", label: "Due Date", type: "date" },
   { key: "daysOverdue", label: "Days Overdue", type: "text" },
-  { key: "bucket", label: "Bucket", type: "select-chip" },
+  { key: "bucket", label: "Bucket", type: "select-chip", chipVariantMap: BUCKET_VARIANT },
   { key: "balance", label: "Balance Due", type: "currency" },
 ];
 

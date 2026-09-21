@@ -68,6 +68,7 @@ import "@/app/partner/[partnerId]/billing/credit-notes/[recordId]/edit/page";
 import "@/app/partner/[partnerId]/billing/credit-notes/[recordId]/document/page";
 import "@/app/partner/[partnerId]/billing/reports/page";
 import "@/app/partner/[partnerId]/billing/reports/outstanding/page";
+import "@/app/partner/[partnerId]/billing/reports/credit-accounts/page";
 import "@/app/partner/[partnerId]/billing/reports/sales/page";
 import "@/app/partner/[partnerId]/billing/reports/tax-summary/page";
 import "@/app/partner/[partnerId]/billing/reports/contact-statement/page";

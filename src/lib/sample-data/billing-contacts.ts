@@ -26,6 +26,7 @@ export const billingContactColumns: Column[] = [
   { key: "email", label: "Email", type: "text" },
   { key: "phone", label: "Phone", type: "phone" },
   { key: "city", label: "City", type: "text" },
+  { key: "creditLimit", label: "Credit Limit", type: "currency" },
 ];
 
 export const billingContactFormFields: FormFieldDef[] = [
@@ -39,6 +40,13 @@ export const billingContactFormFields: FormFieldDef[] = [
   { key: "city", label: "City", type: "text", required: false },
   { key: "state", label: "State", type: "text", required: false },
   { key: "pincode", label: "Pincode", type: "text", required: false },
+  {
+    key: "creditLimit",
+    label: "Credit Limit",
+    type: "number",
+    required: false,
+    placeholder: "Leave blank for no credit limit (utilization/colour-band tracking is skipped on the Credit Accounts report)",
+  },
 ];
 
 export function getBillingContactDetailFields(record: Row): RecordField[] {
@@ -54,6 +62,7 @@ export function getBillingContactDetailFields(record: Row): RecordField[] {
     { label: "City", value: r["city"], type: "text" },
     { label: "State", value: r["state"], type: "text" },
     { label: "Pincode", value: r["pincode"], type: "text" },
+    { label: "Credit Limit", value: r["creditLimit"] ? `₹${Number(r["creditLimit"]).toLocaleString("en-IN")}` : "No limit set", type: "text" },
   ];
 }
 
