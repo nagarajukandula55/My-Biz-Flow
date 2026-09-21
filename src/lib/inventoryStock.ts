@@ -99,6 +99,7 @@ export async function adjustStockQty(
   delta: number,
   condition: StockCondition = "Good"
 ): Promise<number> {
+  const now = new Date().toISOString();
   const existing = await findStockRecord(partnerId, materialId, warehouseName, condition);
   if (!existing) {
     const qtyOnHand = Math.max(0, delta);
@@ -113,6 +114,12 @@ export async function adjustStockQty(
       qtyOnHand,
       reservedQty: 0,
       availableQty: qtyOnHand,
+      lastUpdated: now,
+      // First time this material/warehouse/condition combo has ever had
+      // stock, so it was necessarily just "received" — see the Ageing
+      // report (inventory/ageing) for why this only ever moves forward on
+      // an INCREASE, never on every mutation.
+      lastReceivedAt: now,
     });
     return qtyOnHand;
   }
@@ -122,6 +129,13 @@ export async function adjustStockQty(
     ...existing,
     qtyOnHand: newQty,
     availableQty: Math.max(0, newQty - reservedQty),
+    lastUpdated: now,
+    // Ageing measures "how long has this stock been sitting since it was
+    // last replenished" — selling/consuming it (delta < 0) doesn't make
+    // what's LEFT any younger, so only a genuine increase resets the
+    // clock. A row from before this field existed has no lastReceivedAt
+    // at all; the Ageing report falls back to recordCreatedAt for those.
+    ...(delta > 0 ? { lastReceivedAt: now } : {}),
   });
   return newQty;
 }
@@ -219,6 +233,7 @@ export async function setStockQty(
   qty: number,
   condition: StockCondition = "Good"
 ): Promise<void> {
+  const now = new Date().toISOString();
   const existing = await findStockRecord(partnerId, materialId, warehouseName, condition);
   const clamped = Math.max(0, qty);
   if (!existing) {
@@ -229,13 +244,21 @@ export async function setStockQty(
       qtyOnHand: clamped,
       reservedQty: 0,
       availableQty: clamped,
+      lastUpdated: now,
+      lastReceivedAt: now,
     });
     return;
   }
   const reservedQty = Number(existing["reservedQty"] ?? 0);
+  const priorQty = Number(existing["qtyOnHand"] ?? 0);
   await updateBusinessRecord(partnerId, "inventory-stock", String(existing["id"]), {
     ...existing,
     qtyOnHand: clamped,
     availableQty: Math.max(0, clamped - reservedQty),
+    lastUpdated: now,
+    // A physical count that comes in HIGHER than the system expected is,
+    // in effect, a receipt this app never separately logged — same
+    // "only an increase resets the ageing clock" rule adjustStockQty uses.
+    ...(clamped > priorQty ? { lastReceivedAt: now } : {}),
   });
 }

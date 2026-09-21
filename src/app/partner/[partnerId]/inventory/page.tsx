@@ -89,6 +89,13 @@ const SECTIONS = [
     description: "Reorder forecast over a partner-configurable window — days-of-stock-left and suggested pre-order quantities.",
     moduleSlug: "inventory-consumption",
   },
+  {
+    href: "ageing",
+    icon: TrendingDown,
+    label: "Material Ageing",
+    description: "How long stock has sat since it was last replenished, flagged against a threshold you set.",
+    moduleSlug: "inventory-stock",
+  },
 ];
 
 export const dynamic = "force-dynamic";

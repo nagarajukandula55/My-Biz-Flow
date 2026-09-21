@@ -28,6 +28,7 @@
  * about the same events rather than inventing a second vocabulary.
  */
 import { listBusinessRecords } from "@/lib/businessRecords";
+import { computeAgeingRows, getAgeingThresholdDays } from "@/lib/inventoryAgeing";
 import type { Row } from "@/components/DataTable";
 
 export type AlertSeverity = "danger" | "warning" | "info";
@@ -106,6 +107,22 @@ export async function computeAlerts(partnerId: string, now: Date = new Date()): 
       title: qty <= 0 ? "Out of stock" : "Low stock",
       detail: `${str(item, "materialId") || code} — ${qty} on hand, reorder level ${reorder}.`,
       href: `inventory/stock`,
+    });
+  }
+
+  // 1b. Material Ageing — stock that's crossed the partner's own configured
+  //     ageing threshold (src/lib/inventoryAgeing.ts). Capped at 5 rows in
+  //     the bell so one neglected warehouse doesn't drown out every other
+  //     alert type; the full list lives on the Ageing report itself.
+  const ageingThreshold = await getAgeingThresholdDays(partnerId);
+  const ageingRows = (await computeAgeingRows(partnerId, ageingThreshold)).filter((r) => r.status === "Aging");
+  for (const row of ageingRows.slice(0, 5)) {
+    alerts.push({
+      id: `ageing:${row.stockId}`,
+      severity: "warning",
+      title: "Material ageing",
+      detail: `${row.materialId} (${row.condition}) at ${row.warehouseName} — ${row.ageDays} days since last received (threshold ${ageingThreshold}).`,
+      href: `inventory/ageing`,
     });
   }
 

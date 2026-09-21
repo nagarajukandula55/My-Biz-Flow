@@ -142,6 +142,7 @@ export const MODULE_SUB_NAV: Record<string, PartnerNavSubItem[]> = {
     // Forward-looking reorder forecast over a partner-configurable window
     // (default 30 days) — see src/lib/inventoryForecast.ts.
     { key: "inventory.part-planning", label: "Part Planning", href: "inventory/part-planning" },
+    { key: "inventory.ageing", label: "Material Ageing", href: "inventory/ageing" },
   ],
   // Suggested Basic/Pro/Ultimate split for Super Admin to configure in
   // PartnerType.planTierByPage (/admin/partner-types) — config-only
