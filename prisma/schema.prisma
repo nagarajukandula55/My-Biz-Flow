@@ -97,9 +97,9 @@ model NumberingCounter {
 /// the separate My-Biz-Flow-Admin app against this same physical DB; either
 /// field falling back to its env var when unset (see src/lib/platformSettings.ts).
 model PlatformSettings {
-  id                      String  @id @default("platform")
-  opsChatId               String?
-  errorChatId             String?
+  id                       String  @id @default("platform")
+  opsChatId                String?
+  errorChatId              String?
   /// Which WhatsApp automated-message trigger points are turned on,
   /// platform-wide — a JSON string array of trigger keys (e.g.
   /// ["telecalling.leadAccepted"]), edited from the separate
@@ -108,12 +108,12 @@ model PlatformSettings {
   /// one extensible list rather than a boolean-per-trigger column so a new
   /// trigger point can be added in code and toggled on from Admin without
   /// a schema migration each time.
-  enabledWhatsappTriggers Json    @default("[]")
+  enabledWhatsappTriggers  Json    @default("[]")
   /// Per-cadence last-sent stamp for the platform's own growth digest (see
   /// src/lib/platformReportData.ts) — same {DAILY?, WEEKLY?, MONTHLY?} ISO
   /// map shape as TelegramSettings.lastReportSentAt, just platform-scoped
   /// instead of per-partner, since there's only ever one "platform".
-  lastPlatformReportSentAt Json  @default("{}")
+  lastPlatformReportSentAt Json    @default("{}")
 
   @@map("platform_settings")
 }
@@ -1149,6 +1149,25 @@ model CustomerDataAccessOtp {
   updatedAt     DateTime  @updatedAt
 
   @@map("customer_data_access_otps")
+}
+
+/// Same Telegram-verified one-time-code gate as CustomerDataAccessOtp, but
+/// guarding a different sensitive action: reopening a workorder that's
+/// already reached Completed back to In Progress. Keyed by workorderId
+/// (not partnerId) since several workorders for the same partner could have
+/// a reopen request outstanding at once; the code still goes to the
+/// partner's own connected personal Telegram chat (the "Owner"), same as
+/// customer-data access.
+model WorkorderReopenOtp {
+  workorderId   String    @id
+  partnerId     String
+  codeHash      String
+  expiresAt     DateTime
+  attempts      Int       @default(0)
+  verifiedUntil DateTime?
+  updatedAt     DateTime  @updatedAt
+
+  @@map("workorder_reopen_otps")
 }
 
 /// Links a Telegram message this app sent about a support ticket back to

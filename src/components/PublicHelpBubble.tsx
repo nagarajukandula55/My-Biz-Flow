@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useTransition, type FormEvent } from "react";
 import { MessageCircle, X } from "lucide-react";
+import { requestPartnerIdRecovery } from "@/app/forgot-password/idRecoveryActions";
 
 /**
  * Public-site (anonymous visitor) version of the "ANu" help bubble —
@@ -28,6 +29,20 @@ const QUICK_LINKS: { label: string; href: string; description: string }[] = [
 export function PublicHelpBubble() {
   const [open, setOpen] = useState(false);
   const [showTeaser, setShowTeaser] = useState(false);
+  const [recoveryOpen, setRecoveryOpen] = useState(false);
+  const [identifier, setIdentifier] = useState("");
+  const [recoverySent, setRecoverySent] = useState(false);
+  const [isPending, startTransition] = useTransition();
+
+  function handleRecoverySubmit(e: FormEvent) {
+    e.preventDefault();
+    const formData = new FormData();
+    formData.set("identifier", identifier);
+    startTransition(async () => {
+      await requestPartnerIdRecovery(formData);
+      setRecoverySent(true);
+    });
+  }
 
   useEffect(() => {
     // Once per visit (sessionStorage, not localStorage — a returning
@@ -81,18 +96,66 @@ export function PublicHelpBubble() {
               <X className="h-4 w-4" />
             </button>
           </div>
-          <div className="flex flex-col gap-1 p-3">
-            {QUICK_LINKS.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                className="rounded-md border border-border bg-bg px-3 py-2 text-sm hover:bg-bg-sunken"
+          {recoveryOpen ? (
+            <div className="flex flex-col gap-2 p-3">
+              <button
+                type="button"
+                onClick={() => setRecoveryOpen(false)}
+                className="self-start text-xs text-text-muted hover:text-accent"
               >
-                <div className="font-semibold text-text">{link.label}</div>
-                <div className="text-xs text-text-muted">{link.description}</div>
-              </a>
-            ))}
-          </div>
+                ← Back
+              </button>
+              {recoverySent ? (
+                <p className="text-sm text-text">
+                  If that GST No. or registered email matches an account, we&apos;ve sent your Partner ID and a password
+                  reset link to your registered email, and to your connected Telegram if set up.
+                </p>
+              ) : (
+                <form onSubmit={handleRecoverySubmit} className="flex flex-col gap-2">
+                  <p className="text-xs text-text-muted">
+                    Enter your GST No. or registered email — we&apos;ll send your Partner ID and a reset link to your
+                    registered email and Telegram.
+                  </p>
+                  <input
+                    type="text"
+                    value={identifier}
+                    onChange={(e) => setIdentifier(e.target.value)}
+                    placeholder="GST No. or registered email"
+                    required
+                    className="rounded-md border border-border bg-bg px-3 py-2 text-sm text-text outline-none focus:border-accent"
+                  />
+                  <button type="submit" disabled={isPending} className="btn-accent w-full disabled:opacity-50">
+                    Send recovery details
+                  </button>
+                </form>
+              )}
+            </div>
+          ) : (
+            <div className="flex flex-col gap-1 p-3">
+              {QUICK_LINKS.map((link) => (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  className="rounded-md border border-border bg-bg px-3 py-2 text-sm hover:bg-bg-sunken"
+                >
+                  <div className="font-semibold text-text">{link.label}</div>
+                  <div className="text-xs text-text-muted">{link.description}</div>
+                </a>
+              ))}
+              <button
+                type="button"
+                onClick={() => {
+                  setRecoveryOpen(true);
+                  setRecoverySent(false);
+                  setIdentifier("");
+                }}
+                className="rounded-md border border-border bg-bg px-3 py-2 text-left text-sm hover:bg-bg-sunken"
+              >
+                <div className="font-semibold text-text">Forgot Partner ID / Password?</div>
+                <div className="text-xs text-text-muted">Recover using your GST No. or registered email</div>
+              </button>
+            </div>
+          )}
         </div>
       )}
 

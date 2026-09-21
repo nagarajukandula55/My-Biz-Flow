@@ -561,6 +561,27 @@ export async function findPartnerForPasswordReset(identifier: string): Promise<P
   return row ? toRecord(row) : undefined;
 }
 
+/**
+ * Looks a partner up for the "forgot my Partner ID / password" ANu widget
+ * flow: by their registered GST number OR their registered business email
+ * — the two identifiers the ask requires accepting, neither of which alone
+ * is enough to log in with (contrast findPartnerForPasswordReset, which
+ * also accepts the id/loginContact used for the ordinary login form).
+ */
+export async function findPartnerForIdRecovery(identifier: string): Promise<PartnerRecord | undefined> {
+  const trimmed = identifier.trim();
+  if (!trimmed) return undefined;
+  const row = await prisma.partner.findFirst({
+    where: {
+      OR: [
+        { gstin: { equals: trimmed, mode: "insensitive" } },
+        { businessEmail: { equals: trimmed, mode: "insensitive" } },
+      ],
+    },
+  });
+  return row ? toRecord(row) : undefined;
+}
+
 export async function verifyPartnerPassword(partnerId: string, password: string): Promise<boolean> {
   const row = await prisma.partner.findUnique({ where: { id: partnerId } });
   if (!row) return false;

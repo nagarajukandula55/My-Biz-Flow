@@ -19,6 +19,7 @@ import { sendWorkorderTelegramAlert, sendPartnerTelegramAlert } from "@/lib/tele
 import { workorderClosedMessage, workorderCancelledMessage, lowStockAlertMessage, pnaLoggedMessage } from "@/lib/telegramTemplates";
 import { findStockRecord, adjustStockQty } from "@/lib/inventoryStock";
 import { withRecordLock } from "@/lib/withRecordLock";
+import { isWorkorderReopenUnlocked, consumeWorkorderReopenUnlock } from "@/lib/workorderReopenAccess";
 
 /**
  * Every mutating action below runs its actual read-modify-write body
@@ -711,6 +712,46 @@ export async function cancelWorkorderAction(
   revalidatePath(`/partner/${partnerId}/service-centre`);
   revalidatePath(`/partner/${partnerId}/inventory/stock`);
   revalidatePath(`/partner/${partnerId}/inventory/consumption`);
+}
+
+/**
+ * Reopens a Completed workorder back to In Progress — the one exception to
+ * assertLegalStageTransition's forward-only rule. Because this reverses a
+ * milestone the business has already treated as done (a completed repair
+ * potentially already invoiced/handed to the customer), it requires a
+ * Telegram OTP sent to the partner's connected personal (Owner) chat to
+ * have been verified first (see workorderReopenAccess.ts /
+ * requestWorkorderReopenOtpAction + verifyWorkorderReopenOtpAction) — the
+ * unlock is consumed here so one verified code reopens exactly one
+ * workorder once. Inventory is left untouched: Completed already deducted
+ * the consumed parts and the job is still going ahead, just backing up a
+ * step, so nothing needs to be returned to stock (contrast
+ * cancelWorkorderAction, which is a real abandonment).
+ */
+export async function reopenWorkorderAction(partnerId: string, workorderId: string): Promise<void> {
+  await assertCanActOnServiceCentre(partnerId);
+  const unlocked = await isWorkorderReopenUnlocked(workorderId);
+  if (!unlocked) {
+    throw new Error("Enter the Telegram OTP sent to the Owner's chat before reopening this workorder.");
+  }
+  await withWorkorderLock(workorderId, async () => {
+    const record = await requireWorkorder(partnerId, workorderId);
+    if (record["cancelledAt"] || record["stage"] === "Closed") {
+      throw new Error("This workorder can no longer be reopened.");
+    }
+    if (record["stage"] !== "Completed") {
+      throw new Error("Only a Completed workorder can be reopened to In Progress.");
+    }
+    const history = appendStageHistory(record, "In Progress (reopened, Owner OTP verified)");
+    await updateBusinessRecord(partnerId, "service-centre", workorderId, {
+      ...record,
+      stage: "In Progress",
+      stageHistory: history,
+    });
+  });
+  await consumeWorkorderReopenUnlock(workorderId);
+  revalidatePath(`/partner/${partnerId}/service-centre/${workorderId}`);
+  revalidatePath(`/partner/${partnerId}/service-centre`);
 }
 
 /**

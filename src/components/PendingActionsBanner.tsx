@@ -34,8 +34,9 @@ export function PendingActionsBanner({
   const daysToTrialEnd = trialEndAt
     ? Math.ceil((trialEndAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
     : null;
-  const trialEndingSoon = subscriptionStatus === "Trial" && daysToTrialEnd !== null && daysToTrialEnd <= TRIAL_WARNING_DAYS;
-  const planPending = subscriptionStatus === "PastDue" || subscriptionStatus === "Cancelled" || trialEndingSoon;
+  const trialExpired = subscriptionStatus === "Trial" && daysToTrialEnd !== null && daysToTrialEnd < 0;
+  const trialEndingSoon = subscriptionStatus === "Trial" && daysToTrialEnd !== null && daysToTrialEnd >= 0 && daysToTrialEnd <= TRIAL_WARNING_DAYS;
+  const planPending = subscriptionStatus === "PastDue" || subscriptionStatus === "Cancelled" || trialEndingSoon || trialExpired;
 
   if (!planPending && telegramConnected) return null;
 
@@ -51,7 +52,9 @@ export function PendingActionsBanner({
               ? "Your subscription is cancelled — renew to keep using MyBizFlow."
               : subscriptionStatus === "PastDue"
                 ? "Your plan payment is overdue — renew now to avoid losing access."
-                : `Your free trial ends in ${Math.max(0, daysToTrialEnd ?? 0)} day(s) — choose a plan to keep your data.`}
+                : trialExpired
+                  ? "Your free trial has ended — you can still view all your data, but adding or changing records is locked until you choose a plan."
+                  : `Your free trial ends in ${Math.max(0, daysToTrialEnd ?? 0)} day(s) — choose a plan to keep your data.`}
           </span>
           <span className="flex-shrink-0 underline">Renew now &rarr;</span>
         </Link>

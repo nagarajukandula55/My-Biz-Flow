@@ -11,6 +11,7 @@ import { PrintPopupLink } from "@/components/PrintPopupLink";
 import { SearchSelectModal, type SearchSelectOption } from "@/components/SearchSelectModal";
 import { InlineTypeahead } from "@/components/InlineTypeahead";
 import { CustomerDataOtpGate } from "../customers/CustomerDataOtpGate";
+import { ReopenWorkorderGate } from "./ReopenWorkorderGate";
 import {
   WORKORDER_STAGES,
   MILESTONE_STATUSES,
@@ -604,15 +605,23 @@ export function WorkorderLifecycle({
   // of rateMode, via baseRateOf() above, so a tax-inclusive line's entered
   // price isn't double-counted as pure profit before tax is added back
   // below.
-  const laborTotal = serviceLines.reduce(
-    (sum, l) => sum + baseRateOf(l.laborCharge || 0, l.taxRate ?? 18, l.rateMode, l.discountPercent) * (l.qty || 1),
-    0
-  );
-  const partsTotal = partLines.reduce(
-    (sum, p) =>
-      p.pending ? sum : sum + baseRateOf(p.unitPrice || 0, p.taxRate ?? 18, p.rateMode, p.discountPercent) * (p.qty || 1),
-    0
-  );
+  // A cancelled workorder's parts/labor were either never consumed or, if
+  // cancelled after Completed, were already returned to Stock (see
+  // reverseConsumptionForWorkorder in actions.ts) — so the lines must not
+  // keep contributing cost as if the job were still being charged/billed.
+  const laborTotal = cancelled
+    ? 0
+    : serviceLines.reduce(
+        (sum, l) => sum + baseRateOf(l.laborCharge || 0, l.taxRate ?? 18, l.rateMode, l.discountPercent) * (l.qty || 1),
+        0
+      );
+  const partsTotal = cancelled
+    ? 0
+    : partLines.reduce(
+        (sum, p) =>
+          p.pending ? sum : sum + baseRateOf(p.unitPrice || 0, p.taxRate ?? 18, p.rateMode, p.discountPercent) * (p.qty || 1),
+        0
+      );
   const estimateTotal = laborTotal + partsTotal;
   /**
    * Live tax preview over the same lines, mirroring the reference app's
@@ -628,18 +637,22 @@ export function WorkorderLifecycle({
    * invoice is where place of supply is resolved for real (a customer in
    * another state is taxed IGST at the full slab instead).
    */
-  const laborTax = serviceLines.reduce(
-    (sum, l) =>
-      sum + baseRateOf(l.laborCharge || 0, l.taxRate ?? 18, l.rateMode, l.discountPercent) * ((l.taxRate ?? 18) / 100) * (l.qty || 1),
-    0
-  );
-  const partsTax = partLines.reduce(
-    (sum, p) =>
-      p.pending
-        ? sum
-        : sum + baseRateOf(p.unitPrice || 0, p.taxRate ?? 18, p.rateMode, p.discountPercent) * ((p.taxRate ?? 18) / 100) * (p.qty || 1),
-    0
-  );
+  const laborTax = cancelled
+    ? 0
+    : serviceLines.reduce(
+        (sum, l) =>
+          sum + baseRateOf(l.laborCharge || 0, l.taxRate ?? 18, l.rateMode, l.discountPercent) * ((l.taxRate ?? 18) / 100) * (l.qty || 1),
+        0
+      );
+  const partsTax = cancelled
+    ? 0
+    : partLines.reduce(
+        (sum, p) =>
+          p.pending
+            ? sum
+            : sum + baseRateOf(p.unitPrice || 0, p.taxRate ?? 18, p.rateMode, p.discountPercent) * ((p.taxRate ?? 18) / 100) * (p.qty || 1),
+        0
+      );
   // Tax Apply, unchecked, genuinely zeroes CGST/SGST for these lines — it
   // isn't just a cosmetic checkbox: laborTax/partsTax above are computed
   // unconditionally, but taxTotal (the only place they feed the footer/
@@ -1742,7 +1755,7 @@ export function WorkorderLifecycle({
               const qty = line.qty || 1;
               const taxRate = line.taxRate ?? 18;
               const base = baseRateOf(line.laborCharge || 0, taxRate, line.rateMode, line.discountPercent);
-              const lineTotal = (base + (!underWarranty && taxApply ? base * (taxRate / 100) : 0)) * qty;
+              const lineTotal = cancelled ? 0 : (base + (!underWarranty && taxApply ? base * (taxRate / 100) : 0)) * qty;
               return (
                 <div key={line.id} className="flex flex-wrap items-end gap-2 rounded-md border border-border bg-bg px-3 py-2 text-sm">
                   <input
@@ -1823,6 +1836,11 @@ export function WorkorderLifecycle({
                     Total
                     <span className="w-24 py-1 text-right text-sm font-semibold tabular-nums text-text">₹{inr(lineTotal)}</span>
                   </div>
+                  {cancelled && (
+                    <span className="shrink-0 rounded-full bg-danger-soft px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-danger">
+                      Cancelled
+                    </span>
+                  )}
                   {editable && (
                     <button
                       type="button"
@@ -1840,7 +1858,9 @@ export function WorkorderLifecycle({
               const qty = line.qty || 1;
               const taxRate = line.taxRate ?? 18;
               const base = baseRateOf(line.unitPrice || 0, taxRate, line.rateMode, line.discountPercent);
-              const lineTotal = (base + (!underWarranty && taxApply && !line.pending ? base * (taxRate / 100) : 0)) * qty;
+              const lineTotal = cancelled
+                ? 0
+                : (base + (!underWarranty && taxApply && !line.pending ? base * (taxRate / 100) : 0)) * qty;
               return (
                 <div key={line.id} className="rounded-md border border-border bg-bg px-3 py-2 text-sm">
                   <div className="flex flex-wrap items-end gap-2">
@@ -1945,6 +1965,7 @@ export function WorkorderLifecycle({
                     )}
                   </div>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
+                    {cancelled && <StatusChip label="Cancelled — returned to stock" variant="danger" />}
                     {line.serialized && <StatusChip label="Serialized" variant="amber" />}
                     {line.pending && <StatusChip label="Pending" variant="warning" />}
                     {editable && !line.pending && (
@@ -2134,7 +2155,10 @@ export function WorkorderLifecycle({
       {/* Handover & Close, only surfaces after Completed */}
       {stage === "Completed" && !cancelled && (
         <div className="mt-6 rounded-md border border-border bg-bg-raised p-4">
-          <h2 className="font-display text-base font-bold text-text">Handover & Close</h2>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="font-display text-base font-bold text-text">Handover & Close</h2>
+            <ReopenWorkorderGate partnerId={partnerId} workorderId={workorderId} workorderLabel={workorderId} />
+          </div>
           <textarea
             value={handoverNotes}
             onChange={(e) => setHandoverNotes(e.target.value)}

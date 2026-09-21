@@ -41,6 +41,48 @@ export function assertPartnerScope(requestPartnerId: string, recordPartnerId: st
   }
 }
 
+export class TrialExpiredError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "TrialExpiredError";
+  }
+}
+
+/**
+ * True once a Trial partner's trialEndAt has actually passed and they still
+ * haven't converted to a real plan (subscriptionStatus stays "Trial" until
+ * a Super Admin or the Razorpay webhook moves it — see
+ * subscription-expiry-check's own doc comment). Deliberately does NOT cover
+ * "PastDue"/"Cancelled" — those are a separate lapsed-payment state the ask
+ * for this gate didn't mention, not an oversight.
+ */
+export function isTrialExpired(partner: { subscriptionStatus: string; trialEndAt: Date | null | undefined }): boolean {
+  return partner.subscriptionStatus === "Trial" && Boolean(partner.trialEndAt) && partner.trialEndAt!.getTime() < Date.now();
+}
+
+/**
+ * Write gate for a trial-expired partner: they keep full read access to
+ * every record they already have (never call this from a read path), but
+ * cannot create/update/delete anything until they pick a plan. This is the
+ * single place that rule lives — see businessRecords.ts's
+ * createBusinessRecord/updateBusinessRecord/deleteBusinessRecord, the
+ * generic write path nearly every module's mutations go through.
+ *
+ * Per-module bespoke tables that bypass BusinessRecord entirely (Field
+ * Force's Engineer/Service/JobAllocation, telecalling, etc.) are NOT
+ * covered by this one chokepoint — those would need their own call to this
+ * function if/when they're brought under the same rule.
+ */
+export async function assertPartnerCanWrite(partnerId: string): Promise<void> {
+  const { getPartner } = await import("@/lib/partnerData");
+  const partner = await getPartner(partnerId);
+  if (partner && isTrialExpired(partner)) {
+    throw new TrialExpiredError(
+      "Your free trial has ended. You can still view all your existing data, but adding or changing records is locked until you choose a plan."
+    );
+  }
+}
+
 export class ModuleAccessError extends Error {
   constructor(message: string) {
     super(message);

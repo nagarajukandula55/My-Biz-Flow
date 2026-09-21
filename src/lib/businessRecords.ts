@@ -10,6 +10,7 @@ import { safeCache as cache } from "@/lib/safeCache";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 import type { Row } from "@/components/DataTable";
+import { assertPartnerCanWrite } from "@/lib/tenant";
 
 function toRow(row: { recordKey: string; data: unknown; createdAt: Date }): Row {
   // `recordCreatedAt` is the real, immutable DB insert timestamp (full
@@ -184,6 +185,7 @@ export async function createBusinessRecord(
   moduleSlug: string,
   values: Record<string, unknown>
 ): Promise<Row> {
+  await assertPartnerCanWrite(partnerId);
   let recordKey = (values.id as string | undefined)?.trim();
   if (!recordKey) {
     const documentType = NUMBERED_MODULE_SLUGS[moduleSlug];
@@ -219,6 +221,7 @@ export async function updateBusinessRecord(
   recordKey: string,
   values: Record<string, unknown>
 ): Promise<void> {
+  await assertPartnerCanWrite(partnerId);
   const data = { ...values, id: recordKey };
   await prisma.businessRecord.update({
     where: { partnerId_moduleSlug_recordKey: { partnerId, moduleSlug, recordKey } },
@@ -267,6 +270,7 @@ export async function getBusinessRecordSequenceIndexFiltered(
 }
 
 export async function deleteBusinessRecord(partnerId: string, moduleSlug: string, recordKey: string): Promise<void> {
+  await assertPartnerCanWrite(partnerId);
   await prisma.businessRecord.delete({
     where: { partnerId_moduleSlug_recordKey: { partnerId, moduleSlug, recordKey } },
   });
