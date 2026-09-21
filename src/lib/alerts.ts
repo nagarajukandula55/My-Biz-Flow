@@ -90,6 +90,11 @@ export async function computeAlerts(partnerId: string, now: Date = new Date()): 
   //    reorder level set has not opted in to this and is skipped rather
   //    than assigned a made-up threshold.
   for (const item of stock) {
+    // Defective stock (see src/lib/inventoryStock.ts's rowCondition()) isn't
+    // reorderable — a "reorder level" set on that bucket (or copied in by a
+    // stray edit) would otherwise fire a meaningless "low stock"/"out of
+    // stock" alert for units that were never meant to be restocked.
+    if (item["condition"] === "Defective") continue;
     const qty = toNumber(item["qtyOnHand"]);
     const reorder = toNumber(item["reorderLevel"]);
     if (qty === null || reorder === null) continue;

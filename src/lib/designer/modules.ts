@@ -139,6 +139,9 @@ export const MODULE_SUB_NAV: Record<string, PartnerNavSubItem[]> = {
     // writes one row per part line actually deducted) — so a partner can see
     // usage trends and reorder ahead, not just the current on-hand snapshot.
     { key: "inventory.consumption", label: "Parts Consumption", href: "inventory/consumption" },
+    // Forward-looking reorder forecast over a partner-configurable window
+    // (default 30 days) — see src/lib/inventoryForecast.ts.
+    { key: "inventory.part-planning", label: "Part Planning", href: "inventory/part-planning" },
   ],
   // Suggested Basic/Pro/Ultimate split for Super Admin to configure in
   // PartnerType.planTierByPage (/admin/partner-types) — config-only

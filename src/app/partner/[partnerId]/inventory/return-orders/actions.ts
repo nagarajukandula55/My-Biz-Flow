@@ -6,7 +6,12 @@ import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import { createBusinessRecord } from "@/lib/businessRecords";
 import { runBulkImport, type BulkImportResult } from "@/lib/bulkImportCsv";
 import { getReturnOrderFormFields } from "@/lib/sample-data/warehouse";
-import { adjustStockQty } from "@/lib/inventoryStock";
+import { adjustStockQty, type StockCondition } from "@/lib/inventoryStock";
+
+/** RETURN_TYPES is ["Defective", "Good"] (see warehouse.ts) — both happen to be valid StockCondition values, so the record's own returnType routes straight to the matching stock bucket; anything else (unset/free text) defaults to Good. */
+function returnStockCondition(returnType: unknown): StockCondition {
+  return returnType === "Defective" ? "Defective" : "Good";
+}
 
 /**
  * Creates a Return Order AND adds it to the destination warehouse's real
@@ -35,7 +40,14 @@ export async function createReturnOrderAction(
 
   const record = await createBusinessRecord(partnerId, "inventory-return-orders", values);
   if (status === "Received") {
-    await adjustStockQty(partnerId, materialId, materialId, destinationWarehouseName, quantity);
+    await adjustStockQty(
+      partnerId,
+      materialId,
+      materialId,
+      destinationWarehouseName,
+      quantity,
+      returnStockCondition(values["returnType"])
+    );
   }
 
   revalidatePath(`/partner/${partnerId}/inventory/return-orders`);
@@ -54,7 +66,14 @@ export async function bulkImportReturnOrdersAction(partnerId: string, formData: 
     const destinationWarehouseName = String(values["destinationWarehouseName"] ?? "").trim();
     const quantity = Number(values["quantity"] ?? 0);
     if (materialId && destinationWarehouseName && Number.isFinite(quantity) && quantity > 0 && values["status"] === "Received") {
-      await adjustStockQty(partnerId, materialId, materialId, destinationWarehouseName, quantity);
+      await adjustStockQty(
+        partnerId,
+        materialId,
+        materialId,
+        destinationWarehouseName,
+        quantity,
+        returnStockCondition(values["returnType"])
+      );
     }
     return values;
   });

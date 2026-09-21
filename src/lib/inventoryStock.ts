@@ -48,21 +48,37 @@ export function validateSerialNumbers(serials: string[], quantity: number, mater
   return null;
 }
 
-/** Finds the stock record for a given material (+ optionally a specific warehouse). Matches on the record's own `materialId` field (normalized to its bare code), not its `id`. */
+/** A stock row with no `condition` field predates this distinction and is Good stock — every consumer treats a missing value as "Good", never as "unknown"/excluded. */
+export type StockCondition = "Good" | "Defective";
+
+function rowCondition(r: Row): StockCondition {
+  return r["condition"] === "Defective" ? "Defective" : "Good";
+}
+
+/** Finds the stock record for a given material (+ optionally a specific warehouse), scoped to a condition bucket (defaults to "Good", the normal sellable/usable stock). Matches on the record's own `materialId` field (normalized to its bare code), not its `id`. */
 export async function findStockRecord(
   partnerId: string,
   materialId: string,
-  warehouseName?: string
+  warehouseName?: string,
+  condition: StockCondition = "Good"
 ): Promise<Row | undefined> {
   const rows = await listBusinessRecords(partnerId, "inventory-stock");
   const code = materialCode(materialId);
   return rows.find(
-    (r) => materialCode(r["materialId"]) === code && (!warehouseName || String(r["warehouseName"]) === warehouseName)
+    (r) =>
+      materialCode(r["materialId"]) === code &&
+      (!warehouseName || String(r["warehouseName"]) === warehouseName) &&
+      rowCondition(r) === condition
   );
 }
 
-export async function getQtyOnHand(partnerId: string, materialId: string, warehouseName?: string): Promise<number> {
-  const stock = await findStockRecord(partnerId, materialId, warehouseName);
+export async function getQtyOnHand(
+  partnerId: string,
+  materialId: string,
+  warehouseName?: string,
+  condition: StockCondition = "Good"
+): Promise<number> {
+  const stock = await findStockRecord(partnerId, materialId, warehouseName, condition);
   return Number(stock?.["qtyOnHand"] ?? 0);
 }
 
@@ -80,9 +96,10 @@ export async function adjustStockQty(
   materialId: string,
   materialLabel: string,
   warehouseName: string,
-  delta: number
+  delta: number,
+  condition: StockCondition = "Good"
 ): Promise<number> {
-  const existing = await findStockRecord(partnerId, materialId, warehouseName);
+  const existing = await findStockRecord(partnerId, materialId, warehouseName, condition);
   if (!existing) {
     const qtyOnHand = Math.max(0, delta);
     await createBusinessRecord(partnerId, "inventory-stock", {
@@ -92,6 +109,7 @@ export async function adjustStockQty(
       // — findStockRecord normalizes both shapes when matching either way.
       materialId: materialLabel || materialId,
       warehouseName,
+      condition,
       qtyOnHand,
       reservedQty: 0,
       availableQty: qtyOnHand,
@@ -106,6 +124,38 @@ export async function adjustStockQty(
     availableQty: Math.max(0, newQty - reservedQty),
   });
   return newQty;
+}
+
+/**
+ * Moves `qty` units of a material from the "Good" bucket to "Defective" in
+ * one call — the shape every Good-stock deduction that represents a part
+ * actually failing (not just being sold/used up) should use, so the failed
+ * unit is still visible/countable in the Defective bucket rather than just
+ * disappearing from the stock ledger entirely.
+ */
+export async function moveGoodToDefective(
+  partnerId: string,
+  materialId: string,
+  materialLabel: string,
+  warehouseName: string,
+  qty: number
+): Promise<void> {
+  if (qty <= 0) return;
+  await adjustStockQty(partnerId, materialId, materialLabel, warehouseName, -qty, "Good");
+  await adjustStockQty(partnerId, materialId, materialLabel, warehouseName, qty, "Defective");
+}
+
+/** Reverses moveGoodToDefective — used when a workorder's consumption is reversed (cancelled/reopened) so the phantom Defective unit it generated doesn't linger after the Good unit is restored. */
+export async function moveDefectiveToGood(
+  partnerId: string,
+  materialId: string,
+  materialLabel: string,
+  warehouseName: string,
+  qty: number
+): Promise<void> {
+  if (qty <= 0) return;
+  await adjustStockQty(partnerId, materialId, materialLabel, warehouseName, -qty, "Defective");
+  await adjustStockQty(partnerId, materialId, materialLabel, warehouseName, qty, "Good");
 }
 
 /**
@@ -134,6 +184,7 @@ export async function getAvailabilityDetailByMaterial(partnerId: string): Promis
   const rows = await listBusinessRecords(partnerId, "inventory-stock");
   const byMaterial = new Map<string, { entries: string[]; total: number }>();
   for (const r of rows) {
+    if (rowCondition(r) !== "Good") continue; // Defective stock isn't usable/sellable — never counts as "available"
     const code = materialCode(r["materialId"]);
     const available = Number(r["availableQty"] ?? r["qtyOnHand"] ?? 0);
     if (available <= 0) continue;
@@ -155,12 +206,13 @@ export async function setStockQty(
   warehouseName: string,
   qty: number
 ): Promise<void> {
-  const existing = await findStockRecord(partnerId, materialId, warehouseName);
+  const existing = await findStockRecord(partnerId, materialId, warehouseName, "Good");
   const clamped = Math.max(0, qty);
   if (!existing) {
     await createBusinessRecord(partnerId, "inventory-stock", {
       materialId: materialLabel || materialId,
       warehouseName,
+      condition: "Good",
       qtyOnHand: clamped,
       reservedQty: 0,
       availableQty: clamped,

@@ -306,7 +306,14 @@ export async function deductInventoryForWorkorderAction(partnerId: string, worko
       const currentQty = Number(before?.["qtyOnHand"] ?? 0);
       const warehouseName = String(before?.["warehouseName"] ?? "");
 
+      // Every unit consumed by a workorder is a part that was actually
+      // pulled and fitted — the old, worn/faulty part it replaced comes
+      // back into the system as Defective stock of the same material, so
+      // Inventory > Stock and the Consumption report both reflect that a
+      // Defective unit now exists to be tracked/disposed of, not just that
+      // a Good unit vanished.
       const newQty = await adjustStockQty(partnerId, line.materialId, line.materialLabel, warehouseName, -needed);
+      await adjustStockQty(partnerId, line.materialId, line.materialLabel, warehouseName, needed, "Defective");
 
       if (strict && line.serialized && line.serial && before) {
         const consumedSerials = Array.isArray(before["consumedSerials"]) ? (before["consumedSerials"] as unknown[]) : [];
@@ -619,6 +626,12 @@ async function reverseConsumptionForWorkorder(partnerId: string, workorderId: st
     const qty = Number(row["qty"] ?? 0);
     if (materialId && warehouseName && qty > 0) {
       await adjustStockQty(partnerId, materialId, materialLabel, warehouseName, qty);
+      // Undo the Defective unit that was generated alongside this Good
+      // deduction — deductInventoryForWorkorderAction adds one, so reversing
+      // must remove it (not re-add to Good again — the line above already
+      // restored the Good unit) or a cancelled/reopened job leaves a phantom
+      // Defective unit behind after its Good unit is restored.
+      await adjustStockQty(partnerId, materialId, materialLabel, warehouseName, -qty, "Defective");
       summaries.push(`${materialLabel} x${qty}`);
     }
     await updateBusinessRecord(partnerId, "inventory-consumption", String(row["id"]), {

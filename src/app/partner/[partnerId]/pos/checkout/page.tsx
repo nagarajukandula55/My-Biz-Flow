@@ -27,7 +27,10 @@ export default async function PosCheckoutPage({ params }: { params: { partnerId:
   ]);
   const materialById = new Map(materialRecords.map((m) => [String(m["id"]), m]));
   const stockItems = stockRecords
-    .filter((r) => Number(r["qtyOnHand"] ?? 0) > 0)
+    // Defective stock (see src/lib/inventoryStock.ts's rowCondition()) is
+    // never sellable — a row with no `condition` value predates the field
+    // and is Good, same convention every other condition-aware read uses.
+    .filter((r) => r["condition"] !== "Defective" && Number(r["qtyOnHand"] ?? 0) > 0)
     .map((r) => {
       const material = materialById.get(String(r["id"]));
       return {

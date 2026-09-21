@@ -178,6 +178,10 @@ export const stockColumns: Column[] = [
   { key: "id", label: "Stock ID", type: "text" },
   { key: "materialId", label: "Material", type: "text" },
   { key: "warehouseName", label: "Warehouse", type: "text" },
+  // Rows with no `condition` value predate this field and are Good stock —
+  // see src/lib/inventoryStock.ts's rowCondition(); every write path this
+  // repo controls (adjustStockQty/setStockQty) now stamps it explicitly.
+  { key: "condition", label: "Material Type", type: "text" },
   { key: "qtyOnHand", label: "Qty on Hand", type: "text" },
   { key: "reservedQty", label: "Reserved Qty", type: "text" },
   { key: "availableQty", label: "Available Qty", type: "text" },
@@ -234,6 +238,7 @@ export async function getStockFormFields(partnerId: string): Promise<FormFieldDe
   return [
     { key: "materialId", label: "Material", type: "select", required: true, options: bomOptions.map((o) => o.label) },
     { key: "warehouseName", label: "Warehouse", type: "select", required: true, options: warehouseOptions.map((o) => o.label) },
+    { key: "condition", label: "Material Type", type: "select", required: true, options: ["Good", "Defective"] },
     { key: "qtyOnHand", label: "Qty on Hand", type: "number", required: true },
     { key: "reservedQty", label: "Reserved Qty", type: "number", required: false },
     { key: "reorderLevel", label: "Reorder Level", type: "number", required: false },
@@ -250,6 +255,7 @@ export function getStockDetailFields(record: Row): RecordField[] {
     { label: "Stock ID", value: r["id"], type: "text" },
     { label: "Material", value: r["materialId"], type: "text" },
     { label: "Warehouse", value: r["warehouseName"], type: "text" },
+    { label: "Material Type", value: r["condition"] || "Good", type: "text" },
     { label: "Qty on Hand", value: r["qtyOnHand"], type: "text" },
     { label: "Reserved Qty", value: r["reservedQty"], type: "text" },
     { label: "Available Qty", value: r["availableQty"], type: "text" },
@@ -279,6 +285,7 @@ export const stockAdjustmentColumns: Column[] = [
   { key: "warehouseName", label: "Warehouse", type: "text" },
   { key: "materialId", label: "Material", type: "text" },
   { key: "adjustmentType", label: "Type", type: "select-chip" },
+  { key: "condition", label: "Material Type", type: "text" },
   { key: "quantity", label: "Quantity", type: "text" },
   { key: "reason", label: "Reason", type: "text" },
   { key: "adjustedBy", label: "Adjusted By", type: "text" },
@@ -320,6 +327,7 @@ export async function getStockAdjustmentFormFields(partnerId: string): Promise<F
     { key: "warehouseName", label: "Warehouse", type: "select", required: true, options: warehouseOptions.map((o) => o.label) },
     { key: "materialId", label: "Material — [warehouse: available qty]", type: "select", required: true, options: materialAvailability.options, optionLabels: materialAvailability.optionLabels },
     { key: "adjustmentType", label: "Type", type: "select", required: true, options: [...ADJUSTMENT_TYPES] },
+    { key: "condition", label: "Material Type", type: "select", required: true, options: ["Good", "Defective"] },
     { key: "quantity", label: "Quantity", type: "number", required: true },
     {
       key: "serialNumbers",
@@ -341,6 +349,7 @@ export function getStockAdjustmentDetailFields(record: Row): RecordField[] {
     { label: "Warehouse", value: r["warehouseName"], type: "text" },
     { label: "Material", value: r["materialId"], type: "text" },
     { label: "Type", value: r["adjustmentType"], type: "select" },
+    { label: "Material Type", value: r["condition"] || "Good", type: "text" },
     { label: "Quantity", value: r["quantity"], type: "text" },
     {
       label: "Serial / Barcode Numbers",
@@ -598,6 +607,7 @@ export const stockTransferColumns: Column[] = [
   { key: "fromWarehouseName", label: "From Warehouse", type: "text" },
   { key: "toWarehouseName", label: "To Warehouse", type: "text" },
   { key: "toPartnerId", label: "To Partner", type: "text" },
+  { key: "condition", label: "Material Type", type: "text" },
   { key: "quantity", label: "Quantity", type: "text" },
   { key: "transferDate", label: "Transfer Date", type: "date" },
   { key: "reason", label: "Reason / Note", type: "text" },
@@ -617,6 +627,7 @@ export async function getStockTransferFormFields(partnerId: string): Promise<For
     { key: "fromWarehouseName", label: "From Warehouse", type: "select", required: true, options: warehouseOptions.map((o) => o.label) },
     { key: "toWarehouseName", label: "To Warehouse (leave blank for a partner-to-partner transfer)", type: "select", required: false, options: warehouseOptions.map((o) => o.label) },
     { key: "toPartnerId", label: "OR Transfer To Partner ID (e.g. SC0042) — requires Super Admin approval", type: "text", required: false },
+    { key: "condition", label: "Material Type", type: "select", required: true, options: ["Good", "Defective"] },
     { key: "quantity", label: "Quantity", type: "number", required: true },
     { key: "transferDate", label: "Transfer Date", type: "date", required: true },
     { key: "reason", label: "Reason / Note", type: "text", required: false },
@@ -632,6 +643,7 @@ export function getStockTransferDetailFields(record: Row): RecordField[] {
     { label: "From Warehouse", value: r["fromWarehouseName"], type: "text" },
     { label: "To Warehouse", value: r["toWarehouseName"] || "—", type: "text" },
     { label: "To Partner", value: r["toPartnerId"] || "—", type: "text" },
+    { label: "Material Type", value: r["condition"] || "Good", type: "text" },
     { label: "Quantity", value: r["quantity"], type: "text" },
     { label: "Transfer Date", value: r["transferDate"], type: "date" },
     { label: "Reason / Note", value: r["reason"], type: "text" },

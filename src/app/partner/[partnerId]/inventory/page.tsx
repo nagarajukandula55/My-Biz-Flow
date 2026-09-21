@@ -2,7 +2,7 @@ import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
-import { Boxes, Warehouse, ClipboardList, SlidersHorizontal, ArrowLeftRight, ClipboardCheck, Undo2, PackageCheck } from "lucide-react";
+import { Boxes, Warehouse, ClipboardList, SlidersHorizontal, ArrowLeftRight, ClipboardCheck, Undo2, PackageCheck, TrendingDown, LineChart } from "lucide-react";
 import { listBusinessRecords } from "@/lib/businessRecords";
 
 registerPage({
@@ -74,6 +74,20 @@ const SECTIONS = [
     label: "Part Orders",
     description: "Warehouse dispatching replacement material back to a Service Centre location.",
     moduleSlug: "inventory-part-orders",
+  },
+  {
+    href: "consumption",
+    icon: TrendingDown,
+    label: "Parts Consumption",
+    description: "Real usage history from closed workorders — Good units pulled from stock and the Defective units they generated.",
+    moduleSlug: "inventory-consumption",
+  },
+  {
+    href: "part-planning",
+    icon: LineChart,
+    label: "Part Planning",
+    description: "Reorder forecast over a partner-configurable window — days-of-stock-left and suggested pre-order quantities.",
+    moduleSlug: "inventory-consumption",
   },
 ];
 

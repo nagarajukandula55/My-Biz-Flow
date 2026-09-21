@@ -27,6 +27,11 @@ registerPage({
 export default async function EditStockPage({ params }: { params: { partnerId: string; recordId: string } }) {
   const record = await getBusinessRecord(params.partnerId, "inventory-stock", params.recordId);
   if (!record) notFound();
+  // A row with no `condition` value predates the Good/Defective field and
+  // is Good stock (same convention every condition-aware read uses, see
+  // rowCondition() in src/lib/inventoryStock.ts) — default it here so the
+  // now-required Material Type select isn't forced blank on a legacy row.
+  if (!record["condition"]) record["condition"] = "Good";
   // Qty on Hand is excluded — see the explanation above. Every other field
   // (Material, Warehouse, Reserved Qty, Reorder Level) stays editable.
   const allFields = await getStockFormFields(params.partnerId);

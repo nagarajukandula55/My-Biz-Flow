@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/AppShell";
 import { registerPage } from "@/lib/designer/registry";
+import { DashboardWidget } from "@/components/DashboardWidget";
 import { StockClientTable } from "./StockClientTable";
 import { RecordCsvExportButton } from "@/components/RecordCsvExportButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
@@ -18,7 +19,7 @@ registerPage({
     { key: "filters", label: "List filters" },
   ],
   explanation:
-    "Lists every per-warehouse stock ledger entry — read-only, no \"+ New\"/bulk-upload here by deliberate design. A stock quantity only ever enters this module through an audited flow that has a reason attached: Stock Adjustment (including its own \"Initial Stock\" reason for opening balances), Part Order receiving, or Stock Take reconciliation — never a bare create/import straight onto this list, which used to let a quantity appear with no record of why.",
+    "Lists every per-warehouse stock ledger entry — read-only, no \"+ New\"/bulk-upload here by deliberate design. A stock quantity only ever enters this module through an audited flow that has a reason attached: Stock Adjustment (including its own \"Initial Stock\" reason for opening balances), Part Order receiving, or Stock Take reconciliation — never a bare create/import straight onto this list, which used to let a quantity appear with no record of why. Each row's Material Type is either Good (normal usable/sellable stock) or Defective (a row with no Material Type value is treated as Good — see rowCondition() in src/lib/inventoryStock.ts). Defective rows are generated automatically, one unit per unit consumed, whenever a workorder deducts a Good part from Stock (deductInventoryForWorkorderAction) — never counted toward Available Qty for sale/use.",
   sourceFile: "src/app/partner/[partnerId]/inventory/stock/page.tsx",
 });
 
@@ -27,6 +28,11 @@ export const dynamic = "force-dynamic";
 export default async function StockPage({ params }: { params: { partnerId: string } }) {
   const columns = await applyCustomizations("inventory.stock.list", stockColumns);
   const rows = await listBusinessRecords(params.partnerId, "inventory-stock");
+
+  const goodRows = rows.filter((r) => r["condition"] !== "Defective");
+  const defectiveRows = rows.filter((r) => r["condition"] === "Defective");
+  const totalGoodQty = goodRows.reduce((sum, r) => sum + Number(r["qtyOnHand"] ?? 0), 0);
+  const totalDefectiveQty = defectiveRows.reduce((sum, r) => sum + Number(r["qtyOnHand"] ?? 0), 0);
 
   return (
     <AppShell
@@ -42,7 +48,12 @@ export default async function StockPage({ params }: { params: { partnerId: strin
       }
     >
       <div>
-        <div className="mt-2">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+          <DashboardWidget label="Good Qty on Hand" value={String(totalGoodQty)} />
+          <DashboardWidget label="Defective Qty on Hand" value={String(totalDefectiveQty)} neon={totalDefectiveQty > 0} />
+          <DashboardWidget label="Total Stock Rows" value={String(rows.length)} />
+        </div>
+        <div className="mt-4">
           <StockClientTable partnerId={params.partnerId} columns={columns} rows={rows} />
         </div>
       </div>
