@@ -1275,7 +1275,8 @@ model PosAccount {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  staff PosStaff[]
+  staff        PosStaff[]
+  tillSessions PosTillSession[]
 
   @@index([partnerId])
   @@map("pos_accounts")
@@ -1302,6 +1303,42 @@ model PosStaff {
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
 
+  openedTillSessions PosTillSession[] @relation("TillOpenedBy")
+  closedTillSessions PosTillSession[] @relation("TillClosedBy")
+
   @@index([posAccountId])
   @@map("pos_staff")
+}
+
+/// A cash-drawer session at one outlet — opened with a counted starting
+/// float, closed with a physical cash count reconciled against what the
+/// system expects (openingFloat + cash sales rung up during the session).
+/// `locationId` is a Brand > Location row's id (src/lib/sample-data/brand.ts)
+/// — not a Prisma relation, since Brand/Location still lives in the
+/// generic BusinessRecord store, not its own Prisma model. Only one Open
+/// session per (posAccountId, locationId) is allowed at a time (enforced in
+/// src/lib/pos/posTill.ts, not by a DB constraint, since "Open" isn't a
+/// fixed value Postgres can uniquely index against a nullable partner
+/// column) — checkout refuses to ring up a sale against a Closed/missing
+/// session (see requireOpenTillSession).
+model PosTillSession {
+  id             String    @id @default(cuid())
+  posAccountId   String
+  posAccount     PosAccount @relation(fields: [posAccountId], references: [id])
+  locationId     String
+  openedByStaffId String
+  openedByStaff  PosStaff  @relation("TillOpenedBy", fields: [openedByStaffId], references: [id])
+  openingFloat   Int
+  openedAt       DateTime  @default(now())
+  closedByStaffId String?
+  closedByStaff  PosStaff? @relation("TillClosedBy", fields: [closedByStaffId], references: [id])
+  countedCash    Int?
+  expectedCash   Int?
+  variance       Int?
+  closedAt       DateTime?
+  status         String    @default("Open") // Open | Closed
+  notes          String?
+
+  @@index([posAccountId, locationId, status])
+  @@map("pos_till_sessions")
 }

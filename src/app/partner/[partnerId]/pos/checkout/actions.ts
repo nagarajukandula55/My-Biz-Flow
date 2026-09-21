@@ -5,11 +5,14 @@ import { revalidatePath } from "next/cache";
 import { createBusinessRecord, getBusinessRecord, updateBusinessRecord, listBusinessRecords } from "@/lib/businessRecords";
 import { computeSaleTotals, extractSaleFromRecord, type SaleLine, type Tender } from "@/lib/sample-data/pos";
 import { requirePosStaffAction } from "@/lib/pos/posAuth";
+import { getOpenTillSession } from "@/lib/pos/posTill";
 
 export type CompleteSaleInput = {
   lines: SaleLine[];
   tenders: Tender[];
   branch?: string;
+  locationId?: string;
+  tillSessionId: string;
 };
 
 /**
@@ -30,6 +33,17 @@ export type CompleteSaleInput = {
 export async function completeSaleAction(partnerId: string, input: CompleteSaleInput) {
   const staff = await requirePosStaffAction(partnerId);
   if (input.lines.length === 0) throw new Error("Cart is empty");
+
+  // Re-verify the till session server-side rather than trusting the
+  // client-supplied id — a sale can only ring up against the outlet's
+  // REAL currently-Open session, never a stale/closed/forged one, since
+  // the till's cash reconciliation (computeExpectedCash) sums Cash tenders
+  // by this exact id.
+  if (!input.locationId) throw new Error("No outlet selected.");
+  const openSession = await getOpenTillSession(staff.posAccountId, input.locationId);
+  if (!openSession || openSession.id !== input.tillSessionId) {
+    throw new Error("This till session is no longer open — refresh and open a till before selling.");
+  }
 
   const totals = computeSaleTotals(input.lines);
   const amountTendered = input.tenders.reduce((sum, t) => sum + t.amount, 0);
@@ -69,6 +83,8 @@ export async function completeSaleAction(partnerId: string, input: CompleteSaleI
     cashier: `${staff.name} (${staff.staffCode})`,
     posStaffId: staff.id,
     branch: input.branch || "",
+    locationId: input.locationId || "",
+    posTillSessionId: openSession.id,
     stockDeducted: true,
     paymentSummary,
     transactionTimestamp: new Date().toISOString(),

@@ -1,8 +1,10 @@
 import { AppShell } from "@/components/AppShell";
+import Link from "next/link";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
 import { listBusinessRecords } from "@/lib/businessRecords";
 import { requirePosStaff } from "@/lib/pos/posAuth";
+import { getOpenTillSession } from "@/lib/pos/posTill";
 import { PosCheckout } from "./PosCheckout";
 
 registerPage({
@@ -45,6 +47,9 @@ export default async function PosCheckoutPage({
   const selectedLocation =
     outlets.find((r) => String(r["id"]) === searchParams?.locationId) ?? outlets[0];
   const selectedWarehouse = selectedLocation ? String(selectedLocation["mappedWarehouse"]) : null;
+  const openTill = selectedLocation
+    ? await getOpenTillSession(staff.posAccountId, String(selectedLocation["id"]))
+    : null;
 
   const stockItems = stockRecords
     // Defective stock (see src/lib/inventoryStock.ts's rowCondition()) is
@@ -111,7 +116,15 @@ export default async function PosCheckoutPage({
               </button>
             </form>
 
-            {stockItems.length === 0 ? (
+            {!openTill ? (
+              <p className="mt-6 rounded-md border border-dashed border-border bg-bg-raised p-6 text-center text-sm text-text-muted">
+                No till is open at this outlet.{" "}
+                <Link href={`/partner/${params.partnerId}/pos/till`} className="text-accent hover:underline">
+                  Open one
+                </Link>{" "}
+                before ringing up a sale.
+              </p>
+            ) : stockItems.length === 0 ? (
               <p className="mt-6 rounded-md border border-dashed border-border bg-bg-raised p-6 text-center text-sm text-text-muted">
                 No stocked products available at this outlet's warehouse — add items in Inventory &gt; Stock first.
               </p>
@@ -122,6 +135,8 @@ export default async function PosCheckoutPage({
                   stockItems={stockItems}
                   cashier={`${staff.name} (${staff.staffCode})`}
                   branch={selectedLocation ? String(selectedLocation["locationName"]) : undefined}
+                  locationId={selectedLocation ? String(selectedLocation["id"]) : undefined}
+                  tillSessionId={openTill.id}
                 />
               </div>
             )}

@@ -45,6 +45,9 @@ export default async function PosPage({ params }: { params: { partnerId: string 
               Sign out
             </Link>
           </span>
+          <Link href={`/partner/${params.partnerId}/pos/till`} className="btn-outline">
+            Till
+          </Link>
           <PosNewButton partnerId={params.partnerId} />
         </div>
       }

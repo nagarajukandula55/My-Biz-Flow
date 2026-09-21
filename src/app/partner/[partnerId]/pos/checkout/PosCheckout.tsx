@@ -14,11 +14,15 @@ export function PosCheckout({
   stockItems,
   cashier,
   branch,
+  locationId,
+  tillSessionId,
 }: {
   partnerId: string;
   stockItems: StockItem[];
   cashier?: string;
   branch?: string;
+  locationId?: string;
+  tillSessionId: string;
 }) {
   const [lines, setLines] = useState<SaleLine[]>([]);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -87,7 +91,7 @@ export function PosCheckout({
     // Cashier is derived server-side from the POS staff session
     // (requirePosStaffAction), never trusted from the client — this prop
     // is display-only (shown below).
-    const input: CompleteSaleInput = { lines, tenders: tenders.filter((t) => t.amount > 0), branch };
+    const input: CompleteSaleInput = { lines, tenders: tenders.filter((t) => t.amount > 0), branch, locationId, tillSessionId };
     startTransition(async () => {
       try {
         await completeSaleAction(partnerId, input);
