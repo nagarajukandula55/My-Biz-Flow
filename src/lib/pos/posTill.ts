@@ -50,12 +50,19 @@ export async function openTillSession(input: {
 /**
  * Expected cash = opening float + every Cash-tender amount from Completed
  * sales rung up during this session (matched by `posTillSessionId` stamped
- * on the sale at checkout — see completeSaleAction) minus Cash refunded on
- * any Voided sale from this same session. Variance = counted - expected;
- * negative means cash is short, positive means over.
+ * on the sale at checkout — see completeSaleAction), minus Cash refunded
+ * on any Voided sale from this same session, minus Cash refunded on any
+ * partial return processed during this session (src/lib/pos/posReturns.ts
+ * — matched by its OWN posTillSessionId, which is whichever session was
+ * open at the moment of the return, not necessarily the original sale's
+ * session, since a return can happen in a later shift). Variance =
+ * counted - expected; negative means cash is short, positive means over.
  */
 export async function computeExpectedCash(partnerId: string, session: { id: string; openingFloat: number }): Promise<number> {
-  const sales = await listBusinessRecords(partnerId, "pos");
+  const [sales, returns] = await Promise.all([
+    listBusinessRecords(partnerId, "pos"),
+    listBusinessRecords(partnerId, "pos-returns"),
+  ]);
   let cashTotal = 0;
   for (const sale of sales) {
     if (sale["posTillSessionId"] !== session.id) continue;
@@ -67,6 +74,10 @@ export async function computeExpectedCash(partnerId: string, session: { id: stri
     } else {
       cashTotal += cashInSale;
     }
+  }
+  for (const ret of returns) {
+    if (ret["tillSessionId"] !== session.id) continue;
+    if (ret["refundMethod"] === "Cash") cashTotal -= Number(ret["refundAmount"] || 0);
   }
   return session.openingFloat + cashTotal;
 }

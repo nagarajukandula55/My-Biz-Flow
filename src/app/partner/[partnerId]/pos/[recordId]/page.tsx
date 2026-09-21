@@ -9,6 +9,7 @@ import { getPosDetailFields, getPosTimeline, posRelated, posColumns, extractSale
 import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
 import { getBusinessRecord } from "@/lib/businessRecords";
 import { requirePosStaff } from "@/lib/pos/posAuth";
+import { hasExistingReturn } from "@/lib/pos/posReturns";
 import { SaleLinesTable } from "./SaleLinesTable";
 
 export const dynamic = "force-dynamic";
@@ -44,6 +45,7 @@ export default async function PosDetailPage({
   const timeline = getPosTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
   const sale = extractSaleFromRecord(record);
+  const canReturn = sale.status === "Completed" && !(await hasExistingReturn(params.partnerId, params.recordId));
 
   return (
     <AppShell topbarTitle={mod?.label ?? "POS"}>
@@ -73,6 +75,14 @@ export default async function PosDetailPage({
                 >
                   Receipt
                 </Link>
+                {canReturn && (
+                  <Link
+                    href={`/partner/${params.partnerId}/pos/${params.recordId}/return`}
+                    className="btn-outline"
+                  >
+                    Return / Refund
+                  </Link>
+                )}
                 <DeleteBusinessRecordButton
                   partnerId={params.partnerId}
                   moduleSlug="pos"
