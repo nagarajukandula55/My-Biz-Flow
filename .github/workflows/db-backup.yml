@@ -17,9 +17,20 @@ name: Database backup
 # Uses the default GITHUB_TOKEN (via the `contents: write` permission below)
 # to create/delete releases - no extra secret needed for that part.
 #
+# Also uploads a manifest-<ts>.json asset (per-table row counts, captured
+# at dump time) alongside the dump — read by the My-Biz-Flow-Admin app's
+# /admin/backups page (src/lib/backups.ts there) to show a snapshot
+# without downloading the full .sql.gz. That app needs its OWN read-only
+# GitHub token (GITHUB_TOKEN + GITHUB_BACKUP_REPO in its own env, a
+# fine-grained PAT scoped to Contents: Read-only on this repo) since it
+# runs as a separate Vercel deployment with no access to this workflow's
+# ephemeral github.token.
+#
 # Restore:
 #   Postgres: gunzip -c db-backup-<ts>.sql.gz | psql "$DATABASE_URL_UNPOOLED"
 #   MongoDB:  mongorestore --uri="$MONGODB_URI" --archive=mongo-backup-<ts>.archive --gzip
+#   Or via the UI: My-Biz-Flow-Admin's /admin/backups page (data-only,
+#   guarded restore — see src/lib/backups.ts there).
 
 on:
   schedule:
@@ -57,6 +68,24 @@ jobs:
           fi
           /usr/lib/postgresql/18/bin/pg_dump "$DATABASE_URL" --format=plain --no-owner --no-privileges | gzip -9 > "db-backup-$TIMESTAMP.sql.gz"
 
+      - name: Generate row-count manifest
+        env:
+          DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          # Per-table row counts captured at dump time, so the Backups admin
+          # page (My-Biz-Flow-Admin's /admin/backups) can show a snapshot
+          # without downloading/parsing the full .sql.gz dump.
+          /usr/lib/postgresql/18/bin/psql "$DATABASE_URL" -Atc "
+            SELECT table_name FROM information_schema.tables WHERE table_schema='public' ORDER BY table_name
+          " | while read -r t; do
+            [ -z "$t" ] && continue
+            c=$(/usr/lib/postgresql/18/bin/psql "$DATABASE_URL" -Atc "SELECT count(*) FROM \"$t\"")
+            printf '%s\t%s\n' "$t" "$c"
+          done | jq -Rn '
+            [inputs | split("\t") | {(.[0]): (.[1] | tonumber)}] | add // {}
+          ' > "manifest-$TIMESTAMP.json"
+
       - name: Install MongoDB database tools
         run: |
           set -euo pipefail
@@ -80,7 +109,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          ASSETS="db-backup-$TIMESTAMP.sql.gz"
+          ASSETS="db-backup-$TIMESTAMP.sql.gz manifest-$TIMESTAMP.json"
           if [ -f "mongo-backup-$TIMESTAMP.archive" ]; then
             ASSETS="$ASSETS mongo-backup-$TIMESTAMP.archive"
           fi
