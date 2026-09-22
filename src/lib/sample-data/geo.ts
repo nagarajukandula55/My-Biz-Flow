@@ -45,6 +45,50 @@ export const INDIAN_STATES = [
   "Puducherry",
 ] as const;
 
+/**
+ * Aliases for state/UT names as they actually appear in postal_pincodes
+ * (ALL CAPS, abbreviated forms, a couple of misspellings/typos) or in
+ * India Post's live API fallback — keyed by UPPERCASE(trim(raw)), valued
+ * with the exact INDIAN_STATES spelling. Confirmed by inspecting every
+ * distinct value in postal_pincodes: without this, a pincode lookup's
+ * State <select> (a fixed INDIAN_STATES option list — see RecordForm.tsx
+ * and PincodeLookupFields.tsx) never matches, so it silently shows no
+ * selection even though the value was technically written — this is why
+ * City (whose options list is built FROM the lookup response, so it can
+ * never mismatch itself) appeared to work while State didn't.
+ */
+const STATE_NAME_ALIASES: Record<string, string> = {
+  "ANDAMAN & NICOBAR ISLANDS": "Andaman and Nicobar Islands",
+  "CHATTISGARH": "Chhattisgarh", // common misspelling in source data (missing an "h")
+  "DADRA & NAGAR HAVELI": "Dadra and Nagar Haveli and Daman and Diu",
+  "DAMAN & DIU": "Dadra and Nagar Haveli and Daman and Diu",
+  "JAMMU & KASHMIR": "Jammu and Kashmir",
+  "PONDICHERRY": "Puducherry", // old name, still used by some data sources
+  "ORISSA": "Odisha", // old name
+};
+
+/**
+ * Resolves a raw state string (from postal_pincodes or India Post's live
+ * API) to the exact INDIAN_STATES spelling a State <select> needs to
+ * actually show a selection. Returns null for anything unrecognized
+ * (e.g. postal_pincodes' handful of bad rows with a district name or the
+ * literal string "NULL" sitting in the state column) rather than writing
+ * a garbage value into the form — the field is left for the user to pick
+ * manually instead of silently holding an unmatched, unvalidated string.
+ */
+export function normalizeIndianStateName(raw: string | null | undefined): string | null {
+  const value = (raw ?? "").trim();
+  if (!value) return null;
+
+  const upper = value.toUpperCase();
+  if (STATE_NAME_ALIASES[upper]) return STATE_NAME_ALIASES[upper];
+
+  const canonicalMatch = INDIAN_STATES.find((s) => s.toUpperCase() === upper);
+  if (canonicalMatch) return canonicalMatch;
+
+  return null;
+}
+
 /** GST 2-digit state codes — standard public GSTIN state-code table (not central-api's copy). */
 export const GST_STATE_CODES: { code: string; state: string }[] = [
   { code: "01", state: "Jammu and Kashmir" },

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { normalizeIndianStateName } from "@/lib/sample-data/geo";
 
 /**
  * Server-side pincode lookup. Our own `PostalPincode` table (seeded from
@@ -28,7 +29,13 @@ async function lookupFromTable(pincode: string) {
     const rows = await prisma.postalPincode.findMany({ where: { pincode } });
     if (rows.length === 0) return null;
 
-    const state = rows[0].state;
+    // postal_pincodes stores state names as ALL CAPS/abbreviated (and a
+    // handful of bad rows with a district name or "NULL" in that column) —
+    // normalize to the exact spelling the State <select> options use, or
+    // fall through to the live API/manual fallback if it can't be resolved.
+    const state = normalizeIndianStateName(rows[0].state);
+    if (!state) return null;
+
     const cities = Array.from(new Set(rows.map((r) => r.district))).filter(Boolean);
     const areas = Array.from(new Set(rows.map((r) => r.officeName))).filter(Boolean);
 
@@ -55,7 +62,9 @@ async function lookupFromLiveApi(pincode: string) {
       return { found: false };
     }
 
-    const state = entry.PostOffice[0].State;
+    const state = normalizeIndianStateName(entry.PostOffice[0].State);
+    if (!state) return { found: false };
+
     const cities = Array.from(new Set(entry.PostOffice.map((po) => po.District))).filter(Boolean);
     const areas = Array.from(new Set(entry.PostOffice.map((po) => po.Name))).filter(Boolean);
 
