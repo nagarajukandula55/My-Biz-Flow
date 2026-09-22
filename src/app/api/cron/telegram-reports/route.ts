@@ -7,6 +7,7 @@ import { getPartner } from "@/lib/partnerData";
 import {
   shouldSendReportToday,
   alreadySentToday,
+  isWithinReportWindow,
   sendOnePartnerReport,
   sendReportRunOpsSummary,
   type ReportPushDetail,
@@ -40,6 +41,16 @@ export async function GET(request: Request) {
   }
 
   const now = new Date();
+
+  // GitHub Actions now triggers this endpoint every 15 min through the
+  // evening (see .github/workflows/cron.yml) since its `schedule` trigger
+  // is best-effort and can land late by anywhere from minutes to hours.
+  // Only actually send inside the real 9 PM IST window; other invocations
+  // are a cheap no-op.
+  if (!isWithinReportWindow(now)) {
+    return NextResponse.json({ ok: true, skipped: "Outside 9 PM IST report window" });
+  }
+
   const candidates = await listPartnersWithReportsEnabled();
 
   // One details[] per cadence — each cadence is its own "run" (its own due

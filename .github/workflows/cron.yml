@@ -8,13 +8,19 @@ on:
   schedule:
     # Billing recurring invoices — daily 03:00 UTC (was vercel.json "0 3 * * *")
     - cron: "0 3 * * *"
-    # Telegram daily/weekly/monthly partner reports — daily 9:00 PM IST = 15:30 UTC.
-    # Runs every day; shouldSendReportToday() (src/lib/telegramReportData.ts)
-    # decides per-partner whether today is actually a send day for their
-    # frequency: DAILY every day, WEEKLY only Saturday, MONTHLY only the
-    # last calendar day of the month — all evaluated in server time (UTC),
-    # which is still the same calendar day as 9 PM IST.
-    - cron: "30 15 * * *"
+    # Telegram daily/weekly/monthly partner reports — target 9:00 PM IST =
+    # 15:30 UTC. GitHub Actions `schedule` triggers are best-effort and
+    # were observed landing anywhere from 08:00-20:00 UTC instead of 15:30
+    # (confirmed via run history), so a single scheduled entry isn't
+    # reliable enough. Fire every 15 min from 15:15-16:30 UTC (20:45-22:00
+    # IST) instead; the route itself (isWithinReportWindow, see
+    # src/lib/telegramReportData.ts) only actually sends inside that
+    # window, and alreadySentToday makes repeated in-window triggers a
+    # no-op once a cadence has sent. shouldSendReportToday() decides
+    # per-partner whether today is a send day for their frequency: DAILY
+    # every day, WEEKLY only Saturday, MONTHLY only the last calendar day
+    # of the month.
+    - cron: "15,30,45,0 15,16 * * *"
     # Trial-expiry Telegram warnings — daily 9:30 PM IST = 16:00 UTC
     - cron: "0 16 * * *"
   workflow_dispatch: {}
@@ -33,7 +39,7 @@ jobs:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
 
   telegram-reports:
-    if: github.event.schedule == '30 15 * * *' || github.event_name == 'workflow_dispatch'
+    if: github.event.schedule == '15,30,45,0 15,16 * * *' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - name: Trigger telegram-reports (daily/weekly/monthly partner digests)

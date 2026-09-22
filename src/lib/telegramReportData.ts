@@ -27,6 +27,32 @@ export function shouldSendReportToday(frequency: ReportFrequency, now: Date): bo
   return isLastDayOfMonth(now); // MONTHLY
 }
 
+/**
+ * True only when `now` falls in the ~9 PM IST send window. GitHub Actions
+ * `schedule` triggers are best-effort and can fire late by anywhere from
+ * minutes to hours under load (confirmed via actual run history drifting
+ * across 08:00-20:00 UTC instead of landing at the configured 15:30 UTC).
+ * Since the cron endpoint doesn't otherwise check the hour, a late-firing
+ * run used to send the digest whenever it happened to land instead of at
+ * 9 PM. The workflow now triggers every 15 min through this window (see
+ * .github/workflows/cron.yml) and this guard — combined with the existing
+ * alreadySentToday same-day idempotency check — makes sure the actual send
+ * still only happens once, inside the window, regardless of how many times
+ * the delayed schedule fires or how late any single run lands.
+ */
+export function isWithinReportWindow(now: Date): boolean {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Kolkata",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(now);
+  const hour = Number(parts.find((p) => p.type === "hour")?.value ?? "0");
+  const minute = Number(parts.find((p) => p.type === "minute")?.value ?? "0");
+  const minutesSinceMidnight = hour * 60 + minute;
+  return minutesSinceMidnight >= 20 * 60 + 45 && minutesSinceMidnight <= 22 * 60; // 20:45-22:00 IST
+}
+
 /** True once this partner has already gotten (or had an attempted) send today for this cadence — Vercel Cron doesn't guarantee exactly-once, so this is the idempotency check. Each cadence only ever triggers once per calendar day (see shouldSendReportToday), so a same-day check per cadence is sufficient. `lastReportSentAt` is TelegramSettingsRecord's per-cadence stamp map (src/lib/telegram.ts). */
 export function alreadySentToday(lastReportSentAt: Date | null | undefined, now: Date): boolean {
   if (!lastReportSentAt) return false;
