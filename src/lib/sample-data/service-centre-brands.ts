@@ -12,6 +12,7 @@ import {
   PRODUCT_DOMAIN_LABELS,
   type ProductDomain,
 } from "@/lib/catalog/productDomains";
+import { listBusinessRecords } from "@/lib/businessRecords";
 
 // Brand catalog owned by the service-centre module (distinct from the
 // multi-location "Brand" module — this is "brand of the thing being
@@ -170,6 +171,18 @@ export function getScBrandOptions(): { value: string; label: string }[] {
   return scBrandRows
     .filter((r) => r["status"] === "Active")
     .map((r) => ({ value: String(r["id"]), label: String(r["name"]) }));
+}
+
+/**
+ * The real, partner-scoped brand NAME list (not the static demo rows
+ * above) — for any real "New Model" surface whose Brand dropdown must
+ * offer this partner's own catalog, including a brand they just created.
+ */
+export async function getScBrandOptionsForPartner(partnerId: string): Promise<string[]> {
+  const rows = await listBusinessRecords(partnerId, "service-centre-brands");
+  return [...new Set(rows.filter((r) => r["status"] === "Active").map((r) => String(r["name"] ?? "").trim()).filter(Boolean))].sort(
+    (a, b) => a.localeCompare(b)
+  );
 }
 
 /**

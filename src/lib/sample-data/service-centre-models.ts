@@ -88,6 +88,19 @@ export const scModelFormFields: FormFieldDef[] = [
   { key: "status", label: "Status", type: "select", required: true, options: ["Active", "Inactive"] },
 ];
 
+/**
+ * `scModelFormFields`'s own `brandName` options are the static demo
+ * `scBrandRows` (Samsung, Apple, Xiaomi, ...) — fine for the Design System
+ * reference page, but every real "New Model" surface must offer THIS
+ * partner's actual Brand catalog instead, or a brand they just created
+ * (e.g. via "+ Add new brand") can never be picked here. Pass the live,
+ * partner-scoped brand names (see `getScBrandOptions`-style callers —
+ * typically `distinct(filterByDomains(brands, domains), "name")`).
+ */
+export function scModelFormFieldsFor(brandNames: string[]): FormFieldDef[] {
+  return scModelFormFields.map((f) => (f.key === "brandName" ? { ...f, options: brandNames } : f));
+}
+
 export function getScModelRecord(recordId: string): Row {
   return scModelRows.find((r) => String(r["id"]) === recordId) ?? scModelRows[0];
 }

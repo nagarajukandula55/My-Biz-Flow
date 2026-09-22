@@ -1,7 +1,8 @@
 import { AppShell } from "@/components/AppShell";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
-import { scModelFormFields } from "@/lib/sample-data/service-centre-models";
+import { scModelFormFieldsFor } from "@/lib/sample-data/service-centre-models";
+import { getScBrandOptionsForPartner } from "@/lib/sample-data/service-centre-brands";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { notFound } from "next/navigation";
 import { getBusinessRecord } from "@/lib/businessRecords";
@@ -26,7 +27,8 @@ registerPage({
 export default async function EditScModelPage({ params }: { params: { partnerId: string; recordId: string } }) {
   const record = await getBusinessRecord(params.partnerId, "service-centre-models", params.recordId);
   if (!record) notFound();
-  const fields = await applyCustomizations("service-centre.models.edit", scModelFormFields);
+  const brandNames = await getScBrandOptionsForPartner(params.partnerId);
+  const fields = await applyCustomizations("service-centre.models.edit", scModelFormFieldsFor(brandNames));
 
   return (
     <AppShell topbarTitle="Edit Model">

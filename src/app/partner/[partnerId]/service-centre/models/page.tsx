@@ -5,6 +5,7 @@ import { ScModelClientTable } from "./ScModelClientTable";
 import { ScModelNewButton } from "./ScModelNewButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { scModelColumns } from "@/lib/sample-data/service-centre-models";
+import { getScBrandOptionsForPartner } from "@/lib/sample-data/service-centre-brands";
 import { listBusinessRecords } from "@/lib/businessRecords";
 
 registerPage({
@@ -30,9 +31,10 @@ export default async function ScModelListPage({ params }: { params: { partnerId:
 
   const columns = await applyCustomizations("service-centre.models.list", scModelColumns);
   const rows = await listBusinessRecords(params.partnerId, "service-centre-models");
+  const brandNames = await getScBrandOptionsForPartner(params.partnerId);
 
   return (
-    <AppShell topbarTitle="Device Models" topbarActions={<ScModelNewButton partnerId={params.partnerId} />}>
+    <AppShell topbarTitle="Device Models" topbarActions={<ScModelNewButton partnerId={params.partnerId} brandNames={brandNames} />}>
       <div>
         <div className="mt-2">
           <ScModelClientTable partnerId={params.partnerId} columns={columns} rows={rows} />

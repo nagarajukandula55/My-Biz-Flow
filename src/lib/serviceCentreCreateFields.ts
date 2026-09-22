@@ -5,7 +5,7 @@ import { getPartner } from "@/lib/partnerData";
 import { parseProductDomains } from "@/lib/catalog/productDomains";
 import { categoryOptionsForDomains } from "@/lib/catalog/serviceCatalog";
 import { filterByDomains, scBrandFormFields } from "@/lib/sample-data/service-centre-brands";
-import { scModelFormFields } from "@/lib/sample-data/service-centre-models";
+import { scModelFormFieldsFor } from "@/lib/sample-data/service-centre-models";
 import { activeStaffNames } from "@/lib/sample-data/service-centre-staff-names";
 import { createServiceCentreBrandInlineAction, createServiceCentreModelInlineAction } from "@/lib/serviceCentreCatalogActions";
 import { getPageTierAccess } from "@/lib/tenant";
@@ -119,7 +119,7 @@ export async function buildServiceCentreCreateFields(partnerId: string): Promise
             label: "Add new model",
             title: "New Model",
             submitLabel: "Create Model",
-            fields: scModelFormFields,
+            fields: scModelFormFieldsFor(suggestionsByKey.brandName),
             action: createServiceCentreModelInlineAction.bind(null, partnerId) as RecordFormAction,
           },
         }
