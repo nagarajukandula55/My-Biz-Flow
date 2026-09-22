@@ -1,6 +1,7 @@
 import { env } from "@/lib/env";
 import type { PartnerRecord } from "@/lib/partnerData";
 import { SUBSCRIPTION_GST_RATE_PERCENT } from "@/lib/subscriptionData";
+import { logError } from "@/lib/errorLog";
 
 /** Retry policy for transient failures talking to AN-Accounting. */
 const MAX_ATTEMPTS = 3;
@@ -75,11 +76,11 @@ async function postWithRetry(url: string, key: string, body: unknown, ctx: PushC
       const responseBody = await response.text().catch(() => "");
 
       if (isAuthError(response.status)) {
-        console.error(
-          `[centralApi] AN-Accounting ${ctx.kind} push rejected — auth error, not retrying. ` +
-            `externalOrderId=${ctx.externalOrderId} status=${response.status} timestamp=${new Date().toISOString()} ` +
-            `body=${responseBody.slice(0, 300)}`,
-        );
+        const message =
+          `AN-Accounting ${ctx.kind} push rejected — auth error, not retrying. ` +
+          `externalOrderId=${ctx.externalOrderId} status=${response.status} body=${responseBody.slice(0, 300)}`;
+        console.error(`[centralApi] ${message}`);
+        logError({ message, source: "centralApi.postWithRetry", severity: "error" }).catch(() => {});
         return false;
       }
 
@@ -96,12 +97,13 @@ async function postWithRetry(url: string, key: string, body: unknown, ctx: PushC
     }
   }
 
-  console.error(
-    `[centralApi] AN-Accounting ${ctx.kind} push failed after ${MAX_ATTEMPTS} attempts — ` +
-      `externalOrderId=${ctx.externalOrderId} timestamp=${new Date().toISOString()} error=${
-        lastError instanceof Error ? lastError.message : String(lastError)
-      }. Re-push manually once the issue is resolved.`,
-  );
+  const message =
+    `AN-Accounting ${ctx.kind} push failed after ${MAX_ATTEMPTS} attempts — ` +
+    `externalOrderId=${ctx.externalOrderId} error=${
+      lastError instanceof Error ? lastError.message : String(lastError)
+    }. Re-push manually once the issue is resolved.`;
+  console.error(`[centralApi] ${message}`);
+  logError({ message, source: "centralApi.postWithRetry", severity: "error" }).catch(() => {});
   return false;
 }
 

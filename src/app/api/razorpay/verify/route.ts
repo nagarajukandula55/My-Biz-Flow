@@ -8,6 +8,7 @@ import { getSessionPartnerId } from "@/lib/requirePartnerSession";
 import { sendPlatformSubscriptionPaymentEmail } from "@/lib/email";
 import { sendPartnerTelegramAlert } from "@/lib/telegram";
 import { paymentReceivedMessage } from "@/lib/telegramTemplates";
+import { logError } from "@/lib/errorLog";
 
 /**
  * Verifies a Checkout success callback's signature, then activates the
@@ -93,6 +94,13 @@ export async function POST(request: Request) {
         err instanceof Error && "code" in err && (err as { code?: string }).code === "P2002";
       if (!alreadyRecorded) {
         console.error("[razorpay/verify] Failed to persist/notify subscription payment:", err);
+        logError({
+          message: `Failed to persist subscription payment for partner ${partner.id} (razorpay_payment_id=${razorpay_payment_id}): ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+          source: "api/razorpay/verify",
+          severity: "error",
+        }).catch(() => {});
       }
     }
   }

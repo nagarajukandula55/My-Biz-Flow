@@ -7,6 +7,7 @@ import { notifyCentralApiSale } from "@/lib/centralApi";
 import { sendPlatformSubscriptionPaymentEmail } from "@/lib/email";
 import { sendPartnerTelegramAlert } from "@/lib/telegram";
 import { paymentReceivedMessage } from "@/lib/telegramTemplates";
+import { logError } from "@/lib/errorLog";
 
 /**
  * Optional: only fires if a webhook is registered in the Razorpay
@@ -87,6 +88,13 @@ export async function POST(request: Request) {
               err instanceof Error && "code" in err && (err as { code?: string }).code === "P2002";
             if (!alreadyRecorded) {
               console.error("[razorpay/webhook] Failed to persist/notify subscription payment:", err);
+              logError({
+                message: `Failed to persist subscription payment for partner ${partner.id} (razorpay_payment_id=${paymentEntity.id}): ${
+                  err instanceof Error ? err.message : String(err)
+                }`,
+                source: "api/razorpay/webhook",
+                severity: "error",
+              }).catch(() => {});
             }
           }
         }
