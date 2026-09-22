@@ -33,6 +33,7 @@ import {
   deductInventoryForWorkorderAction,
   patchServiceCentreWorkorderAction,
 } from "./actions";
+import { getServiceCentreBrandOptionsAction } from "@/lib/serviceCentreCatalogActions";
 
 const STAGE_VARIANT: Record<WorkorderStage, "neutral" | "warning" | "teal" | "success"> = {
   Created: "neutral",
@@ -944,6 +945,32 @@ export function WorkorderLifecycle({
     persist({ modelId: option.value, modelName: option.label });
   }
 
+  /**
+   * `brandOptionsState` is seeded once from this page's initial server
+   * props and otherwise only appended to locally (submitAddCatalog above).
+   * A brand added from the standalone Brands page — or from another tab —
+   * while this workorder page stays open never reached that state, so the
+   * Device and Material Brand pickers silently missed it.
+   *
+   * Fetched lazily (onFocus of the actual Brand control, not on every modal
+   * open) and only once per page visit — `brandListStale` gates it so
+   * re-opening the same dropdown doesn't re-hit the server every time. This
+   * keeps the common "material for this device's own brand" case (see
+   * openAddBom's default below) completely fetch-free.
+   */
+  const brandListFetched = useRef(false);
+  async function refreshBrandOptionsOnce() {
+    if (brandListFetched.current) return;
+    brandListFetched.current = true;
+    try {
+      const fresh = await getServiceCentreBrandOptionsAction(partnerId);
+      setBrandOptionsState(fresh);
+    } catch {
+      // Best-effort refresh — keep whatever was already loaded, allow a retry later.
+      brandListFetched.current = false;
+    }
+  }
+
   function openAddBrand() {
     setBrandPickerOpen(false);
     setNewCatalogName("");
@@ -1018,8 +1045,11 @@ export function WorkorderLifecycle({
       taxPercent: String(GST_RATES[GST_RATES.length - 2] ?? 18),
       type: MATERIAL_TYPES[0] as string,
       rateType: RATE_TYPES[1] as string,
-      brandId: "",
-      modelId: "",
+      // Defaults to the device's own brand/model — already in memory, no
+      // fetch needed — covers the common case of a part being ordered for
+      // this device. Still changeable via the dropdown below.
+      brandId: brand.id ?? "",
+      modelId: model.id ?? "",
     });
     setBomBrowseFilter("");
     setAddBomError(null);
@@ -1636,7 +1666,10 @@ export function WorkorderLifecycle({
             <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">Device</div>
             <button
               type="button"
-              onClick={() => setBrandPickerOpen(true)}
+              onClick={() => {
+                setBrandPickerOpen(true);
+                void refreshBrandOptionsOnce();
+              }}
               className="mt-0.5 block text-left text-sm text-text hover:underline"
             >
               {brand.name ?? "Select brand"}
@@ -2356,6 +2389,7 @@ export function WorkorderLifecycle({
               <select
                 value={bomDraft.brandId}
                 onChange={(e) => setBomDraft((d) => ({ ...d, brandId: e.target.value, modelId: "" }))}
+                onFocus={() => void refreshBrandOptionsOnce()}
                 className="mt-1 w-full rounded-md border border-border bg-bg px-2 py-2 text-sm text-text outline-none focus:border-accent"
               >
                 <option value="">Any brand</option>

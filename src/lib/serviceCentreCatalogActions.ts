@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createBusinessRecord } from "@/lib/businessRecords";
+import { createBusinessRecord, listBusinessRecords } from "@/lib/businessRecords";
 import { createBusinessRecordAction } from "@/lib/businessRecordActions";
 import { assertPageTierAccess, getPageTierAccess } from "@/lib/tenant";
 import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
@@ -86,6 +86,25 @@ export async function createServiceCentreBrandInlineAction(
   });
   revalidatePath(`/partner/${partnerId}/service-centre/brands`);
   return { id: String(record.id), label: String(record["name"] ?? record.id) };
+}
+
+/**
+ * Fresh, partner-scoped Brand options straight from the DB — used to
+ * re-sync WorkorderLifecycle's `brandOptionsState` (seeded once from the
+ * page's initial server props) whenever the Device/Material Brand pickers
+ * are opened, so a brand added via the standalone Brands page (or from
+ * another tab) while this workorder page stays open still shows up without
+ * requiring a full reload. Mirrors the `.filter(status === "Active")` used
+ * everywhere else this catalog is read.
+ */
+export async function getServiceCentreBrandOptionsAction(
+  partnerId: string
+): Promise<{ value: string; label: string }[]> {
+  partnerId = await requireSessionPartnerId(partnerId);
+  const rows = await listBusinessRecords(partnerId, "service-centre-brands");
+  return rows
+    .filter((r) => r["status"] === "Active")
+    .map((r) => ({ value: String(r["id"]), label: String(r["name"] ?? r["id"]) }));
 }
 
 export async function createServiceCentreModelInlineAction(
