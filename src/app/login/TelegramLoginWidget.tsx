@@ -13,7 +13,14 @@ import { useEffect, useRef } from "react";
  * before trusting anything in it (see that route) — this component never
  * trusts the payload itself, it only forwards it.
  */
-export function TelegramLoginWidget({ botUsername }: { botUsername: string }) {
+export function TelegramLoginWidget({
+  botUsername,
+  size = "large",
+}: {
+  botUsername: string;
+  /** Telegram's own size options -- "small" is the most compact this widget officially supports (no icon-only/circular mode exists). */
+  size?: "large" | "medium" | "small";
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -41,7 +48,7 @@ export function TelegramLoginWidget({ botUsername }: { botUsername: string }) {
     script.src = "https://telegram.org/js/telegram-widget.js?22";
     script.async = true;
     script.setAttribute("data-telegram-login", botUsername);
-    script.setAttribute("data-size", "large");
+    script.setAttribute("data-size", size);
     // Matches this app's standard 8px button radius (see .btn-accent/.btn-outline
     // in globals.css) instead of Telegram's default pill shape, so it reads as
     // part of the same button family as the "Sign in with Google" button above
@@ -54,7 +61,7 @@ export function TelegramLoginWidget({ botUsername }: { botUsername: string }) {
     return () => {
       container.innerHTML = "";
     };
-  }, [botUsername]);
+  }, [botUsername, size]);
 
   return <div ref={containerRef} />;
 }
