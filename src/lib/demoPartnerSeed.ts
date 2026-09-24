@@ -148,12 +148,33 @@ async function seedDummyData() {
   // src/lib/inventoryStock.ts) — this used to seed a completely different,
   // unused shape (itemName/warehouseLocation/quantityOnHand/unitCost/
   // stockStatus) that the real Stock UI never read.
+  // BOM (Material Catalog) — the parts these workorders/consumption/return
+  // rows below all reference by materialId "CODE — Description" (matches
+  // materialCode()'s " — " split convention, same shape as bomRows in
+  // src/lib/sample-data/bom.ts, but with this partner's own ids since
+  // getBomOptionsForPartner reads real inventory-bom records, not bomRows).
+  await seedIfEmpty("inventory-bom", [
+    { id: "MAT-D001", description: "Samsung Galaxy M14 Display Assembly", barcode: "8901234601001", hsnCode: "8529", type: "Spare Part", uom: "pcs", rate: 1800, rateType: "Without Tax", taxPercent: 18, mrp: 2400, serialized: false, category: "Display", status: "Active", brandName: "Samsung", modelName: "Galaxy M14", reorderLevel: "3" },
+    { id: "MAT-D002", description: "iPhone 13 Battery", barcode: "8901234601002", hsnCode: "8507", type: "Spare Part", uom: "pcs", rate: 1400, rateType: "Without Tax", taxPercent: 18, mrp: 1900, serialized: true, category: "Battery", status: "Active", brandName: "Apple", modelName: "iPhone 13", reorderLevel: "3" },
+    { id: "MAT-D003", description: "USB-C Charging Port Flex Cable", barcode: "8901234601003", hsnCode: "8544", type: "Spare Part", uom: "pcs", rate: 180, rateType: "Without Tax", taxPercent: 18, mrp: 320, serialized: false, category: "Connector", status: "Active", reorderLevel: "5" },
+    { id: "MAT-D004", description: "Redmi Note 12 Display Assembly", barcode: "8901234601004", hsnCode: "8529", type: "Spare Part", uom: "pcs", rate: 950, rateType: "Without Tax", taxPercent: 18, mrp: 1350, serialized: false, category: "Display", status: "Active", brandName: "Xiaomi", modelName: "Redmi Note 12", reorderLevel: "3" },
+    { id: "MAT-D005", description: "Laptop RAM 8GB DDR4", barcode: "8901234601005", hsnCode: "8473", type: "Spare Part", uom: "pcs", rate: 1600, rateType: "Without Tax", taxPercent: 18, mrp: 2100, serialized: false, category: "Memory", status: "Active", reorderLevel: "2" },
+    { id: "MAT-D006", description: "Isopropyl Alcohol Cleaning Solution — 500ml", barcode: "8901234601006", hsnCode: "3926", type: "Consumable", uom: "ltr", rate: 220, rateType: "With Tax", taxPercent: 12, mrp: 280, serialized: false, category: "Consumable", status: "Active" },
+  ]);
+
+  await seedIfEmpty("inventory-warehouses", [
+    { id: "WH-D001", name: "Main Warehouse — Hyderabad", type: "Central", address: "12 Demo Street, Sample Layout", pincode: "500081", state: "Telangana", city: "Hyderabad", contactPerson: "Suresh Kumar", contactPhone: "9999900001", status: "Active" },
+    { id: "WH-D002", name: "Local Store — Secunderabad", type: "Local", address: "45 SP Road", pincode: "500003", state: "Telangana", city: "Secunderabad", contactPerson: "Lakshmi Devi", contactPhone: "9999900002", status: "Active" },
+  ]);
+
   await seedIfEmpty("inventory-stock", [
-    { id: "INV0001", materialId: "Samsung Galaxy M14 Display", warehouseName: "", qtyOnHand: 8, reservedQty: 0, reorderLevel: 3 },
-    { id: "INV0002", materialId: "iPhone 13 Battery", warehouseName: "", qtyOnHand: 2, reservedQty: 0, reorderLevel: 3 },
-    { id: "INV0003", materialId: "USB-C Charging Port Flex", warehouseName: "", qtyOnHand: 15, reservedQty: 0, reorderLevel: 5 },
-    { id: "INV0004", materialId: "Redmi Note 12 Display", warehouseName: "", qtyOnHand: 6, reservedQty: 0, reorderLevel: 3 },
-    { id: "INV0005", materialId: "Laptop RAM 8GB DDR4", warehouseName: "", qtyOnHand: 4, reservedQty: 0, reorderLevel: 2 },
+    { id: "INV0001", materialId: "MAT-D001 — Samsung Galaxy M14 Display Assembly", warehouseName: "Main Warehouse — Hyderabad", qtyOnHand: 8, reservedQty: 0, availableQty: 8, reorderLevel: 3, condition: "Good" },
+    { id: "INV0002", materialId: "MAT-D002 — iPhone 13 Battery", warehouseName: "Main Warehouse — Hyderabad", qtyOnHand: 2, reservedQty: 0, availableQty: 2, reorderLevel: 3, condition: "Good" },
+    { id: "INV0003", materialId: "MAT-D003 — USB-C Charging Port Flex Cable", warehouseName: "Main Warehouse — Hyderabad", qtyOnHand: 15, reservedQty: 0, availableQty: 15, reorderLevel: 5, condition: "Good" },
+    { id: "INV0004", materialId: "MAT-D004 — Redmi Note 12 Display Assembly", warehouseName: "Local Store — Secunderabad", qtyOnHand: 6, reservedQty: 0, availableQty: 6, reorderLevel: 3, condition: "Good" },
+    { id: "INV0005", materialId: "MAT-D005 — Laptop RAM 8GB DDR4", warehouseName: "Main Warehouse — Hyderabad", qtyOnHand: 4, reservedQty: 0, availableQty: 4, reorderLevel: 2, condition: "Good" },
+    { id: "INV0006", materialId: "MAT-D002 — iPhone 13 Battery", warehouseName: "Main Warehouse — Hyderabad", qtyOnHand: 1, reservedQty: 0, availableQty: 1, reorderLevel: 3, condition: "Defective" },
+    { id: "INV0007", materialId: "MAT-D006 — Isopropyl Alcohol Cleaning Solution — 500ml", warehouseName: "Local Store — Secunderabad", qtyOnHand: 12, reservedQty: 0, availableQty: 12, reorderLevel: 4, condition: "Good" },
   ]);
 
   const today = new Date();
@@ -311,6 +332,224 @@ async function seedDummyData() {
       amountDue: 2596,
       paymentStatus: "Draft",
       paymentMode: "Bank Transfer",
+    },
+  ]);
+
+  // Inquiries logged before a workorder exists — spans Open/Converted/Closed
+  // so the Inquiries list and its dashboard summary both have something to
+  // show. Field names match inquiryFormFields/inquiryColumns in
+  // src/lib/sample-data/service-centre-inquiry.ts.
+  await seedIfEmpty("service-centre-inquiry", [
+    {
+      id: "INQ-DEMO-0001",
+      customerName: "Kavitha Rao",
+      customerPhone: "9876543220",
+      serviceType: "WALK_IN",
+      complaint: "Phone screen flickering intermittently",
+      brand: "Samsung",
+      model: "Galaxy M14",
+      pincode: "500081",
+      city: "Hyderabad",
+      state: "Telangana",
+      source: "Staff",
+      status: "Open",
+      createdAt: `${daysAgo(0)}T10:15:00`,
+    },
+    {
+      id: "INQ-DEMO-0002",
+      customerName: "Vikram Singh",
+      customerPhone: "9876543221",
+      serviceType: "ONSITE",
+      complaint: "Laptop not booting up, suspects RAM issue",
+      brand: "HP",
+      model: "Pavilion 15",
+      pincode: "500081",
+      city: "Hyderabad",
+      state: "Telangana",
+      source: "Public Booking",
+      status: "Converted",
+      createdAt: `${daysAgo(4)}T09:30:00`,
+      convertedToWorkorderId: "SC-DEMO-0002",
+      convertedAt: `${daysAgo(3)}T11:00:00`,
+    },
+    {
+      id: "INQ-DEMO-0003",
+      customerName: "Fathima Begum",
+      customerPhone: "9876543222",
+      serviceType: "WALK_IN",
+      complaint: "Wants quote for battery replacement",
+      brand: "Apple",
+      model: "iPhone 13",
+      pincode: "500003",
+      city: "Secunderabad",
+      state: "Telangana",
+      source: "Staff",
+      status: "Closed",
+      createdAt: `${daysAgo(8)}T14:00:00`,
+      closeReason: "Price declined",
+      closedAt: `${daysAgo(7)}T16:00:00`,
+    },
+  ]);
+
+  // Stock Adjustments — a couple of rows against the demo BOM/warehouses above.
+  await seedIfEmpty("inventory-stock-adjustments", [
+    {
+      id: "ADJ-DEMO-0001",
+      warehouseName: "Main Warehouse — Hyderabad",
+      materialId: "MAT-D002 — iPhone 13 Battery",
+      adjustmentType: "Decrease",
+      quantity: 1,
+      reason: "Damaged",
+      adjustedBy: "Suresh Kumar",
+      date: daysAgo(6),
+    },
+    {
+      id: "ADJ-DEMO-0002",
+      warehouseName: "Main Warehouse — Hyderabad",
+      materialId: "MAT-D001 — Samsung Galaxy M14 Display Assembly",
+      adjustmentType: "Increase",
+      quantity: 10,
+      reason: "Initial Stock",
+      adjustedBy: "Suresh Kumar",
+      date: daysAgo(20),
+    },
+  ]);
+
+  // Return Orders — Inbound and Outbound, spanning Pending/In Transit/
+  // Received/Dispatched, each with a real stageHistory (ReturnOrderStageHistoryEntry[])
+  // matching the shape actions.ts writes, not just a bare status string.
+  await seedIfEmpty("inventory-return-orders", [
+    {
+      id: "RTN-DEMO-0001",
+      direction: "Inbound",
+      workorderRef: "SC-DEMO-0002",
+      returnType: "Defective",
+      materialId: "MAT-D002 — iPhone 13 Battery",
+      quantity: 1,
+      sourceLocation: "Demo Service Centre",
+      destinationWarehouseName: "Main Warehouse — Hyderabad",
+      status: "Pending",
+      createdDate: daysAgo(2),
+      receivedDate: null,
+      stageHistory: [{ at: `${daysAgo(2)}T10:00:00`, stage: "Pending", actor: "Service Centre" }],
+    },
+    {
+      id: "RTN-DEMO-0002",
+      direction: "Inbound",
+      workorderRef: "SC-DEMO-0006",
+      returnType: "Good",
+      materialId: "MAT-D004 — Redmi Note 12 Display Assembly",
+      quantity: 1,
+      sourceLocation: "Demo Service Centre",
+      destinationWarehouseName: "Local Store — Secunderabad",
+      status: "In Transit",
+      createdDate: daysAgo(3),
+      receivedDate: null,
+      stageHistory: [
+        { at: `${daysAgo(3)}T10:00:00`, stage: "Pending", actor: "Service Centre" },
+        { at: `${daysAgo(2)}T15:00:00`, stage: "In Transit", actor: "Service Centre" },
+      ],
+    },
+    {
+      id: "RTN-DEMO-0003",
+      direction: "Inbound",
+      workorderRef: "SC-DEMO-0004",
+      returnType: "Good",
+      materialId: "MAT-D001 — Samsung Galaxy M14 Display Assembly",
+      quantity: 2,
+      sourceLocation: "Demo Service Centre",
+      destinationWarehouseName: "Main Warehouse — Hyderabad",
+      status: "Received",
+      createdDate: daysAgo(9),
+      receivedDate: daysAgo(7),
+      stageHistory: [
+        { at: `${daysAgo(9)}T10:00:00`, stage: "Pending", actor: "Service Centre" },
+        { at: `${daysAgo(8)}T12:00:00`, stage: "In Transit", actor: "Service Centre" },
+        { at: `${daysAgo(7)}T09:00:00`, stage: "Received", actor: "Warehouse" },
+      ],
+    },
+    {
+      id: "RTN-DEMO-0004",
+      direction: "Outbound",
+      returnType: "Defective",
+      materialId: "MAT-D002 — iPhone 13 Battery",
+      quantity: 1,
+      sourceLocation: "Main Warehouse — Hyderabad",
+      vendorName: "Li-ion Battery Distributors Pvt Ltd",
+      challanNumber: "CHN-DEMO-0001",
+      status: "Dispatched",
+      createdDate: daysAgo(5),
+      stageHistory: [
+        { at: `${daysAgo(5)}T10:00:00`, stage: "Pending", actor: "Warehouse" },
+        { at: `${daysAgo(4)}T11:00:00`, stage: "Dispatched", actor: "Warehouse" },
+      ],
+    },
+  ]);
+
+  // Part Orders — Warehouse dispatching replacement material to a Service
+  // Centre location, one linked to a Return Order above, one standalone.
+  await seedIfEmpty("inventory-part-orders", [
+    {
+      id: "PO-DEMO-0001",
+      linkedReturnOrderId: "RTN-DEMO-0001",
+      materialId: "MAT-D002 — iPhone 13 Battery",
+      quantity: 1,
+      sourceWarehouseName: "Main Warehouse — Hyderabad",
+      destinationLocation: "Demo Service Centre",
+      status: "Dispatched",
+      dispatchedDate: daysAgo(1),
+      deliveredDate: null,
+    },
+    {
+      id: "PO-DEMO-0002",
+      linkedReturnOrderId: null,
+      materialId: "MAT-D001 — Samsung Galaxy M14 Display Assembly",
+      quantity: 5,
+      sourceWarehouseName: "Main Warehouse — Hyderabad",
+      destinationLocation: "Demo Service Centre",
+      status: "Delivered",
+      dispatchedDate: daysAgo(18),
+      deliveredDate: daysAgo(16),
+    },
+  ]);
+
+  // Parts Consumption — real per-workorder deduction history (normally only
+  // ever written by a workorder closing), matching consumptionColumns in
+  // src/lib/sample-data/consumption.ts, so Part Planning's forecast has
+  // something to project from instead of an empty state.
+  await seedIfEmpty("inventory-consumption", [
+    {
+      id: "CONS-DEMO-0001",
+      workorderId: "SC-DEMO-0003",
+      materialId: "MAT-D003",
+      materialLabel: "USB-C Charging Port Flex Cable",
+      qty: 1,
+      warehouseName: "Main Warehouse — Hyderabad",
+      serial: "",
+      customerName: "Sri Lakshmi Mobile Care",
+      consumedDate: daysAgo(1),
+    },
+    {
+      id: "CONS-DEMO-0002",
+      workorderId: "SC-DEMO-0004",
+      materialId: "MAT-D001",
+      materialLabel: "Samsung Galaxy M14 Display Assembly",
+      qty: 1,
+      warehouseName: "Main Warehouse — Hyderabad",
+      serial: "",
+      customerName: "Anitha Reddy",
+      consumedDate: daysAgo(7),
+    },
+    {
+      id: "CONS-DEMO-0003",
+      workorderId: "SC-DEMO-0005",
+      materialId: "MAT-D005",
+      materialLabel: "Laptop RAM 8GB DDR4",
+      qty: 1,
+      warehouseName: "Main Warehouse — Hyderabad",
+      serial: "",
+      customerName: "Mohammed Irfan",
+      consumedDate: daysAgo(12),
     },
   ]);
 }
