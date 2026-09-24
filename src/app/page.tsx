@@ -12,7 +12,7 @@ import { SITE_URL, SITE_NAME } from "@/lib/seo";
 export const revalidate = 60;
 
 export const metadata: Metadata = {
-  title: "No-Code Business Management Platform for Service Businesses",
+  title: "No-Code Business Management Platform for Every Business",
   description:
     "My Biz Flow is a modular, no-code business/CRM platform: mix and match POS, Service Centre workorders, Billing, GST-compliant invoicing, Inventory, Clinic, and more on one account — no custom development required.",
   // Canonical stays the base "/" regardless of ?type= -- the Service Centre

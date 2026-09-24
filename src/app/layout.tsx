@@ -6,7 +6,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "My Biz Flow — No-Code Business Management Platform for Service Businesses",
+    default: "My Biz Flow — No-Code Business Management Platform for Every Business",
     template: "%s | My Biz Flow",
   },
   description:
@@ -26,15 +26,15 @@ export const metadata: Metadata = {
     type: "website",
     url: SITE_URL,
     siteName: "My Biz Flow",
-    title: "My Biz Flow — No-Code Business Management Platform for Service Businesses",
+    title: "My Biz Flow — No-Code Business Management Platform for Every Business",
     description:
-      "One platform, every module: POS, Service Centre, Billing/GST, Inventory, HRMS, Clinic and more — mix and match on one account, no custom development required.",
+      "One platform, every module: POS, Service Centre, Telecalling, Field Force, Billing/GST, Inventory, Clinic and more — mix and match on one account, no custom development required.",
   },
   twitter: {
     card: "summary",
-    title: "My Biz Flow — No-Code Business Management Platform for Service Businesses",
+    title: "My Biz Flow — No-Code Business Management Platform for Every Business",
     description:
-      "One platform, every module: POS, Service Centre, Billing/GST, Inventory, HRMS, Clinic and more — mix and match on one account, no custom development required.",
+      "One platform, every module: POS, Service Centre, Telecalling, Field Force, Billing/GST, Inventory, Clinic and more — mix and match on one account, no custom development required.",
   },
   robots: { index: true, follow: true },
 };
