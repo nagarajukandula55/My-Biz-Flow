@@ -37,6 +37,11 @@ export const metadata: Metadata = {
       "One platform, every module: POS, Service Centre, Telecalling, Field Force, Billing/GST, Inventory, Clinic and more — mix and match on one account, no custom development required.",
   },
   robots: { index: true, follow: true },
+  // Google Search Console ownership verification (HTML tag method) — Next.js
+  // renders this as <meta name="google-site-verification" content="..." />
+  // in <head> automatically. Safe to keep permanently; Google only checks
+  // this tag during verification, it has no other effect afterward.
+  verification: { google: "8Xq7s6UkCtsqaTxSrLlEvsJbFByWRiwYGeSX6bpALQg" },
 };
 
 export default function RootLayout({
