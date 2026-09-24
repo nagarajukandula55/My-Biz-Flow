@@ -1,9 +1,16 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { BrandLogo } from "@/components/BrandLogo";
 import { registerPage } from "@/lib/designer/registry";
 import { signInAsPartner } from "./actions";
 import { env, googleOAuthConfigured, telegramLoginConfigured } from "@/lib/env";
 import { TelegramLoginWidget } from "./TelegramLoginWidget";
+
+// Defense-in-depth alongside robots.ts's existing Disallow — see the
+// identical note on src/app/signup/page.tsx's metadata export.
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 registerPage({
   id: "platform.login",

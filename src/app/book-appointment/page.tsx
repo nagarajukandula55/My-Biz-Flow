@@ -1,8 +1,16 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { BrandLogo } from "@/components/BrandLogo";
 import { registerPage } from "@/lib/designer/registry";
 import { bookAppointmentAction } from "./actions";
 import { SERVICE_TYPES } from "@/lib/serviceTypes";
+
+export const metadata: Metadata = {
+  title: "Book a Service Appointment",
+  description:
+    "Book a repair or service appointment online — no account needed. We match you to a service provider near you by pincode automatically.",
+  alternates: { canonical: "/book-appointment" },
+};
 
 registerPage({
   id: "platform.book-appointment",

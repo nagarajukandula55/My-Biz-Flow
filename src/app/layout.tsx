@@ -31,7 +31,7 @@ export const metadata: Metadata = {
       "One platform, every module: POS, Service Centre, Telecalling, Field Force, Billing/GST, Inventory, Clinic and more — mix and match on one account, no custom development required.",
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: "My Biz Flow — No-Code Business Management Platform for Every Business",
     description:
       "One platform, every module: POS, Service Centre, Telecalling, Field Force, Billing/GST, Inventory, Clinic and more — mix and match on one account, no custom development required.",

@@ -1,19 +1,21 @@
 # My Biz Flow
 
 > Modular, no-code, multi-vertical business/CRM platform. Businesses mix and
-> match modules (POS, Service Centre, Billing, Clinic, HRMS, Inventory,
-> Accounting/GST Compliance, and more) on one account, all built on a shared
-> metadata engine — modules, fields, pipelines, and dashboards are
-> config-driven rather than requiring custom development per business.
+> match modules (POS, Service Centre, Telecalling, Field Force, Billing,
+> Clinic, Inventory, Accounting/GST Compliance, and more) on one account,
+> all built on a shared metadata engine — modules, fields, pipelines, and
+> dashboards are config-driven rather than requiring custom development
+> per business.
 
 ## What it is
 
 My Biz Flow is a single platform that runs many kinds of businesses instead
 of shipping a separate product per industry. A business picks a business
-type at signup (e.g. Service Centre, POS/retail, Clinic), which bundles a
-starting set of modules; modules can be mixed and matched afterward as the
-business grows. Available verticals include Point of Sale, Service Centre
-(repair/workorder shops), Billing, Clinic, HRMS, Inventory/Warehouse,
+type at signup (e.g. Service Centre, Telecalling, Field Force, POS/retail,
+Clinic), which bundles a starting set of modules; modules can be mixed and
+matched afterward as the business grows. Available verticals include Point
+of Sale, Service Centre (repair/workorder shops), Telecalling, Field Force
+(home-services dispatch), Billing, Clinic, Inventory/Warehouse,
 Accounting/GST Compliance, and additional verticals such as real estate,
 education, manufacturing, wholesale/distributor B2B, logistics/fleet, legal,
 event/venue booking, and salon/spa.

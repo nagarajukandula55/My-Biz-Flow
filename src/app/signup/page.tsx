@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { BrandLogo } from "@/components/BrandLogo";
 import { registerPage } from "@/lib/designer/registry";
@@ -11,6 +12,16 @@ import {
 } from "@/lib/catalog/productDomains";
 
 export const dynamic = "force-dynamic";
+
+// Defense-in-depth alongside robots.ts's existing Disallow: a Disallow'd URL
+// that's still linked internally (homepage nav) can surface as a bare,
+// snippet-less "no information available" listing in search results. This
+// meta tag has no effect while crawling stays blocked (Google can't read a
+// page it isn't allowed to fetch) but covers the case where that Disallow
+// is ever loosened later.
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 registerPage({
   id: "platform.signup",

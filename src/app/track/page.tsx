@@ -1,7 +1,15 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { BrandLogo } from "@/components/BrandLogo";
 import { registerPage } from "@/lib/designer/registry";
 import { lookupWorkorder } from "./actions";
+
+export const metadata: Metadata = {
+  title: "Track My Repair — Find Your Service Status",
+  description:
+    "Lost your repair tracking link? Look it up again with your workorder number and the phone number used at intake — no account or login needed.",
+  alternates: { canonical: "/track" },
+};
 
 registerPage({
   id: "platform.track",

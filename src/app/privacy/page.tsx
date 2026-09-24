@@ -4,6 +4,7 @@ import { registerPage } from "@/lib/designer/registry";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
+  description: "How My Biz Flow collects, uses, and protects your business and customer data across every module on the platform.",
   alternates: { canonical: "/privacy" },
 };
 

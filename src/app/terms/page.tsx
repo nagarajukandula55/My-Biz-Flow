@@ -4,6 +4,7 @@ import { registerPage } from "@/lib/designer/registry";
 
 export const metadata: Metadata = {
   title: "Terms of Service",
+  description: "The terms governing use of My Biz Flow's no-code business management platform, its modules, and your subscription.",
   alternates: { canonical: "/terms" },
 };
 

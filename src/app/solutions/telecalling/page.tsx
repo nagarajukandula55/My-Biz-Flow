@@ -18,7 +18,7 @@ registerPage({
 });
 
 export const metadata: Metadata = {
-  title: "Telecalling Software for Lead Follow-up & Call Centres | My Biz Flow",
+  title: "Telecalling Software for Lead Follow-up",
   description:
     "Bulk-upload a contact list, assign it to telecaller agents with their own logins, click-to-call straight from the app, and trigger SMS/WhatsApp templates per contact — with territory-based auto-assignment so new leads reach the right agent automatically.",
   alternates: { canonical: "/solutions/telecalling" },

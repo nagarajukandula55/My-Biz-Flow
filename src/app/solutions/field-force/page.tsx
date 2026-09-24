@@ -25,7 +25,7 @@ const PROVIDER_SIGNUP_HREF = `/partner/${FF_OPERATOR_ID}/field-force/provider/si
 const CUSTOMER_SIGNUP_HREF = `/partner/${FF_OPERATOR_ID}/field-force/customer/signup`;
 
 export const metadata: Metadata = {
-  title: "Join as a Service Provider or Book a Home Service | My Biz Flow Field Force",
+  title: "Field Force — Join as a Provider or Book a Service",
   description:
     "Free to join. Skilled or unskilled professionals sign up as a service provider and get their own login to receive and manage jobs. Customers request home services — repairs, installs, and more — and get matched to a provider by service and pincode.",
   alternates: { canonical: "/solutions/field-force" },

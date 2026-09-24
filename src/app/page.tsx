@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import type { Metadata } from "next";
 import { BrandLogo } from "@/components/BrandLogo";
 import { PublicHelpBubble } from "@/components/PublicHelpBubble";
@@ -355,14 +356,14 @@ export default async function RootPage({
           <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-3">
             {SCREENSHOTS.map((s) => (
               <div key={s.name} className="mbf-glass-card overflow-hidden bg-bg-sunken">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+                <Image
                   src={`/screenshots/${s.name}.png`}
                   alt={s.alt}
                   width={480}
                   height={300}
                   className="h-auto w-full bg-bg-sunken object-cover"
                   loading="lazy"
+                  sizes="(min-width: 640px) 33vw, 100vw"
                 />
               </div>
             ))}

@@ -18,7 +18,7 @@ registerPage({
 });
 
 export const metadata: Metadata = {
-  title: "Service Centre Software — Workorders, Billing & Inventory | My Biz Flow",
+  title: "Service Centre Software — Workorders & Billing",
   description:
     "Run a repair/service business end to end: intake as an inquiry or workorder, track the fault-to-fix lifecycle, bill with GST-compliant invoices that deduct parts from inventory automatically, and let customers book appointments and track repairs online with no login.",
   alternates: { canonical: "/solutions/service-centre" },
