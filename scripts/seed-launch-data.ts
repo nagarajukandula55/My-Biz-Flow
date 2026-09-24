@@ -49,7 +49,29 @@ export const LAUNCH_PLANS = [
   { id: "PLAN-ULTIMATE", name: "Ultimate", price: 2499, billingCycle: "monthly", includedModuleSlugs: ["service-centre", "inventory", "billing", "accounting-gst"], maxUsers: 9999, maxLocations: 9999, isPublic: true },
 ];
 
-async function main() {
+// PLACEHOLDER PRICING — mirrored from Service Centre's launch prices
+// (₹799/₹1,199/₹2,499) purely as reasonable placeholders so Telecalling
+// isn't priced at ₹0. This is NOT a considered pricing decision — the
+// platform owner should revisit these numbers before or shortly after
+// this goes live. Telecalling is a single module (no Inventory/Billing/
+// GST module to bundle in progressively the way Service Centre does — see
+// src/app/partner/[partnerId]/telecalling/**, which has no hard
+// dependency on any other module), so all three tiers include just
+// ["telecalling"]; the feature differences between tiers (territory
+// auto-assignment, unlimited agents, etc. — see MODULE_TIER_FEATURES.
+// telecalling in src/lib/designer/moduleTiers.ts) are enforced elsewhere,
+// not via module bundling.
+export const TELECALLING_LAUNCH_PLANS = [
+  { id: "PLAN-TELECALLING-BASIC", name: "Starter", price: 799, billingCycle: "monthly", includedModuleSlugs: ["telecalling"], maxUsers: 2, maxLocations: 1, isPublic: true },
+  { id: "PLAN-TELECALLING-PRO", name: "Pro", price: 1199, billingCycle: "monthly", includedModuleSlugs: ["telecalling"], maxUsers: 10, maxLocations: 1, isPublic: true },
+  { id: "PLAN-TELECALLING-ULTIMATE", name: "Ultimate", price: 2499, billingCycle: "monthly", includedModuleSlugs: ["telecalling"], maxUsers: 9999, maxLocations: 9999, isPublic: true },
+];
+
+// Exported so src/app/api/admin/seed-launch-data/route.ts (same
+// shared-secret remote-trigger pattern as api/admin/seed-demo-partner) can
+// call this against the deployed DB when the operator's own machine can't
+// reach it directly, without spawning a child process.
+export async function seedLaunchData() {
   // Plan ids kept as PLAN-BASIC/PLAN-PRO/PLAN-ULTIMATE (matching this
   // app's basic/pro/ultimate PlanTier keys) even though the bottom tier's
   // real AN-CRM name is "Starter" — same reasoning AN-CRM itself used to
@@ -107,12 +129,70 @@ async function main() {
   });
   console.log('PartnerType upserted: "service-centre" (idPrefix "SC", Active, open for signup)');
 
-  console.log("\nDone. Reload /signup — Service Centre should now be selectable.");
+  // Telecalling: full module code already exists (src/app/partner/[partnerId]/telecalling/**)
+  // and src/lib/designer/moduleTiers.ts already has complete basic/pro/ultimate
+  // feature bullets for it, but until now no PartnerType/Plan rows existed so
+  // it was never actually choosable on /signup. idPrefix "CC" (not "TC") to
+  // match what src/app/solutions/telecalling/page.tsx already documents in
+  // its own registerPage() explanation ('PartnerType.id "telecalling",
+  // idPrefix "CC"') — written ahead of this seed change in an earlier
+  // session. Doesn't collide with Service Centre's "SC" or Field Force's "FF"
+  // (see scripts/activateFieldForce.ts) or the "VND" fallback default.
+  for (const plan of TELECALLING_LAUNCH_PLANS) {
+    await prisma.plan.upsert({
+      where: { id: plan.id },
+      create: plan,
+      update: plan,
+    });
+    console.log(`Plan upserted: ${plan.id} (${plan.name}, ₹${plan.price}/mo)`);
+  }
+
+  await prisma.partnerType.upsert({
+    where: { id: "telecalling" },
+    create: {
+      id: "telecalling",
+      description: "Bulk-upload a contact list, assign it to telecaller agents, click-to-call from the app, and trigger SMS/WhatsApp template messages per contact.",
+      // Standalone — telecalling has no hard dependency on Billing or any
+      // other module (unlike Service Centre's invoice-on-close flow), so
+      // nothing else is bundled by default.
+      defaultModules: ["telecalling"],
+      assignableRoleIds: [],
+      // No telecalling-specific per-page tier map exists yet (DEFAULT_PAGE_TIERS
+      // is Service Centre's own map) — same {} pattern activateFieldForce.ts
+      // uses for field-force until one is written.
+      planTierByPage: {},
+      planIds: TELECALLING_LAUNCH_PLANS.map((p) => p.id),
+      idPrefix: "CC",
+      requiresApproval: false,
+      status: "Active",
+    },
+    update: {
+      defaultModules: ["telecalling"],
+      planTierByPage: {},
+      planIds: TELECALLING_LAUNCH_PLANS.map((p) => p.id),
+      idPrefix: "CC",
+      status: "Active",
+    },
+  });
+  console.log('PartnerType upserted: "telecalling" (idPrefix "CC", Active, open for signup)');
+
+  // Field Force is NOT touched here — it's already fully handled by its own
+  // idempotent script, scripts/activateFieldForce.ts, which sets up a single
+  // free Plan (commission-based, not subscription) and marks the
+  // "field-force" PartnerType Active. Run that script separately if it
+  // hasn't been run against this database yet.
+
+  console.log("\nDone. Reload /signup — Service Centre and Telecalling should now be selectable.");
 }
 
-main()
-  .catch((err) => {
-    console.error("Seed failed:", err);
-    process.exitCode = 1;
-  })
-  .finally(() => prisma.$disconnect());
+// Only run as a CLI script when invoked directly (`npx tsx scripts/seed-launch-data.ts`) —
+// not when imported by the API route below, which manages the shared
+// `prisma` client's lifecycle itself.
+if (require.main === module) {
+  seedLaunchData()
+    .catch((err) => {
+      console.error("Seed failed:", err);
+      process.exitCode = 1;
+    })
+    .finally(() => prisma.$disconnect());
+}
