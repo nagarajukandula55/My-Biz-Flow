@@ -66,9 +66,19 @@ export default async function InquiryDetailPage({
                   </h1>
                   <p className="mt-1 text-xs text-text-muted">Inquiry detail</p>
                 </div>
-                <Link href={`/partner/${params.partnerId}/service-centre/inquiries`} className="btn-outline">
-                  &larr; Back
-                </Link>
+                <div className="flex items-center gap-2">
+                  {record["status"] === "Open" && (
+                    <Link
+                      href={`/partner/${params.partnerId}/service-centre/inquiries/${params.recordId}/edit`}
+                      className="btn-outline"
+                    >
+                      Edit
+                    </Link>
+                  )}
+                  <Link href={`/partner/${params.partnerId}/service-centre/inquiries`} className="btn-outline">
+                    &larr; Back
+                  </Link>
+                </div>
               </div>
               <InquiryLifecycle partnerId={params.partnerId} inquiryId={params.recordId} record={record} />
             </div>

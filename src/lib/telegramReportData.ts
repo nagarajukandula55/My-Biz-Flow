@@ -14,6 +14,7 @@ import { getPartner, listPartners } from "@/lib/partnerData";
 import { listPartnersWithReportsEnabled, sendPartnerTelegramAlert, sendPartnerTelegramReport, sendRawTelegramMessage } from "@/lib/telegram";
 import { getOpsChatId } from "@/lib/platformSettings";
 import { logReportRun } from "@/lib/reportRunLog";
+import { istDateKey } from "@/lib/format";
 
 /** True when `now` falls on the last calendar day of its month. */
 function isLastDayOfMonth(now: Date): boolean {
@@ -27,20 +28,7 @@ export function shouldSendReportToday(frequency: ReportFrequency, now: Date): bo
   return isLastDayOfMonth(now); // MONTHLY
 }
 
-/**
- * True only when `now` falls in the ~9 PM IST send window. GitHub Actions
- * `schedule` triggers are best-effort and can fire late by anywhere from
- * minutes to hours under load (confirmed via actual run history drifting
- * across 08:00-20:00 UTC instead of landing at the configured 15:30 UTC).
- * Since the cron endpoint doesn't otherwise check the hour, a late-firing
- * run used to send the digest whenever it happened to land instead of at
- * 9 PM. The workflow now triggers every 15 min through this window (see
- * .github/workflows/cron.yml) and this guard — combined with the existing
- * alreadySentToday same-day idempotency check — makes sure the actual send
- * still only happens once, inside the window, regardless of how many times
- * the delayed schedule fires or how late any single run lands.
- */
-export function isWithinReportWindow(now: Date): boolean {
+function istMinutesSinceMidnight(now: Date): number {
   const parts = new Intl.DateTimeFormat("en-GB", {
     timeZone: "Asia/Kolkata",
     hour: "2-digit",
@@ -49,14 +37,40 @@ export function isWithinReportWindow(now: Date): boolean {
   }).formatToParts(now);
   const hour = Number(parts.find((p) => p.type === "hour")?.value ?? "0");
   const minute = Number(parts.find((p) => p.type === "minute")?.value ?? "0");
-  const minutesSinceMidnight = hour * 60 + minute;
-  return minutesSinceMidnight >= 20 * 60 + 45 && minutesSinceMidnight <= 22 * 60; // 20:45-22:00 IST
+  return hour * 60 + minute;
 }
 
-/** True once this partner has already gotten (or had an attempted) send today for this cadence — Vercel Cron doesn't guarantee exactly-once, so this is the idempotency check. Each cadence only ever triggers once per calendar day (see shouldSendReportToday), so a same-day check per cadence is sufficient. `lastReportSentAt` is TelegramSettingsRecord's per-cadence stamp map (src/lib/telegram.ts). */
+/**
+ * True when `now` falls in the main ~9 PM IST send window. GitHub Actions
+ * `schedule` triggers are best-effort and can fire late by anywhere from
+ * minutes to hours under load (confirmed via actual run history drifting
+ * across 08:00-20:00 UTC instead of landing at the configured 15:30 UTC) —
+ * or can be skipped entirely some days. A 75-minute window was too narrow
+ * to reliably catch a run inside it, so this is widened to 2.5 hours, and
+ * isPastFinalCatchupDeadline() below is a last-resort fallback so a day
+ * with zero on-time deliveries still isn't a day with zero report at all.
+ */
+export function isWithinReportWindow(now: Date): boolean {
+  const minutesSinceMidnight = istMinutesSinceMidnight(now);
+  return minutesSinceMidnight >= 20 * 60 + 30 && minutesSinceMidnight <= 23 * 60; // 20:30-23:00 IST
+}
+
+/**
+ * Last-resort catch-up: true from 23:15 IST to end of day. If nothing has
+ * sent a given cadence by then (alreadySentToday still false), the cron
+ * route sends anyway rather than let the whole day pass with no report —
+ * this is what actually fixes "reports didn't fire for 3 days straight",
+ * since the main window alone still depends on GitHub Actions happening to
+ * fire during it, which it has been observed not to do.
+ */
+export function isPastFinalCatchupDeadline(now: Date): boolean {
+  return istMinutesSinceMidnight(now) >= 23 * 60 + 15; // 23:15 IST onward
+}
+
+/** True once this partner has already gotten (or had an attempted) send today for this cadence — Vercel Cron doesn't guarantee exactly-once, so this is the idempotency check. Each cadence only ever triggers once per calendar day (see shouldSendReportToday), so a same-day check per cadence is sufficient. `lastReportSentAt` is TelegramSettingsRecord's per-cadence stamp map (src/lib/telegram.ts). Compared as an IST calendar day, not the server/runner's local zone — otherwise a UTC-day rollover mid-window could misclassify a send as "not today" or vice versa. */
 export function alreadySentToday(lastReportSentAt: Date | null | undefined, now: Date): boolean {
   if (!lastReportSentAt) return false;
-  return lastReportSentAt.toDateString() === now.toDateString();
+  return istDateKey(lastReportSentAt) === istDateKey(now);
 }
 
 /**
@@ -236,7 +250,7 @@ export async function sendOnePartnerReport(partnerId: string, frequency: ReportF
   });
   const delivered = await sendPartnerTelegramReport(partnerId, frequency, message);
 
-  const when = now.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" });
+  const when = now.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata" });
   const confirmation = delivered
     ? `✅ Your ${FREQUENCY_LABEL[frequency]} business report was sent successfully — ${when}.`
     : `❌ Your ${FREQUENCY_LABEL[frequency]} business report could NOT be delivered today (${when}) — no Telegram chat connected, or the bot was blocked/removed. Reconnect Telegram from Service Centre › Telegram Alerts.`;
@@ -344,7 +358,7 @@ export async function sendReportRunOpsSummary(params: {
     const opsChatId = await getOpsChatId();
     if (!opsChatId) return;
     const now = params.now ?? new Date();
-    const when = now.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" });
+    const when = now.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata" });
     const totalPartnersOnPlatform = (await listPartners()).length;
 
     const lines = [

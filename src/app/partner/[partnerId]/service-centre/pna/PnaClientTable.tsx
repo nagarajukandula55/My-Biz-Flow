@@ -194,7 +194,7 @@ export function PnaClientTable({
             </button>
           )}
           <RecordCsvExportButton
-            columns={["workorderId", "materialCode", "partName", "qty", "customerName", "customerPhone", "brandJobNo", "availability", "availableNow", "status", "loggedDate"]}
+            columns={["workorderId", "materialCode", "partName", "qty", "customerName", "customerPhone", "brandJobNo", "availability", "availableNow", "status", { key: "loggedDate", type: "date" }]}
             rows={exportRows}
             filename={`parts-not-available-${partnerId}-${new Date().toISOString().slice(0, 10)}.csv`}
           />

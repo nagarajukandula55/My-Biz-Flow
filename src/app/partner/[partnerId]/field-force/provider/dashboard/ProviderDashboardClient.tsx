@@ -86,7 +86,7 @@ export function ProviderDashboardClient({
                   <div>
                     <div className="text-sm font-semibold text-text">{o.serviceName}</div>
                     <div className="text-xs text-text-muted">
-                      {o.city} ({o.pincode}) · {o.slotLabel} · {new Date(o.scheduledAt).toLocaleDateString()}
+                      {o.city} ({o.pincode}) · {o.slotLabel} · {new Date(o.scheduledAt).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}
                     </div>
                     <div className="mt-1 font-mono text-xs tabular-nums text-text-muted">
                       {t(locale, "standardRate")}: ₹{(o.priceAmount / 100).toLocaleString("en-IN")}

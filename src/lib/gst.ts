@@ -24,7 +24,7 @@ export function recentPeriodKeys(count = 12): string[] {
 
 export function periodLabel(periodKey: string): string {
   const [y, m] = periodKey.split("-").map(Number);
-  return new Date(y, m - 1, 1).toLocaleDateString("en-IN", { month: "short", year: "numeric" });
+  return new Date(y, m - 1, 1).toLocaleDateString("en-IN", { month: "short", year: "numeric", timeZone: "Asia/Kolkata" });
 }
 
 /** GSTR-1 due the 11th, GSTR-3B due the 20th, of the month *after* the filing period. */

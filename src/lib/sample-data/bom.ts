@@ -62,7 +62,7 @@ export const HSN_CODES: { code: string; description: string }[] = [
 export const bomColumns: Column[] = [
   { key: "id", label: "Material Code", type: "text" },
   { key: "description", label: "Material Description", type: "text" },
-  { key: "barcode", label: "Barcode", type: "text" },
+  { key: "barcode", label: "Barcode (SKU)", type: "text" },
   { key: "hsnCode", label: "HSN Code", type: "text" },
   { key: "type", label: "Type", type: "select-chip", chipVariantMap: TYPE_VARIANT },
   { key: "uom", label: "UOM", type: "text" },
@@ -198,7 +198,13 @@ export const bomRows: Row[] = [
 export const bomFormFields: FormFieldDef[] = [
   { key: "id", label: "Material Code", type: "text", required: false },
   { key: "description", label: "Material Description", type: "text", required: true },
-  { key: "barcode", label: "Barcode", type: "text", required: false },
+  {
+    key: "barcode",
+    label: "Barcode (SKU)",
+    type: "text",
+    required: false,
+    placeholder: "This material's own product barcode (one per material type) — NOT a per-unit serial/IMEI. Serial numbers are captured later, when stock actually moves (Part Orders, Stock Transfers, Stock Take).",
+  },
   { key: "hsnCode", label: "HSN Code", type: "select", required: true, options: HSN_CODES.map((h) => `${h.code} — ${h.description}`) },
   { key: "type", label: "Type", type: "select", required: true, options: [...MATERIAL_TYPES] },
   { key: "uom", label: "UOM", type: "select", required: true, options: UOM_OPTIONS },
@@ -244,7 +250,7 @@ export function getBomDetailFields(record: Row): RecordField[] {
   return [
     { label: "Material Code", value: r["id"], type: "text" },
     { label: "Material Description", value: r["description"], type: "text" },
-    { label: "Barcode", value: r["barcode"], type: "text" },
+    { label: "Barcode (SKU)", value: r["barcode"], type: "text" },
     { label: "HSN Code", value: r["hsnCode"], type: "text" },
     { label: "Type", value: r["type"], type: "select", chipVariant: TYPE_VARIANT[String(r["type"])] ?? "neutral" },
     { label: "UOM", value: r["uom"], type: "text" },

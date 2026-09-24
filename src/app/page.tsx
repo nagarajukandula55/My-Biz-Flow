@@ -6,7 +6,10 @@ import { registerPage } from "@/lib/designer/registry";
 import { listActivePartnerTypes } from "@/lib/designer/partnerTypesData";
 import { SITE_URL, SITE_NAME } from "@/lib/seo";
 
-export const dynamic = "force-dynamic";
+// Public marketing homepage — reads Super-Admin-configured partner type
+// list, which changes rarely. ISR keeps it fresh within a minute without a
+// DB hit on every visitor/crawler request.
+export const revalidate = 60;
 
 export const metadata: Metadata = {
   title: "No-Code Business Management Platform for Service Businesses",

@@ -38,8 +38,10 @@ export default async function EditReturnOrderPage({ params }: { params: { partne
       <div>
         <h1 className="font-display text-xl font-bold text-text">Edit Return Order</h1>
         <p className="mt-1 text-xs text-text-muted">
-          {String(record["id"])} — editable only while still {String(record["status"] ?? "Pending")}. Once marked
-          Received or Dispatched, this record is locked and can no longer be changed here.
+          {String(record["id"])} — editable only while still {String(record["status"] ?? "Pending")}. Status itself is
+          no longer set here — it only moves via the stage actions (Mark In Transit / Warehouse Inward / Dispatch /
+          Reject) on the detail page. Once marked Received or Dispatched, this record is locked and can no longer be
+          changed here.
         </p>
         <div className="mt-6">
           <RecordForm

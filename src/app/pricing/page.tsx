@@ -20,8 +20,10 @@ import { SITE_URL, SITE_NAME } from "@/lib/seo";
 import { BILLING_CYCLES, CYCLE_DISCOUNT_PCT, computeCyclePrice, currentMonthlyRate, isLaunchPricingActive, cycleLabel } from "@/lib/subscriptionData";
 
 // Reads live DB-backed module label overrides / partner type + plan data —
-// must not be baked into a static build.
-export const dynamic = "force-dynamic";
+// must not be permanently baked into a static build. Plans/labels only
+// change via Super Admin action, not per-request, so ISR (revalidate) is
+// enough to stay fresh without hitting Postgres on every visit.
+export const revalidate = 60;
 
 export const metadata: Metadata = {
   title: "Pricing",

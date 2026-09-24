@@ -386,7 +386,7 @@ export const stockAdjustmentRelated: RelatedRecord[] = [];
 export const RETURN_TYPES = ["Defective", "Good"] as const;
 export const RETURN_DIRECTIONS = ["Inbound", "Outbound"] as const;
 
-const RETURN_STATUS_VARIANT: Record<string, StatusVariant> = {
+export const RETURN_STATUS_VARIANT: Record<string, StatusVariant> = {
   Pending: "warning",
   "In Transit": "teal",
   Received: "success",
@@ -397,6 +397,44 @@ const RETURN_STATUS_VARIANT: Record<string, StatusVariant> = {
 
 /** Once a Return Order reaches one of these, its real Stock effect has either already been applied (Received/Dispatched) or it's a closed-out record (Rejected/Cancelled) — editing or cancelling it is no longer allowed from here on. See createReturnOrderAction's doc comment for why this exists (never silently re-apply/duplicate a stock movement, and never let a closed record be reopened). */
 export const RETURN_ORDER_FINAL_STATUSES = ["Received", "Dispatched", "Rejected", "Cancelled"] as const;
+
+/**
+ * One real, persisted stage transition for a Return Order — same shape
+ * convention as service-centre's StageHistoryEntry, plus an `actor` since a
+ * Return Order's transitions genuinely happen on different sides of the
+ * handoff (Service Centre vs Warehouse) even though this app is single-login
+ * — the actor here is a role label, not a real per-user identity. Appended
+ * by every stage-transition action in actions.ts, never overwritten. This is
+ * the only source getReturnOrderTimeline reads real transitions from.
+ */
+export interface ReturnOrderStageHistoryEntry {
+  /** ISO timestamp of the transition. */
+  at: string;
+  /** The status the Return Order moved INTO (e.g. "Pending", "In Transit", "Received", "Dispatched", "Rejected", "Cancelled"). */
+  stage: string;
+  /** Role-ish label for who performed this transition — "Service Centre" or "Warehouse" (no per-user identity in this single-login app). */
+  actor: string;
+}
+
+/**
+ * The stage a given direction's Return Order STARTS at, and the sequence it
+ * can move through — see actions.ts's markReturnOrderInTransitAction /
+ * warehouseInwardReturnOrderAction / dispatchReturnOrderAction /
+ * rejectReturnOrderAction for the actions that walk a record along this:
+ *   Inbound (Service Centre -> Warehouse): Pending -> In Transit -> Received
+ *     (terminal, stock added), or -> Rejected (terminal, no stock effect)
+ *     as an alternate branch from either Pending or In Transit.
+ *   Outbound (Warehouse -> Vendor/OEM): Pending -> Dispatched (terminal,
+ *     stock deducted), or -> Rejected (terminal, no stock effect) as an
+ *     alternate branch. Cancelled remains reachable only via the existing
+ *     cancelReturnOrderAction (the "abandon before anything shipped" case),
+ *     not a new stage action.
+ * "Created" is used as the UI label for the initial Pending stage (matches
+ * how the partner actually talks about raising a return) — the stored
+ * status value itself stays "Pending" throughout, so RETURN_STATUS_VARIANT/
+ * RETURN_ORDER_FINAL_STATUSES/applyReturnOrderStockEffect need no changes.
+ */
+export const RETURN_ORDER_INITIAL_STATUS = "Pending";
 
 export const returnOrderColumns: Column[] = [
   { key: "id", label: "Return Order ID", type: "text" },
@@ -480,7 +518,6 @@ export async function getReturnOrderFormFields(partnerId: string): Promise<FormF
     { key: "destinationWarehouseName", label: "Destination Warehouse (Inbound only)", type: "select", required: false, options: warehouseOptions.map((o) => o.label) },
     { key: "vendorName", label: "Vendor / OEM Name (Outbound only)", type: "text", required: false },
     { key: "challanNumber", label: "Challan / Delivery Note Number (required for Outbound before stock is deducted)", type: "text", required: false },
-    { key: "status", label: "Status", type: "select", required: true, options: ["Pending", "In Transit", "Received", "Dispatched", "Rejected"] },
     { key: "createdDate", label: "Created Date", type: "date", required: true },
   ];
 }
@@ -508,7 +545,26 @@ export function getReturnOrderDetailFields(record: Row): RecordField[] {
   ];
 }
 
+/**
+ * Renders from the record's real, persisted `stageHistory`
+ * (ReturnOrderStageHistoryEntry[]) — appended to by every stage-transition
+ * action in actions.ts, never overwritten. Falls back to synthesizing a
+ * single "created" entry from the static direction/createdDate fields when
+ * `stageHistory` is empty, so the two hand-authored sample rows (RTN-4000/
+ * RTN-4001, which predate this field) and any other pre-existing record
+ * still render something sensible instead of an empty timeline.
+ */
 export function getReturnOrderTimeline(record: Row): TimelineEntry[] {
+  const history = (record["stageHistory"] as ReturnOrderStageHistoryEntry[] | undefined) ?? [];
+  if (history.length > 0) {
+    return history.map((h, i) => ({
+      id: `stage-${i}`,
+      label: `Marked ${h.stage === "Pending" ? "Created" : h.stage}`,
+      timestamp: h.at,
+      actor: h.actor,
+    }));
+  }
+
   if (record["direction"] === "Outbound") {
     return [
       {
@@ -656,6 +712,7 @@ export const stockTransferColumns: Column[] = [
   { key: "toWarehouseName", label: "To Warehouse", type: "text" },
   { key: "toPartnerId", label: "To Partner", type: "text" },
   { key: "quantity", label: "Quantity", type: "text" },
+  { key: "serialNumbers", label: "Serial / Barcode Numbers", type: "text" },
   { key: "transferDate", label: "Transfer Date", type: "date" },
   { key: "reason", label: "Reason / Note", type: "text" },
   { key: "status", label: "Status", type: "select-chip", chipVariantMap: STOCK_TRANSFER_STATUS_VARIANT },
@@ -675,6 +732,13 @@ export async function getStockTransferFormFields(partnerId: string): Promise<For
     { key: "toWarehouseName", label: "To Warehouse (leave blank for a partner-to-partner transfer)", type: "select", required: false, options: warehouseOptions.map((o) => o.label) },
     { key: "toPartnerId", label: "OR Transfer To Partner ID (e.g. SC0042) — requires Super Admin approval", type: "text", required: false },
     { key: "quantity", label: "Quantity", type: "number", required: true },
+    {
+      key: "serialNumbers",
+      label: "Serial / Barcode Numbers",
+      type: "textarea",
+      required: false,
+      placeholder: "One serial/barcode per line. Only required for an own-warehouse transfer (moves stock immediately) of a material that's Serialized in BOM — count must match Quantity exactly. Leave blank for non-serialized materials or a partner-to-partner transfer (captured once Super Admin approves it).",
+    },
     { key: "transferDate", label: "Transfer Date", type: "date", required: true },
     { key: "reason", label: "Reason / Note", type: "text", required: false },
     { key: "status", label: "Status", type: "select", required: true, options: [...STOCK_TRANSFER_STATUSES] },
@@ -690,6 +754,11 @@ export function getStockTransferDetailFields(record: Row): RecordField[] {
     { label: "To Warehouse", value: r["toWarehouseName"] || "—", type: "text" },
     { label: "To Partner", value: r["toPartnerId"] || "—", type: "text" },
     { label: "Quantity", value: r["quantity"], type: "text" },
+    {
+      label: "Serial / Barcode Numbers",
+      value: Array.isArray(r["serialNumbers"]) && r["serialNumbers"].length > 0 ? r["serialNumbers"].join(", ") : "—",
+      type: "text",
+    },
     { label: "Transfer Date", value: r["transferDate"], type: "date" },
     { label: "Reason / Note", value: r["reason"], type: "text" },
     {

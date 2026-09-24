@@ -12,6 +12,8 @@ export function StockClientTable({ partnerId, columns, rows }: { partnerId: stri
       rows={rows}
       onRowClick={(row: Row) => router.push(`/partner/${partnerId}/inventory/stock/${row["id"]}`)}
       enableQuickView
+      enableSearch
+      searchPlaceholder="Search material, warehouse, SKU…"
     />
   );
 }

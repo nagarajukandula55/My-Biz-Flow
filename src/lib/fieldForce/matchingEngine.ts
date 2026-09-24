@@ -10,6 +10,7 @@ import { findEligibleProviders } from "@/lib/fieldForce/matching";
 import { listProviders } from "@/lib/fieldForce/providersData";
 import { notify } from "@/lib/fieldForce/notifications";
 import { sendSms } from "@/lib/sms";
+import { formatDate } from "@/lib/format";
 
 const MAX_OFFERS_PER_BOOKING = 10;
 
@@ -60,7 +61,7 @@ export async function dispatchBookingRequest(bookingId: string): Promise<{ offer
             recipientId: provider.id,
             type: "job-offer",
             title: `New job: ${booking.service.name}`,
-            body: `${booking.address.pincode} — ${booking.slotLabel} on ${booking.scheduledAt.toDateString()}. Standard rate ₹${(booking.priceAmount / 100).toLocaleString("en-IN")}.`,
+            body: `${booking.address.pincode} — ${booking.slotLabel} on ${formatDate(booking.scheduledAt.toISOString())}. Standard rate ₹${(booking.priceAmount / 100).toLocaleString("en-IN")}.`,
             relatedBookingId: booking.id,
           }),
           sendSms(

@@ -1,7 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createLead, bulkCreateLeads, assignLead, autoAssignBatch, autoAssignByTerritory, type LeadStatus } from "@/lib/telecalling/leadsData";
+import { redirect } from "next/navigation";
+import { createLead, updateLead, bulkCreateLeads, assignLead, autoAssignBatch, autoAssignByTerritory, type LeadStatus } from "@/lib/telecalling/leadsData";
 import { logCall, type CallOutcome } from "@/lib/telecalling/callsData";
 import { createTemplate, updateTemplate, deleteTemplate, type MessageChannel } from "@/lib/telecalling/templatesData";
 import { sendTemplateToLead } from "@/lib/telecalling/messaging";
@@ -53,6 +54,24 @@ export async function createLeadAction(partnerId: string, formData: FormData) {
   // matching no agent's territory is left unassigned rather than guessed at.
   await autoAssignByTerritory(partnerId, lead.importBatch);
   revalidatePath(`/partner/${partnerId}/telecalling`);
+}
+
+export async function updateLeadAction(partnerId: string, formData: FormData) {
+  partnerId = await requireSessionOrStaffPartnerId(partnerId);
+  const id = String(formData.get("id") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
+  const phone = String(formData.get("phone") ?? "").trim();
+  const email = String(formData.get("email") ?? "").trim();
+  const source = String(formData.get("source") ?? "").trim();
+  const state = String(formData.get("state") ?? "").trim();
+  const city = String(formData.get("city") ?? "").trim();
+  const notes = String(formData.get("notes") ?? "").trim();
+  if (!id) throw new Error("Lead id is required");
+  if (!phone) throw new Error("Phone is required");
+  await updateLead(id, partnerId, { name: name || phone, phone, email, source, state, city, notes });
+  revalidatePath(`/partner/${partnerId}/telecalling`);
+  revalidatePath(`/partner/${partnerId}/telecalling/leads/${id}`);
+  redirect(`/partner/${partnerId}/telecalling/leads/${id}?updated=1`);
 }
 
 export async function importLeadsAction(partnerId: string, formData: FormData) {

@@ -1,10 +1,9 @@
 import { AppShell } from "@/components/AppShell";
 import { registerPage } from "@/lib/designer/registry";
 import { DashboardWidget } from "@/components/DashboardWidget";
-import { StatusChip } from "@/components/StatusChip";
 import { computeAgeingRows, getAgeingThresholdDays } from "@/lib/inventoryAgeing";
 import { setAgeingThresholdAction } from "./actions";
-import type { StatusVariant } from "@/components/StatusChip";
+import { AgeingClientTable } from "./AgeingClientTable";
 
 registerPage({
   id: "inventory.ageing.list",
@@ -20,12 +19,6 @@ registerPage({
 });
 
 export const dynamic = "force-dynamic";
-
-const STATUS_VARIANT: Record<string, StatusVariant> = {
-  Fresh: "success",
-  Watch: "warning",
-  Aging: "danger",
-};
 
 export default async function InventoryAgeingPage({ params }: { params: { partnerId: string } }) {
   const thresholdDays = await getAgeingThresholdDays(params.partnerId);
@@ -71,36 +64,7 @@ export default async function InventoryAgeingPage({ params }: { params: { partne
             No stock with a usable received date yet.
           </p>
         ) : (
-          <div className="mt-6 overflow-x-auto rounded-lg border border-border bg-bg-raised">
-            <table className="w-full min-w-[820px] border-collapse text-sm">
-              <thead>
-                <tr className="border-b border-border bg-bg-sunken text-left text-xs font-semibold uppercase tracking-wide text-text-muted">
-                  <th className="px-3 py-2.5">Material</th>
-                  <th className="px-3 py-2.5">Warehouse</th>
-                  <th className="px-3 py-2.5">Material Type</th>
-                  <th className="px-3 py-2.5 text-right">Qty</th>
-                  <th className="px-3 py-2.5">Last Received</th>
-                  <th className="px-3 py-2.5 text-right">Age (days)</th>
-                  <th className="px-3 py-2.5">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r) => (
-                  <tr key={r.stockId} className="border-b border-border last:border-b-0">
-                    <td className="px-3 py-2">{r.materialId}</td>
-                    <td className="px-3 py-2">{r.warehouseName}</td>
-                    <td className="px-3 py-2">{r.condition}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{r.qtyOnHand}</td>
-                    <td className="px-3 py-2">{new Date(r.lastReceivedAt).toLocaleDateString("en-IN")}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{r.ageDays}</td>
-                    <td className="px-3 py-2">
-                      <StatusChip label={r.status} variant={STATUS_VARIANT[r.status]} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <AgeingClientTable rows={rows} />
         )}
       </div>
     </AppShell>

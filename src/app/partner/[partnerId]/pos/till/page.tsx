@@ -106,7 +106,7 @@ export default async function PosTillPage({
                 <tbody>
                   {recentSessions.map((s) => (
                     <tr key={s.id} className="border-b border-border last:border-b-0">
-                      <td className="px-3 py-2">{s.openedAt.toLocaleString("en-IN")}</td>
+                      <td className="px-3 py-2">{s.openedAt.toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}</td>
                       <td className="px-3 py-2">{s.openedByStaff?.name ?? "—"}</td>
                       <td className="px-3 py-2 text-right tabular-nums">₹{s.openingFloat.toLocaleString("en-IN")}</td>
                       <td className="px-3 py-2 text-right tabular-nums">{s.expectedCash != null ? `₹${s.expectedCash.toLocaleString("en-IN")}` : "—"}</td>

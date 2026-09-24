@@ -6,6 +6,7 @@ import { BulkUploadButton } from "@/components/BulkUploadButton";
 import { bulkImportStockAdjustmentsAction } from "./actions";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { stockAdjustmentColumns, getStockAdjustmentFormFields } from "@/lib/sample-data/warehouse";
+import { getBomOptionsForPartner } from "@/lib/sample-data/bom";
 import { listBusinessRecords } from "@/lib/businessRecords";
 
 registerPage({
@@ -30,6 +31,7 @@ export default async function StockAdjustmentsPage({ params }: { params: { partn
   const rows = await listBusinessRecords(params.partnerId, "inventory-stock-adjustments");
   // Partner-scoped Warehouse/Material options — see getWarehouseOptionsForPartner/getBomOptionsForPartner's doc comments.
   const formFields = await getStockAdjustmentFormFields(params.partnerId);
+  const materialOptions = await getBomOptionsForPartner(params.partnerId);
 
   return (
     <AppShell
@@ -44,7 +46,7 @@ export default async function StockAdjustmentsPage({ params }: { params: { partn
             templateFilename="stock-adjustments-template.csv"
             importAction={bulkImportStockAdjustmentsAction.bind(null, params.partnerId)}
           />
-          <StockAdjustmentsNewButton partnerId={params.partnerId} fields={formFields} />
+          <StockAdjustmentsNewButton partnerId={params.partnerId} fields={formFields} materialOptions={materialOptions} />
         </div>
       }
     >

@@ -12,6 +12,8 @@ export function ReturnOrdersClientTable({ partnerId, columns, rows }: { partnerI
       rows={rows}
       onRowClick={(row: Row) => router.push(`/partner/${partnerId}/inventory/return-orders/${row["id"]}`)}
       enableQuickView
+      enableSearch
+      searchPlaceholder="Search material, workorder, vendor, challan no…"
     />
   );
 }

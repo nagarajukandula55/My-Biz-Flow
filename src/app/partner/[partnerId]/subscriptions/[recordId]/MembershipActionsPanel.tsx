@@ -6,6 +6,7 @@ import { Modal } from "@/components/Modal";
 import { StatusChip } from "@/components/StatusChip";
 import type { Membership } from "@/lib/sample-data/subscriptions";
 import { checkInAction, freezeMembershipAction, recordPaymentAction, resumeMembershipAction } from "../actions";
+import { formatDateTime } from "@/lib/format";
 
 export function MembershipActionsPanel({ partnerId, membership }: { partnerId: string; membership: Membership }) {
   const router = useRouter();
@@ -108,7 +109,7 @@ export function MembershipActionsPanel({ partnerId, membership }: { partnerId: s
           <ul className="mt-3 space-y-1.5 text-sm text-text-muted">
             {recentCheckIns.map((c, i) => (
               <li key={i} className="flex justify-between border-b border-border pb-1.5 last:border-0">
-                <span className="text-text">{new Date(c.timestamp).toLocaleString()}</span>
+                <span className="text-text">{formatDateTime(c.timestamp)}</span>
               </li>
             ))}
           </ul>

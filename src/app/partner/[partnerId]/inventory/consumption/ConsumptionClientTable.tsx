@@ -10,7 +10,7 @@ export function ConsumptionClientTable({ partnerId, columns, rows }: { partnerId
     <div>
       <div className="mb-3 flex justify-end">
         <RecordCsvExportButton
-          columns={cols.map((c) => c.key)}
+          columns={cols.map((c) => ({ key: c.key, type: c.type === "date" ? "date" : c.type === "datetime" ? "datetime" : undefined }))}
           rows={rows}
           filename={`parts-consumption-${partnerId}-${new Date().toISOString().slice(0, 10)}.csv`}
         />

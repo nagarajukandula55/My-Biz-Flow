@@ -68,6 +68,19 @@ type DataTableProps = {
    * (see QuickViewModal) instead of navigating — an alternative to
    * onRowClick's full detail-page navigation, not a replacement for it. */
   enableQuickView?: boolean;
+  /**
+   * Adds a text input above the table that filters `rows` purely client-side
+   * (no network call, no server round-trip per keystroke) — matches every
+   * row whose stringified column values contain the query, case-insensitive.
+   * Safe default for any list whose full row set is already fetched (which
+   * is every DataTable caller today — none of them paginate server-side).
+   * Reuses the exact input styling every other ad-hoc search box in the app
+   * already uses (see PnaClientTable/LeadsClient) rather than inventing a
+   * new one.
+   */
+  enableSearch?: boolean;
+  /** Placeholder for the search input — defaults to "Search…". Only used when enableSearch is true. */
+  searchPlaceholder?: string;
 };
 
 export function renderCell(column: Column, row: Row) {
@@ -175,11 +188,36 @@ export function renderCell(column: Column, row: Row) {
   }
 }
 
-export function DataTable({ columns, rows, onRowClick, enableQuickView }: DataTableProps) {
+export function DataTable({ columns, rows, onRowClick, enableQuickView, enableSearch, searchPlaceholder }: DataTableProps) {
   const [quickViewRow, setQuickViewRow] = useState<Row | null>(null);
+  const [search, setSearch] = useState("");
+
+  const q = search.trim().toLowerCase();
+  const visibleRows = !enableSearch || !q
+    ? rows
+    : rows.filter((row) =>
+        columns.some((column) => {
+          const value = row[column.key];
+          if (value == null) return false;
+          const text = Array.isArray(value) ? value.join(" ") : String(value);
+          return text.toLowerCase().includes(q);
+        })
+      );
 
   return (
-    <div className="w-full overflow-x-auto rounded-lg border border-border bg-bg-raised">
+    <div className="w-full">
+      {enableSearch && (
+        <div className="mb-3">
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={searchPlaceholder ?? "Search…"}
+            className="w-full max-w-xs rounded-md border border-border bg-bg px-3 py-1.5 text-sm text-text outline-none focus:border-accent sm:w-72"
+          />
+        </div>
+      )}
+      <div className="w-full overflow-x-auto rounded-lg border border-border bg-bg-raised">
       <table className="w-full min-w-max border-collapse text-sm">
         <thead>
           <tr className="border-b border-border bg-bg-sunken">
@@ -195,7 +233,7 @@ export function DataTable({ columns, rows, onRowClick, enableQuickView }: DataTa
           </tr>
         </thead>
         <tbody>
-          {rows.map((row, i) => (
+          {visibleRows.map((row, i) => (
             <tr
               key={i}
               onClick={() => onRowClick?.(row)}
@@ -237,6 +275,7 @@ export function DataTable({ columns, rows, onRowClick, enableQuickView }: DataTa
           title={quickViewRow ? String(quickViewRow[columns[0]?.key] ?? "Quick view") : "Quick view"}
         />
       )}
+      </div>
     </div>
   );
 }

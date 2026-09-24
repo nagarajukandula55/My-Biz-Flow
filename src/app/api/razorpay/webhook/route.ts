@@ -77,12 +77,16 @@ export async function POST(request: Request) {
               billingCycle: cycleLabel(partner.billingCycle ?? ""),
               invoiceNumber: `PLT-${paymentEntity.id}`,
             };
-            sendPlatformSubscriptionPaymentEmail(receiptVars).catch(() => {});
+            sendPlatformSubscriptionPaymentEmail(receiptVars).catch((err) =>
+              console.error(`[razorpay/webhook] Failed to send payment receipt email for partner ${partner.id}:`, err)
+            );
             sendPartnerTelegramAlert(
               partner.id,
               "paymentReceived",
               await paymentReceivedMessage({ partnerBusinessName: partner.businessName, amount: receiptVars.amount, planName: due.planName })
-            ).catch(() => {});
+            ).catch((err) =>
+              console.error(`[razorpay/webhook] Failed to send payment Telegram alert for partner ${partner.id}:`, err)
+            );
           } catch (err) {
             const alreadyRecorded =
               err instanceof Error && "code" in err && (err as { code?: string }).code === "P2002";
@@ -94,7 +98,7 @@ export async function POST(request: Request) {
                 }`,
                 source: "api/razorpay/webhook",
                 severity: "error",
-              }).catch(() => {});
+              }).catch((logErr) => console.error("[razorpay/webhook] Failed to persist error log entry:", logErr));
             }
           }
         }

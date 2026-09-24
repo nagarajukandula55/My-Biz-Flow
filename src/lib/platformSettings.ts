@@ -12,12 +12,19 @@
 import { prisma } from "@/lib/prisma";
 import { env } from "@/lib/env";
 import type { ReportFrequency } from "@/lib/telegramTemplates";
+import { safeCache as cache } from "@/lib/safeCache";
 
 const SETTINGS_ID = "platform";
 
-async function getSettings() {
+// Wrapped in cache(): the getters below (getOpsChatId, getErrorChatId,
+// getEnabledWhatsappTriggers, getLastPlatformReportSentAt) all read the same
+// singleton row and are often called more than once within one
+// request/render (e.g. a cron route or errorLog.ts logging several errors in
+// one pass) — dedupes those reads to a single query, no staleness risk since
+// it only spans one request.
+const getSettings = cache(async function getSettings() {
   return prisma.platformSettings.findUnique({ where: { id: SETTINGS_ID } });
-}
+});
 
 /** The Telegram group for business-facing ops notifications (signups, bookings, support tickets, billing failures). */
 export async function getOpsChatId(): Promise<string | undefined> {

@@ -2,10 +2,36 @@
 
 import { useState } from "react";
 import type { Row } from "@/components/DataTable";
+import { formatDateForExport } from "@/lib/format";
 
 function toCsvValue(value: unknown): string {
   const str = value === null || value === undefined ? "" : String(value);
   return /[",\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
+}
+
+/**
+ * A plain string column key, or a key paired with its type so date/datetime
+ * fields get run through formatDateForExport() instead of being written raw
+ * — a raw ISO timestamp is at least unambiguous, but formatting it
+ * consistently here means no caller can accidentally hand this a
+ * `Date`/`.toString()`/`.toLocaleString()` value and have it land in the
+ * CSV as alphabetic junk (weekday/month names, "GMT+0530 (India Standard
+ * Time)") instead of a clean date.
+ */
+type ExportColumn = string | { key: string; type?: "date" | "datetime" };
+
+function columnKey(c: ExportColumn): string {
+  return typeof c === "string" ? c : c.key;
+}
+
+function formatExportCell(c: ExportColumn, row: Row): unknown {
+  const key = columnKey(c);
+  const value = row[key];
+  if (typeof c !== "string" && value != null && value !== "") {
+    if (c.type === "date") return formatDateForExport(String(value));
+    if (c.type === "datetime") return formatDateForExport(String(value), true);
+  }
+  return value;
 }
 
 /**
@@ -15,7 +41,7 @@ function toCsvValue(value: unknown): string {
  * serializes them. Same Blob + `<a download>` mechanism every other export
  * button in this app uses.
  */
-export function RecordCsvExportButton({ columns, rows, filename }: { columns: string[]; rows: Row[]; filename: string }) {
+export function RecordCsvExportButton({ columns, rows, filename }: { columns: ExportColumn[]; rows: Row[]; filename: string }) {
   const [message, setMessage] = useState<string | null>(null);
 
   function handleDownload() {
@@ -23,9 +49,9 @@ export function RecordCsvExportButton({ columns, rows, filename }: { columns: st
       setMessage("Nothing to export.");
       return;
     }
-    const lines = [columns.map(toCsvValue).join(",")];
+    const lines = [columns.map((c) => toCsvValue(columnKey(c))).join(",")];
     for (const row of rows) {
-      lines.push(columns.map((c) => toCsvValue(row[c])).join(","));
+      lines.push(columns.map((c) => toCsvValue(formatExportCell(c, row))).join(","));
     }
     const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);

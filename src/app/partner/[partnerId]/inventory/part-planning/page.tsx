@@ -13,7 +13,7 @@ registerPage({
   superAdminOnly: false,
   customizableRegions: [{ key: "forecast", label: "Reorder forecast" }],
   explanation:
-    "Reorder forecast for parts, over a partner-configurable window (default 30 days, editable below). For each material consumed at least once in the window, computes a daily usage rate from real Parts Consumption history (deductInventoryForWorkorderAction), projects days-of-stock-left from current Good Available Qty, and suggests a pre-order quantity (one window's worth of projected usage minus what's already on hand) — flagged 'Reorder soon' once projected stock-out is inside half the window. Setting the window to 20 days re-runs the same math over the last 20 days of consumption and forecasts 20 days ahead instead of 30.",
+    "Reorder forecast for parts, over a partner-configurable window (default 30 days, editable below). For each material consumed at least once in the window, computes a daily usage rate from real Parts Consumption history (deductInventoryForWorkorderAction), projects days-of-stock-left from current Good Available Qty, and suggests a pre-order quantity (one window's worth of projected usage minus what's already on hand) — flagged 'Reorder soon' once projected stock-out is inside half the window. Also shows each material's static BOM Reorder Level (a partner-set minimum, independent of recent usage) side by side, since a part with no recent consumption still deserves its own 'below static minimum' flag rather than being ignored. Setting the window to 20 days re-runs the same math over the last 20 days of consumption and forecasts 20 days ahead instead of 30.",
   sourceFile: "src/app/partner/[partnerId]/inventory/part-planning/page.tsx",
 });
 
@@ -72,6 +72,7 @@ export default async function PartPlanningPage({ params }: { params: { partnerId
                   <th className="px-3 py-2.5 text-right">On Hand (Good)</th>
                   <th className="px-3 py-2.5 text-right">Days Left</th>
                   <th className="px-3 py-2.5 text-right">Suggested Pre-Order Qty</th>
+                  <th className="px-3 py-2.5 text-right">Static Reorder Level</th>
                 </tr>
               </thead>
               <tbody>
@@ -90,6 +91,13 @@ export default async function PartPlanningPage({ params }: { params: { partnerId
                       {Number.isFinite(f.daysLeft) ? f.daysLeft : "—"}
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums">{f.suggestedReorderQty || "—"}</td>
+                    <td
+                      className={`px-3 py-2 text-right tabular-nums ${
+                        f.belowStaticReorderLevel ? "font-semibold text-danger" : "text-text-muted"
+                      }`}
+                    >
+                      {f.staticReorderLevel !== undefined ? f.staticReorderLevel : "—"}
+                    </td>
                   </tr>
                 ))}
               </tbody>

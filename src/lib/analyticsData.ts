@@ -22,6 +22,7 @@ import {
 import { listBusinessRecords } from "@/lib/businessRecords";
 import { getAvailabilityByMaterial } from "@/lib/inventoryStock";
 import type { ComboTrendPoint } from "@/components/charts/ComboTrendCard";
+import { istDateKey } from "@/lib/format";
 
 export async function computeModuleStat(
   partnerId: string,
@@ -59,10 +60,10 @@ export async function getRevenueTrend(partnerId: string): Promise<LineSeriesPoin
   for (let i = 0; i < 7; i++) {
     const d = new Date(since);
     d.setDate(since.getDate() + i);
-    buckets.set(d.toDateString(), 0);
+    buckets.set(istDateKey(d), 0);
   }
   for (const r of rows) {
-    const key = r.createdAt.toDateString();
+    const key = istDateKey(r.createdAt);
     if (!buckets.has(key)) continue;
     const data = r.data as Record<string, unknown>;
     const amount = typeof data.totalAmount === "number" ? data.totalAmount : 0;

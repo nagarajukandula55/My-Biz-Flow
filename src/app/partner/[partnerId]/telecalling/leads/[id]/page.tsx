@@ -6,6 +6,7 @@ import { StatusChip } from "@/components/StatusChip";
 import { getLead } from "@/lib/telecalling/leadsData";
 import { listCallsForLead } from "@/lib/telecalling/callsData";
 import { listMessagesForLead } from "@/lib/telecalling/messaging";
+import { formatDateTime } from "@/lib/format";
 
 registerPage({
   id: "telecalling.lead-detail",
@@ -35,9 +36,14 @@ export default async function LeadDetailPage({ params }: { params: { partnerId: 
     <AppShell topbarTitle="Telecalling — Lead Detail">
       <div className="mbf-page">
         <div className="border-b border-border bg-bg-raised px-6 py-4">
-          <Link href={`/partner/${params.partnerId}/telecalling`} className="text-sm font-semibold text-accent hover:underline">
-            ← Back to Leads
-          </Link>
+          <div className="flex items-center justify-between">
+            <Link href={`/partner/${params.partnerId}/telecalling`} className="text-sm font-semibold text-accent hover:underline">
+              ← Back to Leads
+            </Link>
+            <Link href={`/partner/${params.partnerId}/telecalling/leads/${params.id}/edit`} className="btn-outline">
+              Edit
+            </Link>
+          </div>
           <div className="mt-2 flex flex-wrap items-center gap-3">
             <h1 className="font-display text-lg font-bold text-text">{lead.name}</h1>
             <StatusChip label={lead.status} />
@@ -61,13 +67,13 @@ export default async function LeadDetailPage({ params }: { params: { partnerId: 
                   <div key={c.id} className="rounded-lg border border-border bg-bg-raised p-3">
                     <div className="flex items-center justify-between">
                       <span className="font-semibold text-text">{c.outcome}</span>
-                      <span className="text-xs text-text-muted">{new Date(c.createdAt).toLocaleString()}</span>
+                      <span className="text-xs text-text-muted">{formatDateTime(c.createdAt.toISOString())}</span>
                     </div>
                     <p className="mt-1 text-xs text-text-muted">by {c.agentName}</p>
                     {c.notes && <p className="mt-1.5 text-sm text-text">{c.notes}</p>}
                     {c.callbackAt && (
                       <p className="mt-1.5 text-xs font-semibold text-warning">
-                        Callback scheduled: {new Date(c.callbackAt).toLocaleString()}
+                        Callback scheduled: {formatDateTime(c.callbackAt.toISOString())}
                       </p>
                     )}
                   </div>
@@ -86,7 +92,7 @@ export default async function LeadDetailPage({ params }: { params: { partnerId: 
                   <div key={m.id} className="rounded-lg border border-border bg-bg-raised p-3">
                     <div className="flex items-center justify-between">
                       <span className="font-semibold text-text">{m.channel.toUpperCase()}</span>
-                      <span className="text-xs text-text-muted">{new Date(m.createdAt).toLocaleString()}</span>
+                      <span className="text-xs text-text-muted">{formatDateTime(m.createdAt.toISOString())}</span>
                     </div>
                     <p className="mt-1.5 whitespace-pre-wrap text-sm text-text">{m.body}</p>
                     <StatusChip

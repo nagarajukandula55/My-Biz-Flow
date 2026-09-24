@@ -5,6 +5,7 @@ import { StatusChip } from "@/components/StatusChip";
 import { Modal } from "@/components/Modal";
 import { computeTier, EARN_RATE, type LoyaltyTierName, type LoyaltyTransaction } from "@/lib/sample-data/loyalty-rewards";
 import { earnPointsAction, redeemPointsAction } from "./actions";
+import { formatDateTime } from "@/lib/format";
 
 const TIER_VARIANT: Record<LoyaltyTierName, "neutral" | "amber" | "teal"> = {
   Silver: "neutral",
@@ -127,7 +128,7 @@ export function LoyaltyLifecycle({
                   </div>
                   <div className="text-right">
                     <div className="font-semibold text-text">{t.type === "Earn" ? "+" : "-"}{t.points} pts</div>
-                    <div className="text-xs text-text-muted">{new Date(t.timestamp).toLocaleString()}</div>
+                    <div className="text-xs text-text-muted">{formatDateTime(t.timestamp)}</div>
                   </div>
                 </div>
               ))}

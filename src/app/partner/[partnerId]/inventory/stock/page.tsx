@@ -40,7 +40,7 @@ export default async function StockPage({ params }: { params: { partnerId: strin
       topbarActions={
         <div className="flex items-center gap-3">
           <RecordCsvExportButton
-            columns={columns.map((c) => c.key)}
+            columns={columns.map((c) => ({ key: c.key, type: c.type === "date" ? "date" : c.type === "datetime" ? "datetime" : undefined }))}
             rows={rows}
             filename={`stock-${params.partnerId}-${new Date().toISOString().slice(0, 10)}.csv`}
           />

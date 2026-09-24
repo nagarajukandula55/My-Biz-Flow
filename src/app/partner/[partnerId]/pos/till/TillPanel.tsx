@@ -55,7 +55,7 @@ export function TillPanel({
         <div className="flex items-center justify-between">
           <h2 className="font-display text-base font-bold text-text">Till Open</h2>
           <span className="text-xs text-text-muted">
-            Opened by {openSession.openedByName} — {new Date(openSession.openedAt).toLocaleString("en-IN")}
+            Opened by {openSession.openedByName} — {new Date(openSession.openedAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}
           </span>
         </div>
         <p className="mt-1 text-sm text-text-muted">Opening float: ₹{openSession.openingFloat.toLocaleString("en-IN")}</p>

@@ -8,7 +8,8 @@ import type { Row } from "@/components/DataTable";
 import { getPartner } from "@/lib/partnerData";
 import { runBulkImport, type BulkImportResult } from "@/lib/bulkImportCsv";
 import { getStockTransferFormFields } from "@/lib/sample-data/warehouse";
-import { adjustStockQty, getQtyOnHand } from "@/lib/inventoryStock";
+import { getBomOptionsForPartner } from "@/lib/sample-data/bom";
+import { adjustStockQty, getQtyOnHand, parseSerialNumbers, validateSerialNumbers } from "@/lib/inventoryStock";
 
 /**
  * Creates a stock transfer — same generic create for an intra-partner
@@ -58,6 +59,10 @@ export async function createStockTransferAction(
       toWarehouseName: "",
       toPartnerId,
       status: "Pending Super Admin Approval",
+      // Serials aren't captured yet — stock (and any serialized units)
+      // only actually moves once Super Admin approves this transfer, so
+      // there's nothing real to validate against at this point.
+      serialNumbers: [],
     });
     // Partner-to-partner: this side's own stock isn't touched until Super
     // Admin approves the transfer (see /admin/stock-transfers in
@@ -72,10 +77,24 @@ export async function createStockTransferAction(
       return { error: `Cannot transfer ${quantity} — only ${available} available at ${fromWarehouseName}.` };
     }
 
+    // Stock moves immediately for an own-warehouse transfer, so a Serialized
+    // material needs its per-unit serial/barcode numbers captured right
+    // here — same rule Part Orders/Stock Take enforce at the moment stock
+    // actually leaves a warehouse (see MaterialLineItemsTable's doc comment
+    // for why this can't auto-lookup a material from a scanned serial).
+    const bomOptions = await getBomOptionsForPartner(partnerId);
+    const isSerialized = bomOptions.some((o) => o.label === materialId && o.serialized);
+    const serialNumbers = parseSerialNumbers(values["serialNumbers"]);
+    if (isSerialized) {
+      const error = validateSerialNumbers(serialNumbers, quantity, materialId);
+      if (error) return { error };
+    }
+
     record = await createBusinessRecord(partnerId, "inventory-stock-transfers", {
       ...values,
       toPartnerId: "",
       status: "Completed",
+      serialNumbers: isSerialized ? serialNumbers : [],
     });
     await adjustStockQty(partnerId, materialId, materialId, fromWarehouseName, -quantity);
     await adjustStockQty(partnerId, materialId, materialId, toWarehouseName, quantity);

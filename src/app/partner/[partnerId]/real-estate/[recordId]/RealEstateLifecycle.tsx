@@ -5,6 +5,7 @@ import { StatusChip } from "@/components/StatusChip";
 import { Modal } from "@/components/Modal";
 import { LEAD_STAGES, type LeadStage } from "@/lib/sample-data/real-estate";
 import { scheduleSiteVisitAction, updateLeadStageAction } from "./actions";
+import { formatDateTime } from "@/lib/format";
 
 const STAGE_VARIANT: Record<LeadStage, "neutral" | "warning" | "teal" | "success" | "danger"> = {
   New: "neutral",
@@ -148,7 +149,7 @@ export function RealEstateLifecycle({
         >
           <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">Site Visit</div>
           <div className="mt-0.5 text-text">
-            {agentName ? `${agentName} — ${visitStart ? new Date(visitStart).toLocaleString() : "not scheduled"}` : "Schedule a site visit"}
+            {agentName ? `${agentName} — ${visitStart ? formatDateTime(visitStart) : "not scheduled"}` : "Schedule a site visit"}
           </div>
         </button>
         {commissionAmount !== undefined && (

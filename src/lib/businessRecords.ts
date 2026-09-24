@@ -45,6 +45,30 @@ export const listBusinessRecords = cache(async function listBusinessRecords(
   return rows.map(toRow);
 });
 
+/**
+ * Like `listBusinessRecords`, but narrows at the Prisma query level to rows
+ * whose given JSON date field is on/after `sinceIso` — for callers (e.g.
+ * Part Planning's consumption-based forecast) that only need a trailing
+ * window out of a table that can grow large, instead of pulling the whole
+ * moduleSlug history into memory and filtering client-side.
+ */
+export async function listBusinessRecordsSince(
+  partnerId: string,
+  moduleSlug: string,
+  dateField: string,
+  sinceIso: string
+): Promise<Row[]> {
+  const rows = await prisma.businessRecord.findMany({
+    where: {
+      partnerId,
+      moduleSlug,
+      data: { path: [dateField], gte: sinceIso } as any,
+    },
+    orderBy: { createdAt: "desc" },
+  });
+  return rows.map(toRow);
+}
+
 /** Default page size for `listBusinessRecordsPaginated` — one place to change it consistently. */
 export const DEFAULT_BUSINESS_RECORD_PAGE_SIZE = 25;
 

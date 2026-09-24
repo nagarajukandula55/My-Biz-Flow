@@ -435,7 +435,13 @@ export async function sendPartnerTelegramReport(partnerId: string, cadence: Tele
   nextStamps[cadence] = new Date().toISOString();
   await prisma.telegramSettings
     .update({ where: { partnerId }, data: { lastReportSentAt: nextStamps } })
-    .catch(() => {});
+    .catch((err) => {
+      // Best-effort bookkeeping — the report itself already sent above, so
+      // this never blocks delivery. But a silent failure here would let
+      // alreadySentToday() keep reading stale/missing data and re-send the
+      // same cadence on the next cron trigger, so it must at least be logged.
+      console.error(`[sendPartnerTelegramReport] failed to persist lastReportSentAt for partner ${partnerId}, cadence ${cadence}:`, err);
+    });
   return delivered;
 }
 

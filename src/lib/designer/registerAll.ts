@@ -25,6 +25,7 @@ import "@/app/partner/[partnerId]/service-centre/[recordId]/edit/page";
 import "@/app/partner/[partnerId]/service-centre/inquiries/page";
 import "@/app/partner/[partnerId]/service-centre/pna/page";
 import "@/app/partner/[partnerId]/service-centre/inquiries/[recordId]/page";
+import "@/app/partner/[partnerId]/service-centre/inquiries/[recordId]/edit/page";
 import "@/app/partner/[partnerId]/service-centre/solutions/page";
 import "@/app/partner/[partnerId]/service-centre/solutions/new/page";
 import "@/app/partner/[partnerId]/service-centre/solutions/[recordId]/page";
@@ -150,6 +151,7 @@ import "@/app/partner/[partnerId]/inventory/stock/[recordId]/page";
 import "@/app/partner/[partnerId]/inventory/stock/[recordId]/edit/page";
 import "@/app/partner/[partnerId]/inventory/stock-adjustments/page";
 import "@/app/partner/[partnerId]/inventory/stock-adjustments/[recordId]/page";
+import "@/app/partner/[partnerId]/inventory/stock-adjustments/[recordId]/edit/page";
 import "@/app/partner/[partnerId]/inventory/stock-transfers/page";
 import "@/app/partner/[partnerId]/inventory/stock-transfers/new/page";
 import "@/app/partner/[partnerId]/inventory/stock-transfers/[recordId]/page";
@@ -251,3 +253,15 @@ import "@/app/partner/[partnerId]/field-force/provider/signup/page";
 import "@/app/partner/[partnerId]/field-force/provider/login/page";
 import "@/app/partner/[partnerId]/field-force/provider/dashboard/page";
 import "@/app/field-force-app/page";
+
+// Telecalling — these were never wired into this file, so registerPage()'s
+// side effect never ran for the whole module and none of it showed up in
+// the Designer registry despite every page already calling registerPage().
+import "@/app/partner/[partnerId]/telecalling/page";
+import "@/app/partner/[partnerId]/telecalling/queue/page";
+import "@/app/partner/[partnerId]/telecalling/agents/page";
+import "@/app/partner/[partnerId]/telecalling/templates/page";
+import "@/app/partner/[partnerId]/telecalling/leads/[id]/page";
+import "@/app/partner/[partnerId]/telecalling/leads/[id]/edit/page";
+import "@/app/partner/[partnerId]/telecalling/login/page";
+import "@/app/partner/[partnerId]/telecalling/change-password/page";

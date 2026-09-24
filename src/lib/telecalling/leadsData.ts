@@ -235,6 +235,30 @@ export async function bulkCreateLeads(
   return result.count;
 }
 
+/** Corrects a lead's own contact details (name/phone/email/source/state/city/notes) —
+ * a typo fixed after entry or import. Status/assignment changes go through
+ * updateLeadStatus/assignLead instead; this never touches either. */
+export async function updateLead(
+  id: string,
+  partnerId: string,
+  input: { name: string; phone: string; email?: string; source?: string; state?: string; city?: string; notes?: string }
+): Promise<void> {
+  const existing = await prisma.lead.findUniqueOrThrow({ where: { id } });
+  assertPartnerScope(partnerId, existing.partnerId);
+  await prisma.lead.update({
+    where: { id },
+    data: {
+      name: input.name,
+      phone: input.phone,
+      email: input.email || null,
+      source: input.source || null,
+      state: input.state || null,
+      city: input.city || null,
+      notes: input.notes || null,
+    },
+  });
+}
+
 export async function assignLead(id: string, partnerId: string, assignedToId: string | null): Promise<void> {
   const existing = await prisma.lead.findUniqueOrThrow({ where: { id } });
   assertPartnerScope(partnerId, existing.partnerId);

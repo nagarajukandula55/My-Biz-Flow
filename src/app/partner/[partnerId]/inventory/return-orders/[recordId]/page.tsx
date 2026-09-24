@@ -7,6 +7,7 @@ import { getReturnOrderDetailFields, getReturnOrderTimeline, returnOrderRelated,
 import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
 import { getBusinessRecord } from "@/lib/businessRecords";
 import { CancelReturnOrderButton } from "./CancelReturnOrderButton";
+import { ReturnOrderLifecycle } from "./ReturnOrderLifecycle";
 
 registerPage({
   id: "inventory.return-orders.detail",
@@ -42,12 +43,19 @@ export default async function ReturnOrdersDetailPage({
 
   return (
     <AppShell topbarTitle="Return Orders">
-      <div>
+      <div className="flex flex-col gap-5">
+        <ReturnOrderLifecycle
+          partnerId={params.partnerId}
+          recordId={params.recordId}
+          direction={String(record["direction"] ?? "Inbound")}
+          status={String(record["status"] ?? "Pending")}
+          timeline={timeline}
+        />
         <RecordDetail
           fields={fields}
           recordLabel={recordLabel}
           searchParams={searchParams}
-          timeline={timeline}
+          timeline={undefined}
           related={returnOrderRelated}
           headerSlot={
             <div className="flex items-center justify-between">

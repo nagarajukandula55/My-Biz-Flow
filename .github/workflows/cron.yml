@@ -11,16 +11,21 @@ on:
     # Telegram daily/weekly/monthly partner reports — target 9:00 PM IST =
     # 15:30 UTC. GitHub Actions `schedule` triggers are best-effort and
     # were observed landing anywhere from 08:00-20:00 UTC instead of 15:30
-    # (confirmed via run history), so a single scheduled entry isn't
-    # reliable enough. Fire every 15 min from 15:15-16:30 UTC (20:45-22:00
-    # IST) instead; the route itself (isWithinReportWindow, see
-    # src/lib/telegramReportData.ts) only actually sends inside that
-    # window, and alreadySentToday makes repeated in-window triggers a
-    # no-op once a cadence has sent. shouldSendReportToday() decides
-    # per-partner whether today is a send day for their frequency: DAILY
-    # every day, WEEKLY only Saturday, MONTHLY only the last calendar day
-    # of the month.
-    - cron: "15,30,45,0 15,16 * * *"
+    # (confirmed via run history) — and on some days apparently not firing
+    # at all within any narrow band, which is what let reports go unsent
+    # for days straight. A single scheduled entry, or even a 75-90 min
+    # spread, isn't reliable enough. Fire every 15 min across 15:00-18:45
+    # UTC (20:30 IST through past midnight) instead — this spans both the
+    # main send window (isWithinReportWindow, 20:30-23:00 IST) AND the
+    # 23:15 IST last-resort catch-up (isPastFinalCatchupDeadline), both in
+    # src/lib/telegramReportData.ts, so even a day where every run in the
+    # main window is skipped/delayed still gets a later run that forces
+    # the send rather than the day passing with nothing sent at all.
+    # alreadySentToday makes repeated triggers a no-op once a cadence has
+    # sent. shouldSendReportToday() decides per-partner whether today is a
+    # send day for their frequency: DAILY every day, WEEKLY only Saturday,
+    # MONTHLY only the last calendar day of the month.
+    - cron: "0,15,30,45 15,16,17,18 * * *"
     # Trial-expiry Telegram warnings — daily 9:30 PM IST = 16:00 UTC
     - cron: "0 16 * * *"
   workflow_dispatch: {}
@@ -39,7 +44,7 @@ jobs:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
 
   telegram-reports:
-    if: github.event.schedule == '15,30,45,0 15,16 * * *' || github.event_name == 'workflow_dispatch'
+    if: github.event.schedule == '0,15,30,45 15,16,17,18 * * *' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - name: Trigger telegram-reports (daily/weekly/monthly partner digests)

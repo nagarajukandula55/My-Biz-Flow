@@ -8,6 +8,7 @@ import {
   shouldSendReportToday,
   alreadySentToday,
   isWithinReportWindow,
+  isPastFinalCatchupDeadline,
   sendOnePartnerReport,
   sendReportRunOpsSummary,
   type ReportPushDetail,
@@ -44,10 +45,16 @@ export async function GET(request: Request) {
 
   // GitHub Actions now triggers this endpoint every 15 min through the
   // evening (see .github/workflows/cron.yml) since its `schedule` trigger
-  // is best-effort and can land late by anywhere from minutes to hours.
-  // Only actually send inside the real 9 PM IST window; other invocations
-  // are a cheap no-op.
-  if (!isWithinReportWindow(now)) {
+  // is best-effort and can land late by anywhere from minutes to hours, or
+  // be skipped some days entirely. Normally only send inside the 9 PM IST
+  // window; other invocations are a cheap no-op. But from 23:15 IST onward,
+  // send regardless of window — alreadySentToday still makes this a no-op
+  // for anything that DID go out earlier, so this only fires for a cadence
+  // the window's runs all missed, which is exactly what let reports go
+  // silently unsent for days at a time.
+  const inWindow = isWithinReportWindow(now);
+  const catchUp = isPastFinalCatchupDeadline(now);
+  if (!inWindow && !catchUp) {
     return NextResponse.json({ ok: true, skipped: "Outside 9 PM IST report window" });
   }
 

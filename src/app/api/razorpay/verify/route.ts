@@ -81,12 +81,16 @@ export async function POST(request: Request) {
         billingCycle: cycleLabel(partner.billingCycle ?? ""),
         invoiceNumber: `PLT-${razorpay_payment_id}`,
       };
-      sendPlatformSubscriptionPaymentEmail(receiptVars).catch(() => {});
+      sendPlatformSubscriptionPaymentEmail(receiptVars).catch((err) =>
+        console.error(`[razorpay/verify] Failed to send payment receipt email for partner ${partner.id}:`, err)
+      );
       sendPartnerTelegramAlert(
         partner.id,
         "paymentReceived",
         await paymentReceivedMessage({ partnerBusinessName: partner.businessName, amount: receiptVars.amount, planName: due.planName })
-      ).catch(() => {});
+      ).catch((err) =>
+        console.error(`[razorpay/verify] Failed to send payment Telegram alert for partner ${partner.id}:`, err)
+      );
     } catch (err) {
       // Unique constraint violation means this payment was already
       // recorded (e.g. by the webhook) — not an error, just a no-op.
@@ -100,7 +104,7 @@ export async function POST(request: Request) {
           }`,
           source: "api/razorpay/verify",
           severity: "error",
-        }).catch(() => {});
+        }).catch((logErr) => console.error("[razorpay/verify] Failed to persist error log entry:", logErr));
       }
     }
   }

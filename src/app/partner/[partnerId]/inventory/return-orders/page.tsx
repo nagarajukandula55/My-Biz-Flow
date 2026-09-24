@@ -6,6 +6,8 @@ import { BulkUploadButton } from "@/components/BulkUploadButton";
 import { bulkImportReturnOrdersAction } from "./actions";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { returnOrderColumns, getReturnOrderFormFields } from "@/lib/sample-data/warehouse";
+import { getBomOptionsForPartner } from "@/lib/sample-data/bom";
+import { getAvailabilityByMaterial } from "@/lib/inventoryStock";
 import { listBusinessRecords } from "@/lib/businessRecords";
 
 registerPage({
@@ -30,6 +32,9 @@ export default async function ReturnOrdersPage({ params }: { params: { partnerId
   const columns = await applyCustomizations("inventory.return-orders.list", returnOrderColumns);
   const rows = await listBusinessRecords(params.partnerId, "inventory-return-orders");
   const formFields = await getReturnOrderFormFields(params.partnerId);
+  const materialOptions = await getBomOptionsForPartner(params.partnerId);
+  const availability = await getAvailabilityByMaterial(params.partnerId);
+  const availabilityLabels = Object.fromEntries(availability);
 
   return (
     <AppShell
@@ -44,7 +49,12 @@ export default async function ReturnOrdersPage({ params }: { params: { partnerId
             templateFilename="return-orders-template.csv"
             importAction={bulkImportReturnOrdersAction.bind(null, params.partnerId)}
           />
-          <ReturnOrdersNewButton partnerId={params.partnerId} fields={formFields} />
+          <ReturnOrdersNewButton
+            partnerId={params.partnerId}
+            fields={formFields}
+            materialOptions={materialOptions}
+            availabilityLabels={availabilityLabels}
+          />
         </div>
       }
     >
