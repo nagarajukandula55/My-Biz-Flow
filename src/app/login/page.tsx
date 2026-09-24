@@ -53,8 +53,14 @@ export default function LoginPage({
         <div>
           <p className="font-display text-2xl font-bold text-white">One platform.</p>
           <p className="mt-1 font-display text-2xl font-bold text-white">Every business you run.</p>
+          {/* One login page serves every business type on the platform (see
+              this page's registerPage() explanation) — the panel used to
+              name specific verticals (Clinic, etc.), which read as wrong to
+              anyone signing in from a different one. Kept to platform-wide
+              capabilities instead, true for every partner regardless of
+              which modules they've enabled. */}
           <ul className="mt-6 space-y-2.5 text-sm text-sidebar-text-dim">
-            {["POS", "Service Centre workorders", "Billing & GST invoicing", "Inventory", "Clinic"].map((m) => (
+            {["Modular — enable only what your business needs", "One login for your whole team", "Built for India — GST, INR, IST"].map((m) => (
               <li key={m} className="flex items-center gap-2">
                 <span className="h-1 w-1 rounded-full bg-teal" />
                 {m}
