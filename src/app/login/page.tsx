@@ -38,7 +38,7 @@ export default function LoginPage({
 }) {
   const showGoogle = googleOAuthConfigured();
   const showTelegram = telegramLoginConfigured();
-  const telegramBotUsername = env.telegramLoginBotUsername();
+  const telegramBotId = env.telegramLoginBotId();
   const googleError = searchParams.error ? GOOGLE_ERROR_MESSAGES[searchParams.error] : undefined;
   const telegramError = searchParams.error ? TELEGRAM_ERROR_MESSAGES[searchParams.error] : undefined;
 
@@ -146,7 +146,7 @@ export default function LoginPage({
           </button>
         </form>
 
-        {(showGoogle || (showTelegram && telegramBotUsername)) && (
+        {(showGoogle || (showTelegram && telegramBotId)) && (
           <div className="mt-6 flex flex-col gap-3">
             <div className="flex items-center gap-3">
               <div className="h-px flex-1 bg-border" />
@@ -177,16 +177,7 @@ export default function LoginPage({
                 </a>
               )}
 
-              {showTelegram && telegramBotUsername && (
-                // Telegram's Login Widget is Telegram's own injected script
-                // (see TelegramLoginWidget.tsx) -- its popup-based auth flow
-                // isn't a plain link we can restyle, and the widget has no
-                // icon-only/circular mode (size is large/medium/small only,
-                // always with its "Log in with Telegram" label). "small" is
-                // the closest match to a compact circular Google button this
-                // widget officially supports.
-                <TelegramLoginWidget botUsername={telegramBotUsername} size="small" />
-              )}
+              {showTelegram && telegramBotId && <TelegramLoginWidget botId={telegramBotId} />}
             </div>
           </div>
         )}

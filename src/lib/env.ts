@@ -175,6 +175,14 @@ export const env = {
    * principle run a different bot for login vs. notifications. Unset means
    * the widget doesn't render. */
   telegramLoginBotUsername: () => process.env.TELEGRAM_LOGIN_BOT_USERNAME || process.env.TELEGRAM_BOT_USERNAME,
+  /** Numeric bot id for Telegram's `Telegram.Login.auth({bot_id, ...})` JS
+   * API — used to render a fully custom (e.g. circular icon) login button
+   * instead of Telegram's own pre-rendered widget, which only offers
+   * large/medium/small sizes with a baked-in text label and no icon-only
+   * mode. A bot token is always formatted "<numeric id>:<hash>", so this
+   * is derived from the existing TELEGRAM_BOT_TOKEN rather than needing a
+   * new env var. */
+  telegramLoginBotId: () => process.env.TELEGRAM_BOT_TOKEN?.split(":")[0],
 };
 
 /** True only when both Google OAuth env vars are set — gates rendering the
@@ -183,14 +191,13 @@ export function googleOAuthConfigured(): boolean {
   return Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
 }
 
-/** True only when both the login bot's username and a bot token (reused from
- * the existing Telegram notification integration, TELEGRAM_BOT_TOKEN) are
- * set — gates rendering the Telegram Login Widget. The widget itself only
- * needs the username to render, but the callback route needs the token to
- * verify the payload hash, so gate on both up front rather than rendering a
- * button that will fail on first use. */
+/** True only when a bot token is set (reused from the existing Telegram
+ * notification integration, TELEGRAM_BOT_TOKEN) — gates rendering the
+ * Telegram login button. The button's own Telegram.Login.auth() call only
+ * needs the numeric bot id (derived from the token, see
+ * env.telegramLoginBotId), and the callback route needs the same token to
+ * verify the payload hash — one env var covers both, no separate username
+ * needed since this button is fully custom rather than Telegram's widget. */
 export function telegramLoginConfigured(): boolean {
-  return Boolean(
-    (process.env.TELEGRAM_LOGIN_BOT_USERNAME || process.env.TELEGRAM_BOT_USERNAME) && process.env.TELEGRAM_BOT_TOKEN
-  );
+  return Boolean(process.env.TELEGRAM_BOT_TOKEN);
 }
