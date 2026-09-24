@@ -48,10 +48,13 @@ Three theme states are supported and must all keep working:
 3. Explicit override (`data-theme="dark"` / `data-theme="light"` on `<html>`)
 
 Semantic rules — do not break these:
-- **`--accent` (Flow Amber)** = brand/admin/primary action only. Text on an
-  accent background uses `--accent-contrast` (dark ink), **not white** —
-  white-on-amber fails contrast. This was fixed once already; don't
-  reintroduce it.
+- **`--accent` (Flow Blue)** = brand/admin/primary action only. Text on an
+  accent background uses `--accent-contrast`, **not a hardcoded color** —
+  in dark mode `--accent` is a light blue, so hardcoded white text fails
+  contrast there even though it looks fine in light mode. This was fixed
+  (twice — most recently a batch of 9 stray `text-white` instances found
+  across the codebase); don't reintroduce it. The same rule applies to
+  `--danger`/`--danger-contrast`.
 - **`--teal` (Flow Teal)** = vertical/module identity color. Used for
   module sidebar dots, relation-link text, and module-owned accents.
 - **Neutral / `--text-muted`** = cross-cutting module identity (Inventory,

@@ -24,6 +24,7 @@ const config: Config = {
         "teal-soft": "var(--teal-soft)",
         danger: "var(--danger)",
         "danger-soft": "var(--danger-soft)",
+        "danger-contrast": "var(--danger-contrast)",
         success: "var(--success)",
         "success-soft": "var(--success-soft)",
         warning: "var(--warning)",
