@@ -14,7 +14,7 @@ export const revalidate = 60;
 export const metadata: Metadata = {
   title: "No-Code Business Management Platform for Service Businesses",
   description:
-    "My Biz Flow is a modular, no-code business/CRM platform: mix and match POS, Service Centre workorders, Billing, GST-compliant invoicing, Inventory, HRMS, Clinic, and more on one account — no custom development required.",
+    "My Biz Flow is a modular, no-code business/CRM platform: mix and match POS, Service Centre workorders, Billing, GST-compliant invoicing, Inventory, Clinic, and more on one account — no custom development required.",
   // Canonical stays the base "/" regardless of ?type= -- the Service Centre
   // variant is a content branch of the same page/URL, not a distinct page,
   // so a separate canonical would just create duplicate-content confusion.
@@ -30,7 +30,7 @@ const FAQS = [
   {
     question: "Which kinds of businesses can use it?",
     answer:
-      "Any business that fits one or more of the platform's modules — Point of Sale, Service Centre (repair/workorder shops), Billing, Clinic, HRMS, Inventory/Warehouse, and other verticals such as real estate, education, and manufacturing. A business picks a business type at signup, which bundles a starting set of modules; modules can be mixed and matched afterward.",
+      "Any business that fits one or more of the platform's modules — Point of Sale, Service Centre (repair/workorder shops), Billing, Clinic, Inventory/Warehouse, and other verticals such as real estate, education, and manufacturing. A business picks a business type at signup, which bundles a starting set of modules; modules can be mixed and matched afterward.",
   },
   {
     question: "Is it really no-code?",
@@ -134,7 +134,7 @@ export default async function RootPage({
       url: SITE_URL,
       description: isServiceCentre
         ? "No-code Service Centre / repair-shop platform: workorder lifecycle tracking, fault/symptom/solution catalogs, inventory-linked GST billing, and public no-login repair tracking, on the same modular My Biz Flow platform."
-        : "Modular, no-code, multi-vertical business/CRM platform. Mix and match POS, Service Centre, Billing, Clinic, HRMS, Inventory, and more modules on one account.",
+        : "Modular, no-code, multi-vertical business/CRM platform. Mix and match POS, Service Centre, Billing, Clinic, Inventory, and more modules on one account.",
       offers: {
         "@type": "Offer",
         url: `${SITE_URL}/pricing${isServiceCentre ? "?type=service-centre" : ""}`,
@@ -221,7 +221,7 @@ export default async function RootPage({
               My Biz Flow is a modular, no-code, multi-vertical business/CRM platform. Instead of shipping a separate
               product per industry, every business runs on one shared metadata engine — modules, fields, pipelines,
               and dashboards are all config-driven. Mix and match POS, Service Centre, Telecalling, Billing, Clinic,
-              HRMS, and more on a single account.
+              and more on a single account.
             </p>
           </>
         )}

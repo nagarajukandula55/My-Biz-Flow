@@ -54,7 +54,7 @@ export default function LoginPage({
           <p className="font-display text-2xl font-bold text-white">One platform.</p>
           <p className="mt-1 font-display text-2xl font-bold text-white">Every business you run.</p>
           <ul className="mt-6 space-y-2.5 text-sm text-sidebar-text-dim">
-            {["POS", "Service Centre workorders", "Billing & GST invoicing", "Inventory", "HRMS", "Clinic"].map((m) => (
+            {["POS", "Service Centre workorders", "Billing & GST invoicing", "Inventory", "Clinic"].map((m) => (
               <li key={m} className="flex items-center gap-2">
                 <span className="h-1 w-1 rounded-full bg-teal" />
                 {m}

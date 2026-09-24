@@ -31,11 +31,11 @@ const FAQS: { q: string; a: string }[] = [
   },
   {
     q: "What is a Partner, and what does a module 'type' mean?",
-    a: "A signed-up company on the platform is called a Partner. A Partner doesn't have a fixed 'type' from a hardcoded list — its type is just the set of modules it has enabled (POS, Service Centre, Clinic, HRMS, and so on). Enabling or disabling a module changes what a Partner can do without changing any code.",
+    a: "A signed-up company on the platform is called a Partner. A Partner doesn't have a fixed 'type' from a hardcoded list — its type is just the set of modules it has enabled (POS, Service Centre, Clinic, and so on). Enabling or disabling a module changes what a Partner can do without changing any code.",
   },
   {
     q: "How do I navigate the sidebar?",
-    a: "The sidebar groups modules by taxonomy: Brand (amber dot) for multi-location/partner hierarchy, Modules (teal dot) for vertical business modules like POS or Clinic, and Cross-cutting (neutral dot) for modules like Inventory or HRMS that plug into any vertical. Click a module to open its list page.",
+    a: "The sidebar groups modules by taxonomy: Brand (amber dot) for multi-location/partner hierarchy, Modules (teal dot) for vertical business modules like POS or Clinic, and Cross-cutting (neutral dot) for modules like Inventory that plug into any vertical. Click a module to open its list page.",
   },
   {
     q: "How does Create / Edit / Delete work?",
@@ -88,7 +88,7 @@ export default function HelpPage() {
           <p className="mt-3 text-base leading-relaxed text-text-muted">
             My Biz Flow is a modular, no-code, multi-vertical business/CRM platform.
             Businesses mix and match modules — POS, Service Centre, Billing,
-            Clinic, HRMS, and more — on a single account, all built on one
+            Clinic, and more — on a single account, all built on one
             shared metadata engine. This page is a general orientation guide;
             it's visible to any signed-in user, not just admins.
           </p>
@@ -108,7 +108,7 @@ export default function HelpPage() {
             Partners don't pick a fixed business "type" from a list — they enable
             the modules relevant to how they operate. A repair shop might enable
             Service Centre + Inventory + Billing; a clinic might enable Clinic +
-            Billing + HRMS. Each module owns its own records, fields, and
+            Billing. Each module owns its own records, fields, and
             pipeline, but they all share the same underlying platform.
           </p>
 
@@ -119,7 +119,7 @@ export default function HelpPage() {
             The sidebar nav is grouped by taxonomy. An amber dot marks Brand /
             multi-location modules, a teal dot marks vertical business
             modules (the industry-specific ones like POS or Real Estate), and
-            a neutral dot marks cross-cutting modules (Inventory, HRMS,
+            a neutral dot marks cross-cutting modules (Inventory,
             Accounting) that plug into whichever vertical modules you're
             running. Click any module to land on its list page.
           </p>
