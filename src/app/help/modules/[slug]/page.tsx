@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { BrandLogo } from "@/components/BrandLogo";
 import { StatusChip } from "@/components/StatusChip";
@@ -21,6 +22,16 @@ registerPage({
 
 export function generateStaticParams() {
   return MODULES.map((m) => ({ slug: m.slug }));
+}
+
+export function generateMetadata({ params }: { params: { slug: string } }): Metadata {
+  const mod = getModule(params.slug);
+  if (!mod) return {};
+  return {
+    title: `${mod.label} Module Guide`,
+    description: mod.description,
+    alternates: { canonical: `/help/modules/${mod.slug}` },
+  };
 }
 
 const TIER_LABEL = { basic: "Basic", pro: "Pro", ultimate: "Ultimate" } as const;

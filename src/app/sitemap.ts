@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { SITE_URL } from "@/lib/seo";
+import { MODULES } from "@/lib/designer/modules";
 
 /**
  * /sitemap.xml -- Next.js App Router auto-generates this from the default
@@ -21,6 +22,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: "/book-appointment", priority: 0.7, changeFrequency: "monthly" },
     { path: "/track", priority: 0.6, changeFrequency: "monthly" },
     { path: "/help", priority: 0.6, changeFrequency: "monthly" },
+    { path: "/help/modules", priority: 0.5, changeFrequency: "monthly" },
+    ...MODULES.map((m) => ({
+      path: `/help/modules/${m.slug}`,
+      priority: 0.5,
+      changeFrequency: "monthly" as const,
+    })),
     { path: "/contact", priority: 0.5, changeFrequency: "monthly" },
     { path: "/terms", priority: 0.3, changeFrequency: "yearly" },
     { path: "/privacy", priority: 0.3, changeFrequency: "yearly" },
