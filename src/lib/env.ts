@@ -159,4 +159,38 @@ export const env = {
    * Digits only, with country code, no "+" or spaces (e.g. "919876543210"), matching the
    * wa.me deep-link format. Unset means the widget hides the WhatsApp button. */
   platformSupportWhatsappNumber: () => process.env.PLATFORM_SUPPORT_WHATSAPP_NUMBER,
+  /** Google OAuth (Sign in with Google on /login — src/app/api/auth/google/*).
+   * From the Google Cloud Console (APIs & Services > Credentials > OAuth
+   * client ID, type "Web application"). Both optional: unset means the
+   * "Sign in with Google" button doesn't render (see googleOAuthConfigured()
+   * below) rather than linking to a route that would 500. redirect_uri
+   * registered on that OAuth client must exactly match
+   * `${NEXT_PUBLIC_SITE_URL}/api/auth/google/callback`. */
+  googleClientId: () => process.env.GOOGLE_CLIENT_ID,
+  googleClientSecret: () => process.env.GOOGLE_CLIENT_SECRET,
+  /** Bot's own @username (no leading @) for the Telegram Login Widget on
+   * /login (see telegram-widget.js docs) — distinct helper name from
+   * telegramBotUsername() above (the existing "Connect Telegram" deep-link
+   * one) even though it may hold the same value, since a partner could in
+   * principle run a different bot for login vs. notifications. Unset means
+   * the widget doesn't render. */
+  telegramLoginBotUsername: () => process.env.TELEGRAM_LOGIN_BOT_USERNAME || process.env.TELEGRAM_BOT_USERNAME,
 };
+
+/** True only when both Google OAuth env vars are set — gates rendering the
+ * "Sign in with Google" button so it never links to a route that would 500. */
+export function googleOAuthConfigured(): boolean {
+  return Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+}
+
+/** True only when both the login bot's username and a bot token (reused from
+ * the existing Telegram notification integration, TELEGRAM_BOT_TOKEN) are
+ * set — gates rendering the Telegram Login Widget. The widget itself only
+ * needs the username to render, but the callback route needs the token to
+ * verify the payload hash, so gate on both up front rather than rendering a
+ * button that will fail on first use. */
+export function telegramLoginConfigured(): boolean {
+  return Boolean(
+    (process.env.TELEGRAM_LOGIN_BOT_USERNAME || process.env.TELEGRAM_BOT_USERNAME) && process.env.TELEGRAM_BOT_TOKEN
+  );
+}

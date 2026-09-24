@@ -554,9 +554,423 @@ async function seedDummyData() {
   ]);
 }
 
+/**
+ * Second, INDEPENDENT seeding pass — spreads a much larger volume of data
+ * across roughly the last 90-180 days so weekly/monthly trend charts,
+ * ageing buckets, and the Part Planning trailing-30/60/90-day consumption
+ * forecast all have a real, varied shape to show instead of a handful of
+ * points clustered in the last 15 days (which is all seedDummyData()
+ * above provides — deliberately kept small/recent for a "just signed up"
+ * demo feel).
+ *
+ * Gated independently from seedIfEmpty()'s "any row exists" check, via a
+ * distinct "<MODULE>-HIST-" recordKey prefix per module — so this can
+ * layer on top of a demo partner whose seedDummyData() already ran (and
+ * would otherwise be skipped by seedIfEmpty for every module it touches),
+ * and is itself safe to re-run: each module's insert loop below is guarded
+ * by "do any of MY OWN HIST-prefixed rows already exist for this module",
+ * independent of every other module's guard, so a partial prior run can
+ * finish without duplicating what already landed.
+ */
+async function hasHistRows(moduleSlug: string, prefix: string): Promise<boolean> {
+  const count = await prisma.businessRecord.count({
+    where: { partnerId: DEMO_PARTNER_ID, moduleSlug, recordKey: { startsWith: prefix } },
+  });
+  return count > 0;
+}
+
+/** Small seeded PRNG (mulberry32) — deterministic so re-running the whole route against an already-seeded partner (which no-ops via hasHistRows) never matters, but a single fresh run still gets varied-looking, non-uniform data instead of a suspiciously regular pattern. */
+function mulberry32(seed: number) {
+  let a = seed;
+  return function () {
+    a |= 0;
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+async function ensureHistCatalogExtras() {
+  // A couple more brand/model pairs and fault/solution codes purely for
+  // variety across ~65 historical workorders — catalogs aren't
+  // date-sensitive, so these are safe to add even though the base
+  // catalogs' seedIfEmpty() calls above have likely already run.
+  if (!(await hasHistRows("service-centre-brands", "BRD-HIST-"))) {
+    await createBusinessRecord(DEMO_PARTNER_ID, "service-centre-brands", { id: "BRD-HIST-0001", name: "OnePlus", domain: ["Mobile"], category: ["Smartphone"], status: "Active" });
+    await createBusinessRecord(DEMO_PARTNER_ID, "service-centre-brands", { id: "BRD-HIST-0002", name: "Dell", domain: ["Computer"], category: ["Laptop"], status: "Active" });
+  }
+
+  if (!(await hasHistRows("service-centre-models", "MDL-HIST-"))) {
+    await createBusinessRecord(DEMO_PARTNER_ID, "service-centre-models", { id: "MDL-HIST-0001", brandName: "OnePlus", domain: ["Mobile"], name: "Nord CE3", status: "Active" });
+    await createBusinessRecord(DEMO_PARTNER_ID, "service-centre-models", { id: "MDL-HIST-0002", brandName: "Dell", domain: ["Computer"], name: "Inspiron 15", status: "Active" });
+  }
+
+  if (!(await hasHistRows("service-centre-fault-codes", "FLT-HIST-"))) {
+    await createBusinessRecord(DEMO_PARTNER_ID, "service-centre-fault-codes", { id: "FLT-HIST-0001", description: "Speaker not working", category: "Audio", isActive: "Yes" });
+    await createBusinessRecord(DEMO_PARTNER_ID, "service-centre-fault-codes", { id: "FLT-HIST-0002", description: "Camera malfunction", category: "Camera", isActive: "Yes" });
+  }
+
+  if (!(await hasHistRows("service-centre-solutions", "SOL-HIST-"))) {
+    await createBusinessRecord(DEMO_PARTNER_ID, "service-centre-solutions", { id: "SOL-HIST-0001", title: "Speaker replacement", category: "Hardware", estimatedRepairMinutes: 40, status: "Active" });
+    await createBusinessRecord(DEMO_PARTNER_ID, "service-centre-solutions", { id: "SOL-HIST-0002", title: "Camera module replacement", category: "Hardware", estimatedRepairMinutes: 50, status: "Active" });
+  }
+
+  if (!(await hasHistRows("service-centre-customers", "CUST-HIST-"))) {
+    const extraCustomers: { id: string; name: string; phone: string; email: string; city: string }[] = [
+      { id: "CUST-HIST-0001", name: "Ramesh Chandra", phone: "9876543230", email: "ramesh.chandra@example.com", city: "Hyderabad" },
+      { id: "CUST-HIST-0002", name: "Sunita Patel", phone: "9876543231", email: "sunita.patel@example.com", city: "Secunderabad" },
+      { id: "CUST-HIST-0003", name: "Farhan Ahmed", phone: "9876543232", email: "farhan.ahmed@example.com", city: "Hyderabad" },
+      { id: "CUST-HIST-0004", name: "Deepika Nair", phone: "9876543233", email: "deepika.nair@example.com", city: "Warangal" },
+      { id: "CUST-HIST-0005", name: "Vikas Goud", phone: "9876543234", email: "vikas.goud@example.com", city: "Hyderabad" },
+      { id: "CUST-HIST-0006", name: "Ayesha Khan", phone: "9876543235", email: "ayesha.khan@example.com", city: "Hyderabad" },
+      { id: "CUST-HIST-0007", name: "Naveen Kumar Reddy", phone: "9876543236", email: "naveen.reddy@example.com", city: "Karimnagar" },
+      { id: "CUST-HIST-0008", name: "Shalini Rao", phone: "9876543237", email: "shalini.rao@example.com", city: "Secunderabad" },
+      { id: "CUST-HIST-0009", name: "Imran Sheikh", phone: "9876543238", email: "imran.sheikh@example.com", city: "Hyderabad" },
+      { id: "CUST-HIST-0010", name: "Padma Devi", phone: "9876543239", email: "padma.devi@example.com", city: "Nizamabad" },
+    ];
+    for (const c of extraCustomers) {
+      await createBusinessRecord(DEMO_PARTNER_ID, "service-centre-customers", { id: c.id, name: c.name, phone: c.phone, email: c.email, city: c.city, state: "Telangana", status: "Active" });
+    }
+  }
+}
+
+type HistoricalWorkorder = {
+  id: string;
+  customer: string;
+  customerPhone: string;
+  brandName: string;
+  modelName: string;
+  faultDescription: string;
+  stage: "Created" | "In Progress" | "Completed" | "Closed";
+  ageDays: number;
+  receivedDate: string;
+  solutionId?: string;
+  solutionLabel?: string;
+  closedOffset?: number; // days-ago the workorder reached Completed/Closed — used to date the linked invoice/consumption row a couple of days later
+  stageHistory: { at: string; stage: string }[];
+};
+
+async function seedHistoricalReportData() {
+  await ensureHistCatalogExtras();
+
+  const today = new Date();
+  const day = (n: number) => new Date(today.getTime() - n * 86400000).toISOString().slice(0, 10);
+
+  const rng = mulberry32(20260924);
+
+  const customers = [
+    { name: "Priya Sharma", phone: "9876543210" },
+    { name: "Rahul Verma", phone: "9876543211" },
+    { name: "Sri Lakshmi Mobile Care", phone: "9876543212" },
+    { name: "Anitha Reddy", phone: "9876543213" },
+    { name: "Mohammed Irfan", phone: "9876543214" },
+    { name: "Ramesh Chandra", phone: "9876543230" },
+    { name: "Sunita Patel", phone: "9876543231" },
+    { name: "Farhan Ahmed", phone: "9876543232" },
+    { name: "Deepika Nair", phone: "9876543233" },
+    { name: "Vikas Goud", phone: "9876543234" },
+    { name: "Ayesha Khan", phone: "9876543235" },
+    { name: "Naveen Kumar Reddy", phone: "9876543236" },
+    { name: "Shalini Rao", phone: "9876543237" },
+    { name: "Imran Sheikh", phone: "9876543238" },
+    { name: "Padma Devi", phone: "9876543239" },
+  ];
+
+  const brandModels = [
+    { brand: "Samsung", model: "Galaxy M14" },
+    { brand: "Apple", model: "iPhone 13" },
+    { brand: "Xiaomi", model: "Redmi Note 12" },
+    { brand: "HP", model: "Pavilion 15" },
+    { brand: "OnePlus", model: "Nord CE3" },
+    { brand: "Dell", model: "Inspiron 15" },
+  ];
+
+  // fault/solution pairs kept 1:1 so a completed/closed row's solution
+  // always matches its stated fault, same convention seedDummyData() uses.
+  const faultSolutionPairs: { fault: string; solutionId: string; solutionLabel: string; materialId: string; materialLabel: string }[] = [
+    { fault: "Screen not turning on", solutionId: "SOL0001", solutionLabel: "Display panel replacement", materialId: "MAT-D001", materialLabel: "Samsung Galaxy M14 Display Assembly" },
+    { fault: "Battery draining fast", solutionId: "SOL0002", solutionLabel: "Battery replacement", materialId: "MAT-D002", materialLabel: "iPhone 13 Battery" },
+    { fault: "Charging port not working", solutionId: "SOL0003", solutionLabel: "Charging port cleaning/repair", materialId: "MAT-D003", materialLabel: "USB-C Charging Port Flex Cable" },
+    { fault: "Water damage", solutionId: "SOL0004", solutionLabel: "Software reset / reflash", materialId: "MAT-D006", materialLabel: "Isopropyl Alcohol Cleaning Solution — 500ml" },
+    { fault: "Speaker not working", solutionId: "SOL-HIST-0001", solutionLabel: "Speaker replacement", materialId: "MAT-D004", materialLabel: "Redmi Note 12 Display Assembly" },
+    { fault: "Camera malfunction", solutionId: "SOL-HIST-0002", solutionLabel: "Camera module replacement", materialId: "MAT-D005", materialLabel: "Laptop RAM 8GB DDR4" },
+  ];
+
+  const WORKORDER_COUNT = 65;
+  const MIN_AGE = 18; // just past the existing recent seed's max (15), so date ranges don't overlap
+  const MAX_AGE = 179;
+
+  const workorders: HistoricalWorkorder[] = [];
+  for (let i = 0; i < WORKORDER_COUNT; i++) {
+    // Spread roughly evenly across the window, then jitter +/-4 days so
+    // volume isn't perfectly uniform week to week (busier/slower patches),
+    // like a real business.
+    const base = MIN_AGE + Math.round(((MAX_AGE - MIN_AGE) * i) / (WORKORDER_COUNT - 1));
+    const jitter = Math.round((rng() - 0.5) * 8);
+    const ageDays = Math.min(MAX_AGE, Math.max(MIN_AGE, base + jitter));
+
+    const customer = customers[Math.floor(rng() * customers.length)];
+    const bm = brandModels[Math.floor(rng() * brandModels.length)];
+    const fs = faultSolutionPairs[Math.floor(rng() * faultSolutionPairs.length)];
+
+    // Older workorders have had time to move further through the pipeline;
+    // recent ones skew toward earlier stages — same real-world shape as
+    // seedDummyData()'s recent rows.
+    let stage: HistoricalWorkorder["stage"];
+    const roll = rng();
+    if (ageDays > 45) stage = roll < 0.85 ? "Closed" : roll < 0.95 ? "Completed" : "In Progress";
+    else if (ageDays > 25) stage = roll < 0.55 ? "Closed" : roll < 0.85 ? "Completed" : "In Progress";
+    else stage = roll < 0.25 ? "Closed" : roll < 0.55 ? "Completed" : roll < 0.85 ? "In Progress" : "Created";
+
+    const stageHistory: { at: string; stage: string }[] = [{ at: day(ageDays), stage: "Created" }];
+    let closedOffset: number | undefined;
+    if (stage !== "Created") {
+      const inProgressAge = ageDays - (1 + Math.floor(rng() * 2));
+      stageHistory.push({ at: day(Math.max(0, inProgressAge)), stage: "In Progress" });
+      if (stage === "Completed" || stage === "Closed") {
+        const completedAge = inProgressAge - (2 + Math.floor(rng() * 4));
+        stageHistory.push({ at: day(Math.max(0, completedAge)), stage: "Completed" });
+        closedOffset = Math.max(0, completedAge);
+        if (stage === "Closed") {
+          const closedAge = completedAge - (1 + Math.floor(rng() * 3));
+          stageHistory.push({ at: day(Math.max(0, closedAge)), stage: "Closed" });
+          closedOffset = Math.max(0, closedAge);
+        }
+      }
+    }
+
+    workorders.push({
+      id: `SC-HIST-${String(i + 1).padStart(4, "0")}`,
+      customer: customer.name,
+      customerPhone: customer.phone,
+      brandName: bm.brand,
+      modelName: bm.model,
+      faultDescription: fs.fault,
+      stage,
+      ageDays,
+      receivedDate: day(ageDays),
+      solutionId: stage === "Completed" || stage === "Closed" ? fs.solutionId : undefined,
+      solutionLabel: stage === "Completed" || stage === "Closed" ? fs.solutionLabel : undefined,
+      closedOffset,
+      stageHistory,
+    });
+  }
+
+  if (!(await hasHistRows("service-centre", "SC-HIST-"))) {
+    for (const wo of workorders) {
+      await createBusinessRecord(DEMO_PARTNER_ID, "service-centre", {
+        id: wo.id,
+        customer: wo.customer,
+        customerPhone: wo.customerPhone,
+        brandName: wo.brandName,
+        modelName: wo.modelName,
+        faultDescription: wo.faultDescription,
+        stage: wo.stage,
+        status: wo.stage,
+        receivedDate: wo.receivedDate,
+        warrantyFlag: rng() < 0.2 ? "Yes" : "No",
+        ...(wo.solutionId ? { solutionId: wo.solutionId, solutionLabel: wo.solutionLabel } : {}),
+        stageHistory: wo.stageHistory,
+      });
+    }
+  }
+
+  // Billing invoices — one per completed/closed historical workorder (dated
+  // a day or two after it reached that stage, same as a real shop invoicing
+  // once the repair is done), plus a handful of standalone invoices spread
+  // across the same window for volume. Mostly Paid, some Draft/Overdue/
+  // Partially Paid, matching the real paymentStatus options in
+  // src/lib/sample-data/billing.ts.
+  if (!(await hasHistRows("billing", "INV-HIST-"))) {
+    let invIndex = 0;
+    const billable = workorders.filter((w) => w.solutionLabel && w.closedOffset !== undefined);
+    for (const wo of billable) {
+      invIndex += 1;
+      const issueOffset = Math.max(0, (wo.closedOffset as number) - Math.floor(rng() * 2));
+      const dueOffset = issueOffset - 7; // 7-day terms, same convention as seedDummyData()'s dueDate math
+      const subtotal = 400 + Math.floor(rng() * 2200);
+      const taxAmount = Math.round(subtotal * 0.18);
+      const totalAmount = subtotal + taxAmount;
+      const statusRoll = rng();
+      const paymentStatus = statusRoll < 0.72 ? "Paid" : statusRoll < 0.82 ? "Partially Paid" : statusRoll < 0.92 ? "Overdue" : "Draft";
+      const amountPaid = paymentStatus === "Paid" ? totalAmount : paymentStatus === "Partially Paid" ? Math.round(totalAmount * 0.5) : 0;
+      await createBusinessRecord(DEMO_PARTNER_ID, "billing", {
+        id: `INV-HIST-${String(invIndex).padStart(4, "0")}`,
+        customer: wo.customer,
+        invoiceSource: "Service Centre",
+        issueDate: day(issueOffset),
+        dueDate: day(dueOffset),
+        lineItemsSummary: wo.solutionLabel,
+        subtotal,
+        taxAmount,
+        totalAmount,
+        amountPaid,
+        amountDue: totalAmount - amountPaid,
+        paymentStatus,
+        paymentMode: ["UPI", "Cash", "Bank Transfer", "Cheque"][Math.floor(rng() * 4)],
+      });
+    }
+
+    // Standalone invoices (no linked workorder) for extra volume/spread —
+    // aim for ~65 total invoices between the linked ones above and these.
+    const STANDALONE_COUNT = Math.max(0, 65 - billable.length);
+    for (let i = 0; i < STANDALONE_COUNT; i++) {
+      invIndex += 1;
+      const issueOffset = 15 + Math.floor(rng() * (MAX_AGE - 15));
+      const dueOffset = issueOffset - 7;
+      const subtotal = 300 + Math.floor(rng() * 3000);
+      const taxAmount = Math.round(subtotal * 0.18);
+      const totalAmount = subtotal + taxAmount;
+      const statusRoll = rng();
+      const paymentStatus = statusRoll < 0.65 ? "Paid" : statusRoll < 0.78 ? "Partially Paid" : statusRoll < 0.9 ? "Overdue" : "Draft";
+      const amountPaid = paymentStatus === "Paid" ? totalAmount : paymentStatus === "Partially Paid" ? Math.round(totalAmount * 0.5) : 0;
+      const customer = customers[Math.floor(rng() * customers.length)];
+      const fs = faultSolutionPairs[Math.floor(rng() * faultSolutionPairs.length)];
+      await createBusinessRecord(DEMO_PARTNER_ID, "billing", {
+        id: `INV-HIST-${String(invIndex).padStart(4, "0")}`,
+        customer: customer.name,
+        invoiceSource: "Service Centre",
+        issueDate: day(issueOffset),
+        dueDate: day(dueOffset),
+        lineItemsSummary: fs.solutionLabel,
+        subtotal,
+        taxAmount,
+        totalAmount,
+        amountPaid,
+        amountDue: totalAmount - amountPaid,
+        paymentStatus,
+        paymentMode: ["UPI", "Cash", "Bank Transfer", "Cheque"][Math.floor(rng() * 4)],
+      });
+    }
+  }
+
+  // Parts Consumption — one row per completed/closed historical workorder,
+  // dated the same day it reached that stage (matching the real
+  // deductInventoryForWorkorderAction convention). Biased so plenty land
+  // inside the last 90 days (not just the 90-180 tail), since Part
+  // Planning's forecast only looks at trailing 30/60/90-day windows from
+  // today and needs a real, non-trivial daily rate in each of those.
+  if (!(await hasHistRows("inventory-consumption", "CONS-HIST-"))) {
+    let consIndex = 0;
+    const warehouses = ["Main Warehouse — Hyderabad", "Local Store — Secunderabad"];
+    for (const wo of workorders) {
+      if (!wo.solutionLabel || wo.closedOffset === undefined) continue;
+      // Skip roughly a third so consumption volume isn't a 1:1 mirror of
+      // every closed workorder (a repair can also consume parts already
+      // reflected in the recent-seed consumption rows, or none at all).
+      if (rng() < 0.33) continue;
+      const fs = faultSolutionPairs.find((f) => f.solutionLabel === wo.solutionLabel);
+      if (!fs) continue;
+      consIndex += 1;
+      await createBusinessRecord(DEMO_PARTNER_ID, "inventory-consumption", {
+        id: `CONS-HIST-${String(consIndex).padStart(4, "0")}`,
+        workorderId: wo.id,
+        materialId: fs.materialId,
+        materialLabel: fs.materialLabel,
+        qty: 1 + (rng() < 0.15 ? 1 : 0),
+        warehouseName: warehouses[Math.floor(rng() * warehouses.length)],
+        serial: "",
+        customerName: wo.customer,
+        consumedDate: day(wo.closedOffset),
+      });
+    }
+  }
+
+  // Stock — a few extra rows whose lastReceivedAt lands in every Ageing
+  // bucket (Fresh/Watch/Aging against the default 60-day threshold), not
+  // just "freshly received", per src/lib/inventoryAgeing.ts.
+  if (!(await hasHistRows("inventory-stock", "INV-HIST-"))) {
+    const ageingRows: { id: string; materialId: string; warehouseName: string; ageDays: number; qty: number }[] = [
+      { id: "INV-HIST-0001", materialId: "MAT-D003 — USB-C Charging Port Flex Cable", warehouseName: "Main Warehouse — Hyderabad", ageDays: 10, qty: 9 },
+      { id: "INV-HIST-0002", materialId: "MAT-D004 — Redmi Note 12 Display Assembly", warehouseName: "Local Store — Secunderabad", ageDays: 12, qty: 5 },
+      { id: "INV-HIST-0003", materialId: "MAT-D005 — Laptop RAM 8GB DDR4", warehouseName: "Main Warehouse — Hyderabad", ageDays: 45, qty: 3 },
+      { id: "INV-HIST-0004", materialId: "MAT-D006 — Isopropyl Alcohol Cleaning Solution — 500ml", warehouseName: "Local Store — Secunderabad", ageDays: 50, qty: 6 },
+      { id: "INV-HIST-0005", materialId: "MAT-D001 — Samsung Galaxy M14 Display Assembly", warehouseName: "Main Warehouse — Hyderabad", ageDays: 75, qty: 4 },
+      { id: "INV-HIST-0006", materialId: "MAT-D002 — iPhone 13 Battery", warehouseName: "Main Warehouse — Hyderabad", ageDays: 95, qty: 2 },
+    ];
+    for (const r of ageingRows) {
+      await createBusinessRecord(DEMO_PARTNER_ID, "inventory-stock", {
+        id: r.id,
+        materialId: r.materialId,
+        warehouseName: r.warehouseName,
+        qtyOnHand: r.qty,
+        reservedQty: 0,
+        availableQty: r.qty,
+        reorderLevel: 3,
+        condition: "Good",
+        lastReceivedAt: `${day(r.ageDays)}T09:00:00.000Z`,
+      });
+    }
+  }
+
+  // Stock Adjustments — a few more spread across the window.
+  if (!(await hasHistRows("inventory-stock-adjustments", "ADJ-HIST-"))) {
+    const adjustments = [
+      { id: "ADJ-HIST-0001", materialId: "MAT-D003 — USB-C Charging Port Flex Cable", type: "Decrease", qty: 2, reason: "Damaged", ageDays: 35 },
+      { id: "ADJ-HIST-0002", materialId: "MAT-D001 — Samsung Galaxy M14 Display Assembly", type: "Increase", qty: 8, reason: "Initial Stock", ageDays: 70 },
+      { id: "ADJ-HIST-0003", materialId: "MAT-D005 — Laptop RAM 8GB DDR4", type: "Decrease", qty: 1, reason: "Damaged", ageDays: 110 },
+      { id: "ADJ-HIST-0004", materialId: "MAT-D002 — iPhone 13 Battery", type: "Increase", qty: 6, reason: "Initial Stock", ageDays: 150 },
+    ];
+    for (const a of adjustments) {
+      await createBusinessRecord(DEMO_PARTNER_ID, "inventory-stock-adjustments", {
+        id: a.id,
+        warehouseName: "Main Warehouse — Hyderabad",
+        materialId: a.materialId,
+        adjustmentType: a.type,
+        quantity: a.qty,
+        reason: a.reason,
+        adjustedBy: "Suresh Kumar",
+        date: day(a.ageDays),
+      });
+    }
+  }
+
+  // Return Orders — a few more, spread across the window, each with a
+  // proper stageHistory matching the shape actions.ts writes.
+  if (!(await hasHistRows("inventory-return-orders", "RTN-HIST-"))) {
+    const returns: { id: string; direction: "Inbound" | "Outbound"; materialId: string; ageDays: number; status: string }[] = [
+      { id: "RTN-HIST-0001", direction: "Inbound", materialId: "MAT-D001 — Samsung Galaxy M14 Display Assembly", ageDays: 30, status: "Received" },
+      { id: "RTN-HIST-0002", direction: "Inbound", materialId: "MAT-D004 — Redmi Note 12 Display Assembly", ageDays: 60, status: "Received" },
+      { id: "RTN-HIST-0003", direction: "Outbound", materialId: "MAT-D002 — iPhone 13 Battery", ageDays: 90, status: "Dispatched" },
+      { id: "RTN-HIST-0004", direction: "Inbound", materialId: "MAT-D003 — USB-C Charging Port Flex Cable", ageDays: 130, status: "Received" },
+    ];
+    for (const r of returns) {
+      const createdAge = r.ageDays + 3;
+      const stageHistory =
+        r.direction === "Inbound"
+          ? [
+              { at: `${day(createdAge)}T10:00:00`, stage: "Pending", actor: "Service Centre" },
+              { at: `${day(r.ageDays + 1)}T12:00:00`, stage: "In Transit", actor: "Service Centre" },
+              { at: `${day(r.ageDays)}T09:00:00`, stage: "Received", actor: "Warehouse" },
+            ]
+          : [
+              { at: `${day(createdAge)}T10:00:00`, stage: "Pending", actor: "Warehouse" },
+              { at: `${day(r.ageDays)}T11:00:00`, stage: "Dispatched", actor: "Warehouse" },
+            ];
+      await createBusinessRecord(DEMO_PARTNER_ID, "inventory-return-orders", {
+        id: r.id,
+        direction: r.direction,
+        returnType: r.direction === "Inbound" ? "Good" : "Defective",
+        materialId: r.materialId,
+        quantity: 1 + Math.floor(rng() * 2),
+        sourceLocation: r.direction === "Inbound" ? "Demo Service Centre" : "Main Warehouse — Hyderabad",
+        ...(r.direction === "Inbound"
+          ? { destinationWarehouseName: "Main Warehouse — Hyderabad" }
+          : { vendorName: "Li-ion Battery Distributors Pvt Ltd", challanNumber: `CHN-HIST-${r.id.slice(-4)}` }),
+        status: r.status,
+        createdDate: day(createdAge),
+        receivedDate: r.direction === "Inbound" ? day(r.ageDays) : null,
+        stageHistory,
+      });
+    }
+  }
+}
+
 export async function createDemoPartner(): Promise<{ partnerId: string; loginContact: string; password: string; alreadyExisted: boolean }> {
   const before = await prisma.partner.findUnique({ where: { id: DEMO_PARTNER_ID } });
   const partner = await ensureDemoPartner();
   await seedDummyData();
+  await seedHistoricalReportData();
   return { partnerId: partner.id, loginContact: DEMO_LOGIN_CONTACT, password: DEMO_PASSWORD, alreadyExisted: Boolean(before) };
 }

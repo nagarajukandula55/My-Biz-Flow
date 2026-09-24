@@ -42,7 +42,7 @@ export const MODULE_TIER_FEATURES: Record<string, ModuleTierFeatures> = {
   billing: {
     basic: ["GST invoice creation", "Customers, Items, Payments", "Credit/Debit notes"],
     pro: ["Recurring invoices", "Outstanding & tax-summary reports", "Contact statements"],
-    ultimate: ["Full accounting suite (ledgers, GST Assistant)", "Razorpay payment collection", "Central-api accounting sync"],
+    ultimate: ["Full accounting suite (ledgers, GST Assistant)", "Central-api accounting sync"],
   },
   telecalling: {
     basic: ["Bulk lead upload & call queue", "Click-to-call from the app", "Agent logins with generated Agent IDs"],

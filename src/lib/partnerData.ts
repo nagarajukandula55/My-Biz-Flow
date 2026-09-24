@@ -543,6 +543,22 @@ export async function findPartnerByLoginIdentifier(identifier: string): Promise<
 }
 
 /**
+ * Looks a partner up by their registered business email — used by Google
+ * Sign-In (src/app/api/auth/google/callback/route.ts) to match a verified
+ * Google account email against an existing partner. Case-insensitive, same
+ * query shape as findPartnerByLoginIdentifier. This is a LOGIN lookup only —
+ * callers must not create a new partner when this returns undefined.
+ */
+export async function findPartnerByEmail(email: string): Promise<PartnerRecord | undefined> {
+  const trimmed = email.trim();
+  if (!trimmed) return undefined;
+  const row = await prisma.partner.findFirst({
+    where: { businessEmail: { equals: trimmed, mode: "insensitive" } },
+  });
+  return row ? toRecord(row) : undefined;
+}
+
+/**
  * Looks a partner up for a password-reset request: by their public
  * <prefix>#### id, their registered login contact number, OR their
  * registered business email — whichever one the person typed into
