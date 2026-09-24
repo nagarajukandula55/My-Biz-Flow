@@ -42,6 +42,11 @@ export function TelegramLoginWidget({ botUsername }: { botUsername: string }) {
     script.async = true;
     script.setAttribute("data-telegram-login", botUsername);
     script.setAttribute("data-size", "large");
+    // Matches this app's standard 8px button radius (see .btn-accent/.btn-outline
+    // in globals.css) instead of Telegram's default pill shape, so it reads as
+    // part of the same button family as the "Sign in with Google" button above
+    // it rather than a visually unrelated widget.
+    script.setAttribute("data-radius", "8");
     script.setAttribute("data-onauth", "onTelegramAuth(user)");
     script.setAttribute("data-request-access", "write");
     container.appendChild(script);
