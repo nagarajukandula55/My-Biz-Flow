@@ -25,7 +25,7 @@ registerPage({
 export default function ContactPage() {
   return (
     <div className="mbf-page min-h-screen w-full bg-bg">
-      <PublicHeader />
+      <PublicHeader links={[{ href: "/pricing", label: "Pricing" }]} />
       <div className="mx-auto max-w-[65ch] px-6 py-16">
         <h1 className="font-display text-3xl font-bold text-text">Contact us</h1>
         <p className="mt-2 max-w-[60ch] text-sm text-text-muted">

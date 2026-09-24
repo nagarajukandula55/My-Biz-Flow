@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { BrandLogo } from "@/components/BrandLogo";
+import { PublicHeader } from "@/components/PublicHeader";
 import { registerPage } from "@/lib/designer/registry";
 import { listActivePartnerTypes } from "@/lib/designer/partnerTypesData";
 import { PincodeLookupFields } from "./PincodeLookupFields";
@@ -46,14 +45,7 @@ export default async function SignupPage({
 
   return (
     <div className="min-h-screen w-full bg-bg">
-      <header className="flex items-center justify-between border-b border-border px-6 py-5">
-        <Link href="/" className="flex items-center gap-2">
-          <BrandLogo height={28} />
-        </Link>
-        <Link href="/login" className="text-sm font-semibold text-text-muted hover:text-text">
-          Already have an account? Sign in
-        </Link>
-      </header>
+      <PublicHeader showCta={false} signInLabel="Already have an account? Sign in" />
 
       <div className="mx-auto grid max-w-6xl grid-cols-1 gap-10 px-6 py-12 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div>

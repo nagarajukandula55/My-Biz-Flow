@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { BrandLogo } from "@/components/BrandLogo";
+import { PublicHeader } from "@/components/PublicHeader";
 import { StatusChip } from "@/components/StatusChip";
 import { registerPage } from "@/lib/designer/registry";
 import { listPublicPlans, type PlanRecord } from "@/lib/plansData";
@@ -110,19 +110,7 @@ export default async function PricingPage({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <header className="flex items-center justify-between border-b border-border px-6 py-5">
-        <Link href="/" className="flex items-center gap-2">
-          <BrandLogo height={30} />
-        </Link>
-        <nav className="flex items-center gap-4 text-sm font-semibold">
-          <Link href="/login" className="text-text-muted hover:text-text">
-            Sign in
-          </Link>
-          <Link href="/signup" className="btn-accent mbf-cta-glow">
-            Get started
-          </Link>
-        </nav>
-      </header>
+      <PublicHeader ctaClassName="mbf-cta-glow" />
 
       <div className="px-6 py-16 text-center">
         {selectedType ? (

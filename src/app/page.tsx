@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import type { Metadata } from "next";
-import { BrandLogo } from "@/components/BrandLogo";
+import { PublicHeader } from "@/components/PublicHeader";
 import { PublicHelpBubble } from "@/components/PublicHelpBubble";
 import { registerPage } from "@/lib/designer/registry";
 import { listActivePartnerTypes } from "@/lib/designer/partnerTypesData";
@@ -172,34 +172,16 @@ export default async function RootPage({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <PublicHelpBubble />
-      <header className="flex flex-wrap items-center justify-between gap-y-3 border-b border-border px-6 py-5">
-        <div className="flex shrink-0 items-center gap-2">
-          <BrandLogo height={36} />
-        </div>
-        <nav className="flex flex-wrap items-center gap-4 text-sm font-semibold">
-          <Link href="/pricing" className="text-text-muted hover:text-text">
-            Pricing
-          </Link>
-          <Link href="/track" className="text-text-muted hover:text-text">
-            Track My Repair
-          </Link>
-          <Link href="/book-appointment" className="text-text-muted hover:text-text">
-            Book Appointment
-          </Link>
-          <Link href="/downloads" className="text-text-muted hover:text-text">
-            Downloads
-          </Link>
-          <Link href="/help" className="text-text-muted hover:text-text">
-            Help
-          </Link>
-          <Link href="/login" className="text-text-muted hover:text-text">
-            Sign in
-          </Link>
-          <Link href="/signup" className="btn-accent mbf-cta-glow">
-            Get started
-          </Link>
-        </nav>
-      </header>
+      <PublicHeader
+        links={[
+          { href: "/pricing", label: "Pricing" },
+          { href: "/track", label: "Track My Repair" },
+          { href: "/book-appointment", label: "Book Appointment" },
+          { href: "/downloads", label: "Downloads" },
+          { href: "/help", label: "Help" },
+        ]}
+        ctaClassName="mbf-cta-glow"
+      />
 
       <section className="px-6 py-20 text-center">
         {isServiceCentre ? (

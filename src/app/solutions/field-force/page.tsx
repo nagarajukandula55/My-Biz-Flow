@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { BrandLogo } from "@/components/BrandLogo";
+import { PublicHeader } from "@/components/PublicHeader";
 import { registerPage } from "@/lib/designer/registry";
 import { SITE_URL, SITE_NAME } from "@/lib/seo";
 
@@ -115,18 +115,15 @@ export default function FieldForceSolutionPage() {
     <div className="min-h-screen bg-bg">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
-      <header className="flex flex-wrap items-center justify-between gap-y-3 border-b border-border px-6 py-5">
-        <Link href="/" className="flex shrink-0 items-center gap-2">
-          <BrandLogo height={36} />
-        </Link>
-        <nav className="flex flex-wrap items-center gap-4 text-sm font-semibold">
-          <Link href="/solutions/service-centre" className="text-text-muted hover:text-text">Service Centre</Link>
-          <Link href="/solutions/telecalling" className="text-text-muted hover:text-text">Telecalling</Link>
-          <Link href="/pricing" className="text-text-muted hover:text-text">Pricing</Link>
-          <Link href="/login" className="text-text-muted hover:text-text">Sign in</Link>
-          <Link href={PROVIDER_SIGNUP_HREF} className="btn-accent mbf-cta-glow">Get started</Link>
-        </nav>
-      </header>
+      <PublicHeader
+        links={[
+          { href: "/solutions/service-centre", label: "Service Centre" },
+          { href: "/solutions/telecalling", label: "Telecalling" },
+          { href: "/pricing", label: "Pricing" },
+        ]}
+        ctaHref={PROVIDER_SIGNUP_HREF}
+        ctaClassName="mbf-cta-glow"
+      />
 
       <section className="px-6 py-20 text-center">
         <p className="text-xs font-semibold uppercase tracking-widest text-accent">Field Force — free to join</p>
