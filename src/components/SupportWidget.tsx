@@ -206,7 +206,7 @@ export function SupportWidget({
                 type="button"
                 onClick={() => selectLanguage(l.code)}
                 className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                  language === l.code ? "bg-accent text-white" : "text-text-muted hover:bg-bg-sunken"
+                  language === l.code ? "bg-accent text-accent-contrast" : "text-text-muted hover:bg-bg-sunken"
                 }`}
                 title={`Auto-reply answers in ${l.label}`}
               >
@@ -239,7 +239,7 @@ export function SupportWidget({
                 <div key={i} className={`flex ${m.from === "partner" ? "justify-end" : "justify-start"}`}>
                   <div
                     className={`max-w-[85%] rounded-lg px-3 py-1.5 text-sm ${
-                      m.from === "partner" ? "bg-accent text-white" : "bg-bg text-text"
+                      m.from === "partner" ? "bg-accent text-accent-contrast" : "bg-bg text-text"
                     }`}
                   >
                     {renderMessageText(m.text)}
@@ -290,7 +290,7 @@ export function SupportWidget({
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-label={open ? "Close ANu" : unreadCount > 0 ? `Open ANu (${unreadCount} new)` : "Open ANu"}
-        className="relative flex h-12 w-12 items-center justify-center rounded-full bg-accent text-white shadow-lg hover:opacity-90"
+        className="relative flex h-12 w-12 items-center justify-center rounded-full bg-accent text-accent-contrast shadow-lg hover:opacity-90"
       >
         {open ? <X className="h-5 w-5" /> : <MessageCircle className="h-5 w-5" />}
         {unreadCount > 0 && (

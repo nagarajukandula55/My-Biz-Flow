@@ -4,7 +4,7 @@ import { jwtVerify, createRemoteJWKSet } from "jose";
 import { env, googleOAuthConfigured } from "@/lib/env";
 import { findPartnerByEmail } from "@/lib/partnerData";
 import { completePartnerLogin } from "@/lib/completePartnerLogin";
-import { GOOGLE_OAUTH_STATE_COOKIE } from "../route";
+import { GOOGLE_OAUTH_STATE_COOKIE } from "@/lib/googleOAuthState";
 
 /**
  * Step 2 of the Google Sign-In flow. Verifies the CSRF `state`, exchanges

@@ -171,11 +171,11 @@ export default async function RootPage({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <PublicHelpBubble />
-      <header className="flex items-center justify-between border-b border-border px-6 py-5">
-        <div className="flex items-center gap-2">
+      <header className="flex flex-wrap items-center justify-between gap-y-3 border-b border-border px-6 py-5">
+        <div className="flex shrink-0 items-center gap-2">
           <BrandLogo height={36} />
         </div>
-        <nav className="flex items-center gap-4 text-sm font-semibold">
+        <nav className="flex flex-wrap items-center gap-4 text-sm font-semibold">
           <Link href="/pricing" className="text-text-muted hover:text-text">
             Pricing
           </Link>
@@ -350,7 +350,7 @@ export default async function RootPage({
         <div className="mx-auto max-w-5xl">
           <h2 className="text-center font-display text-2xl font-bold text-text">See it in action</h2>
           <p className="mbf-prose mx-auto mt-2 text-center text-base text-text-muted">
-            Screenshots of the real running app — coming in a follow-up pass.
+            Real screens from the running app — no mockups.
           </p>
           <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-3">
             {SCREENSHOTS.map((s) => (

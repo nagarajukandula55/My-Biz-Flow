@@ -350,7 +350,7 @@ export function BillingInvoiceForm({
                 type="button"
                 onClick={() => handleInvoiceTypeChange(type)}
                 className={`flex-1 rounded px-3 py-1.5 text-sm font-semibold transition-colors ${
-                  invoiceType === type ? "bg-accent text-white" : "text-text-muted hover:text-text"
+                  invoiceType === type ? "bg-accent text-accent-contrast" : "text-text-muted hover:text-text"
                 }`}
               >
                 {type} Invoice
@@ -372,7 +372,7 @@ export function BillingInvoiceForm({
                     type="button"
                     onClick={() => handleSupplyTypeChange(opt.key)}
                     className={`flex-1 rounded px-3 py-1.5 text-sm font-semibold transition-colors ${
-                      supplyType === opt.key ? "bg-accent text-white" : "text-text-muted hover:text-text"
+                      supplyType === opt.key ? "bg-accent text-accent-contrast" : "text-text-muted hover:text-text"
                     }`}
                   >
                     {opt.label}

@@ -24,7 +24,7 @@ const SWATCHES: { name: string; varName: string }[] = [
   { name: "Text", varName: "--text" },
   { name: "Text Muted", varName: "--text-muted" },
   { name: "Border", varName: "--border" },
-  { name: "Accent (Flow Amber)", varName: "--accent" },
+  { name: "Accent (Flow Blue)", varName: "--accent" },
   { name: "Accent Soft", varName: "--accent-soft" },
   { name: "Teal (Flow Teal)", varName: "--teal" },
   { name: "Teal Soft", varName: "--teal-soft" },
@@ -55,13 +55,13 @@ export default function DesignSystemPage() {
         <div>
           <h1 className="font-display text-3xl font-extrabold text-text">My Biz Flow</h1>
           <p className="mt-1 mbf-prose text-sm text-text-muted">
-            Design system reference — the "Ledger Ink" palette, MBF type system, and the
+            Design system reference — the "Brand Blue" palette, MBF type system, and the
             component library every future screen must visually match.
           </p>
         </div>
       </header>
 
-      <Section title="Color tokens — Ledger Ink">
+      <Section title="Color tokens — Brand Blue">
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
           {SWATCHES.map((swatch) => (
             <div key={swatch.varName} className="overflow-hidden rounded-lg border border-border">
@@ -74,8 +74,8 @@ export default function DesignSystemPage() {
           ))}
         </div>
         <p className="mbf-prose text-sm text-text-muted">
-          Teal marks module/vertical identity, amber is reserved for brand and primary actions,
-          and danger / success / warning are status-only — never reused as the brand accent.
+          Teal marks module/vertical identity, blue (accent) is reserved for brand and primary
+          actions, and danger / success / warning are status-only — never reused as the brand accent.
         </p>
       </Section>
 

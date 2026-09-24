@@ -239,7 +239,7 @@ export function LineItemsEditor({
                               type="button"
                               onClick={() => updateItem(i, { priceMode: mode })}
                               className={`flex-1 rounded px-1.5 py-0.5 transition-colors ${
-                                active ? "bg-accent text-white" : "bg-bg-sunken text-text-muted hover:text-text"
+                                active ? "bg-accent text-accent-contrast" : "bg-bg-sunken text-text-muted hover:text-text"
                               }`}
                             >
                               {mode === "excl" ? "Excl GST" : "Incl GST"}

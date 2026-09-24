@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { randomBytes } from "crypto";
 import { env, googleOAuthConfigured } from "@/lib/env";
+import { GOOGLE_OAUTH_STATE_COOKIE } from "@/lib/googleOAuthState";
 
 /**
  * Step 1 of the Google Sign-In OAuth Authorization Code flow (see
@@ -13,7 +14,6 @@ import { env, googleOAuthConfigured } from "@/lib/env";
  * for this flow (an attacker who can't read/set this cookie on the victim's
  * browser can't forge a matching state).
  */
-export const GOOGLE_OAUTH_STATE_COOKIE = "mbf_google_oauth_state";
 
 function siteUrl(request: Request): string {
   return process.env.NEXT_PUBLIC_SITE_URL || new URL(request.url).origin;

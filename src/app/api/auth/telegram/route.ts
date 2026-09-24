@@ -15,7 +15,7 @@ import { completePartnerLogin } from "@/lib/completePartnerLogin";
  * connects as TelegramSettings.chatId for notifications, so no schema
  * change is needed.
  */
-export type TelegramWidgetPayload = {
+type TelegramWidgetPayload = {
   id: number;
   first_name?: string;
   last_name?: string;

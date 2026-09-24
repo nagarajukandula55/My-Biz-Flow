@@ -166,7 +166,7 @@ export function PnaClientTable({
               type="button"
               onClick={() => setStatusFilter(f)}
               className={`rounded-full border px-3 py-1 text-xs font-semibold ${
-                statusFilter === f ? "border-accent bg-accent text-white" : "border-border text-text-muted hover:bg-bg-sunken"
+                statusFilter === f ? "border-accent bg-accent text-accent-contrast" : "border-border text-text-muted hover:bg-bg-sunken"
               }`}
             >
               {f === "Fulfilled" ? "PNA Fulfilled" : f}

@@ -61,7 +61,7 @@ export function HelpAccordion({ sections }: { sections: HelpSection[] }) {
             onClick={() => selectLanguage(l.code)}
             className={`rounded-full border px-3 py-1 text-xs font-semibold ${
               language === l.code
-                ? "border-accent bg-accent text-white"
+                ? "border-accent bg-accent text-accent-contrast"
                 : "border-border text-text-muted hover:bg-bg-sunken"
             }`}
           >

@@ -81,7 +81,7 @@ export function CreditNoteForm({
             type="button"
             onClick={() => setNoteType(type)}
             className={`flex-1 rounded px-3 py-1.5 text-sm font-semibold transition-colors ${
-              noteType === type ? "bg-accent text-white" : "text-text-muted hover:text-text"
+              noteType === type ? "bg-accent text-accent-contrast" : "text-text-muted hover:text-text"
             }`}
           >
             {type}

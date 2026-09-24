@@ -107,11 +107,11 @@ export default function ServiceCentreSolutionPage() {
     <div className="min-h-screen bg-bg">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
-      <header className="flex items-center justify-between border-b border-border px-6 py-5">
-        <Link href="/" className="flex items-center gap-2">
+      <header className="flex flex-wrap items-center justify-between gap-y-3 border-b border-border px-6 py-5">
+        <Link href="/" className="flex shrink-0 items-center gap-2">
           <BrandLogo height={36} />
         </Link>
-        <nav className="flex items-center gap-4 text-sm font-semibold">
+        <nav className="flex flex-wrap items-center gap-4 text-sm font-semibold">
           <Link href="/solutions/telecalling" className="text-text-muted hover:text-text">Telecalling</Link>
           <Link href="/pricing" className="text-text-muted hover:text-text">Pricing</Link>
           <Link href="/login" className="text-text-muted hover:text-text">Sign in</Link>

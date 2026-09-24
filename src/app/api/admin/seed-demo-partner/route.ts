@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { env } from "@/lib/env";
 import { createDemoPartner } from "@/lib/demoPartnerSeed";
 
+// Without this, Next.js tries to statically prerender this route at BUILD
+// time, which calls env.superAdminSecret() before any real request exists —
+// if that var is ever unset for a given build environment, the whole build
+// fails instead of just this route erroring per-request like it should.
+export const dynamic = "force-dynamic";
+
 /**
  * One-time (idempotent) trigger to create the demo partner directly on the
  * deployed app — for when the operator's own machine/network can't reach

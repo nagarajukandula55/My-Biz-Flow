@@ -166,7 +166,7 @@ export function PublicHelpBubble() {
           setShowTeaser(false);
         }}
         aria-label={open ? "Close ANu" : "Open ANu"}
-        className="flex h-12 w-12 items-center justify-center rounded-full bg-accent text-white shadow-lg hover:opacity-90"
+        className="flex h-12 w-12 items-center justify-center rounded-full bg-accent text-accent-contrast shadow-lg hover:opacity-90"
       >
         {open ? <X className="h-5 w-5" /> : <MessageCircle className="h-5 w-5" />}
       </button>
