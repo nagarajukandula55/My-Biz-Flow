@@ -9,6 +9,27 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # A throwaway Postgres container, local to this one CI job — destroyed
+    # when the job ends. NOT the shared production database (that one is
+    # never touched by CI, per this repo's database-safety rules — this
+    # service is isolated, empty, and disposable). It exists because a
+    # couple of public pages (/, /pricing) run a real Prisma query at BUILD
+    # time during static prerendering (they list active PartnerTypes), so
+    # `next build` needs a reachable — even if empty — Postgres to succeed.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
 
@@ -22,22 +43,17 @@ jobs:
       - name: Type check
         run: npx tsc --noEmit
 
+      - name: Apply schema to the throwaway CI database
+        run: npx prisma migrate deploy
+        env:
+          DATABASE_URL: postgres://ci:ci@localhost:5432/ci
+
       - name: Build
-        # Runs `next build` directly, NOT `npm run build` — that script
-        # chains `prisma migrate deploy` first, which needs a real,
-        # reachable Postgres to apply migrations against. CI has no such
-        # database (DATABASE_URL below is a dummy value, not a live
-        # server), so `migrate deploy` can never succeed here regardless of
-        # what env vars are set. CI's job is to verify the app COMPILES,
-        # not to deploy schema — the real migrate deploy only ever runs
-        # against the real, shared production database, and only by a
-        # human, per this repo's binding database-safety rules.
         run: npx next build
         env:
           # Dummy values so the build doesn't fail on missing env vars for
           # features that read them lazily (see src/lib/env.ts) — CI only
-          # needs the build to succeed, not to talk to a real database or
-          # central-api.
+          # needs the build to succeed, not to talk to a real central-api.
           SUPER_ADMIN_SECRET: ci-placeholder-secret
           DATABASE_URL: postgres://ci:ci@localhost:5432/ci
           DATABASE_URL_UNPOOLED: postgres://ci:ci@localhost:5432/ci
