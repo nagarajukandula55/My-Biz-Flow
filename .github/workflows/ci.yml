@@ -23,7 +23,16 @@ jobs:
         run: npx tsc --noEmit
 
       - name: Build
-        run: npm run build
+        # Runs `next build` directly, NOT `npm run build` — that script
+        # chains `prisma migrate deploy` first, which needs a real,
+        # reachable Postgres to apply migrations against. CI has no such
+        # database (DATABASE_URL below is a dummy value, not a live
+        # server), so `migrate deploy` can never succeed here regardless of
+        # what env vars are set. CI's job is to verify the app COMPILES,
+        # not to deploy schema — the real migrate deploy only ever runs
+        # against the real, shared production database, and only by a
+        # human, per this repo's binding database-safety rules.
+        run: npx next build
         env:
           # Dummy values so the build doesn't fail on missing env vars for
           # features that read them lazily (see src/lib/env.ts) — CI only
@@ -31,5 +40,6 @@ jobs:
           # central-api.
           SUPER_ADMIN_SECRET: ci-placeholder-secret
           DATABASE_URL: postgres://ci:ci@localhost:5432/ci
+          DATABASE_URL_UNPOOLED: postgres://ci:ci@localhost:5432/ci
           CENTRAL_API_URL: https://example.invalid
           CENTRAL_API_KEY: ci-placeholder-key
