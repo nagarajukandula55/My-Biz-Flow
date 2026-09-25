@@ -58,6 +58,13 @@ export const MODULES: ModuleDefinition[] = [
   // --- Cross-cutting (plug into any vertical, not standalone verticals) ---
   { slug: "inventory", label: "Inventory / Warehouse", description: "Stock, purchase orders, suppliers — shared across POS/SC/Restaurant/etc.", taxonomy: "cross-cutting" },
   { slug: "accounting-gst", label: "Accounting / GST Compliance", description: "Tax returns, e-invoicing — India-specific compliance layer.", taxonomy: "cross-cutting" },
+  // Standalone general ledger (ChartOfAccount/JournalEntry/JournalLine/
+  // FiscalPeriod — Prisma-backed, see prisma/schema.prisma). Distinct from
+  // accounting-gst above: this is real double-entry bookkeeping and
+  // financial reporting (Trial Balance/P&L/Balance Sheet), not GST return
+  // filing — could later be fed by accounting-gst's data as source
+  // documents, but that integration is out of scope for this pass.
+  { slug: "accounting", label: "Accounting", description: "Standalone general ledger — Chart of Accounts, double-entry Journal Entries, Fiscal Period close, and Trial Balance/P&L/Balance Sheet reports.", taxonomy: "cross-cutting" },
   { slug: "loyalty-rewards", label: "Loyalty & Rewards", description: "Points/cashback — usable across POS/Restaurant/Clinic/etc.", taxonomy: "cross-cutting" },
   { slug: "hrms", label: "HRMS / Payroll", description: "Staff attendance, payroll — add-on to any module.", taxonomy: "cross-cutting" },
 
@@ -125,6 +132,12 @@ export const MODULE_SUB_NAV: Record<string, PartnerNavSubItem[]> = {
   pos: [
     { key: "pos.list", label: "Sales", href: "pos" },
     { key: "pos.checkout", label: "+ New Sale", href: "pos/checkout" },
+  ],
+  "wholesale-b2b": [
+    { key: "wholesale-b2b.list", label: "Orders", href: "wholesale-b2b" },
+    { key: "wholesale-b2b.new", label: "+ New Order", href: "wholesale-b2b/new" },
+    { key: "wholesale-b2b.customers", label: "Customers", href: "wholesale-b2b/customers" },
+    { key: "wholesale-b2b.price-tiers", label: "Price Tiers", href: "wholesale-b2b/price-tiers" },
   ],
   inventory: [
     { key: "inventory.bom", label: "Material Catalog (BOM)", href: "inventory/bom" },
@@ -217,6 +230,18 @@ export const MODULE_SUB_NAV: Record<string, PartnerNavSubItem[]> = {
     { key: "accounting-gst.hsn-summary", label: "HSN-wise Summary", href: "accounting-gst/hsn-summary" },
     { key: "accounting-gst.itc", label: "ITC Register", href: "accounting-gst/itc" },
   ],
+  // Prisma-backed real data model (BillOfMaterial/BomLine, WorkCenter,
+  // ProductionOrder/ProductionStageHistory — see prisma/schema.prisma and
+  // src/lib/manufacturing.ts), replacing the old single-page BusinessRecord
+  // list/create/detail trio. BOM and Work Centers are their own
+  // masters sections since a Production Order now references real rows
+  // in both rather than a free-text "BOM Reference" string.
+  manufacturing: [
+    { key: "manufacturing.list", label: "Production Orders", href: "manufacturing" },
+    { key: "manufacturing.create", label: "+ New Production Order", href: "manufacturing/new" },
+    { key: "manufacturing.bom.list", label: "Bill of Materials", href: "manufacturing/bom" },
+    { key: "manufacturing.work-centers.list", label: "Work Centers", href: "manufacturing/work-centers" },
+  ],
   "field-force": [
     { key: "field-force.bookings", label: "Bookings", href: "field-force/bookings" },
     { key: "field-force.bookings-new", label: "+ New Booking", href: "field-force/bookings/new" },
@@ -224,10 +249,44 @@ export const MODULE_SUB_NAV: Record<string, PartnerNavSubItem[]> = {
     { key: "field-force.onboard", label: "Onboard Engineer", href: "field-force/onboard" },
     { key: "field-force.allocations", label: "Job Allocation", href: "field-force/allocations" },
   ],
+  "event-booking": [
+    { key: "event-booking.list", label: "Bookings", href: "event-booking" },
+    { key: "event-booking.new", label: "+ New Booking", href: "event-booking/new" },
+    { key: "event-booking.calendar", label: "Calendar", href: "event-booking/calendar" },
+    { key: "event-booking.venues", label: "Venues", href: "event-booking/venues" },
+    { key: "event-booking.resources", label: "Resources", href: "event-booking/resources" },
+  ],
+  // Prisma-backed HRMS block (Employee/AttendanceCheckIn/OfficeLocation/
+  // LeaveRequest/LeaveBalance/Payslip — see prisma/schema.prisma and
+  // src/lib/hrms.ts). Employee is a deliberately separate table from
+  // PartnerStaff, not coupled to it. Attendance is the live geofenced
+  // check-in/check-out app; Attendance History is its filterable report.
+  hrms: [
+    { key: "hrms.list", label: "Employees", href: "hrms" },
+    { key: "hrms.create", label: "+ New Employee", href: "hrms/new" },
+    { key: "hrms.office-locations.list", label: "Office Locations", href: "hrms/office-locations" },
+    { key: "hrms.attendance", label: "Attendance", href: "hrms/attendance" },
+    { key: "hrms.attendance.history", label: "Attendance History", href: "hrms/attendance/history" },
+    { key: "hrms.leave.list", label: "Leave", href: "hrms/leave" },
+    { key: "hrms.payroll.list", label: "Payroll", href: "hrms/payroll" },
+  ],
   telecalling: [
     { key: "telecalling.leads", label: "Leads", href: "telecalling" },
     { key: "telecalling.agents", label: "Agents", href: "telecalling/agents" },
     { key: "telecalling.templates", label: "Message Templates", href: "telecalling/templates" },
+  ],
+  legal: [
+    { key: "legal.list", label: "Matters", href: "legal" },
+    { key: "legal.new", label: "+ New Matter", href: "legal/new" },
+    { key: "legal.clients", label: "Clients", href: "legal/clients" },
+  ],
+  accounting: [
+    { key: "accounting.chart-of-accounts", label: "Chart of Accounts", href: "accounting/chart-of-accounts" },
+    { key: "accounting.journal-entries", label: "Journal Entries", href: "accounting/journal-entries" },
+    { key: "accounting.fiscal-periods", label: "Fiscal Periods", href: "accounting/fiscal-periods" },
+    { key: "accounting.reports.trial-balance", label: "Trial Balance", href: "accounting/reports/trial-balance" },
+    { key: "accounting.reports.profit-loss", label: "Profit & Loss", href: "accounting/reports/profit-loss" },
+    { key: "accounting.reports.balance-sheet", label: "Balance Sheet", href: "accounting/reports/balance-sheet" },
   ],
   billing: [
     { key: "billing.list", label: "Invoices", href: "billing" },
@@ -245,6 +304,22 @@ export const MODULE_SUB_NAV: Record<string, PartnerNavSubItem[]> = {
     { key: "billing.expenses", label: "Expenses", href: "billing/expenses" },
     { key: "billing.reports", label: "Reports", href: "billing/reports" },
     { key: "billing.recurring", label: "Recurring Invoices", href: "billing/recurring" },
+  ],
+  marketplace: [
+    { key: "marketplace.list", label: "Listings", href: "marketplace" },
+    { key: "marketplace.new", label: "+ New Listing", href: "marketplace/new" },
+    { key: "marketplace.orders", label: "Orders", href: "marketplace/orders" },
+    { key: "marketplace.vendor", label: "Vendor Settings", href: "marketplace/vendor" },
+  ],
+  // Enrollments (root list) stayed BusinessRecord-backed; Batches/Courses/
+  // Students moved onto real Prisma tables (Course/Batch/Student/
+  // Enrollment/FeeInstallment/ClassAttendance — see src/lib/education.ts).
+  education: [
+    { key: "education.list", label: "Enrollments", href: "education" },
+    { key: "education.new", label: "+ New Enrollment", href: "education/new" },
+    { key: "education.batches", label: "Batches", href: "education/batches" },
+    { key: "education.courses", label: "Courses", href: "education/courses" },
+    { key: "education.students", label: "Students", href: "education/students" },
   ],
 };
 

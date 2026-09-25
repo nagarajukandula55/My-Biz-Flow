@@ -1,10 +1,10 @@
 import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
-import { RecordForm } from "@/components/RecordForm";
-import { eventBookingFormFields } from "@/lib/sample-data/event-booking";
-import { applyCustomizations } from "@/lib/designer/customizations";
-import { createBusinessRecordAction } from "@/lib/businessRecordActions";
+import { requirePartnerSessionForPage } from "@/lib/requirePartnerSession";
+import { listVenues, listEventResources } from "@/lib/eventBooking";
+import { BookingForm } from "../BookingForm";
+import { createEventBookingAction } from "../[recordId]/actions";
 
 registerPage({
   id: "event-booking.create",
@@ -13,29 +13,26 @@ registerPage({
   path: "/partner/[partnerId]/event-booking/new",
   kind: "form",
   superAdminOnly: false,
-  customizableRegions: [
-    { key: "form-fields", label: "Form fields" },
-    { key: "validation-rules", label: "Validation rules" },
-    { key: "default-values", label: "Default values" },
-  ],
-  explanation: "A config-driven creation form for a new event in the event-booking module, built from the module's real field set via the shared RecordForm component. Submission is a client-side demo stub — no backend is wired up in this pass.",
+  customizableRegions: [],
+  explanation: "Creates a new EventBooking — venue, event name/type, date range, customer, status, amounts — plus one or more EventResourceAllocation rows (resource + quantity), fail-closed blocked server-side on a double-booking conflict (same resource, overlapping time, another non-Cancelled booking).",
   sourceFile: "src/app/partner/[partnerId]/event-booking/new/page.tsx",
 });
 
 export default async function NewEventBookingPage({ params }: { params: { partnerId: string } }) {
+  await requirePartnerSessionForPage(params.partnerId);
   const mod = await getModule("event-booking");
-  const fields = await applyCustomizations("event-booking.create", eventBookingFormFields);
+  const [venues, resources] = await Promise.all([listVenues(params.partnerId), listEventResources(params.partnerId)]);
 
   return (
-    <AppShell topbarTitle={`New Event — ${mod?.label ?? "Event / Venue Booking"}`}>
+    <AppShell topbarTitle={`New Booking — ${mod?.label ?? "Event / Venue Booking"}`}>
       <div>
-        <h1 className="font-display text-2xl font-bold text-text">New Event</h1>
-        <p className="mt-1 text-sm text-text-muted">Create a new event record for Event / Venue Booking.</p>
+        <h1 className="font-display text-2xl font-bold text-text">New Event Booking</h1>
         <div className="mt-6">
-          <RecordForm
-            fields={fields}
-            submitLabel="Create Event"
-            action={createBusinessRecordAction.bind(null, params.partnerId, "event-booking")}
+          <BookingForm
+            venues={venues.map((v) => ({ id: v.id, name: v.name }))}
+            resources={resources.filter((r) => r.isActive).map((r) => ({ id: r.id, name: r.name, category: r.category }))}
+            submitLabel="Create Booking"
+            action={createEventBookingAction.bind(null, params.partnerId)}
           />
         </div>
       </div>

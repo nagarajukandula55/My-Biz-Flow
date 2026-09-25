@@ -1,25 +1,23 @@
 import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
+import Link from "next/link";
 import { MarketplaceClientTable } from "./MarketplaceClientTable";
-import { MarketplaceNewButton } from "./MarketplaceNewButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
-import { marketplaceColumns } from "@/lib/sample-data/marketplace";
-import { listBusinessRecords } from "@/lib/businessRecords";
+import { marketplaceListingColumns, marketplaceListingToRow } from "@/lib/sample-data/marketplaceListings";
+import { listMarketplaceListings } from "@/lib/marketplace";
 
 registerPage({
   id: "marketplace.list",
   moduleSlug: "marketplace",
-  title: "Marketplace / Partner Aggregator — List",
+  title: "Marketplace — Listings",
   path: "/partner/[partnerId]/marketplace",
   kind: "list",
   superAdminOnly: false,
   customizableRegions: [
     { key: "columns", label: "Table columns" },
-    { key: "filters", label: "List filters" },
-    { key: "view-toggle", label: "List / Kanban view options" },
   ],
-  explanation: "Lists every partner listing record for the marketplace module in a sortable table, with a \"+ New\" action to create one and row-click navigation into the record's detail view.",
+  explanation: "Lists every MarketplaceListing (this partner's own product listings — title/description/price/stock/category/active) in a sortable table, Prisma-backed, with a \"+ New Listing\" action and row-click navigation into the record's detail view. Single-partner scoped — a partner's own catalog, not a cross-tenant marketplace.",
   sourceFile: "src/app/partner/[partnerId]/marketplace/page.tsx",
 });
 
@@ -27,14 +25,17 @@ export const dynamic = "force-dynamic";
 
 export default async function MarketplacePage({ params }: { params: { partnerId: string } }) {
   const mod = await getModule("marketplace");
-  const columns = await applyCustomizations("marketplace.list", marketplaceColumns);
-  const rows = await listBusinessRecords(params.partnerId, "marketplace");
+  const columns = await applyCustomizations("marketplace.list", marketplaceListingColumns);
+  const listings = await listMarketplaceListings(params.partnerId);
+  const rows = listings.map(marketplaceListingToRow);
 
   return (
     <AppShell
       topbarTitle={mod?.label ?? "Marketplace / Partner Aggregator"}
       topbarActions={
-        <MarketplaceNewButton partnerId={params.partnerId} />
+        <Link href={`/partner/${params.partnerId}/marketplace/new`} className="btn-accent">
+          + New Listing
+        </Link>
       }
     >
       <div>
@@ -46,4 +47,3 @@ export default async function MarketplacePage({ params }: { params: { partnerId:
     </AppShell>
   );
 }
-

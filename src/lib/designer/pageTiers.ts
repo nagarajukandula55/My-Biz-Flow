@@ -183,6 +183,17 @@ export const DEFAULT_PAGE_TIERS: Record<string, PlanTier> = {
   // forget to gate it.
   "inventory.transactions.list": "pro",
   "billing.reports.profit-loss": "ultimate",
+
+  // --- Accounting (standalone general ledger — distinct from accounting-gst) ---
+  // Chart of Accounts / Journal Entries / Fiscal Periods stay ungated —
+  // real double-entry bookkeeping is the base capability a partner turning
+  // this module on is paying for, same posture as Service Centre's
+  // workorder core staying basic. The Reports (Trial Balance/P&L/Balance
+  // Sheet) are the advanced payoff of having a real GL — gated Pro+, same
+  // tier as Inventory's money-ledger Transactions page above.
+  "accounting.reports.trial-balance": "pro",
+  "accounting.reports.profit-loss": "pro",
+  "accounting.reports.balance-sheet": "pro",
 };
 
 /**

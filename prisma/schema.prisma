@@ -1438,23 +1438,707 @@ model PosStaff {
 /// column) — checkout refuses to ring up a sale against a Closed/missing
 /// session (see requireOpenTillSession).
 model PosTillSession {
-  id             String    @id @default(cuid())
-  posAccountId   String
-  posAccount     PosAccount @relation(fields: [posAccountId], references: [id])
-  locationId     String
+  id              String     @id @default(cuid())
+  posAccountId    String
+  posAccount      PosAccount @relation(fields: [posAccountId], references: [id])
+  locationId      String
   openedByStaffId String
-  openedByStaff  PosStaff  @relation("TillOpenedBy", fields: [openedByStaffId], references: [id])
-  openingFloat   Int
-  openedAt       DateTime  @default(now())
+  openedByStaff   PosStaff   @relation("TillOpenedBy", fields: [openedByStaffId], references: [id])
+  openingFloat    Int
+  openedAt        DateTime   @default(now())
   closedByStaffId String?
-  closedByStaff  PosStaff? @relation("TillClosedBy", fields: [closedByStaffId], references: [id])
-  countedCash    Int?
-  expectedCash   Int?
-  variance       Int?
-  closedAt       DateTime?
-  status         String    @default("Open") // Open | Closed
-  notes          String?
+  closedByStaff   PosStaff?  @relation("TillClosedBy", fields: [closedByStaffId], references: [id])
+  countedCash     Int?
+  expectedCash    Int?
+  variance        Int?
+  closedAt        DateTime?
+  status          String     @default("Open") // Open | Closed
+  notes           String?
 
   @@index([posAccountId, locationId, status])
   @@map("pos_till_sessions")
+}
+
+// =====================================================================
+// Schema-design-only stage (2026-09-25): dedicated tables for 8 modules
+// that previously would have used the generic BusinessRecord store.
+// NO Service Centre / Billing tables are touched anywhere below — see
+// CLAUDE.md's explicit do-not-touch list. Every model here is NEW.
+// Migration SQL for this block lives at
+// prisma/migrations/20260925160000_add_eight_module_tables/migration.sql
+// and has NOT been applied — a human must review and run it.
+// =====================================================================
+
+// ---------------------------------------------------------------------
+// ==== Manufacturing ====
+// Raw-material stock deduction keeps using the existing BusinessRecord-
+// backed src/lib/inventoryStock.ts ("inventory-stock" moduleSlug) — out
+// of scope here, materialId below is a loose string reference into that
+// same store, not a Prisma relation.
+// ---------------------------------------------------------------------
+
+/// A manufacturable product's bill of materials — replaces the old
+/// free-text "BOM Reference" + ad hoc JSON bomLines that used to live on a
+/// BusinessRecord. `version`/`isActive` let a product have a history of
+/// BOM revisions with only one active at a time (enforced in app logic).
+model BillOfMaterial {
+  id          String   @id @default(cuid())
+  partnerId   String
+  productName String
+  productCode String?
+  version     Int      @default(1)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  lines            BomLine[]
+  productionOrders ProductionOrder[]
+
+  @@index([partnerId])
+  @@map("bill_of_materials")
+}
+
+/// One material line on a BillOfMaterial. materialId/materialLabel mirror
+/// the loose-reference convention StockLot/MaterialConsumption already use
+/// for pointing at inventory-stock's BusinessRecord-backed catalog — no
+/// Prisma relation into that store.
+model BomLine {
+  id            String         @id @default(cuid())
+  bomId         String
+  bom           BillOfMaterial @relation(fields: [bomId], references: [id])
+  materialId    String
+  materialLabel String
+  quantity      Float
+  unitCost      Int // paise
+
+  @@index([bomId])
+  @@map("bom_lines")
+}
+
+/// A physical production line/station a ProductionOrder can be scheduled
+/// against — ops-editable, no capacity-booking engine yet (capacityPerDay
+/// is informational only in this pass).
+model WorkCenter {
+  id             String  @id @default(cuid())
+  partnerId      String
+  name           String
+  capacityPerDay Int?
+  isActive       Boolean @default(true)
+
+  productionOrders ProductionOrder[]
+
+  @@index([partnerId])
+  @@map("work_centers")
+}
+
+/// A production run against a BillOfMaterial — the core Manufacturing
+/// job record.
+model ProductionOrder {
+  id                   String          @id @default(cuid())
+  partnerId            String
+  bomId                String?
+  bom                  BillOfMaterial? @relation(fields: [bomId], references: [id])
+  productName          String
+  quantityPlanned      Int
+  quantityProduced     Int             @default(0)
+  workCenterId         String?
+  workCenter           WorkCenter?     @relation(fields: [workCenterId], references: [id])
+  /// Planned | InProduction | QC | Completed | Delayed
+  status               String          @default("Planned")
+  plannedStartDate     DateTime?
+  plannedEndDate       DateTime?
+  actualCompletionDate DateTime?
+  createdAt            DateTime        @default(now())
+
+  stageHistory ProductionStageHistory[]
+
+  @@index([partnerId])
+  @@index([bomId])
+  @@index([workCenterId])
+  @@map("production_orders")
+}
+
+/// Audit trail of stage transitions for a ProductionOrder — tenant-scoped
+/// via its parent (no partnerId of its own: a stage-history row only ever
+/// exists attached to a ProductionOrder, same convention as BomLine).
+model ProductionStageHistory {
+  id                String          @id @default(cuid())
+  productionOrderId String
+  productionOrder   ProductionOrder @relation(fields: [productionOrderId], references: [id])
+  stage             String
+  enteredAt         DateTime        @default(now())
+  note              String?         @db.Text
+
+  @@index([productionOrderId])
+  @@map("production_stage_history")
+}
+
+// ---------------------------------------------------------------------
+// ==== Wholesale B2B ====
+// ---------------------------------------------------------------------
+
+model WholesaleCustomer {
+  id             String   @id @default(cuid())
+  partnerId      String
+  name           String
+  contact        String?
+  gstin          String?
+  creditLimit    Int      @default(0) // paise
+  creditTermDays Int      @default(0)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+
+  orders WholesaleOrder[]
+
+  @@index([partnerId])
+  @@map("wholesale_customers")
+}
+
+model PriceTier {
+  id              String @id @default(cuid())
+  partnerId       String
+  name            String
+  discountPercent Int    @default(0)
+
+  orders WholesaleOrder[]
+
+  @@index([partnerId])
+  @@map("price_tiers")
+}
+
+model WholesaleOrder {
+  id          String            @id @default(cuid())
+  partnerId   String
+  customerId  String
+  customer    WholesaleCustomer @relation(fields: [customerId], references: [id])
+  priceTierId String?
+  priceTier   PriceTier?        @relation(fields: [priceTierId], references: [id])
+  orderNumber String
+  /// Pending | Confirmed | Dispatched | Delivered | Cancelled
+  status      String            @default("Pending")
+  orderDate   DateTime          @default(now())
+  totalAmount Int               @default(0) // paise
+  createdAt   DateTime          @default(now())
+
+  lines WholesaleOrderLine[]
+
+  @@unique([partnerId, orderNumber])
+  @@index([partnerId])
+  @@index([customerId])
+  @@map("wholesale_orders")
+}
+
+/// Tenant-scoped via its parent WholesaleOrder (no own partnerId), same
+/// convention as BomLine.
+model WholesaleOrderLine {
+  id            String         @id @default(cuid())
+  orderId       String
+  order         WholesaleOrder @relation(fields: [orderId], references: [id])
+  materialId    String
+  materialLabel String
+  quantity      Float
+  unitPrice     Int // paise
+
+  @@index([orderId])
+  @@map("wholesale_order_lines")
+}
+
+// ---------------------------------------------------------------------
+// ==== Event Booking ====
+// ---------------------------------------------------------------------
+
+model Venue {
+  id        String  @id @default(cuid())
+  partnerId String
+  name      String
+  address   String?
+  capacity  Int?
+  isActive  Boolean @default(true)
+
+  bookings EventBooking[]
+
+  @@index([partnerId])
+  @@map("venues")
+}
+
+model EventBooking {
+  id              String   @id @default(cuid())
+  partnerId       String
+  venueId         String?
+  venue           Venue?   @relation(fields: [venueId], references: [id])
+  eventName       String
+  /// OneTime | Recurring
+  bookingType     String   @default("OneTime")
+  startAt         DateTime
+  endAt           DateTime
+  customerName    String
+  customerContact String?
+  /// Requested | Confirmed | InProgress | Completed | Cancelled
+  status          String   @default("Requested")
+  totalAmount     Int      @default(0) // paise
+  amountPaid      Int      @default(0) // paise
+  createdAt       DateTime @default(now())
+
+  resourceAllocations EventResourceAllocation[]
+
+  @@index([partnerId])
+  @@index([venueId])
+  @@map("event_bookings")
+}
+
+model EventResource {
+  id        String  @id @default(cuid())
+  partnerId String
+  name      String
+  category  String?
+  isActive  Boolean @default(true)
+
+  allocations EventResourceAllocation[]
+
+  @@index([partnerId])
+  @@map("event_resources")
+}
+
+/// Tenant-scoped via its parent EventBooking (no own partnerId).
+model EventResourceAllocation {
+  id             String        @id @default(cuid())
+  eventBookingId String
+  eventBooking   EventBooking  @relation(fields: [eventBookingId], references: [id])
+  resourceId     String
+  resource       EventResource @relation(fields: [resourceId], references: [id])
+  quantity       Int           @default(1)
+
+  @@index([eventBookingId])
+  @@index([resourceId])
+  @@map("event_resource_allocations")
+}
+
+// ---------------------------------------------------------------------
+// ==== Legal ====
+// ---------------------------------------------------------------------
+
+model LegalClient {
+  id        String   @id @default(cuid())
+  partnerId String
+  name      String
+  contact   String?
+  email     String?
+  address   String?
+  createdAt DateTime @default(now())
+
+  matters LegalMatter[]
+
+  @@index([partnerId])
+  @@map("legal_clients")
+}
+
+model LegalMatter {
+  id           String      @id @default(cuid())
+  partnerId    String
+  clientId     String
+  client       LegalClient @relation(fields: [clientId], references: [id])
+  matterNumber String
+  title        String
+  matterType   String?
+  /// Open | InProgress | OnHold | Closed
+  status       String      @default("Open")
+  openedDate   DateTime    @default(now())
+  closedDate   DateTime?
+
+  courtDates LegalCourtDate[]
+  documents  LegalDocument[]
+
+  @@unique([partnerId, matterNumber])
+  @@index([partnerId])
+  @@index([clientId])
+  @@map("legal_matters")
+}
+
+/// Named LegalCourtDate (not CourtDate) to avoid any future collision with
+/// a generic "CourtDate" concept elsewhere in this shared-DB schema.
+/// Tenant-scoped via its parent LegalMatter (no own partnerId).
+model LegalCourtDate {
+  id          String      @id @default(cuid())
+  matterId    String
+  matter      LegalMatter @relation(fields: [matterId], references: [id])
+  hearingDate DateTime
+  court       String?
+  purpose     String?
+  outcome     String?     @db.Text
+
+  @@index([matterId])
+  @@map("legal_court_dates")
+}
+
+/// Metadata only — no file storage pipeline exists in this app yet (same
+/// documented gap as Partner.logoDataUrl's note), so there is no fileUrl
+/// column here to point at anything real.
+model LegalDocument {
+  id           String      @id @default(cuid())
+  matterId     String
+  matter       LegalMatter @relation(fields: [matterId], references: [id])
+  title        String
+  documentType String?
+  uploadedAt   DateTime    @default(now())
+
+  @@index([matterId])
+  @@map("legal_documents")
+}
+
+// ---------------------------------------------------------------------
+// ==== Education ====
+// ---------------------------------------------------------------------
+
+model Course {
+  id            String  @id @default(cuid())
+  partnerId     String
+  name          String
+  durationWeeks Int?
+  fee           Int     @default(0) // paise
+  isActive      Boolean @default(true)
+
+  batches Batch[]
+
+  @@index([partnerId])
+  @@map("courses")
+}
+
+model Batch {
+  id        String    @id @default(cuid())
+  partnerId String
+  courseId  String
+  course    Course    @relation(fields: [courseId], references: [id])
+  batchName String
+  startDate DateTime?
+  endDate   DateTime?
+  /// Upcoming | Ongoing | Completed | Cancelled
+  status    String    @default("Upcoming")
+  capacity  Int?
+
+  enrollments Enrollment[]
+  attendance  ClassAttendance[]
+
+  @@index([partnerId])
+  @@index([courseId])
+  @@map("batches")
+}
+
+model Student {
+  id              String   @id @default(cuid())
+  partnerId       String
+  name            String
+  contact         String?
+  email           String?
+  guardianName    String?
+  guardianContact String?
+  createdAt       DateTime @default(now())
+
+  enrollments Enrollment[]
+  attendance  ClassAttendance[]
+
+  @@index([partnerId])
+  @@map("students")
+}
+
+/// Tenant-scoped via its parent Student/Batch (no own partnerId) — every
+/// enrollment always hangs off a Student and Batch that are already
+/// partner-scoped, so a lookup filtered by either FK is automatically
+/// tenant-correct.
+model Enrollment {
+  id         String   @id @default(cuid())
+  studentId  String
+  student    Student  @relation(fields: [studentId], references: [id])
+  batchId    String
+  batch      Batch    @relation(fields: [batchId], references: [id])
+  enrolledAt DateTime @default(now())
+  /// Active | Completed | Dropped
+  status     String   @default("Active")
+
+  feeInstallments FeeInstallment[]
+
+  @@index([studentId])
+  @@index([batchId])
+  @@map("enrollments")
+}
+
+/// Tenant-scoped via its parent Enrollment (no own partnerId).
+model FeeInstallment {
+  id           String     @id @default(cuid())
+  enrollmentId String
+  enrollment   Enrollment @relation(fields: [enrollmentId], references: [id])
+  dueDate      DateTime
+  amount       Int // paise
+  paidAt       DateTime?
+  paidAmount   Int? // paise
+
+  @@index([enrollmentId])
+  @@map("fee_installments")
+}
+
+/// Distinct from HRMS's AttendanceCheckIn below (that one is staff
+/// attendance; this is student class attendance).
+model ClassAttendance {
+  id        String   @id @default(cuid())
+  batchId   String
+  batch     Batch    @relation(fields: [batchId], references: [id])
+  studentId String
+  student   Student  @relation(fields: [studentId], references: [id])
+  date      DateTime
+  /// Present | Absent | Late
+  status    String
+
+  @@index([batchId])
+  @@index([studentId])
+  @@map("class_attendance")
+}
+
+// ---------------------------------------------------------------------
+// ==== HRMS (with live attendance) ====
+// Deliberately a NEW, isolated Employee table — NOT reusing PartnerStaff,
+// per the prior audit's explicit recommendation to keep HRMS changes
+// isolated from Telecalling/POS-adjacent login flows.
+// ---------------------------------------------------------------------
+
+model Employee {
+  id                 String     @id @default(cuid())
+  partnerId          String
+  name               String
+  contact            String?
+  email              String?
+  department         String?
+  designation        String?
+  reportingManagerId String?
+  reportingManager   Employee?  @relation("EmployeeManager", fields: [reportingManagerId], references: [id])
+  reports            Employee[] @relation("EmployeeManager")
+  joiningDate        DateTime?
+  /// Active | OnLeave | Resigned | Terminated
+  status             String     @default("Active")
+  createdAt          DateTime   @default(now())
+
+  checkIns      AttendanceCheckIn[]
+  leaveRequests LeaveRequest[]
+  leaveBalances LeaveBalance[]
+  payslips      Payslip[]
+
+  @@index([partnerId])
+  @@index([reportingManagerId])
+  @@map("employees")
+}
+
+/// The live attendance app's core table — one row per check-in (and its
+/// paired check-out once that happens).
+model AttendanceCheckIn {
+  id              String    @id @default(cuid())
+  employeeId      String
+  employee        Employee  @relation(fields: [employeeId], references: [id])
+  checkInAt       DateTime  @default(now())
+  checkOutAt      DateTime?
+  checkInLat      Float?
+  checkInLng      Float?
+  checkOutLat     Float?
+  checkOutLng     Float?
+  checkInPhotoUrl String?
+  /// Present | Late | HalfDay
+  status          String    @default("Present")
+  notes           String?   @db.Text
+
+  @@index([employeeId])
+  @@index([employeeId, checkInAt])
+  @@map("attendance_check_ins")
+}
+
+/// Registered site(s) attendance check-ins are validated against.
+model OfficeLocation {
+  id                   String @id @default(cuid())
+  partnerId            String
+  name                 String
+  lat                  Float
+  lng                  Float
+  geofenceRadiusMeters Int    @default(200)
+
+  @@index([partnerId])
+  @@map("office_locations")
+}
+
+model LeaveRequest {
+  id         String    @id @default(cuid())
+  employeeId String
+  employee   Employee  @relation(fields: [employeeId], references: [id])
+  leaveType  String
+  startDate  DateTime
+  endDate    DateTime
+  /// Pending | Approved | Rejected
+  status     String    @default("Pending")
+  reason     String?   @db.Text
+  appliedAt  DateTime  @default(now())
+  decidedAt  DateTime?
+  decidedBy  String?
+
+  @@index([employeeId])
+  @@map("leave_requests")
+}
+
+model LeaveBalance {
+  id         String   @id @default(cuid())
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  leaveType  String
+  totalDays  Int      @default(0)
+  usedDays   Int      @default(0)
+
+  @@unique([employeeId, leaveType])
+  @@index([employeeId])
+  @@map("leave_balances")
+}
+
+model Payslip {
+  id          String   @id @default(cuid())
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id])
+  month       Int
+  year        Int
+  basicPay    Int // paise
+  allowances  Int      @default(0) // paise
+  deductions  Int      @default(0) // paise
+  netPay      Int // paise
+  generatedAt DateTime @default(now())
+  /// Draft | Finalized | Paid
+  status      String   @default("Draft")
+
+  @@unique([employeeId, month, year])
+  @@index([employeeId])
+  @@map("payslips")
+}
+
+// ---------------------------------------------------------------------
+// ==== Marketplace ====
+// Scope decision (2026-09-25, per the prior audit's caution): this pass
+// is SINGLE-PARTNER scoped — a partner's own listings/orders visible only
+// to that partner's own storefront/customers, NOT a cross-partner
+// marketplace. True cross-tenant discovery needs a separate, bigger
+// design decision and is explicitly out of scope here.
+// ---------------------------------------------------------------------
+
+/// The vendor identity IS the Partner itself in this single-partner-scoped
+/// pass — kept as its own row (rather than reusing Partner directly) so a
+/// partner's marketplace-specific settings/status can evolve independently
+/// of their core Partner record.
+model MarketplaceVendor {
+  id        String   @id @default(cuid())
+  partnerId String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@index([partnerId])
+  @@map("marketplace_vendors")
+}
+
+model MarketplaceListing {
+  id            String   @id @default(cuid())
+  partnerId     String
+  title         String
+  description   String?  @db.Text
+  price         Int // paise
+  stockQuantity Int      @default(0)
+  isActive      Boolean  @default(true)
+  category      String?
+  createdAt     DateTime @default(now())
+
+  orders MarketplaceOrder[]
+
+  @@index([partnerId])
+  @@map("marketplace_listings")
+}
+
+model MarketplaceOrder {
+  id              String             @id @default(cuid())
+  partnerId       String
+  listingId       String
+  listing         MarketplaceListing @relation(fields: [listingId], references: [id])
+  customerName    String
+  customerContact String?
+  quantity        Int                @default(1)
+  totalAmount     Int                @default(0) // paise
+  /// Pending | Confirmed | Shipped | Delivered | Cancelled
+  status          String             @default("Pending")
+  orderedAt       DateTime           @default(now())
+
+  @@index([partnerId])
+  @@index([listingId])
+  @@map("marketplace_orders")
+}
+
+// ---------------------------------------------------------------------
+// ==== Accounting / General Ledger ====
+// A separate, additive ledger — deliberately does NOT duplicate
+// accounting-gst's existing GST return data (still a BusinessRecord
+// moduleSlug). accounting-gst's records can later feed into this GL as
+// source documents, not be replaced by it.
+// Double-entry balancing (each JournalEntry's debits sum == credits sum)
+// is enforced in app logic later, not a DB constraint in this pass.
+// ---------------------------------------------------------------------
+
+model ChartOfAccount {
+  id              String           @id @default(cuid())
+  partnerId       String
+  accountCode     String
+  accountName     String
+  /// Asset | Liability | Equity | Income | Expense
+  accountType     String
+  parentAccountId String?
+  parentAccount   ChartOfAccount?  @relation("AccountHierarchy", fields: [parentAccountId], references: [id])
+  childAccounts   ChartOfAccount[] @relation("AccountHierarchy")
+  isActive        Boolean          @default(true)
+
+  journalLines JournalLine[]
+
+  @@unique([partnerId, accountCode])
+  @@index([partnerId])
+  @@index([parentAccountId])
+  @@map("chart_of_accounts")
+}
+
+model JournalEntry {
+  id             String   @id @default(cuid())
+  partnerId      String
+  entryNumber    String
+  entryDate      DateTime @default(now())
+  narration      String?  @db.Text
+  sourceType     String?
+  sourceRecordId String?
+  createdAt      DateTime @default(now())
+
+  lines JournalLine[]
+
+  @@unique([partnerId, entryNumber])
+  @@index([partnerId])
+  @@index([partnerId, entryDate])
+  @@map("journal_entries")
+}
+
+/// Tenant-scoped via its parent JournalEntry (no own partnerId) — every
+/// line always hangs off a JournalEntry that is already partner-scoped.
+model JournalLine {
+  id             String         @id @default(cuid())
+  journalEntryId String
+  journalEntry   JournalEntry   @relation(fields: [journalEntryId], references: [id])
+  accountId      String
+  account        ChartOfAccount @relation(fields: [accountId], references: [id])
+  debit          Int            @default(0) // paise
+  credit         Int            @default(0) // paise
+
+  @@index([journalEntryId])
+  @@index([accountId])
+  @@map("journal_lines")
+}
+
+model FiscalPeriod {
+  id        String   @id @default(cuid())
+  partnerId String
+  name      String
+  startDate DateTime
+  endDate   DateTime
+  isClosed  Boolean  @default(false)
+
+  @@index([partnerId])
+  @@map("fiscal_periods")
 }

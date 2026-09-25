@@ -80,6 +80,7 @@ export default async function NewBillingPage({ params }: { params: { partnerId: 
               ifsc: partner?.bankIfsc,
             }}
             partnerUpiId={partner?.upiId}
+            partnerGstin={partner?.gstin}
           />
         </div>
       </div>

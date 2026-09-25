@@ -1,98 +1,77 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createBusinessRecord, updateBusinessRecord, getBusinessRecord } from "@/lib/businessRecords";
+import { redirect } from "next/navigation";
 import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
-import { computeTimeLogTotal, MATTER_STAGES, type MatterStage, type TimeLogEntry } from "@/lib/sample-data/legal";
+import {
+  updateLegalMatter,
+  addLegalCourtDate,
+  addLegalDocument,
+  LEGAL_MATTER_STATUSES,
+  type LegalMatterStatus,
+} from "@/lib/legal";
+
+/** Full-form edit save — RecordForm's `action` prop, bound with (partnerId, matterId). */
+export async function updateLegalMatterAction(partnerId: string, matterId: string, values: Record<string, unknown>) {
+  partnerId = await requireSessionPartnerId(partnerId);
+
+  const title = String(values["title"] ?? "").trim();
+  if (!title) return { error: "Title is required." };
+  const clientId = values["clientId"] ? String(values["clientId"]) : undefined;
+
+  const statusRaw = values["status"] ? String(values["status"]) : undefined;
+  const status =
+    statusRaw && (LEGAL_MATTER_STATUSES as readonly string[]).includes(statusRaw)
+      ? (statusRaw as LegalMatterStatus)
+      : undefined;
+
+  await updateLegalMatter(partnerId, matterId, {
+    clientId,
+    title,
+    matterType: values["matterType"] ? String(values["matterType"]) : undefined,
+    status,
+    openedDate: values["openedDate"] ? String(values["openedDate"]) : undefined,
+  });
+
+  revalidatePath(`/partner/${partnerId}/legal`);
+  revalidatePath(`/partner/${partnerId}/legal/${matterId}`);
+  redirect(`/partner/${partnerId}/legal/${matterId}?updated=1`);
+}
 
 /**
- * Appends a {date, hours, description, rate} billable-hours entry to the
- * matter's running time log, and syncs the legacy billableHours column
- * (sum of logged hours) so the list view stays consistent with the detail
- * panel's running total.
+ * Sets a matter's status — replaces the old free-form MATTER_STAGES stepper
+ * (New/Discovery/Filing/Hearing/Resolved, a BusinessRecord-only concept with
+ * no column on LegalMatter) with the real status enum this Prisma model
+ * carries (Open/InProgress/OnHold/Closed). Fires the
+ * "legalMatterStatusChanged" Telegram alert from within updateLegalMatter()
+ * whenever the status actually changes.
  */
-export async function logHoursAction(
+export async function setLegalMatterStatusAction(partnerId: string, matterId: string, status: LegalMatterStatus): Promise<void> {
+  partnerId = await requireSessionPartnerId(partnerId);
+  if (!(LEGAL_MATTER_STATUSES as readonly string[]).includes(status)) return;
+  await updateLegalMatter(partnerId, matterId, { status });
+  revalidatePath(`/partner/${partnerId}/legal/${matterId}`);
+  revalidatePath(`/partner/${partnerId}/legal`);
+}
+
+export async function addLegalCourtDateAction(
   partnerId: string,
   matterId: string,
-  entry: { date: string; hours: number; description: string; rate: number }
+  input: { hearingDate: string; court?: string; purpose?: string; outcome?: string }
 ): Promise<void> {
   partnerId = await requireSessionPartnerId(partnerId);
-  const record = await getBusinessRecord(partnerId, "legal", matterId);
-  if (!record) return;
-
-  const hours = Number(entry.hours) || 0;
-  const rate = Number(entry.rate) || Number(record["hourlyRate"]) || 0;
-  if (hours <= 0) return;
-
-  const log = (record["timeLog"] as TimeLogEntry[] | undefined) ?? [];
-  const next: TimeLogEntry[] = [
-    ...log,
-    { id: `TL-${Date.now()}`, date: entry.date, hours, description: entry.description, rate },
-  ];
-
-  await updateBusinessRecord(partnerId, "legal", matterId, {
-    ...record,
-    timeLog: next,
-    billableHours: next.reduce((s, e) => s + (Number(e.hours) || 0), 0),
-  });
+  if (!input.hearingDate) return;
+  await addLegalCourtDate(partnerId, matterId, input);
   revalidatePath(`/partner/${partnerId}/legal/${matterId}`);
 }
 
-/**
- * Advances (or sets) the matter's stage stepper. Reaching "Resolved"
- * auto-triggers invoice generation from the accumulated billable-hours
- * total, same as the explicit Generate Invoice action below.
- */
-export async function setMatterStageAction(partnerId: string, matterId: string, stage: MatterStage): Promise<void> {
+export async function addLegalDocumentAction(
+  partnerId: string,
+  matterId: string,
+  input: { title: string; documentType?: string }
+): Promise<void> {
   partnerId = await requireSessionPartnerId(partnerId);
-  const record = await getBusinessRecord(partnerId, "legal", matterId);
-  if (!record) return;
-  if (!MATTER_STAGES.includes(stage)) return;
-
-  await updateBusinessRecord(partnerId, "legal", matterId, { ...record, stage });
-  revalidatePath(`/partner/${partnerId}/legal/${matterId}`);
-
-  if (stage === "Resolved") {
-    await createInvoiceFromMatterAction(partnerId, matterId);
-  }
-}
-
-/**
- * Creates a real Billing invoice from the matter's accumulated billable
- * hours (hours * rate per logged entry, recomputed server-side — never
- * trust a client total) — mirrors createInvoiceFromWorkorderAction in
- * service-centre/[recordId]/actions.ts. Guards against double-invoicing.
- */
-export async function createInvoiceFromMatterAction(partnerId: string, matterId: string): Promise<void> {
-  partnerId = await requireSessionPartnerId(partnerId);
-  const record = await getBusinessRecord(partnerId, "legal", matterId);
-  if (!record) return;
-  if (record["invoiceId"]) return; // already invoiced — don't double-create
-
-  const log = (record["timeLog"] as TimeLogEntry[] | undefined) ?? [];
-  const subtotal = computeTimeLogTotal(log);
-  const taxAmount = Math.round(subtotal * 0.18);
-  const totalAmount = subtotal + taxAmount;
-  const totalHours = log.reduce((s, e) => s + (Number(e.hours) || 0), 0);
-
-  const lineSummary =
-    log.length > 0
-      ? log.map((e) => `${e.description} — ${e.hours}h @ ₹${e.rate}/hr`).join("; ")
-      : `${totalHours}h @ ₹${record["hourlyRate"] ?? 0}/hr (no itemized log)`;
-
-  const invoice = await createBusinessRecord(partnerId, "billing", {
-    customer: record["client"] ?? "",
-    issueDate: new Date().toISOString().slice(0, 10),
-    dueDate: new Date().toISOString().slice(0, 10),
-    lineItemsSummary: lineSummary,
-    subtotal,
-    taxAmount,
-    totalAmount,
-    paymentStatus: "Draft",
-    paymentMode: undefined,
-    sourceMatterId: matterId,
-  });
-
-  await updateBusinessRecord(partnerId, "legal", matterId, { ...record, invoiceId: invoice.id });
+  if (!input.title?.trim()) return;
+  await addLegalDocument(partnerId, matterId, input);
   revalidatePath(`/partner/${partnerId}/legal/${matterId}`);
 }

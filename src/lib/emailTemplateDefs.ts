@@ -21,7 +21,7 @@ export type EmailTemplateDef = {
   key: string;
   label: string;
   /** Group shown in the admin editor. */
-  group: "Auth" | "Partner lifecycle" | "Workorder lifecycle" | "Billing";
+  group: "Auth" | "Partner lifecycle" | "Workorder lifecycle" | "Billing" | "Module alert";
   /** Token names this template's default fields may reference as {{token}}. */
   variables: string[];
   defaultSubject: string;
@@ -177,6 +177,186 @@ export const EMAIL_TEMPLATE_DEFS: EmailTemplateDef[] = [
     defaultHeading: "Hi {{customerName}}, your workorder was cancelled",
     defaultBody: "Workorder {{workorderNumber}} has been cancelled.{{reason}}",
     defaultFootNote: "If you believe this was a mistake, contact {{partnerBusinessName}} directly, or reach {{siteName}} support at {{supportEmail}}.",
+  },
+  // --- Module alert emails (2026-09-25 build-out) -------------------------
+  // Matching keys for the ~19 new Telegram alert types added this session
+  // (see telegramTemplateDefs.ts). Every event gets a def here so an admin
+  // can preview/author its copy even where no send is wired yet (see each
+  // module's actions.ts/lib file for which are actually sent — only
+  // Legal/Education/HRMS have a real per-record recipient email field;
+  // Manufacturing, Wholesale B2B, Event Booking, and Marketplace don't have
+  // a clear "customer email" the way Service Centre workorders do, so no
+  // send call exists for those yet even though the def/copy is here).
+  {
+    key: "production_delayed",
+    label: "Manufacturing: production order delayed",
+    group: "Module alert",
+    variables: ["businessName", "orderId", "productName", "quantityPlanned"],
+    defaultSubject: "Production delayed — {{productName}} ({{orderId}})",
+    defaultHeading: "Production order delayed",
+    defaultBody: "Production order {{orderId}} for {{productName}} (planned qty {{quantityPlanned}}) has been marked Delayed at {{businessName}}.",
+  },
+  {
+    key: "production_stock_shortfall",
+    label: "Manufacturing: stock shortfall blocking production",
+    group: "Module alert",
+    variables: ["businessName", "orderId", "productName", "materialLabel", "available", "required"],
+    defaultSubject: "Production blocked — stock shortfall on {{productName}}",
+    defaultHeading: "Production blocked: stock shortfall",
+    defaultBody: "Production order {{orderId}} for {{productName}} at {{businessName}} is blocked: {{materialLabel}} has {{available}} available but {{required}} is required.",
+  },
+  {
+    key: "production_completed",
+    label: "Manufacturing: production completed",
+    group: "Module alert",
+    variables: ["businessName", "orderId", "productName", "quantityProduced", "totalCost"],
+    defaultSubject: "Production completed — {{productName}} ({{orderId}})",
+    defaultHeading: "Production completed",
+    defaultBody: "Production order {{orderId}} for {{productName}} at {{businessName}} is complete. Quantity produced: {{quantityProduced}}. Total cost: {{totalCost}}.",
+  },
+  {
+    key: "wholesale_large_order",
+    label: "Wholesale B2B: large order placed",
+    group: "Module alert",
+    variables: ["businessName", "orderNumber", "customerName", "amount"],
+    defaultSubject: "New wholesale order {{orderNumber}} — {{amount}}",
+    defaultHeading: "New wholesale order placed",
+    defaultBody: "{{customerName}} placed order {{orderNumber}} with {{businessName}} for {{amount}}.",
+  },
+  {
+    key: "wholesale_credit_limit_breach",
+    label: "Wholesale B2B: credit limit breach blocked",
+    group: "Module alert",
+    variables: ["businessName", "customerName", "amount", "outstanding", "creditLimit"],
+    defaultSubject: "Order blocked — credit limit breach ({{customerName}})",
+    defaultHeading: "Order blocked: credit limit breach",
+    defaultBody: "An order of {{amount}} for {{customerName}} at {{businessName}} was blocked — it would have pushed outstanding {{outstanding}} over their credit limit of {{creditLimit}}.",
+  },
+  {
+    key: "event_booking_confirmed",
+    label: "Event booking confirmed",
+    group: "Module alert",
+    variables: ["businessName", "eventName", "bookingId"],
+    defaultSubject: "Event confirmed — {{eventName}}",
+    defaultHeading: "Event confirmed",
+    defaultBody: "{{eventName}} (booking {{bookingId}}) has been confirmed at {{businessName}}.",
+  },
+  {
+    key: "event_starting_soon",
+    label: "Event starting soon",
+    group: "Module alert",
+    variables: ["businessName", "eventName", "bookingId", "startAt"],
+    defaultSubject: "Reminder: {{eventName}} starts soon",
+    defaultHeading: "Your event starts soon",
+    defaultBody: "{{eventName}} (booking {{bookingId}}) at {{businessName}} starts at {{startAt}}.",
+  },
+  {
+    key: "event_payment_received",
+    label: "Event payment received",
+    group: "Module alert",
+    variables: ["businessName", "eventName", "bookingId", "amount", "totalPaid"],
+    defaultSubject: "Payment received — {{eventName}}",
+    defaultHeading: "Payment received",
+    defaultBody: "{{amount}} received for {{eventName}} (booking {{bookingId}}) at {{businessName}}. Total paid so far: {{totalPaid}}.",
+  },
+  {
+    key: "legal_court_date_upcoming",
+    label: "Legal: upcoming court date",
+    group: "Module alert",
+    variables: ["businessName", "matterNumber", "title", "courtDate"],
+    defaultSubject: "Upcoming court date — {{matterNumber}}",
+    defaultHeading: "Upcoming court date",
+    defaultBody: "Matter {{matterNumber}} — {{title}} has a court date on {{courtDate}}. Handled by {{businessName}}.",
+  },
+  {
+    key: "legal_matter_status_changed",
+    label: "Legal: matter status changed",
+    group: "Module alert",
+    variables: ["businessName", "matterNumber", "title", "prevStatus", "nextStatus"],
+    defaultSubject: "Matter status update — {{matterNumber}}",
+    defaultHeading: "Your matter status has changed",
+    defaultBody: "Matter {{matterNumber}} — {{title}} moved from {{prevStatus}} to {{nextStatus}} at {{businessName}}.",
+  },
+  {
+    key: "education_fee_overdue",
+    label: "Education: fee installment overdue",
+    group: "Module alert",
+    variables: ["businessName", "studentName", "installmentLabel", "dueDate", "amount"],
+    defaultSubject: "Fee installment overdue — {{installmentLabel}}",
+    defaultHeading: "Fee installment overdue",
+    defaultBody: "Hi {{studentName}}, your {{installmentLabel}} installment of {{amount}} due {{dueDate}} at {{businessName}} is now overdue. Please settle it at the earliest.",
+  },
+  {
+    key: "education_batch_starting",
+    label: "Education: batch starting",
+    group: "Module alert",
+    variables: ["businessName", "batchName", "courseName", "startDate"],
+    defaultSubject: "Your batch starts soon — {{batchName}}",
+    defaultHeading: "Your batch starts soon",
+    defaultBody: "{{batchName}} ({{courseName}}) at {{businessName}} starts on {{startDate}}.",
+  },
+  {
+    key: "education_enrollment_confirmed",
+    label: "Education: enrollment confirmed",
+    group: "Module alert",
+    variables: ["businessName", "studentName", "batchName", "courseName"],
+    defaultSubject: "Enrollment confirmed — {{batchName}}",
+    defaultHeading: "You're enrolled!",
+    defaultBody: "Hi {{studentName}}, you've been enrolled into {{batchName}} ({{courseName}}) at {{businessName}}.",
+  },
+  {
+    key: "hrms_late_check_in",
+    label: "HRMS: late / blocked check-in",
+    group: "Module alert",
+    variables: ["businessName", "employeeName", "nearestOfficeInfo"],
+    defaultSubject: "Check-in blocked — {{employeeName}}",
+    defaultHeading: "Check-in blocked",
+    defaultBody: "{{employeeName}}'s check-in at {{businessName}} was blocked for being outside every registered office's geofence.{{nearestOfficeInfo}}",
+  },
+  {
+    key: "hrms_leave_request_submitted",
+    label: "HRMS: leave request submitted",
+    group: "Module alert",
+    variables: ["businessName", "employeeName", "leaveType", "startDate", "endDate"],
+    defaultSubject: "Leave request submitted — {{employeeName}}",
+    defaultHeading: "Leave request submitted",
+    defaultBody: "{{employeeName}} requested {{leaveType}} leave from {{startDate}} to {{endDate}} at {{businessName}}.",
+  },
+  {
+    key: "hrms_leave_decided",
+    label: "HRMS: leave request approved/rejected",
+    group: "Module alert",
+    variables: ["businessName", "employeeName", "leaveType", "startDate", "endDate", "decision"],
+    defaultSubject: "Your leave request was {{decision}}",
+    defaultHeading: "Leave request {{decision}}",
+    defaultBody: "Hi {{employeeName}}, your {{leaveType}} leave from {{startDate}} to {{endDate}} at {{businessName}} was {{decision}}.",
+  },
+  {
+    key: "hrms_payroll_completed",
+    label: "HRMS: payroll run completed",
+    group: "Module alert",
+    variables: ["businessName", "employeeName", "month", "year", "netPay"],
+    defaultSubject: "Payslip ready — {{month}}/{{year}}",
+    defaultHeading: "Your payslip is ready",
+    defaultBody: "Hi {{employeeName}}, your payslip for {{month}}/{{year}} at {{businessName}} has been finalized. Net pay: {{netPay}}.",
+  },
+  {
+    key: "marketplace_new_order",
+    label: "Marketplace: new order placed",
+    group: "Module alert",
+    variables: ["businessName", "listingTitle", "quantity", "customerName", "totalAmount"],
+    defaultSubject: "New marketplace order — {{listingTitle}}",
+    defaultHeading: "New marketplace order",
+    defaultBody: "{{customerName}} ordered {{quantity}} x {{listingTitle}} from {{businessName}} for {{totalAmount}}.",
+  },
+  {
+    key: "marketplace_vendor_payout",
+    label: "Marketplace: vendor payout",
+    group: "Module alert",
+    variables: ["businessName", "vendorName", "amount"],
+    defaultSubject: "Vendor payout — {{amount}}",
+    defaultHeading: "Vendor payout processed",
+    defaultBody: "A payout of {{amount}} was processed for {{vendorName}} at {{businessName}}.",
   },
 ];
 

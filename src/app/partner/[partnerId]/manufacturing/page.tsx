@@ -1,11 +1,10 @@
 import { AppShell } from "@/components/AppShell";
+import Link from "next/link";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
-import { ManufacturingClientTable } from "./ManufacturingClientTable";
-import { ManufacturingNewButton } from "./ManufacturingNewButton";
+import { ManufacturingClientTable, productionOrderColumns } from "./ManufacturingClientTable";
 import { applyCustomizations } from "@/lib/designer/customizations";
-import { manufacturingColumns } from "@/lib/sample-data/manufacturing";
-import { listBusinessRecords } from "@/lib/businessRecords";
+import { listProductionOrders } from "@/lib/manufacturing";
 
 registerPage({
   id: "manufacturing.list",
@@ -17,9 +16,8 @@ registerPage({
   customizableRegions: [
     { key: "columns", label: "Table columns" },
     { key: "filters", label: "List filters" },
-    { key: "view-toggle", label: "List / Kanban view options" },
   ],
-  explanation: "Lists every work order record for the manufacturing module in a sortable table, with a \"+ New\" action to create one and row-click navigation into the record's detail view.",
+  explanation: "Lists every ProductionOrder for this partner in a sortable table (real data — Prisma-backed: ProductionOrder, joined with its BillOfMaterial and WorkCenter), with a \"+ New\" action to create one and row-click navigation into the record's detail view.",
   sourceFile: "src/app/partner/[partnerId]/manufacturing/page.tsx",
 });
 
@@ -27,14 +25,27 @@ export const dynamic = "force-dynamic";
 
 export default async function ManufacturingPage({ params }: { params: { partnerId: string } }) {
   const mod = await getModule("manufacturing");
-  const columns = await applyCustomizations("manufacturing.list", manufacturingColumns);
-  const rows = await listBusinessRecords(params.partnerId, "manufacturing");
+  const columns = await applyCustomizations("manufacturing.list", productionOrderColumns);
+  const orders = await listProductionOrders(params.partnerId);
+  const rows = orders.map((o) => ({
+    id: o.id,
+    productName: o.productName,
+    bomProductName: o.bomProductName ?? "—",
+    workCenterName: o.workCenterName ?? "—",
+    quantityPlanned: o.quantityPlanned,
+    quantityProduced: o.quantityProduced,
+    plannedStartDate: o.plannedStartDate ? o.plannedStartDate.toISOString() : null,
+    plannedEndDate: o.plannedEndDate ? o.plannedEndDate.toISOString() : null,
+    status: o.status,
+  }));
 
   return (
     <AppShell
       topbarTitle={mod?.label ?? "Manufacturing / Production"}
       topbarActions={
-        <ManufacturingNewButton partnerId={params.partnerId} />
+        <Link href={`/partner/${params.partnerId}/manufacturing/new`} className="btn-accent">
+          + New Production Order
+        </Link>
       }
     >
       <div>
@@ -46,4 +57,3 @@ export default async function ManufacturingPage({ params }: { params: { partnerI
     </AppShell>
   );
 }
-

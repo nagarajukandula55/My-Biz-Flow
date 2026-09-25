@@ -237,6 +237,177 @@ export const TELEGRAM_TEMPLATE_DEFS: TelegramTemplateDef[] = [
     variables: ["commandList"],
     defaultBody: "🤖 <b>Available commands</b>\n\n{{commandList}}",
   },
+  {
+    key: "wholesale_large_order",
+    label: "Wholesale B2B: large order placed",
+    group: "Event alert",
+    command: "/test_wholesale_large_order",
+    variables: ["businessName", "orderNumber", "customerName", "amount"],
+    defaultBody:
+      "📦 <b>Wholesale Order Placed — {{businessName}}</b>\n\n<pre>\nOrder         {{orderNumber}}\nCustomer      {{customerName}}\nAmount        {{amount}}\n</pre>",
+  },
+  {
+    key: "wholesale_credit_limit_breach",
+    label: "Wholesale B2B: credit limit breach blocked",
+    group: "Event alert",
+    command: "/test_wholesale_credit_limit_breach",
+    variables: ["businessName", "customerName", "amount", "outstanding", "creditLimit"],
+    defaultBody:
+      "🚫 <b>Credit Limit Breach Blocked — {{businessName}}</b>\n\n<pre>\nCustomer      {{customerName}}\nOrder amount  {{amount}}\nOutstanding   {{outstanding}}\nCredit limit  {{creditLimit}}\n</pre>\n<i>Order was blocked — it would have pushed this customer over their credit limit.</i>",
+  },
+  {
+    key: "production_delayed",
+    label: "Manufacturing: production order delayed",
+    group: "Event alert",
+    command: "/test_production_delayed",
+    variables: ["businessName", "orderId", "productName", "quantityPlanned"],
+    defaultBody:
+      "⚠️ <b>Production Delayed — {{businessName}}</b>\n\n<pre>\nOrder         {{orderId}}\nProduct       {{productName}}\nPlanned Qty   {{quantityPlanned}}\n</pre>",
+  },
+  {
+    key: "production_stock_shortfall",
+    label: "Manufacturing: stock shortfall blocking production",
+    group: "Event alert",
+    command: "/test_production_stock_shortfall",
+    variables: ["businessName", "orderId", "productName", "materialLabel", "available", "required"],
+    defaultBody:
+      "🛑 <b>Production Blocked — Stock Shortfall — {{businessName}}</b>\n\n<pre>\nOrder         {{orderId}}\nProduct       {{productName}}\nMaterial      {{materialLabel}}\nAvailable     {{available}}\nRequired      {{required}}\n</pre>",
+  },
+  {
+    key: "production_completed",
+    label: "Manufacturing: production completed",
+    group: "Event alert",
+    command: "/test_production_completed",
+    variables: ["businessName", "orderId", "productName", "quantityProduced", "totalCost"],
+    defaultBody:
+      "✅ <b>Production Completed — {{businessName}}</b>\n\n<pre>\nOrder         {{orderId}}\nProduct       {{productName}}\nQty Produced  {{quantityProduced}}\nTotal Cost    {{totalCost}}\n</pre>",
+  },
+  {
+    key: "event_booking_confirmed",
+    label: "Event booking confirmed",
+    group: "Event alert",
+    command: "/test_event_booking_confirmed",
+    variables: ["businessName", "eventName", "bookingId"],
+    defaultBody:
+      "🎉 <b>Event Confirmed — {{businessName}}</b>\n\n<pre>\nEvent         {{eventName}}\nBooking       {{bookingId}}\n</pre>",
+  },
+  {
+    key: "event_starting_soon",
+    label: "Event starting soon",
+    group: "Event alert",
+    command: "/test_event_starting_soon",
+    variables: ["businessName", "eventName", "bookingId", "startAt"],
+    defaultBody:
+      "⏰ <b>Event Starting Soon — {{businessName}}</b>\n\n<pre>\nEvent         {{eventName}}\nBooking       {{bookingId}}\nStarts        {{startAt}}\n</pre>",
+  },
+  {
+    key: "event_payment_received",
+    label: "Event payment received",
+    group: "Event alert",
+    command: "/test_event_payment_received",
+    variables: ["businessName", "eventName", "bookingId", "amount", "totalPaid"],
+    defaultBody:
+      "💰 <b>Event Payment Received — {{businessName}}</b>\n\n<pre>\nEvent         {{eventName}}\nBooking       {{bookingId}}\nAmount        {{amount}}\nTotal paid    {{totalPaid}}\n</pre>",
+  },
+  {
+    key: "legal_court_date_upcoming",
+    label: "Legal: upcoming court date",
+    group: "Event alert",
+    command: "/test_legal_court_date_upcoming",
+    variables: ["businessName", "matterNumber", "title", "courtDate"],
+    defaultBody:
+      "⚖️ <b>Upcoming Court Date — {{businessName}}</b>\n\n<pre>\nMatter        {{matterNumber}}\nTitle         {{title}}\nCourt date    {{courtDate}}\n</pre>",
+  },
+  {
+    key: "legal_matter_status_changed",
+    label: "Legal: matter status changed",
+    group: "Event alert",
+    command: "/test_legal_matter_status_changed",
+    variables: ["businessName", "matterNumber", "title", "prevStatus", "nextStatus"],
+    defaultBody:
+      "📁 <b>Matter Status Changed — {{businessName}}</b>\n\n<pre>\nMatter        {{matterNumber}}\nTitle         {{title}}\nStatus        {{prevStatus}} → {{nextStatus}}\n</pre>",
+  },
+  {
+    key: "education_fee_overdue",
+    label: "Education: fee installment overdue",
+    group: "Event alert",
+    command: "/test_education_fee_overdue",
+    variables: ["businessName", "studentName", "installmentLabel", "dueDate", "amount"],
+    defaultBody:
+      "⏰ <b>Fee Installment Overdue — {{businessName}}</b>\n\n<pre>\nStudent       {{studentName}}\nInstallment   {{installmentLabel}}\nDue date      {{dueDate}}\nAmount        {{amount}}\n</pre>",
+  },
+  {
+    key: "education_batch_starting",
+    label: "Education: batch starting",
+    group: "Event alert",
+    command: "/test_education_batch_starting",
+    variables: ["businessName", "batchName", "courseName", "startDate"],
+    defaultBody:
+      "🗓️ <b>Batch Starting — {{businessName}}</b>\n\n<pre>\nBatch         {{batchName}}\nCourse        {{courseName}}\nStarts        {{startDate}}\n</pre>",
+  },
+  {
+    key: "education_enrollment_confirmed",
+    label: "Education: enrollment confirmed",
+    group: "Event alert",
+    command: "/test_education_enrollment_confirmed",
+    variables: ["businessName", "studentName", "batchName", "courseName"],
+    defaultBody:
+      "🎓 <b>Enrollment Confirmed — {{businessName}}</b>\n\n<pre>\nStudent       {{studentName}}\nBatch         {{batchName}}\nCourse        {{courseName}}\n</pre>",
+  },
+  {
+    key: "hrms_late_check_in",
+    label: "HRMS: late / blocked check-in",
+    group: "Event alert",
+    command: "/test_hrms_late_check_in",
+    variables: ["businessName", "employeeName", "nearestOfficeInfo"],
+    defaultBody:
+      "🚫 <b>Check-in Blocked — {{businessName}}</b>\n\n<pre>\nEmployee      {{employeeName}}\n</pre>\n<i>Attempted to check in outside every registered office's geofence.{{nearestOfficeInfo}}</i>",
+  },
+  {
+    key: "hrms_leave_request_submitted",
+    label: "HRMS: leave request submitted",
+    group: "Event alert",
+    command: "/test_hrms_leave_request_submitted",
+    variables: ["businessName", "employeeName", "leaveType", "startDate", "endDate"],
+    defaultBody:
+      "📝 <b>Leave Request Submitted — {{businessName}}</b>\n\n<pre>\nEmployee      {{employeeName}}\nLeave type    {{leaveType}}\nFrom          {{startDate}}\nTo            {{endDate}}\n</pre>",
+  },
+  {
+    key: "hrms_leave_decided",
+    label: "HRMS: leave request approved/rejected",
+    group: "Event alert",
+    command: "/test_hrms_leave_decided",
+    variables: ["businessName", "employeeName", "leaveType", "startDate", "endDate", "decision"],
+    defaultBody:
+      "✅ <b>Leave Request {{decision}} — {{businessName}}</b>\n\n<pre>\nEmployee      {{employeeName}}\nLeave type    {{leaveType}}\nFrom          {{startDate}}\nTo            {{endDate}}\n</pre>",
+  },
+  {
+    key: "hrms_payroll_completed",
+    label: "HRMS: payroll run completed",
+    group: "Event alert",
+    command: "/test_hrms_payroll_completed",
+    variables: ["businessName", "employeeName", "month", "year", "netPay"],
+    defaultBody:
+      "💵 <b>Payroll Finalized — {{businessName}}</b>\n\n<pre>\nEmployee      {{employeeName}}\nPeriod        {{month}}/{{year}}\nNet Pay       {{netPay}}\n</pre>",
+  },
+  {
+    key: "marketplace_new_order",
+    label: "Marketplace: new order placed",
+    group: "Event alert",
+    command: "/test_marketplace_new_order",
+    variables: ["businessName", "listingTitle", "quantity", "customerName", "totalAmount"],
+    defaultBody:
+      "🛒 <b>New Marketplace Order — {{businessName}}</b>\n\n<pre>\nListing       {{listingTitle}}\nQty           {{quantity}}\nCustomer      {{customerName}}\nTotal         {{totalAmount}}\n</pre>",
+  },
+  {
+    key: "marketplace_vendor_payout",
+    label: "Marketplace: vendor payout",
+    group: "Event alert",
+    command: "/test_marketplace_vendor_payout",
+    variables: ["businessName", "vendorName", "amount"],
+    defaultBody:
+      "💸 <b>Vendor Payout — {{businessName}}</b>\n\n<pre>\nVendor        {{vendorName}}\nAmount        {{amount}}\n</pre>",
+  },
 ];
 
 export function findTelegramTemplateDef(key: string): TelegramTemplateDef | undefined {

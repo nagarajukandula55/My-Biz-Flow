@@ -30,13 +30,17 @@ export default async function EditBillingPage({ params }: { params: { partnerId:
   const record = await getBusinessRecord(params.partnerId, "billing", params.recordId);
   if (!record) notFound();
   const items = (record["items"] as LineItem[] | undefined) ?? [];
-  const invoiceType = items.some((it) => it.taxRate > 0) ? "GST" : "Non-GST";
   const [contacts, customers, partner, itemOptions] = await Promise.all([
     listBusinessRecords(params.partnerId, "billing-contacts"),
     listBusinessRecords(params.partnerId, "service-centre-customers"),
     getPartner(params.partnerId),
     getLineItemCatalogOptions(params.partnerId),
   ]);
+  // A partner with no GSTIN of their own can never edit an invoice into GST
+  // format — same fail-closed rule BillingInvoiceForm/businessRecordActions
+  // enforce on create. Overrides the tax-rate-based inference below.
+  const invoiceType =
+    Boolean(partner?.gstin) && items.some((it) => it.taxRate > 0) ? "GST" : "Non-GST";
   const contactOptions = contacts.map((c) => ({
     id: String(c["id"]),
     label: String(c["name"] ?? c["id"]),
@@ -114,6 +118,7 @@ export default async function EditBillingPage({ params }: { params: { partnerId:
               ifsc: partner?.bankIfsc,
             }}
             partnerUpiId={partner?.upiId}
+            partnerGstin={partner?.gstin}
           />
         </div>
       </div>

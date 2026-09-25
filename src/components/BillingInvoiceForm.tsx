@@ -140,6 +140,7 @@ export function BillingInvoiceForm({
   partnerId,
   partnerBankDetails,
   partnerUpiId,
+  partnerGstin,
 }: {
   initialValues?: Partial<BillingInvoiceValues>;
   submitLabel: string;
@@ -164,12 +165,24 @@ export function BillingInvoiceForm({
   partnerBankDetails?: PartnerBankDetails;
   /** This partner's own UPI VPA (Settings → Bank Details) — drives the footer's UPI Payment QR tile preview/placeholder. */
   partnerUpiId?: string | null;
+  /** This partner's own registered GSTIN (Partner.gstin). A partner without
+   * one is not GST-registered and cannot issue a GST-format tax invoice
+   * (buyer GSTIN/HSN/CGST-SGST-IGST split) — only a plain/normal invoice.
+   * Empty/undefined hides the "GST Invoice" option entirely and forces
+   * Non-GST; the matching server-side reject lives in
+   * businessRecordActions.ts (createBusinessRecordAction/
+   * updateBusinessRecordAction) since hiding the UI control alone doesn't
+   * stop a direct/crafted form submission. */
+  partnerGstin?: string | null;
 }) {
+  const partnerHasGstin = Boolean(partnerGstin?.trim());
   const [customer, setCustomer] = useState(initialValues?.customer ?? "");
   const [customerContactId, setCustomerContactId] = useState<string | null>(
     initialValues?.customerContactId ?? null
   );
-  const [invoiceType, setInvoiceType] = useState<InvoiceType>(initialValues?.invoiceType ?? "GST");
+  const [invoiceType, setInvoiceType] = useState<InvoiceType>(
+    partnerHasGstin ? initialValues?.invoiceType ?? "GST" : "Non-GST"
+  );
   const [customerGstin, setCustomerGstin] = useState(initialValues?.customerGstin ?? "");
   const [customerCompany, setCustomerCompany] = useState(initialValues?.customerCompany ?? "");
   const [customerPhone, setCustomerPhone] = useState(initialValues?.customerPhone ?? "");
@@ -227,15 +240,19 @@ export function BillingInvoiceForm({
   // bug, fixed here. isB2B below gates only the GSTIN field, which a B2C
   // customer genuinely doesn't have.
   const showTax = true;
+  // GSTIN/HSN/CGST-SGST-IGST are GST-registration-gated document fields —
+  // a partner with no GSTIN of their own cannot issue a GST tax invoice, so
+  // these never render for them regardless of the (forced-Non-GST) toggle.
+  const showGstFields = showTax && partnerHasGstin;
   const isB2B = invoiceType === "GST";
   const totals = computeTotals(items, showTax);
 
   // The manual toggle (supplyType state, above) is the real value — CGST+SGST
   // for INTRASTATE, IGST for INTERSTATE. It is not recomputed here.
   const interState = supplyType === "INTERSTATE";
-  const igstTotal = showTax && interState ? totals.taxTotal : 0;
-  const cgstTotal = showTax && !interState ? totals.taxTotal / 2 : 0;
-  const sgstTotal = showTax && !interState ? totals.taxTotal / 2 : 0;
+  const igstTotal = showGstFields && interState ? totals.taxTotal : 0;
+  const cgstTotal = showGstFields && !interState ? totals.taxTotal / 2 : 0;
+  const sgstTotal = showGstFields && !interState ? totals.taxTotal / 2 : 0;
   const grandTotal = totals.grandTotal - (discountAmount || 0);
 
   function handleInvoiceTypeChange(next: InvoiceType) {
@@ -243,6 +260,9 @@ export function BillingInvoiceForm({
     // B2C simplified bill, i.e. whether a buyer GSTIN is collected) — tax
     // rates on existing lines are real, already-entered charges and must
     // not be wiped just because the invoice format toggle was clicked.
+    // A partner with no GSTIN of their own can never switch into GST format
+    // — fail closed here too, not just by hiding the button below.
+    if (next === "GST" && !partnerHasGstin) return;
     setInvoiceType(next);
   }
 
@@ -344,7 +364,7 @@ export function BillingInvoiceForm({
         <div className="rounded-md border border-border bg-bg-raised p-4">
           <h2 className="mb-3 font-display text-sm font-bold text-text">Invoice Type</h2>
           <div className="flex gap-2 rounded-md border border-border bg-bg p-1">
-            {(["GST", "Non-GST"] as const).map((type) => (
+            {(partnerHasGstin ? (["GST", "Non-GST"] as const) : (["Non-GST"] as const)).map((type) => (
               <button
                 key={type}
                 type="button"
@@ -357,7 +377,13 @@ export function BillingInvoiceForm({
               </button>
             ))}
           </div>
-          {showTax && (
+          {!partnerHasGstin && (
+            <p className="mt-2 text-xs text-text-muted">
+              This business has no registered GSTIN, so only a plain (Non-GST) invoice can be issued — no buyer
+              GSTIN, HSN, or CGST/SGST/IGST fields.
+            </p>
+          )}
+          {showGstFields && (
             <div className="mt-3">
               <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-text-muted">Place of Supply</div>
               <div className="flex gap-2 rounded-md border border-border bg-bg p-1">
@@ -563,7 +589,7 @@ export function BillingInvoiceForm({
           items={items}
           onChange={setItems}
           showTax={showTax}
-          showHsn={showTax}
+          showHsn={showGstFields}
           itemOptions={itemOptions}
           interState={interState}
         />
@@ -599,7 +625,7 @@ export function BillingInvoiceForm({
               <span>Subtotal</span>
               <span className="font-mono tabular-nums text-text">{formatCurrencyINR(totals.subtotal)}</span>
             </div>
-            {showTax && !interState && (
+            {showGstFields && !interState && (
               <>
                 <div className="flex justify-between text-text-muted">
                   <span>CGST</span>
@@ -611,10 +637,16 @@ export function BillingInvoiceForm({
                 </div>
               </>
             )}
-            {showTax && interState && (
+            {showGstFields && interState && (
               <div className="flex justify-between text-text-muted">
                 <span>IGST</span>
                 <span className="font-mono tabular-nums text-text">{formatCurrencyINR(igstTotal)}</span>
+              </div>
+            )}
+            {showTax && !partnerHasGstin && (
+              <div className="flex justify-between text-text-muted">
+                <span>Tax</span>
+                <span className="font-mono tabular-nums text-text">{formatCurrencyINR(totals.taxTotal)}</span>
               </div>
             )}
             <Field label="Discount">

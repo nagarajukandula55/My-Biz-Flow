@@ -36,6 +36,12 @@ export default async function EducationPage({ params }: { params: { partnerId: s
       topbarTitle={mod?.label ?? "Education / Coaching"}
       topbarActions={
         <div className="flex items-center gap-2">
+          <Link href={`/partner/${params.partnerId}/education/courses`} className="btn-outline">
+            Courses
+          </Link>
+          <Link href={`/partner/${params.partnerId}/education/students`} className="btn-outline">
+            Students
+          </Link>
           <Link href={`/partner/${params.partnerId}/education/batches`} className="btn-outline">
             Batches
           </Link>

@@ -67,7 +67,15 @@ export async function buildServiceCentreLines(
   const items: ServiceCentreLine[] = [];
 
   for (const line of lifecycle.serviceLines) {
-    const gstRate = DEFAULT_GST_RATE;
+    // Read the tax rate the partner actually selected on this service line
+    // (0%, 5%, 12%, 18%...) — same fallback pattern the part-line loop below
+    // already used. This previously ignored `line.taxRate` entirely and
+    // hardcoded DEFAULT_GST_RATE (18) for every service line regardless of
+    // what was picked on the workorder form, so a workorder explicitly
+    // closed at 0% tax still had its labour line taxed at 18% the moment it
+    // was invoiced — the exact persisted-vs-selected drift this file's
+    // module doc warns against for part lines.
+    const gstRate = Number(line.taxRate ?? DEFAULT_GST_RATE);
     items.push({
       description: line.solutionLabel,
       hsn: SERVICE_HSN,

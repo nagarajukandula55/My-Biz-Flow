@@ -28,6 +28,83 @@ export const TELEGRAM_ALERT_TYPES = [
   { key: "subscriptionExpiring", label: "Subscription expiring" },
   { key: "generalAnnouncement", label: "General announcement" },
   { key: "otpVerification", label: "OTP verification codes" },
+  // Legal module (see src/lib/legal.ts). "legalCourtDateUpcoming" is
+  // registered here but not yet sent live — no cron job in this repo polls
+  // upcoming LegalCourtDate rows against a reminder window; that needs a
+  // scheduled job (e.g. a new /api/cron/legal-court-date-reminders route),
+  // left for a follow-up pass. "legalMatterStatusChanged" IS wired live —
+  // fired from updateLegalMatter() whenever a matter's status actually
+  // changes.
+  { key: "legalCourtDateUpcoming", label: "Legal: upcoming court date" },
+  { key: "legalMatterStatusChanged", label: "Legal: matter status changed" },
+  // Manufacturing module (see src/lib/manufacturing.ts and
+  // src/app/partner/[partnerId]/manufacturing/actions.ts). All three are
+  // wired live: productionDelayed fires on a manual status-set-to-Delayed
+  // (no cron/scheduled "plannedEndDate passed" check exists in this repo
+  // yet — see setProductionOrderStatusAction's doc comment for that
+  // follow-up); productionStockShortfall fires from
+  // completeProductionAction's fail-closed BOM stock check;
+  // productionCompleted fires once completeProductionAction succeeds.
+  { key: "productionDelayed", label: "Manufacturing: production order delayed" },
+  { key: "productionStockShortfall", label: "Manufacturing: stock shortfall blocking production" },
+  { key: "productionCompleted", label: "Manufacturing: production completed" },
+  // Event Booking module (see src/lib/eventBooking.ts). eventBookingConfirmed
+  // and eventPaymentReceived are wired live — fired from
+  // updateEventBooking/setEventBookingStatus/recordEventBookingPayment on an
+  // actual status->Confirmed transition or an amountPaid increase.
+  // eventStartingSoon is registered as a type only — no cron job in this
+  // repo polls upcoming EventBooking.startAt values against a reminder
+  // window yet; that needs a scheduled job (e.g. a new
+  // /api/cron/event-starting-soon route), left for a follow-up pass, same
+  // posture as legalCourtDateUpcoming above.
+  { key: "eventBookingConfirmed", label: "Event booking confirmed" },
+  { key: "eventStartingSoon", label: "Event starting soon" },
+  { key: "eventPaymentReceived", label: "Event payment received" },
+  // Wholesale B2B module (see src/lib/wholesaleData.ts and
+  // src/app/partner/[partnerId]/wholesale-b2b/actions.ts). wholesaleLargeOrder
+  // fires on every order creation — used as the "large order" signal for now
+  // since there's no configurable per-partner threshold yet (see that
+  // action's doc comment). wholesaleCreditLimitBreach fires whenever the
+  // fail-closed credit-limit check blocks an order create/confirm. There is
+  // no "order overdue" type — WholesaleOrder has no due-date field yet (see
+  // the status-transition action's doc comment); deliberately not added here.
+  { key: "wholesaleLargeOrder", label: "Wholesale B2B: large order placed" },
+  { key: "wholesaleCreditLimitBreach", label: "Wholesale B2B: credit limit breach blocked" },
+  // Education / Coaching module (see src/lib/education.ts and
+  // src/app/partner/[partnerId]/education/**). educationEnrollmentConfirmed
+  // is wired live — fired from createEnrollment() on a successful enrollment.
+  // educationFeeOverdue (a FeeInstallment whose dueDate has passed with
+  // paidAt still null) and educationBatchStarting (Batch.startDate reached)
+  // are registered as types only — no cron job in this repo polls those
+  // conditions yet; that needs a scheduled job (e.g. new
+  // /api/cron/education-fee-overdue and /api/cron/education-batch-starting
+  // routes), same documented-follow-up posture as legalCourtDateUpcoming/
+  // eventStartingSoon above.
+  { key: "educationFeeOverdue", label: "Education: fee installment overdue" },
+  { key: "educationBatchStarting", label: "Education: batch starting" },
+  { key: "educationEnrollmentConfirmed", label: "Education: enrollment confirmed" },
+  // HRMS / Payroll module (see src/lib/hrms.ts and
+  // src/app/partner/[partnerId]/hrms/**). hrmsLateCheckIn fires live when a
+  // check-in is blocked for being outside every registered OfficeLocation's
+  // geofence (this pass blocks rather than flags-and-allows — see checkIn()'s
+  // doc comment). hrmsLeaveRequestSubmitted fires live on createLeaveRequest().
+  // hrmsLeaveDecided fires live on decideLeaveRequest() (Approved or
+  // Rejected). hrmsPayrollCompleted fires live on a Payslip's status
+  // transitioning into "Finalized" (setPayslipStatus()).
+  { key: "hrmsLateCheckIn", label: "HRMS: late / blocked check-in" },
+  { key: "hrmsLeaveRequestSubmitted", label: "HRMS: leave request submitted" },
+  { key: "hrmsLeaveDecided", label: "HRMS: leave request approved/rejected" },
+  { key: "hrmsPayrollCompleted", label: "HRMS: payroll run completed" },
+  // Marketplace module (see src/lib/marketplace.ts and
+  // src/app/partner/[partnerId]/marketplace/orders/actions.ts).
+  // marketplaceNewOrder is wired live — fires from createMarketplaceOrderAction
+  // right after a new MarketplaceOrder is successfully created, notifying the
+  // vendor/partner. marketplaceVendorPayout is a type-key only — there is no
+  // real payout/settlement mechanism for Marketplace vendors yet (per the
+  // audit that scoped this pass), so nothing calls it; it's registered now
+  // for a future payout feature to use.
+  { key: "marketplaceNewOrder", label: "Marketplace: new order placed" },
+  { key: "marketplaceVendorPayout", label: "Marketplace: vendor payout" },
 ] as const;
 
 export type TelegramAlertType = (typeof TELEGRAM_ALERT_TYPES)[number]["key"];

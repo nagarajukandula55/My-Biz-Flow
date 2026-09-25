@@ -474,14 +474,27 @@ async function createInvoiceFromWorkorderInner(
     (record["handedOverAt"] as string | undefined) ?? new Date().toISOString()
   ).slice(0, 10);
 
+  // Fetched here (rather than only further below, where a second
+  // getPartner(partnerId) call already existed for the AN-Accounting push)
+  // so the GST-invoice gate below can use it. Same fail-closed rule as
+  // Billing's own direct "New Invoice" form (BillingInvoiceForm.tsx /
+  // businessRecordActions.ts): a partner with no GSTIN of their own cannot
+  // issue a GST-format tax invoice (buyer GSTIN/HSN fields), so an
+  // auto-generated Service Centre invoice for such a partner must come out
+  // as a plain/Non-GST invoice — the buyer's GSTIN and each line's HSN code
+  // are dropped rather than carried over.
+  const invoicingPartner = await getPartner(partnerId);
+  const partnerHasGstin = Boolean(invoicingPartner?.gstin?.trim());
+
   const invoice = await createBusinessRecord(partnerId, "billing", {
     invoiceNumber,
+    invoiceType: partnerHasGstin ? "GST" : "Non-GST",
     customer: record["customer"] ?? "",
     // Carried over from the workorder's intake block so the Billing
     // invoice knows who it's billed to (and whether it's B2B) instead of
     // holding a bare customer name — see serviceCentreFormFields.
     customerPhone: record["customerPhone"] ?? "",
-    customerGstin: record["customerGstin"] ?? "",
+    customerGstin: partnerHasGstin ? record["customerGstin"] ?? "" : "",
     customerAddress: record["customerAddress"] ?? "",
     customerCity: record["customerCity"] ?? "",
     customerState: record["customerState"] ?? "",
@@ -502,7 +515,7 @@ async function createInvoiceFromWorkorderInner(
       unit: l.unit,
       unitPrice: l.rate,
       taxRate: l.gstRate,
-      hsnCode: l.hsn || undefined,
+      hsnCode: partnerHasGstin ? l.hsn || undefined : undefined,
     })),
     subtotal,
     taxAmount,
@@ -546,7 +559,7 @@ async function createInvoiceFromWorkorderInner(
   // `.catch` is a belt-and-braces guard against an unhandled rejection, not
   // because this is expected to reject (see notifyCentralApiBillingInvoice's
   // own "deliberately never throws" doc).
-  const partner = await getPartner(partnerId);
+  const partner = invoicingPartner;
   if (partner) {
     // Same lines persisted on the invoice above, rather than a third
     // hand-rolled rebuild that re-applied the warranty/pending rules and

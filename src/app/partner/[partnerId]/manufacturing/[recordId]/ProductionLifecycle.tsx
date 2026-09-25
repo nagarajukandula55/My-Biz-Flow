@@ -3,114 +3,91 @@
 import { useState, useTransition } from "react";
 import { StatusChip } from "@/components/StatusChip";
 import { Modal } from "@/components/Modal";
-import { SearchSelectModal, type SearchSelectOption } from "@/components/SearchSelectModal";
-import { PRODUCTION_STAGES, type ProductionStage, type BomLine } from "@/lib/sample-data/manufacturing";
-import { patchBusinessRecordAction } from "@/lib/businessRecordActions";
-import { completeProductionAction } from "../actions";
+import { completeProductionAction, setProductionOrderStatusAction } from "../actions";
+import { PRODUCTION_ORDER_STATUSES, type ProductionOrderStatus } from "@/lib/manufacturing";
 
-const STAGE_VARIANT: Record<ProductionStage, "neutral" | "warning" | "amber" | "teal" | "success"> = {
+const STAGE_ORDER: ProductionOrderStatus[] = ["Planned", "InProduction", "QC", "Completed"];
+
+const STAGE_VARIANT: Record<ProductionOrderStatus, "neutral" | "warning" | "amber" | "teal" | "success" | "danger"> = {
   Planned: "neutral",
-  "Raw Material Issued": "amber",
-  "In Production": "warning",
-  QC: "teal",
+  InProduction: "warning",
+  QC: "amber",
   Completed: "success",
+  Delayed: "danger",
+};
+
+const STAGE_LABEL: Record<ProductionOrderStatus, string> = {
+  Planned: "Planned",
+  InProduction: "In Production",
+  QC: "QC",
+  Completed: "Completed",
+  Delayed: "Delayed",
 };
 
 export function ProductionLifecycle({
   partnerId,
-  workOrderId,
-  initialStage,
-  initialBomLines,
+  orderId,
+  initialStatus,
+  bomLines,
   quantityPlanned,
-  bomMaterials,
+  hasBom,
 }: {
   partnerId: string;
-  workOrderId: string;
-  initialStage: ProductionStage;
-  initialBomLines: BomLine[];
-  quantityPlanned?: number;
-  /** This partner's own live BOM materials (Inventory > Material Catalog), including rate — needed for costing. */
-  bomMaterials: { id: string; label: string; rate: number }[];
+  orderId: string;
+  initialStatus: string;
+  bomLines: { id: string; materialLabel: string; quantity: number; unitCost: number }[];
+  quantityPlanned: number;
+  hasBom: boolean;
 }) {
-  const [stage, setStage] = useState<ProductionStage>(initialStage);
-  const [bomLines, setBomLines] = useState<BomLine[]>(initialBomLines);
-  const [partPickerOpen, setPartPickerOpen] = useState(false);
+  const [status, setStatus] = useState<ProductionOrderStatus>((initialStatus as ProductionOrderStatus) ?? "Planned");
   const [completeModalOpen, setCompleteModalOpen] = useState(false);
   const [laborCostInput, setLaborCostInput] = useState("0");
-  const [quantityProducedInput, setQuantityProducedInput] = useState(String(quantityPlanned ?? ""));
+  const [quantityProducedInput, setQuantityProducedInput] = useState(String(quantityPlanned || ""));
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [, startPersist] = useTransition();
+  const [, startTransitionState] = useTransition();
 
-  function persist(patch: Record<string, unknown>) {
-    startPersist(async () => {
-      await patchBusinessRecordAction(partnerId, "manufacturing", workOrderId, patch);
-    });
-  }
+  const editable = status !== "Completed";
+  const estimatedMaterialCost = bomLines.reduce((sum, l) => sum + l.quantity * (l.unitCost / 100), 0);
 
-  const bomOptions: SearchSelectOption[] = bomMaterials.map((m) => ({ value: m.id, label: m.label }));
-  const editable = stage !== "Completed";
-  const estimatedMaterialCost = bomLines.reduce((sum, l) => sum + l.qty * l.rate, 0);
-
-  function addBomLine(option: SearchSelectOption) {
-    const material = bomMaterials.find((m) => m.id === option.value);
-    const next: BomLine[] = [
-      ...bomLines,
-      {
-        id: `BL-${Date.now()}`,
-        materialId: option.value,
-        materialLabel: option.label,
-        qty: 1,
-        rate: material?.rate ?? 0,
-      },
-    ];
-    setBomLines(next);
-    setPartPickerOpen(false);
-    persist({ bomLines: next });
-  }
-
-  function setLineQty(lineId: string, qty: number) {
-    setBomLines((prev) => prev.map((l) => (l.id === lineId ? { ...l, qty } : l)));
-  }
-
-  function persistLineQty() {
-    persist({ bomLines });
-  }
-
-  function removeLine(lineId: string) {
-    const next = bomLines.filter((l) => l.id !== lineId);
-    setBomLines(next);
-    persist({ bomLines: next });
-  }
-
-  function advanceStage() {
-    const idx = PRODUCTION_STAGES.indexOf(stage);
-    const next = PRODUCTION_STAGES[idx + 1];
-    if (!next) return;
-    if (next === "Raw Material Issued" && bomLines.length === 0) {
-      setErrorMessage("Add at least one BOM line before issuing raw materials.");
-      return;
-    }
+  function setNewStatus(next: ProductionOrderStatus) {
     if (next === "Completed") {
+      if (!hasBom || bomLines.length === 0) {
+        setErrorMessage("Link a Bill of Materials with at least one line before completing production.");
+        return;
+      }
       setCompleteModalOpen(true);
       return;
     }
     setErrorMessage(null);
-    setStage(next);
-    persist({ stage: next });
+    startTransitionState(async () => {
+      const result = await setProductionOrderStatusAction(partnerId, orderId, next);
+      if (result.error) {
+        setErrorMessage(result.error);
+        return;
+      }
+      setStatus(next);
+    });
+  }
+
+  function advanceStage() {
+    const idx = STAGE_ORDER.indexOf(status === "Delayed" ? "Planned" : status);
+    const next = STAGE_ORDER[idx + 1];
+    if (!next) return;
+    setNewStatus(next);
   }
 
   function submitComplete() {
     const laborCost = Number(laborCostInput) || 0;
     const quantityProduced = Number(quantityProducedInput) || 0;
-    startPersist(async () => {
-      const result = await completeProductionAction(partnerId, workOrderId, laborCost, quantityProduced);
+    startTransitionState(async () => {
+      const result = await completeProductionAction(partnerId, orderId, laborCost, quantityProduced);
       if (result.error) {
         setErrorMessage(result.error);
         return;
       }
       setErrorMessage(null);
       setCompleteModalOpen(false);
-      setStage("Completed");
+      setStatus("Completed");
     });
   }
 
@@ -118,12 +95,18 @@ export function ProductionLifecycle({
     <div>
       {/* Stage stepper */}
       <div className="flex flex-wrap items-center gap-2">
-        {PRODUCTION_STAGES.map((s, i) => (
+        {PRODUCTION_ORDER_STATUSES.filter((s) => s !== "Delayed").map((s, i, arr) => (
           <div key={s} className="flex items-center gap-2">
-            <StatusChip label={s} variant={s === stage ? STAGE_VARIANT[s] : "neutral"} />
-            {i < PRODUCTION_STAGES.length - 1 && <span className="text-text-muted">&rarr;</span>}
+            <StatusChip label={STAGE_LABEL[s]} variant={s === status ? STAGE_VARIANT[s] : "neutral"} />
+            {i < arr.length - 1 && <span className="text-text-muted">&rarr;</span>}
           </div>
         ))}
+        {status === "Delayed" && (
+          <>
+            <span className="text-text-muted">·</span>
+            <StatusChip label="Delayed" variant="danger" />
+          </>
+        )}
       </div>
 
       {errorMessage && (
@@ -132,42 +115,23 @@ export function ProductionLifecycle({
         </div>
       )}
 
-      {/* BOM lines */}
+      {/* BOM lines (read-only — set by the linked BillOfMaterial, see Manufacturing > BOM) */}
       <div className="mt-6 rounded-md border border-border bg-bg-raised p-4">
-        <div className="flex items-center justify-between">
-          <h2 className="font-display text-base font-bold text-text">Bill of Materials</h2>
-          {editable && (
-            <button type="button" className="btn-outline" onClick={() => setPartPickerOpen(true)}>
-              + Add BOM Line
-            </button>
-          )}
-        </div>
-
-        {bomLines.length === 0 ? (
-          <p className="mt-3 text-sm text-text-muted">No raw materials added yet.</p>
+        <h2 className="font-display text-base font-bold text-text">Bill of Materials</h2>
+        {!hasBom ? (
+          <p className="mt-3 text-sm text-text-muted">No Bill of Materials linked to this production order.</p>
+        ) : bomLines.length === 0 ? (
+          <p className="mt-3 text-sm text-text-muted">The linked BOM has no lines.</p>
         ) : (
           <div className="mt-3 space-y-2">
             {bomLines.map((line) => (
               <div key={line.id} className="flex items-center justify-between gap-3 rounded-md border border-border bg-bg px-3 py-2 text-sm">
                 <div className="flex-1">
                   <span className="font-semibold text-text">{line.materialLabel}</span>
-                  <span className="ml-2 text-xs text-text-muted">₹{line.rate}/unit</span>
+                  <span className="ml-2 text-xs text-text-muted">₹{(line.unitCost / 100).toFixed(2)}/unit</span>
                 </div>
-                <input
-                  type="number"
-                  min={0}
-                  value={line.qty}
-                  disabled={!editable}
-                  onChange={(e) => setLineQty(line.id, Number(e.target.value) || 0)}
-                  onBlur={persistLineQty}
-                  className="w-24 rounded-md border border-border bg-bg-raised px-2 py-1.5 text-sm text-text disabled:opacity-60"
-                />
-                <span className="w-24 text-right tabular-nums text-text-muted">₹{Math.round(line.qty * line.rate)}</span>
-                {editable && (
-                  <button type="button" className="text-xs text-danger hover:underline" onClick={() => removeLine(line.id)}>
-                    Remove
-                  </button>
-                )}
+                <span className="w-24 text-right tabular-nums text-text-muted">Qty {line.quantity}</span>
+                <span className="w-24 text-right tabular-nums text-text-muted">₹{Math.round(line.quantity * (line.unitCost / 100))}</span>
               </div>
             ))}
             <div className="flex items-center justify-end gap-2 pt-1 text-sm">
@@ -178,36 +142,26 @@ export function ProductionLifecycle({
         )}
       </div>
 
-      {/* Completed cost summary */}
-      {stage === "Completed" && (
-        <div className="mt-6 rounded-md border border-border bg-bg-raised p-4">
-          <h2 className="font-display text-base font-bold text-text">Production Cost</h2>
-          <p className="mt-2 text-sm text-text-muted">
-            Material cost + labor cost = total production cost, computed on Complete Production and stored on this
-            work order.
-          </p>
-        </div>
-      )}
-
       {/* Stage actions */}
       <div className="mt-6 flex items-center gap-3">
-        {stage !== "Completed" && (
+        {editable && status !== "Delayed" && (
           <button type="button" className="btn-accent" onClick={advanceStage}>
-            {stage === "Planned" && "Issue Raw Materials"}
-            {stage === "Raw Material Issued" && "Start Production"}
-            {stage === "In Production" && "Send to QC"}
-            {stage === "QC" && "Complete Production"}
+            {status === "Planned" && "Start Production"}
+            {status === "InProduction" && "Send to QC"}
+            {status === "QC" && "Complete Production"}
+          </button>
+        )}
+        {editable && (
+          <button type="button" className="btn-outline text-danger" onClick={() => setNewStatus("Delayed")}>
+            Mark Delayed
+          </button>
+        )}
+        {status === "Delayed" && (
+          <button type="button" className="btn-accent" onClick={() => setNewStatus("Planned")}>
+            Resume (back to Planned)
           </button>
         )}
       </div>
-
-      <SearchSelectModal
-        open={partPickerOpen}
-        onClose={() => setPartPickerOpen(false)}
-        title="Add BOM Line"
-        options={bomOptions}
-        onSelect={addBomLine}
-      />
 
       <Modal
         open={completeModalOpen}

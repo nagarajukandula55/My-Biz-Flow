@@ -332,3 +332,329 @@ export async function helpMessageText(commandList: string): Promise<string> {
   const body = await getTelegramTemplateBody("help");
   return renderTelegramTemplate(body, { commandList });
 }
+
+/** A Wholesale B2B order was placed — used as the "large order" signal for
+ * now (see TELEGRAM_ALERT_TYPES's wholesaleLargeOrder entry): there is no
+ * configurable per-partner order-size threshold yet, so this fires on every
+ * order creation rather than only ones above some cutoff. */
+export async function wholesaleLargeOrderMessage(opts: {
+  partnerBusinessName: string;
+  orderNumber: string;
+  customerName: string;
+  amount: string;
+}): Promise<string> {
+  const body = await getTelegramTemplateBody("wholesale_large_order");
+  return renderTelegramTemplate(body, {
+    businessName: opts.partnerBusinessName,
+    orderNumber: opts.orderNumber,
+    customerName: opts.customerName,
+    amount: opts.amount,
+  });
+}
+
+/** A Wholesale B2B order create/confirm was blocked by the fail-closed
+ * credit-limit check (see checkCreditLimit in src/lib/wholesaleData.ts). */
+export async function wholesaleCreditLimitBreachMessage(opts: {
+  partnerBusinessName: string;
+  customerName: string;
+  amount: string;
+  outstanding: string;
+  creditLimit: string;
+}): Promise<string> {
+  const body = await getTelegramTemplateBody("wholesale_credit_limit_breach");
+  return renderTelegramTemplate(body, {
+    businessName: opts.partnerBusinessName,
+    customerName: opts.customerName,
+    amount: opts.amount,
+    outstanding: opts.outstanding,
+    creditLimit: opts.creditLimit,
+  });
+}
+
+/** A Manufacturing production order was manually set to "Delayed". */
+export async function productionDelayedMessage(opts: {
+  partnerBusinessName: string;
+  orderId: string;
+  productName: string;
+  quantityPlanned: number;
+}): Promise<string> {
+  const body = await getTelegramTemplateBody("production_delayed");
+  return renderTelegramTemplate(body, {
+    businessName: opts.partnerBusinessName,
+    orderId: opts.orderId,
+    productName: opts.productName,
+    quantityPlanned: String(opts.quantityPlanned),
+  });
+}
+
+/** completeProductionAction's fail-closed BOM stock check blocked production. */
+export async function productionStockShortfallMessage(opts: {
+  partnerBusinessName: string;
+  orderId: string;
+  productName: string;
+  materialLabel: string;
+  available: number;
+  required: number;
+}): Promise<string> {
+  const body = await getTelegramTemplateBody("production_stock_shortfall");
+  return renderTelegramTemplate(body, {
+    businessName: opts.partnerBusinessName,
+    orderId: opts.orderId,
+    productName: opts.productName,
+    materialLabel: opts.materialLabel,
+    available: String(opts.available),
+    required: String(opts.required),
+  });
+}
+
+/** A Manufacturing production order finished via completeProductionAction. */
+export async function productionCompletedMessage(opts: {
+  partnerBusinessName: string;
+  orderId: string;
+  productName: string;
+  quantityProduced: number;
+  totalCost: string;
+}): Promise<string> {
+  const body = await getTelegramTemplateBody("production_completed");
+  return renderTelegramTemplate(body, {
+    businessName: opts.partnerBusinessName,
+    orderId: opts.orderId,
+    productName: opts.productName,
+    quantityProduced: String(opts.quantityProduced),
+    totalCost: opts.totalCost,
+  });
+}
+
+/** An Event Booking transitioned into "Confirmed". */
+export async function eventBookingConfirmedMessage(opts: {
+  partnerBusinessName: string;
+  eventName: string;
+  bookingId: string;
+}): Promise<string> {
+  const body = await getTelegramTemplateBody("event_booking_confirmed");
+  return renderTelegramTemplate(body, {
+    businessName: opts.partnerBusinessName,
+    eventName: opts.eventName,
+    bookingId: opts.bookingId,
+  });
+}
+
+/** An Event Booking's startAt is coming up soon (not fired live in this pass — no cron polls it yet). */
+export async function eventStartingSoonMessage(opts: {
+  partnerBusinessName: string;
+  eventName: string;
+  bookingId: string;
+  startAt: string;
+}): Promise<string> {
+  const body = await getTelegramTemplateBody("event_starting_soon");
+  return renderTelegramTemplate(body, {
+    businessName: opts.partnerBusinessName,
+    eventName: opts.eventName,
+    bookingId: opts.bookingId,
+    startAt: opts.startAt,
+  });
+}
+
+/** An Event Booking's amountPaid increased. */
+export async function eventPaymentReceivedMessage(opts: {
+  partnerBusinessName: string;
+  eventName: string;
+  bookingId: string;
+  amount: string;
+  totalPaid: string;
+}): Promise<string> {
+  const body = await getTelegramTemplateBody("event_payment_received");
+  return renderTelegramTemplate(body, {
+    businessName: opts.partnerBusinessName,
+    eventName: opts.eventName,
+    bookingId: opts.bookingId,
+    amount: opts.amount,
+    totalPaid: opts.totalPaid,
+  });
+}
+
+/** A LegalCourtDate is coming up soon (not fired live in this pass — no cron polls it yet). */
+export async function legalCourtDateUpcomingMessage(opts: {
+  partnerBusinessName: string;
+  matterNumber: string;
+  title: string;
+  courtDate: string;
+}): Promise<string> {
+  const body = await getTelegramTemplateBody("legal_court_date_upcoming");
+  return renderTelegramTemplate(body, {
+    businessName: opts.partnerBusinessName,
+    matterNumber: opts.matterNumber,
+    title: opts.title,
+    courtDate: opts.courtDate,
+  });
+}
+
+/** A LegalMatter's status actually changed (see updateLegalMatter). */
+export async function legalMatterStatusChangedMessage(opts: {
+  partnerBusinessName: string;
+  matterNumber: string;
+  title: string;
+  prevStatus: string;
+  nextStatus: string;
+}): Promise<string> {
+  const body = await getTelegramTemplateBody("legal_matter_status_changed");
+  return renderTelegramTemplate(body, {
+    businessName: opts.partnerBusinessName,
+    matterNumber: opts.matterNumber,
+    title: opts.title,
+    prevStatus: opts.prevStatus,
+    nextStatus: opts.nextStatus,
+  });
+}
+
+/** A FeeInstallment's dueDate has passed unpaid (not fired live in this pass — no cron polls it yet). */
+export async function educationFeeOverdueMessage(opts: {
+  partnerBusinessName: string;
+  studentName: string;
+  installmentLabel: string;
+  dueDate: string;
+  amount: string;
+}): Promise<string> {
+  const body = await getTelegramTemplateBody("education_fee_overdue");
+  return renderTelegramTemplate(body, {
+    businessName: opts.partnerBusinessName,
+    studentName: opts.studentName,
+    installmentLabel: opts.installmentLabel,
+    dueDate: opts.dueDate,
+    amount: opts.amount,
+  });
+}
+
+/** A Batch's startDate is reached (not fired live in this pass — no cron polls it yet). */
+export async function educationBatchStartingMessage(opts: {
+  partnerBusinessName: string;
+  batchName: string;
+  courseName: string;
+  startDate: string;
+}): Promise<string> {
+  const body = await getTelegramTemplateBody("education_batch_starting");
+  return renderTelegramTemplate(body, {
+    businessName: opts.partnerBusinessName,
+    batchName: opts.batchName,
+    courseName: opts.courseName,
+    startDate: opts.startDate,
+  });
+}
+
+/** A new Enrollment was created successfully (see createEnrollment). */
+export async function educationEnrollmentConfirmedMessage(opts: {
+  partnerBusinessName: string;
+  studentName: string;
+  batchName: string;
+  courseName: string;
+}): Promise<string> {
+  const body = await getTelegramTemplateBody("education_enrollment_confirmed");
+  return renderTelegramTemplate(body, {
+    businessName: opts.partnerBusinessName,
+    studentName: opts.studentName,
+    batchName: opts.batchName,
+    courseName: opts.courseName,
+  });
+}
+
+/** A check-in was blocked for being outside every registered OfficeLocation's geofence. */
+export async function hrmsLateCheckInMessage(opts: {
+  partnerBusinessName: string;
+  employeeName: string;
+  nearestOfficeInfo?: string;
+}): Promise<string> {
+  const body = await getTelegramTemplateBody("hrms_late_check_in");
+  return renderTelegramTemplate(body, {
+    businessName: opts.partnerBusinessName,
+    employeeName: opts.employeeName,
+    nearestOfficeInfo: opts.nearestOfficeInfo ?? "",
+  });
+}
+
+/** A LeaveRequest was submitted (see createLeaveRequest). */
+export async function hrmsLeaveRequestSubmittedMessage(opts: {
+  partnerBusinessName: string;
+  employeeName: string;
+  leaveType: string;
+  startDate: string;
+  endDate: string;
+}): Promise<string> {
+  const body = await getTelegramTemplateBody("hrms_leave_request_submitted");
+  return renderTelegramTemplate(body, {
+    businessName: opts.partnerBusinessName,
+    employeeName: opts.employeeName,
+    leaveType: opts.leaveType,
+    startDate: opts.startDate,
+    endDate: opts.endDate,
+  });
+}
+
+/** A LeaveRequest was Approved or Rejected (see decideLeaveRequest). */
+export async function hrmsLeaveDecidedMessage(opts: {
+  partnerBusinessName: string;
+  employeeName: string;
+  leaveType: string;
+  startDate: string;
+  endDate: string;
+  decision: string;
+}): Promise<string> {
+  const body = await getTelegramTemplateBody("hrms_leave_decided");
+  return renderTelegramTemplate(body, {
+    businessName: opts.partnerBusinessName,
+    employeeName: opts.employeeName,
+    leaveType: opts.leaveType,
+    startDate: opts.startDate,
+    endDate: opts.endDate,
+    decision: opts.decision,
+  });
+}
+
+/** A Payslip transitioned into "Finalized" (see setPayslipStatus). */
+export async function hrmsPayrollCompletedMessage(opts: {
+  partnerBusinessName: string;
+  employeeName: string;
+  month: number;
+  year: number;
+  netPay: string;
+}): Promise<string> {
+  const body = await getTelegramTemplateBody("hrms_payroll_completed");
+  return renderTelegramTemplate(body, {
+    businessName: opts.partnerBusinessName,
+    employeeName: opts.employeeName,
+    month: String(opts.month),
+    year: String(opts.year),
+    netPay: opts.netPay,
+  });
+}
+
+/** A new MarketplaceOrder was created successfully (see createMarketplaceOrderAction). */
+export async function marketplaceNewOrderMessage(opts: {
+  partnerBusinessName: string;
+  listingTitle: string;
+  quantity: number;
+  customerName: string;
+  totalAmount: string;
+}): Promise<string> {
+  const body = await getTelegramTemplateBody("marketplace_new_order");
+  return renderTelegramTemplate(body, {
+    businessName: opts.partnerBusinessName,
+    listingTitle: opts.listingTitle,
+    quantity: String(opts.quantity),
+    customerName: opts.customerName,
+    totalAmount: opts.totalAmount,
+  });
+}
+
+/** A vendor payout occasion (not fired live in this pass — no real payout/settlement mechanism exists yet). */
+export async function marketplaceVendorPayoutMessage(opts: {
+  partnerBusinessName: string;
+  vendorName: string;
+  amount: string;
+}): Promise<string> {
+  const body = await getTelegramTemplateBody("marketplace_vendor_payout");
+  return renderTelegramTemplate(body, {
+    businessName: opts.partnerBusinessName,
+    vendorName: opts.vendorName,
+    amount: opts.amount,
+  });
+}

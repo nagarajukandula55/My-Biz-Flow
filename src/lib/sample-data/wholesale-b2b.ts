@@ -2,188 +2,72 @@ import type { Column, Row } from "@/components/DataTable";
 import type { RecordField, TimelineEntry, RelatedRecord } from "@/components/RecordDetail";
 import type { StatusVariant } from "@/components/StatusChip";
 import type { FormFieldDef } from "@/components/RecordForm";
+import { WHOLESALE_ORDER_STATUSES } from "@/lib/wholesaleData";
 
-// Order sample data for the wholesale-b2b module — realistic field modeling,
-// no backend wired up in this pass (see CLAUDE.md).
+// Order field vocabulary for the wholesale-b2b module's main order list —
+// now Prisma-backed (WholesaleOrder/WholesaleOrderLine, see
+// src/lib/wholesaleData.ts) rather than a BusinessRecord. wholesaleB2bColumns/
+// wholesaleB2bFormFields/wholesaleB2bRows are kept exported under these same
+// names because src/lib/moduleData.ts and src/lib/designer/fieldSchema.ts
+// (generic, module-agnostic registries used by the design-system reference
+// page and the Designer's field editor) import them by name.
 
 const STATUS_VARIANT: Record<string, StatusVariant> = {
-  "Placed": "neutral",
-  "Approved": "teal",
+  "Pending": "neutral",
+  "Confirmed": "teal",
   "Dispatched": "warning",
   "Delivered": "success",
-  "On credit hold": "danger"
+  "Cancelled": "danger",
 };
 
+export { STATUS_VARIANT as wholesaleB2bStatusVariant };
+
 export const wholesaleB2bColumns: Column[] = [
-  { key: "id", label: "Order ID", type: "text" },
-  { key: "dealerName", label: "Dealer / Distributor", type: "relation-link" },
+  { key: "orderNumber", label: "Order Number", type: "text" },
+  { key: "customerName", label: "Customer", type: "relation-link" },
+  { key: "priceTierName", label: "Price Tier", type: "text" },
   { key: "orderDate", label: "Order Date", type: "date" },
-  { key: "itemsSummary", label: "Items", type: "text" },
-  { key: "bulkPriceTotal", label: "Bulk Price Total", type: "currency" },
-  { key: "creditTermDays", label: "Credit Term (days)", type: "text" },
-  { key: "creditLimit", label: "Credit Limit", type: "currency" },
+  { key: "totalAmount", label: "Total Amount", type: "currency" },
   { key: "status", label: "Status", type: "select-chip", chipVariantMap: STATUS_VARIANT },
 ];
 
+// Static demo rows only for the generic design-system reference page
+// (src/lib/moduleData.ts) — the real list page reads live WholesaleOrder
+// rows via listWholesaleOrders(), never this array.
 export const wholesaleB2bRows: Row[] = [
   {
-    id: "WSO-8801",
-    dealerName: "Krishna Distributors",
+    id: "WSO-0001",
+    orderNumber: "WSO-0001",
+    customerName: "Krishna Distributors",
+    priceTierName: "Gold",
     orderDate: "2026-08-05",
-    itemsSummary: "Cooking Oil 15L Tin x120, Detergent 5kg x200",
-    bulkPriceTotal: 384000,
-    creditTermDays: 30,
-    creditLimit: 1000000,
+    totalAmount: 3840,
     status: "Dispatched",
-  },
-  {
-    id: "WSO-8800",
-    dealerName: "Shree Balaji Traders",
-    orderDate: "2026-08-02",
-    itemsSummary: "Rice 25kg Bag x500",
-    bulkPriceTotal: 675000,
-    creditTermDays: 15,
-    creditLimit: 500000,
-    status: "On credit hold",
-  },
-  {
-    id: "WSO-8799",
-    dealerName: "Metro Wholesale Hub",
-    orderDate: "2026-07-30",
-    itemsSummary: "Assorted Biscuits — mixed cartons x300",
-    bulkPriceTotal: 210000,
-    creditTermDays: 45,
-    creditLimit: 800000,
-    status: "Delivered",
-  },
-  {
-    id: "WSO-8798",
-    dealerName: "Krishna Distributors",
-    orderDate: "2026-08-07",
-    itemsSummary: "Tea Powder 1kg x400",
-    bulkPriceTotal: 96000,
-    creditTermDays: 30,
-    creditLimit: 1000000,
-    status: "Approved",
   },
 ];
 
 export const wholesaleB2bFormFields: FormFieldDef[] = [
-  { key: "id", label: "Order ID", type: "text", required: true },
-  { key: "dealerName", label: "Dealer / Distributor", type: "relation", required: true },
+  { key: "orderNumber", label: "Order Number", type: "text", required: false },
+  { key: "customerId", label: "Customer", type: "relation", required: true },
+  { key: "priceTierId", label: "Price Tier", type: "relation", required: false },
   { key: "orderDate", label: "Order Date", type: "date", required: true },
-  { key: "itemsSummary", label: "Items", type: "textarea", required: true },
-  {
-    key: "itemQuantity",
-    label: "Quantity",
-    type: "number",
-    required: true,
-    placeholder: "Tiered pricing applies at 50+ (10% off) and 200+ (20% off) units",
-  },
-  { key: "itemListPrice", label: "List Price (per unit)", type: "currency", required: true },
-  {
-    key: "bulkPriceTotal",
-    label: "Bulk Price Total (computed)",
-    type: "currency",
-    required: false,
-    placeholder: "Recomputed server-side from Quantity x List Price with the tiered discount — ignore what's typed here",
-  },
-  { key: "creditTermDays", label: "Credit Term (days)", type: "number", required: false },
-  { key: "creditLimit", label: "Credit Limit", type: "currency", required: false },
-  { key: "status", label: "Status", type: "select", required: true, options: ["Placed","Approved","Dispatched","Delivered","On credit hold"] },
+  { key: "totalAmount", label: "Total Amount (computed)", type: "currency", required: false },
+  { key: "status", label: "Status", type: "select", required: true, options: [...WHOLESALE_ORDER_STATUSES] },
 ];
 
-export function getWholesaleB2bRecord(recordId: string): Row {
-  return wholesaleB2bRows.find((r) => String(r["id"]) === recordId) ?? wholesaleB2bRows[0];
-}
-
-export function getWholesaleB2bDetailFields(record: Row): RecordField[] {
-  const r = record;
+export function getWholesaleB2bDetailFields(row: Row): RecordField[] {
   return [
-    { label: "Order ID", value: r["id"], type: "text" },
-    { label: "Dealer / Distributor", value: r["dealerName"], type: "relation" },
-    { label: "Order Date", value: r["orderDate"], type: "date" },
-    { label: "Items", value: r["itemsSummary"], type: "text" },
-    { label: "Bulk Price Total", value: r["bulkPriceTotal"], type: "currency" },
-    { label: "Credit Term (days)", value: r["creditTermDays"], type: "text" },
-    { label: "Credit Limit", value: r["creditLimit"], type: "currency" },
-    { label: "Status", value: r["status"], type: "select", chipVariant: STATUS_VARIANT[String(r["status"])] ?? "neutral" },
+    { label: "Order Number", value: row["orderNumber"], type: "text" },
+    { label: "Customer", value: row["customerName"], type: "relation" },
+    { label: "Price Tier", value: row["priceTierName"], type: "text" },
+    { label: "Order Date", value: row["orderDate"], type: "date" },
+    { label: "Total Amount", value: row["totalAmount"], type: "currency" },
+    { label: "Status", value: row["status"], type: "select", chipVariant: STATUS_VARIANT[String(row["status"])] ?? "neutral" },
   ];
 }
 
-export function getWholesaleB2bTimeline(record: Row): TimelineEntry[] {
-  return [
-    { id: "t1", label: "Bulk order placed by dealer via B2B portal — IP 103.21.44.24", timestamp: "2026-08-01T09:00:00", actor: "Dealer" },
-    { id: "t2", label: "Credit limit checked and order approved by Credit Control — IP 103.21.44.24", timestamp: "2026-08-01T09:20:00", actor: "Credit Control" },
-    { id: "t3", label: "Order dispatched from warehouse", timestamp: "2026-08-03T08:00:00", actor: "Dispatch Team" },
-    { id: "t4", label: "Delivery confirmed and status updated", timestamp: "2026-08-05T15:00:00", actor: "Dispatch Team" },
-  ];
+export function getWholesaleB2bTimeline(): TimelineEntry[] {
+  return [];
 }
 
 export const wholesaleB2bRelated: RelatedRecord[] = [];
-
-/**
- * Real tiered/bulk pricing — a pure function of quantity + list price, no
- * side effects, so it can be recomputed server-side (never trust a
- * client-submitted total) and previewed client-side identically. Higher
- * breakpoints win, so ordering by descending minQty and taking the first
- * match that the requested quantity clears is deliberate.
- */
-export const PRICING_BREAKPOINTS: { minQty: number; discountPercent: number }[] = [
-  { minQty: 200, discountPercent: 20 },
-  { minQty: 50, discountPercent: 10 },
-  { minQty: 1, discountPercent: 0 },
-];
-
-export function computeTieredUnitPrice(quantity: number, listPrice: number): { unitPrice: number; discountPercent: number } {
-  const tier = PRICING_BREAKPOINTS.find((b) => quantity >= b.minQty) ?? PRICING_BREAKPOINTS[PRICING_BREAKPOINTS.length - 1];
-  const unitPrice = Math.round(listPrice * (1 - tier.discountPercent / 100) * 100) / 100;
-  return { unitPrice, discountPercent: tier.discountPercent };
-}
-
-export function computeOrderLineTotal(
-  quantity: number,
-  listPrice: number
-): { unitPrice: number; discountPercent: number; lineTotal: number } {
-  const { unitPrice, discountPercent } = computeTieredUnitPrice(quantity, listPrice);
-  return { unitPrice, discountPercent, lineTotal: Math.round(unitPrice * quantity * 100) / 100 };
-}
-
-/** Real order lifecycle stages driving credit-hold + invoicing logic (see ./actions.ts). */
-export type WholesaleOrderStatus = "Placed" | "Approved" | "Dispatched" | "Delivered" | "On credit hold";
-export const WHOLESALE_ORDER_STATUSES: WholesaleOrderStatus[] = [
-  "Placed",
-  "Approved",
-  "Dispatched",
-  "Delivered",
-  "On credit hold",
-];
-
-export interface WholesaleOrderLifecycle {
-  dealerName: string;
-  itemQuantity: number;
-  itemListPrice: number;
-  unitPrice: number;
-  discountPercent: number;
-  bulkPriceTotal: number;
-  creditLimit: number;
-  creditTermDays?: number;
-  status: WholesaleOrderStatus;
-  invoiceId?: string;
-}
-
-/** Reads the real, persisted order fields off a wholesale order's own BusinessRecord. */
-export function extractWholesaleOrderFromRecord(record: Row): WholesaleOrderLifecycle {
-  return {
-    dealerName: String(record["dealerName"] ?? ""),
-    itemQuantity: Number(record["itemQuantity"] ?? 0),
-    itemListPrice: Number(record["itemListPrice"] ?? 0),
-    unitPrice: Number(record["unitPrice"] ?? 0),
-    discountPercent: Number(record["discountPercent"] ?? 0),
-    bulkPriceTotal: Number(record["bulkPriceTotal"] ?? 0),
-    creditLimit: Number(record["creditLimit"] ?? 0),
-    creditTermDays: record["creditTermDays"] !== undefined ? Number(record["creditTermDays"]) : undefined,
-    status: (record["status"] as WholesaleOrderStatus | undefined) ?? "Placed",
-    invoiceId: record["invoiceId"] as string | undefined,
-  };
-}

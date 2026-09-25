@@ -1,46 +1,74 @@
 import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
-import { RecordForm } from "@/components/RecordForm";
+import Link from "next/link";
 import { notFound } from "next/navigation";
-import { hrmsFormFields } from "@/lib/sample-data/hrms";
-import { applyCustomizations } from "@/lib/designer/customizations";
-import { getBusinessRecord } from "@/lib/businessRecords";
-import { updateBusinessRecordAction } from "@/lib/businessRecordActions";
+import { RecordForm, type FormFieldDef } from "@/components/RecordForm";
+import { requirePartnerSessionForPage } from "@/lib/requirePartnerSession";
+import { getEmployee, listEmployees } from "@/lib/hrms";
+import { updateEmployeeAction } from "../../actions";
 
 registerPage({
   id: "hrms.edit",
   moduleSlug: "hrms",
-  title: "HRMS / Payroll — Edit",
+  title: "HRMS / Payroll — Edit Employee",
   path: "/partner/[partnerId]/hrms/[recordId]/edit",
   kind: "form",
   superAdminOnly: false,
-  customizableRegions: [
-    { key: "form-fields", label: "Form fields" },
-    { key: "validation-rules", label: "Validation rules" },
-    { key: "default-values", label: "Default values" },
-  ],
-  explanation: "The same config-driven RecordForm pre-populated with an existing employee's sample data, letting a user edit and save changes (demo stub, no persistence yet).",
+  customizableRegions: [],
+  explanation: "Edits an existing Employee row — name/contact/email/department/designation/reporting manager/joining date/status.",
   sourceFile: "src/app/partner/[partnerId]/hrms/[recordId]/edit/page.tsx",
 });
 
 export default async function EditHrmsPage({ params }: { params: { partnerId: string; recordId: string } }) {
+  await requirePartnerSessionForPage(params.partnerId);
   const mod = await getModule("hrms");
-  const record = await getBusinessRecord(params.partnerId, "hrms", params.recordId);
-  if (!record) notFound();
-  const fields = await applyCustomizations("hrms.edit", hrmsFormFields);
+  const employee = await getEmployee(params.partnerId, params.recordId);
+  if (!employee) notFound();
+  const employees = (await listEmployees(params.partnerId)).filter((e) => e.id !== employee.id);
+
+  const fields: FormFieldDef[] = [
+    { key: "name", label: "Name", type: "text", required: true },
+    { key: "contact", label: "Contact", type: "phone", required: false },
+    { key: "email", label: "Email", type: "email", required: false },
+    { key: "department", label: "Department", type: "text", required: false },
+    { key: "designation", label: "Designation", type: "text", required: false },
+    {
+      key: "reportingManagerId",
+      label: "Reporting Manager",
+      type: "select",
+      required: false,
+      options: employees.map((e) => e.id),
+      optionLabels: Object.fromEntries(employees.map((e) => [e.id, e.name])),
+    },
+    { key: "joiningDate", label: "Joining Date", type: "date", required: false },
+    { key: "status", label: "Status", type: "select", required: false, options: ["Active", "OnLeave", "Resigned", "Terminated"] },
+  ];
 
   return (
     <AppShell topbarTitle={`Edit Employee — ${mod?.label ?? "HRMS / Payroll"}`}>
       <div>
-        <h1 className="font-display text-2xl font-bold text-text">Edit Employee</h1>
-        <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>
+        <div className="flex items-center justify-between">
+          <h1 className="font-display text-2xl font-bold text-text">Edit Employee</h1>
+          <Link href={`/partner/${params.partnerId}/hrms/${employee.id}`} className="btn-outline">
+            &larr; Back
+          </Link>
+        </div>
         <div className="mt-6">
           <RecordForm
             fields={fields}
-            initialValues={record}
+            initialValues={{
+              name: employee.name,
+              contact: employee.contact ?? "",
+              email: employee.email ?? "",
+              department: employee.department ?? "",
+              designation: employee.designation ?? "",
+              reportingManagerId: employee.reportingManagerId ?? "",
+              joiningDate: employee.joiningDate ? new Date(employee.joiningDate).toISOString().slice(0, 10) : "",
+              status: employee.status,
+            }}
             submitLabel="Save changes"
-            action={updateBusinessRecordAction.bind(null, params.partnerId, "hrms", params.recordId)}
+            action={updateEmployeeAction.bind(null, params.partnerId, employee.id)}
           />
         </div>
       </div>

@@ -2,176 +2,136 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { createBusinessRecord, getBusinessRecord, listBusinessRecords, updateBusinessRecord } from "@/lib/businessRecords";
-import { computeOrderLineTotal } from "@/lib/sample-data/wholesale-b2b";
-import { getPartner } from "@/lib/partnerData";
-import { notifyCentralApiBillingInvoice } from "@/lib/centralApi";
 import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
+import { getPartner } from "@/lib/partnerData";
+import { sendPartnerTelegramAlert } from "@/lib/telegram";
+import { wholesaleLargeOrderMessage, wholesaleCreditLimitBreachMessage } from "@/lib/telegramTemplates";
+import {
+  checkCreditLimit,
+  createWholesaleOrder,
+  getWholesaleOrder,
+  isAllowedStatusTransition,
+  paiseToRupees,
+  updateWholesaleOrderStatus,
+  type WholesaleOrderLineInput,
+  type WholesaleOrderStatusValue,
+} from "@/lib/wholesaleData";
 
 /**
- * Sums this dealer's own unpaid order totals — every order not yet
- * Delivered counts as outstanding against their credit limit (a proxy for
- * "not yet paid" in the absence of a separate ledger/payments module).
- * excludeOrderId lets an edit exclude the order being edited from its own
- * running total.
+ * Creates a wholesale order from a customer + optional price tier + line
+ * items. Recomputes the (possibly tier-discounted) totalAmount server-side
+ * (never trusts client math), then runs the fail-closed credit-limit check
+ * (see checkCreditLimit — 0 credit limit means unlimited, never blocks)
+ * before persisting anything.
  */
-async function dealerOutstandingBalance(partnerId: string, dealerName: string, excludeOrderId?: string): Promise<number> {
-  const orders = await listBusinessRecords(partnerId, "wholesale-b2b");
-  return orders
-    .filter((r) => String(r["dealerName"] ?? "") === dealerName && String(r["id"]) !== excludeOrderId && r["status"] !== "Delivered")
-    .reduce((sum, r) => sum + Number(r["bulkPriceTotal"] ?? 0), 0);
-}
-
-/**
- * Creates a wholesale order: recomputes the tiered/bulk price server-side
- * (never trusts client math — same rule as completeSaleAction in
- * pos/checkout/actions.ts), then blocks the order if it would push the
- * dealer's outstanding balance over their credit limit (fail closed, same
- * pattern as POS's insufficient-stock check). Bind with
- * .bind(null, partnerId) before passing as a RecordForm `action` prop.
- */
-export async function createWholesaleOrderAction(partnerId: string, values: Record<string, unknown>): Promise<void> {
-  await requireSessionPartnerId(partnerId);
-  const dealerName = String(values["dealerName"] ?? "").trim();
-  if (!dealerName) throw new Error("Dealer / Distributor is required.");
-
-  const quantity = Number(values["itemQuantity"]) || 0;
-  const listPrice = Number(values["itemListPrice"]) || 0;
-  if (quantity <= 0 || listPrice <= 0) {
-    throw new Error("Enter a valid Quantity and List Price — bulk pricing is computed from these.");
-  }
-
-  const { unitPrice, discountPercent, lineTotal } = computeOrderLineTotal(quantity, listPrice);
-  const creditLimit = Number(values["creditLimit"]) || 0;
-  const outstanding = await dealerOutstandingBalance(partnerId, dealerName);
-  if (creditLimit > 0 && outstanding + lineTotal > creditLimit) {
-    throw new Error(
-      `This order (₹${lineTotal}) would push ${dealerName}'s outstanding balance to ₹${Math.round(outstanding + lineTotal)}, over their ₹${creditLimit} credit limit (currently ₹${Math.round(outstanding)} outstanding). Reduce the order quantity, collect payment on existing orders, or raise the credit limit first.`
-    );
-  }
-
-  const record = await createBusinessRecord(partnerId, "wholesale-b2b", {
-    id: values["id"],
-    dealerName,
-    orderDate: values["orderDate"],
-    itemsSummary: values["itemsSummary"],
-    itemQuantity: quantity,
-    itemListPrice: listPrice,
-    unitPrice,
-    discountPercent,
-    bulkPriceTotal: lineTotal,
-    creditTermDays: values["creditTermDays"] === "" ? undefined : Number(values["creditTermDays"]),
-    creditLimit,
-    status: values["status"] || "Placed",
-  });
-
-  revalidatePath(`/partner/${partnerId}/wholesale-b2b`);
-  redirect(`/partner/${partnerId}/wholesale-b2b/${record.id}`);
-}
-
-/**
- * Same recompute + credit-limit gate as createWholesaleOrderAction, for an
- * existing order. Bind with .bind(null, partnerId, recordKey).
- */
-export async function updateWholesaleOrderAction(
+export async function createWholesaleOrderAction(
   partnerId: string,
-  recordKey: string,
-  values: Record<string, unknown>
-): Promise<void> {
-  await requireSessionPartnerId(partnerId);
-  const existing = await getBusinessRecord(partnerId, "wholesale-b2b", recordKey);
-  if (!existing) throw new Error("Order not found.");
+  values: { customerId: string; priceTierId?: string; orderDate: string; lines: WholesaleOrderLineInput[] }
+): Promise<{ error?: string } | void> {
+  partnerId = await requireSessionPartnerId(partnerId);
 
-  const dealerName = String(values["dealerName"] ?? "").trim();
-  if (!dealerName) throw new Error("Dealer / Distributor is required.");
+  const customerId = String(values.customerId ?? "").trim();
+  if (!customerId) return { error: "Customer is required." };
 
-  const quantity = Number(values["itemQuantity"]) || 0;
-  const listPrice = Number(values["itemListPrice"]) || 0;
-  if (quantity <= 0 || listPrice <= 0) {
-    throw new Error("Enter a valid Quantity and List Price — bulk pricing is computed from these.");
+  const lines = (values.lines ?? []).filter((l) => l.materialId && l.quantity > 0);
+  if (lines.length === 0) return { error: "Add at least one line item with a positive quantity." };
+
+  const orderDate = values.orderDate ? new Date(values.orderDate) : new Date();
+  const priceTierId = values.priceTierId || null;
+
+  // Compute the discounted total the same way createWholesaleOrder will, so
+  // the credit-limit check runs against the REAL amount before anything is
+  // written — checkCreditLimit re-derives discountPercent itself from
+  // priceTierId, so this call is safe to make before the order row exists.
+  const { computeOrderTotal } = await import("@/lib/wholesaleData");
+  const { prisma } = await import("@/lib/prisma");
+  const priceTier = priceTierId ? await prisma.priceTier.findUnique({ where: { id: priceTierId } }) : null;
+  const provisionalTotal = computeOrderTotal(lines, priceTier?.discountPercent ?? 0);
+
+  const creditCheck = await checkCreditLimit(partnerId, customerId, provisionalTotal);
+  if (!creditCheck.ok) {
+    const partner = await getPartner(partnerId);
+    const customer = await prisma.wholesaleCustomer.findUnique({ where: { id: customerId } });
+    if (partner && customer) {
+      const message = await wholesaleCreditLimitBreachMessage({
+        partnerBusinessName: partner.businessName,
+        customerName: customer.name,
+        amount: `₹${paiseToRupees(provisionalTotal)}`,
+        outstanding: `₹${paiseToRupees(creditCheck.outstanding)}`,
+        creditLimit: `₹${paiseToRupees(creditCheck.creditLimit)}`,
+      });
+      await sendPartnerTelegramAlert(partnerId, "wholesaleCreditLimitBreach", message);
+    }
+    return { error: creditCheck.error };
   }
 
-  const { unitPrice, discountPercent, lineTotal } = computeOrderLineTotal(quantity, listPrice);
-  const creditLimit = Number(values["creditLimit"]) || 0;
-  const outstanding = await dealerOutstandingBalance(partnerId, dealerName, recordKey);
-  if (creditLimit > 0 && outstanding + lineTotal > creditLimit) {
-    throw new Error(
-      `This order (₹${lineTotal}) would push ${dealerName}'s outstanding balance to ₹${Math.round(outstanding + lineTotal)}, over their ₹${creditLimit} credit limit (currently ₹${Math.round(outstanding)} outstanding, excluding this order). Reduce the order quantity, collect payment on existing orders, or raise the credit limit first.`
-    );
-  }
+  const order = await createWholesaleOrder(partnerId, { customerId, priceTierId, orderDate, lines });
 
-  await updateBusinessRecord(partnerId, "wholesale-b2b", recordKey, {
-    ...existing,
-    dealerName,
-    orderDate: values["orderDate"],
-    itemsSummary: values["itemsSummary"],
-    itemQuantity: quantity,
-    itemListPrice: listPrice,
-    unitPrice,
-    discountPercent,
-    bulkPriceTotal: lineTotal,
-    creditTermDays: values["creditTermDays"] === "" ? undefined : Number(values["creditTermDays"]),
-    creditLimit,
-    status: values["status"],
-  });
-
-  revalidatePath(`/partner/${partnerId}/wholesale-b2b`);
-  revalidatePath(`/partner/${partnerId}/wholesale-b2b/${recordKey}`);
-  redirect(`/partner/${partnerId}/wholesale-b2b/${recordKey}`);
-}
-
-/**
- * Creates a real Billing invoice from a dispatched/delivered order,
- * reflecting the tiered price computed at order time — mirrors
- * createInvoiceFromWorkorderAction in
- * service-centre/[recordId]/actions.ts, plus pushes it to AN-Accounting
- * via notifyCentralApiBillingInvoice (that step is missing from the
- * service-centre/POS direct-invoice paths today — included here so this
- * module's invoices show up in AN-Accounting like the ones created via
- * the generic Billing form do).
- */
-export async function createInvoiceFromWholesaleOrderAction(partnerId: string, orderId: string): Promise<void> {
-  await requireSessionPartnerId(partnerId);
-  const record = await getBusinessRecord(partnerId, "wholesale-b2b", orderId);
-  if (!record) return;
-  if (record["invoiceId"]) return; // already invoiced — don't double-create
-
-  const subtotal = Number(record["bulkPriceTotal"] ?? 0);
-  const taxAmount = Math.round(subtotal * 0.18);
-  const totalAmount = subtotal + taxAmount;
-  const quantity = Number(record["itemQuantity"] ?? 0);
-  const unitPrice = Number(record["unitPrice"] ?? 0);
-  const discountPercent = Number(record["discountPercent"] ?? 0);
-
-  const invoice = await createBusinessRecord(partnerId, "billing", {
-    customer: String(record["dealerName"] ?? ""),
-    issueDate: new Date().toISOString().slice(0, 10),
-    dueDate: new Date().toISOString().slice(0, 10),
-    lineItemsSummary: `${record["itemsSummary"] ?? ""} — Qty ${quantity} @ ₹${unitPrice}/unit (${discountPercent}% bulk discount)`,
-    subtotal,
-    taxAmount,
-    totalAmount,
-    paymentStatus: "Draft",
-    sourceWholesaleOrderId: orderId,
-  });
-
+  // "Large order" signal — every order creation, not just ones above some
+  // threshold (there is no configurable per-partner order-size threshold
+  // yet, see TELEGRAM_ALERT_TYPES's wholesaleLargeOrder doc comment).
   const partner = await getPartner(partnerId);
   if (partner) {
-    await notifyCentralApiBillingInvoice(partner, {
-      externalOrderId: String(invoice.id),
-      customer: String(record["dealerName"] ?? ""),
-      items: [
-        {
-          description: String(record["itemsSummary"] ?? "Bulk order"),
-          quantity,
-          unitPrice,
-          taxRate: 18,
-        },
-      ],
-      totalAmount,
+    const message = await wholesaleLargeOrderMessage({
+      partnerBusinessName: partner.businessName,
+      orderNumber: order.orderNumber,
+      customerName: order.customerName,
+      amount: `₹${paiseToRupees(order.totalAmount)}`,
     });
+    await sendPartnerTelegramAlert(partnerId, "wholesaleLargeOrder", message);
   }
 
-  await updateBusinessRecord(partnerId, "wholesale-b2b", orderId, { ...record, invoiceId: invoice.id });
+  revalidatePath(`/partner/${partnerId}/wholesale-b2b`);
+  redirect(`/partner/${partnerId}/wholesale-b2b/${order.id}`);
+}
+
+/**
+ * Advances (or cancels) an order's status, enforcing the fixed transition
+ * set: Pending -> Confirmed -> Dispatched -> Delivered, or Cancelled from
+ * any non-final state (see isAllowedStatusTransition). Re-runs the
+ * fail-closed credit-limit check on Pending -> Confirmed specifically (per
+ * CLAUDE.md's spec: "when creating an order AND when confirming an
+ * order") — every other transition doesn't change the customer's
+ * outstanding exposure, so it isn't re-checked.
+ *
+ * No "order overdue" alert is wired here — WholesaleOrder has no due-date
+ * column yet; that needs a real schema field added first (see
+ * CLAUDE.md/the task brief), not a fabricated threshold.
+ */
+export async function updateWholesaleOrderStatusAction(
+  partnerId: string,
+  orderId: string,
+  nextStatus: string
+): Promise<{ error?: string } | void> {
+  partnerId = await requireSessionPartnerId(partnerId);
+
+  const order = await getWholesaleOrder(partnerId, orderId);
+  if (!order) return { error: "Order not found." };
+
+  if (!isAllowedStatusTransition(order.status, nextStatus)) {
+    return { error: `Cannot move an order from "${order.status}" to "${nextStatus}".` };
+  }
+
+  if (order.status === "Pending" && nextStatus === "Confirmed") {
+    const creditCheck = await checkCreditLimit(partnerId, order.customerId, order.totalAmount, order.id);
+    if (!creditCheck.ok) {
+      const partner = await getPartner(partnerId);
+      if (partner) {
+        const message = await wholesaleCreditLimitBreachMessage({
+          partnerBusinessName: partner.businessName,
+          customerName: order.customerName,
+          amount: `₹${paiseToRupees(order.totalAmount)}`,
+          outstanding: `₹${paiseToRupees(creditCheck.outstanding)}`,
+          creditLimit: `₹${paiseToRupees(creditCheck.creditLimit)}`,
+        });
+        await sendPartnerTelegramAlert(partnerId, "wholesaleCreditLimitBreach", message);
+      }
+      return { error: creditCheck.error };
+    }
+  }
+
+  await updateWholesaleOrderStatus(partnerId, orderId, nextStatus as WholesaleOrderStatusValue);
+
+  revalidatePath(`/partner/${partnerId}/wholesale-b2b`);
   revalidatePath(`/partner/${partnerId}/wholesale-b2b/${orderId}`);
 }

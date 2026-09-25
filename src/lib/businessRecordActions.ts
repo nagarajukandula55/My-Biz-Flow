@@ -65,6 +65,21 @@ export async function createBusinessRecordAction(
     values = { ...values, invoiceSource: "Direct" };
   }
 
+  // Fail-closed GST-invoice gate: a partner without their own GSTIN cannot
+  // issue a GST-format tax invoice (buyer GSTIN/HSN/CGST-SGST-IGST split) —
+  // only a plain/normal invoice. BillingInvoiceForm already hides the "GST
+  // Invoice" toggle client-side when partnerGstin is empty, but that alone
+  // doesn't stop a direct/crafted form submission that forces
+  // invoiceType: "GST" past the UI, so the same rule is enforced here too.
+  if (moduleSlug === "billing" && values["invoiceType"] === "GST") {
+    const partner = await getPartner(partnerId);
+    if (!partner?.gstin) {
+      throw new Error(
+        "This business has no registered GSTIN — only a plain (Non-GST) invoice can be created."
+      );
+    }
+  }
+
   const record = await createBusinessRecord(partnerId, moduleSlug, values);
 
   if (moduleSlug === "billing") {
@@ -121,6 +136,19 @@ export async function updateBusinessRecordAction(
   urlPath: string = moduleSlug
 ) {
   partnerId = await requireSessionPartnerId(partnerId);
+
+  // Same fail-closed GST-invoice gate as createBusinessRecordAction above —
+  // editing an existing invoice into "GST" format is just as much a bypass
+  // path as creating one that way, so it needs the same server-side check.
+  if (moduleSlug === "billing" && values["invoiceType"] === "GST") {
+    const partner = await getPartner(partnerId);
+    if (!partner?.gstin) {
+      throw new Error(
+        "This business has no registered GSTIN — only a plain (Non-GST) invoice can be created."
+      );
+    }
+  }
+
   await updateBusinessRecord(partnerId, moduleSlug, recordKey, values);
   revalidatePath(`/partner/${partnerId}/${urlPath}`);
   revalidatePath(`/partner/${partnerId}/${urlPath}/${recordKey}`);

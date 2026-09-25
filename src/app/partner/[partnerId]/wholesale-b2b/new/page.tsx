@@ -1,10 +1,8 @@
 import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
-import { RecordForm } from "@/components/RecordForm";
-import { wholesaleB2bFormFields } from "@/lib/sample-data/wholesale-b2b";
-import { applyCustomizations } from "@/lib/designer/customizations";
-import { createWholesaleOrderAction } from "../actions";
+import { WholesaleOrderNewForm } from "../WholesaleOrderNewForm";
+import { listWholesaleCustomers, listPriceTiers } from "@/lib/wholesaleData";
 
 registerPage({
   id: "wholesale-b2b.create",
@@ -13,18 +11,17 @@ registerPage({
   path: "/partner/[partnerId]/wholesale-b2b/new",
   kind: "form",
   superAdminOnly: false,
-  customizableRegions: [
-    { key: "form-fields", label: "Form fields" },
-    { key: "validation-rules", label: "Validation rules" },
-    { key: "default-values", label: "Default values" },
-  ],
-  explanation: "A config-driven creation form for a new order in the wholesale-b2b module, built from the module's real field set via the shared RecordForm component. Submission recomputes tiered/bulk pricing from Quantity x List Price server-side and blocks the order if it would push the dealer's outstanding balance over their credit limit.",
+  customizableRegions: [],
+  explanation: "Creation form for a new WholesaleOrder: pick a Customer and optional Price Tier, then add line items via the shared MaterialLineItemsTable. Submission recomputes the (possibly tier-discounted) total server-side and blocks the order if it would push the customer's outstanding balance over their credit limit.",
   sourceFile: "src/app/partner/[partnerId]/wholesale-b2b/new/page.tsx",
 });
 
 export default async function NewWholesaleB2bPage({ params }: { params: { partnerId: string } }) {
   const mod = await getModule("wholesale-b2b");
-  const fields = await applyCustomizations("wholesale-b2b.create", wholesaleB2bFormFields);
+  const [customers, priceTiers] = await Promise.all([
+    listWholesaleCustomers(params.partnerId),
+    listPriceTiers(params.partnerId),
+  ]);
 
   return (
     <AppShell topbarTitle={`New Order — ${mod?.label ?? "Wholesale / Distributor B2B"}`}>
@@ -32,10 +29,10 @@ export default async function NewWholesaleB2bPage({ params }: { params: { partne
         <h1 className="font-display text-2xl font-bold text-text">New Order</h1>
         <p className="mt-1 text-sm text-text-muted">Create a new order record for Wholesale / Distributor B2B.</p>
         <div className="mt-6">
-          <RecordForm
-            fields={fields}
-            submitLabel="Create Order"
-            action={createWholesaleOrderAction.bind(null, params.partnerId)}
+          <WholesaleOrderNewForm
+            partnerId={params.partnerId}
+            customers={customers.filter((c) => c.isActive).map((c) => ({ id: c.id, name: c.name }))}
+            priceTiers={priceTiers.map((t) => ({ id: t.id, name: t.name, discountPercent: t.discountPercent }))}
           />
         </div>
       </div>
