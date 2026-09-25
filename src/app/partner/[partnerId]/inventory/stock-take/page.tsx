@@ -5,7 +5,7 @@ import { StockTakeNewButton } from "./StockTakeNewButton";
 import { BulkUploadButton } from "@/components/BulkUploadButton";
 import { bulkImportStockTakeAction } from "./actions";
 import { applyCustomizations } from "@/lib/designer/customizations";
-import { stockTakeColumns, getStockTakeFormFields } from "@/lib/sample-data/warehouse";
+import { stockTakeColumns, getStockTakeFormFields, getStockTakeCsvFields, getStockTakeMaterialOptions } from "@/lib/sample-data/warehouse";
 import { listBusinessRecords } from "@/lib/businessRecords";
 
 registerPage({
@@ -30,6 +30,8 @@ export default async function StockTakePage({ params }: { params: { partnerId: s
   const columns = await applyCustomizations("inventory.stock-take.list", stockTakeColumns);
   const rows = await listBusinessRecords(params.partnerId, "inventory-stock-take");
   const formFields = await getStockTakeFormFields(params.partnerId);
+  const csvFields = await getStockTakeCsvFields(params.partnerId);
+  const materialOptions = await getStockTakeMaterialOptions(params.partnerId);
 
   return (
     <AppShell
@@ -38,19 +40,19 @@ export default async function StockTakePage({ params }: { params: { partnerId: s
         <div className="flex items-center gap-3">
           <BulkUploadButton
             title="Bulk Upload Stock Take"
-            columns={formFields.map((f) => f.key)}
-            requiredColumnsNote="Material, Warehouse, Material Type (Good/Defective), Expected Qty, Counted Qty, Counted Date and Status are required per row. Variance is computed automatically."
-            sampleRow={["USB-C Charging Port Flex Cable", "Central Warehouse — Bengaluru", "Good", "50", "48", "", "2026-09-19", "Store Manager", "Short by 2 on physical count", "Pending"]}
+            columns={csvFields.map((f) => f.key)}
+            requiredColumnsNote="Material, Warehouse, Material Type (Good/Defective), Expected Qty and Counted Qty are required per row. Variance is computed automatically. Every imported row starts Pending — it still needs the OTP-gated Reconcile action before it touches real Stock."
+            sampleRow={["USB-C Charging Port Flex Cable", "Central Warehouse — Bengaluru", "Good", "50", "48", "", "", "2026-09-19", "Store Manager", "Short by 2 on physical count"]}
             templateFilename="stock-take-template.csv"
             importAction={bulkImportStockTakeAction.bind(null, params.partnerId)}
           />
-          <StockTakeNewButton partnerId={params.partnerId} fields={formFields} />
+          <StockTakeNewButton partnerId={params.partnerId} fields={formFields} materialOptions={materialOptions} />
         </div>
       }
     >
       <div>
         <div className="mt-2">
-          <StockTakeClientTable columns={columns} rows={rows} />
+          <StockTakeClientTable partnerId={params.partnerId} columns={columns} rows={rows} />
         </div>
       </div>
     </AppShell>

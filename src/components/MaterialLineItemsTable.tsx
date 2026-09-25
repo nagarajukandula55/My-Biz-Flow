@@ -14,6 +14,12 @@ export type MaterialLineItem = {
   serialNumbers?: string;
   /** Return Orders-only per-row field (Defective/Good) — undefined elsewhere. */
   returnType?: string;
+  /** Stock Take / Stock Transfer lines only — which bucket this line counts/moves (Good/Defective). Rendered when `conditionOptions` is passed. */
+  condition?: string;
+  /** Stock Take / Stock Transfer lines only — unit cost/price in rupees (converted to paise by the caller before persisting). Rendered when `showUnitPrice` is true. */
+  unitPrice?: number;
+  /** Stock Take only — the system's expected quantity for this line before the physical count; `quantity` on this same row is read as the Counted Qty when `stockTakeMode` is true. Variance (Counted − Expected) is shown read-only, never typed. */
+  expectedQty?: number;
 };
 
 export type MaterialLineOption = { value: string; label: string; serialized: boolean };
@@ -54,6 +60,9 @@ export function MaterialLineItemsTable({
   showSerials,
   returnTypeOptions,
   availabilityLabels,
+  conditionOptions,
+  showUnitPrice,
+  stockTakeMode,
 }: {
   items: MaterialLineItem[];
   onChange: (items: MaterialLineItem[]) => void;
@@ -69,6 +78,12 @@ export function MaterialLineItemsTable({
    * options list is deliberately the bare label (search needs to match on
    * material name/code, not on availability text mixed into it). */
   availabilityLabels?: Record<string, string>;
+  /** Stock Take / Stock Transfer only — renders a per-row Material Type (Good/Defective) select, e.g. ["Good", "Defective"]. */
+  conditionOptions?: string[];
+  /** Stock Take / Stock Transfer only — renders a per-row Unit Price (₹) number input. */
+  showUnitPrice?: boolean;
+  /** Stock Take only — renders Expected Qty (editable) ahead of Quantity (relabelled "Counted Qty") plus a read-only Variance = Counted − Expected column. */
+  stockTakeMode?: boolean;
 }) {
   const [search, setSearch] = useState("");
 
@@ -78,7 +93,18 @@ export function MaterialLineItemsTable({
 
   function addRow(materialId: string) {
     if (!materialId.trim()) return;
-    onChange([...items, { materialId, quantity: 1, serialNumbers: "", returnType: returnTypeOptions?.[0] }]);
+    onChange([
+      ...items,
+      {
+        materialId,
+        quantity: stockTakeMode ? 0 : 1,
+        serialNumbers: "",
+        returnType: returnTypeOptions?.[0],
+        condition: conditionOptions?.[0],
+        unitPrice: showUnitPrice ? 0 : undefined,
+        expectedQty: stockTakeMode ? 0 : undefined,
+      },
+    ]);
     setSearch("");
   }
 
@@ -128,8 +154,12 @@ export function MaterialLineItemsTable({
               <tr className="border-b border-border bg-bg-sunken text-left text-xs font-semibold uppercase tracking-wide text-text-muted">
                 <th className="px-3 py-2.5">Material</th>
                 {returnTypeOptions && <th className="w-32 px-3 py-2.5">Return Type</th>}
+                {conditionOptions && <th className="w-28 px-3 py-2.5">Material Type</th>}
+                {stockTakeMode && <th className="w-24 px-3 py-2.5 text-right">Expected Qty</th>}
                 {showSerials && <th className="px-3 py-2.5">Serial / Barcode Numbers</th>}
-                <th className="w-28 px-3 py-2.5 text-right">Quantity</th>
+                <th className="w-28 px-3 py-2.5 text-right">{stockTakeMode ? "Counted Qty" : "Quantity"}</th>
+                {stockTakeMode && <th className="w-24 px-3 py-2.5 text-right">Variance</th>}
+                {showUnitPrice && <th className="w-28 px-3 py-2.5 text-right">Unit Price (₹)</th>}
                 <th className="w-10 px-2 py-2.5" />
               </tr>
             </thead>
@@ -169,6 +199,32 @@ export function MaterialLineItemsTable({
                         </select>
                       </td>
                     )}
+                    {conditionOptions && (
+                      <td className="px-3 py-2">
+                        <select
+                          value={item.condition ?? conditionOptions[0]}
+                          onChange={(e) => updateRow(i, { condition: e.target.value })}
+                          className="w-full rounded-md border border-border bg-bg px-2.5 py-1.5 text-sm text-text outline-none focus:border-accent"
+                        >
+                          {conditionOptions.map((c) => (
+                            <option key={c} value={c}>
+                              {c}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                    )}
+                    {stockTakeMode && (
+                      <td className="px-3 py-2 text-right">
+                        <input
+                          type="number"
+                          min={0}
+                          value={item.expectedQty ?? 0}
+                          onChange={(e) => updateRow(i, { expectedQty: Number(e.target.value) || 0 })}
+                          className="w-full rounded-md border border-border bg-bg px-2.5 py-1.5 text-right text-sm text-text tabular-nums outline-none focus:border-accent"
+                        />
+                      </td>
+                    )}
                     {showSerials && (
                       <td className="px-3 py-2">
                         <textarea
@@ -195,6 +251,28 @@ export function MaterialLineItemsTable({
                         />
                       )}
                     </td>
+                    {stockTakeMode && (
+                      <td className="px-3 py-2 text-right">
+                        <span
+                          className="inline-block w-full rounded-md border border-border bg-bg-sunken px-2.5 py-1.5 text-right text-sm tabular-nums text-text-muted"
+                          title="Counted Qty − Expected Qty, computed automatically"
+                        >
+                          {(item.quantity || 0) - (item.expectedQty || 0)}
+                        </span>
+                      </td>
+                    )}
+                    {showUnitPrice && (
+                      <td className="px-3 py-2 text-right">
+                        <input
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          value={item.unitPrice ?? 0}
+                          onChange={(e) => updateRow(i, { unitPrice: Number(e.target.value) || 0 })}
+                          className="w-full rounded-md border border-border bg-bg px-2.5 py-1.5 text-right text-sm text-text tabular-nums outline-none focus:border-accent"
+                        />
+                      </td>
+                    )}
                     <td className="px-2 py-2 text-center">
                       <button
                         type="button"

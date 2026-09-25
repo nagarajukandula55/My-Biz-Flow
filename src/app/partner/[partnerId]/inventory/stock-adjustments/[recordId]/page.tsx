@@ -62,6 +62,9 @@ export default async function StockAdjustmentDetailPage({
                 <p className="mt-1 text-xs text-text-muted">Stock Adjustment detail</p>
               </div>
               <div className="flex items-center gap-3">
+                <Link href={`/partner/${params.partnerId}/inventory/stock-adjustments/${params.recordId}/document`} className="btn-outline">
+                  View document
+                </Link>
                 <Link href={`/partner/${params.partnerId}/inventory/stock-adjustments/${params.recordId}/edit`} className="btn-outline">
                   Edit
                 </Link>

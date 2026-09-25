@@ -27,6 +27,7 @@ export const TELEGRAM_ALERT_TYPES = [
   { key: "pnaLogged", label: "Part Not Available logged" },
   { key: "subscriptionExpiring", label: "Subscription expiring" },
   { key: "generalAnnouncement", label: "General announcement" },
+  { key: "otpVerification", label: "OTP verification codes" },
 ] as const;
 
 export type TelegramAlertType = (typeof TELEGRAM_ALERT_TYPES)[number]["key"];

@@ -5,9 +5,74 @@ import { redirect } from "next/navigation";
 import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import { createBusinessRecord, getBusinessRecord, updateBusinessRecord } from "@/lib/businessRecords";
 import { runBulkImport, type BulkImportResult } from "@/lib/bulkImportCsv";
-import { getStockAdjustmentFormFields } from "@/lib/sample-data/warehouse";
+import { getStockAdjustmentFormFields, getWarehouseOptionsForPartner } from "@/lib/sample-data/warehouse";
 import { getBomOptionsForPartner } from "@/lib/sample-data/bom";
 import { adjustStockQty, getQtyOnHand, parseSerialNumbers, validateSerialNumbers } from "@/lib/inventoryStock";
+import { createStockLots, consumeFifo } from "@/lib/stockLots";
+import { recordInventoryTransaction } from "@/lib/inventoryLedger";
+
+function bareMaterialCode(materialId: string): string {
+  return materialId.split(" — ")[0].trim();
+}
+
+/**
+ * Wires the money ledger + condition-aware FIFO stock lots for a Stock
+ * Adjustment at the same moment its real Stock delta is applied — there's
+ * no separate close/reconcile step here (unlike Stock Take/Stock Transfer),
+ * so this runs right at create/update time. An Increase posts a "debit"
+ * (value paid to acquire stock, mirrors createStockLots receiving new
+ * layers); a Decrease posts a "credit" (write-off/value leaving, mirrors
+ * consumeFifo drawing existing layers down) — using unitPrice × quantity.
+ * Good-stock-only, matching this module's own by-design restriction (see
+ * createStockAdjustmentCore's doc comment) — never touches a Defective
+ * bucket.
+ */
+async function applyStockAdjustmentLedgerAndLots(
+  partnerId: string,
+  recordId: string,
+  materialId: string,
+  warehouseName: string,
+  adjustmentType: string,
+  quantity: number,
+  unitPrice: number,
+  serialNumbers: string[],
+  isSerialized: boolean
+): Promise<void> {
+  const unitPricePaise = Math.round((unitPrice || 0) * 100);
+  const warehouseOptions = await getWarehouseOptionsForPartner(partnerId);
+  const warehouse = warehouseOptions.find((w) => w.label === warehouseName);
+  const bareCode = bareMaterialCode(materialId);
+
+  if (warehouse) {
+    if (adjustmentType === "Increase") {
+      await createStockLots({
+        partnerId,
+        warehouseId: warehouse.value,
+        warehouseName,
+        materialId: bareCode,
+        materialLabel: materialId,
+        condition: "Good",
+        serialized: isSerialized,
+        serialNumbers: isSerialized ? serialNumbers : undefined,
+        quantity: isSerialized ? undefined : quantity,
+        unitCost: unitPricePaise,
+        sourceType: "stock-adjustment",
+        sourceRecordId: recordId,
+      });
+    } else {
+      await consumeFifo(partnerId, bareCode, warehouse.value, "Good", quantity);
+    }
+  }
+
+  await recordInventoryTransaction({
+    partnerId,
+    sourceType: "stock-adjustment",
+    sourceRecordId: recordId,
+    direction: adjustmentType === "Increase" ? "debit" : "credit",
+    amount: unitPricePaise * quantity,
+    description: `Stock Adjustment ${recordId} — ${adjustmentType} of ${quantity} x ${materialId} at ${warehouseName}`,
+  });
+}
 
 /**
  * Creates a Stock Adjustment record AND actually applies it to the real
@@ -58,11 +123,24 @@ async function createStockAdjustmentCore(
     if (error) return { error };
   }
 
+  const unitPrice = Number(values["unitPrice"] ?? 0);
   const record = await createBusinessRecord(partnerId, "inventory-stock-adjustments", {
     ...values,
+    unitPrice,
     serialNumbers: isSerialized ? serialNumbers : [],
   });
   await adjustStockQty(partnerId, materialId, materialId, warehouseName, delta);
+  await applyStockAdjustmentLedgerAndLots(
+    partnerId,
+    String(record["id"]),
+    materialId,
+    warehouseName,
+    adjustmentType,
+    quantity,
+    unitPrice,
+    isSerialized ? serialNumbers : [],
+    isSerialized
+  );
   return { record };
 }
 

@@ -7,6 +7,7 @@ import { bulkImportStockTransfersAction } from "./actions";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { stockTransferColumns, getStockTransferFormFields } from "@/lib/sample-data/warehouse";
 import { listBusinessRecords } from "@/lib/businessRecords";
+import { getBomOptionsForPartner } from "@/lib/sample-data/bom";
 
 registerPage({
   id: "inventory.stock-transfers.list",
@@ -29,6 +30,7 @@ export default async function StockTransfersPage({ params }: { params: { partner
   const columns = await applyCustomizations("inventory.stock-transfers.list", stockTransferColumns);
   const rows = await listBusinessRecords(params.partnerId, "inventory-stock-transfers");
   const formFields = await getStockTransferFormFields(params.partnerId);
+  const materialOptions = await getBomOptionsForPartner(params.partnerId);
 
   return (
     <AppShell
@@ -43,7 +45,7 @@ export default async function StockTransfersPage({ params }: { params: { partner
             templateFilename="stock-transfers-template.csv"
             importAction={bulkImportStockTransfersAction.bind(null, params.partnerId)}
           />
-          <StockTransfersNewButton partnerId={params.partnerId} fields={formFields} />
+          <StockTransfersNewButton partnerId={params.partnerId} fields={formFields} materialOptions={materialOptions} />
         </div>
       }
     >

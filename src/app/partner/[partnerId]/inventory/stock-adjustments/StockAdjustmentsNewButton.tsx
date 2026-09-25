@@ -9,7 +9,7 @@ import { createStockAdjustmentsMultiAction } from "./actions";
 /** These move from the flat single form into a per-row line item (see
  * MaterialLineItemsTable) — Warehouse/Type/Reason/Adjusted By/Date stay
  * shared across every line in one submission. */
-const LINE_FIELD_KEYS = new Set(["materialId", "quantity", "serialNumbers"]);
+const LINE_FIELD_KEYS = new Set(["materialId", "quantity", "unitPrice", "serialNumbers"]);
 
 /**
  * Create-as-modal for inventory/stock-adjustments — supports one or many
@@ -47,7 +47,7 @@ export function StockAdjustmentsNewButton({
             Add one row per material — a Serialized material asks for its serial/barcode numbers instead of a typed
             quantity (quantity is derived from how many you enter).
           </p>
-          <MaterialLineItemsTable items={items} onChange={setItems} materialOptions={materialOptions} showSerials />
+          <MaterialLineItemsTable items={items} onChange={setItems} materialOptions={materialOptions} showSerials showUnitPrice />
         </div>
         <RecordForm
           fields={headerFields}
@@ -57,6 +57,7 @@ export function StockAdjustmentsNewButton({
             const lines = items.map((it) => ({
               materialId: it.materialId,
               quantity: it.quantity,
+              unitPrice: it.unitPrice ?? 0,
               serialNumbers: it.serialNumbers ?? "",
             }));
             return createStockAdjustmentsMultiAction(partnerId, values, lines);

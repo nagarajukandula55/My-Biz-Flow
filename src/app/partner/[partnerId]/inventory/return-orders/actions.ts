@@ -13,6 +13,34 @@ import {
   type ReturnOrderStageHistoryEntry,
 } from "@/lib/sample-data/warehouse";
 import { adjustStockQty, getQtyOnHand, type StockCondition } from "@/lib/inventoryStock";
+import { recordInventoryTransaction } from "@/lib/inventoryLedger";
+
+/**
+ * Posts the money ledger entry for a Return Order once it reaches its
+ * final state — Received (Inbound) is a "credit" (value/stock coming
+ * back into the business), Dispatched (Outbound) is a "debit" (value
+ * leaving as a write-off dispatch, the only path that reduces Defective
+ * stock). unitPrice × quantity, same paise convention every other
+ * InventoryTransaction uses. No OTP gate here — the locked state machine
+ * (Vendor + Challan Number required for Dispatched) is this module's own
+ * guard, per the user's explicit OTP scope (Stock Take/Stock Transfer only).
+ */
+async function postReturnOrderLedger(partnerId: string, record: Record<string, unknown>): Promise<void> {
+  const materialId = String(record["materialId"] ?? "").trim();
+  const quantity = Number(record["quantity"] ?? 0);
+  const unitPricePaise = Math.round(Number(record["unitPrice"] ?? 0) * 100);
+  const status = String(record["status"] ?? "");
+  const direction = status === "Received" ? "credit" : "debit";
+
+  await recordInventoryTransaction({
+    partnerId,
+    sourceType: "return-order",
+    sourceRecordId: String(record["id"]),
+    direction,
+    amount: unitPricePaise * quantity,
+    description: `Return Order ${record["id"]} ${status} — ${quantity} x ${materialId}`,
+  });
+}
 
 function isFinalReturnOrderStatus(status: unknown): boolean {
   return (RETURN_ORDER_FINAL_STATUSES as readonly string[]).includes(String(status ?? ""));
@@ -326,10 +354,12 @@ export async function warehouseInwardReturnOrderAction(partnerId: string, record
   const { error, normalized } = await applyReturnOrderStockEffect(partnerId, { ...existing, status: "Received" });
   if (error) return { error };
 
-  await updateBusinessRecord(partnerId, "inventory-return-orders", recordId, {
+  const updated = {
     ...normalized,
     stageHistory: appendStageHistory(existing["stageHistory"], "Received", "Warehouse"),
-  });
+  };
+  await updateBusinessRecord(partnerId, "inventory-return-orders", recordId, updated);
+  await postReturnOrderLedger(partnerId, { ...updated, id: recordId });
 
   revalidatePath(`/partner/${partnerId}/inventory/return-orders`);
   revalidatePath(`/partner/${partnerId}/inventory/return-orders/${recordId}`);
@@ -356,10 +386,12 @@ export async function dispatchReturnOrderAction(partnerId: string, recordId: str
   const { error, normalized } = await applyReturnOrderStockEffect(partnerId, { ...existing, status: "Dispatched" });
   if (error) return { error };
 
-  await updateBusinessRecord(partnerId, "inventory-return-orders", recordId, {
+  const updated = {
     ...normalized,
     stageHistory: appendStageHistory(existing["stageHistory"], "Dispatched", "Warehouse"),
-  });
+  };
+  await updateBusinessRecord(partnerId, "inventory-return-orders", recordId, updated);
+  await postReturnOrderLedger(partnerId, { ...updated, id: recordId });
 
   revalidatePath(`/partner/${partnerId}/inventory/return-orders`);
   revalidatePath(`/partner/${partnerId}/inventory/return-orders/${recordId}`);

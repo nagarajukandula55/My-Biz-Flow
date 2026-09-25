@@ -11,7 +11,7 @@ import { createReturnOrdersMultiAction } from "./actions";
  * Source/Destination, Vendor/Challan, Status, Created Date) is shared
  * across every line in one submission ("common" fields, unchanged from the
  * plain single-line form this replaces). */
-const LINE_FIELD_KEYS = new Set(["returnType", "materialId", "quantity"]);
+const LINE_FIELD_KEYS = new Set(["returnType", "materialId", "quantity", "unitPrice"]);
 
 /**
  * Create-as-modal for inventory/return-orders — supports one or many line
@@ -56,6 +56,7 @@ export function ReturnOrdersNewButton({
             materialOptions={materialOptions}
             returnTypeOptions={["Defective", "Good"]}
             availabilityLabels={availabilityLabels}
+            showUnitPrice
           />
         </div>
         <RecordForm
@@ -66,6 +67,7 @@ export function ReturnOrdersNewButton({
             const lines = items.map((it) => ({
               materialId: it.materialId,
               quantity: it.quantity,
+              unitPrice: it.unitPrice ?? 0,
               returnType: it.returnType ?? "Good",
             }));
             return createReturnOrdersMultiAction(partnerId, values, lines);

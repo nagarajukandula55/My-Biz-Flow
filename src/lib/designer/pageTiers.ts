@@ -177,6 +177,11 @@ export const DEFAULT_PAGE_TIERS: Record<string, PlanTier> = {
   // material entry, which stays basic) is the same "build your own
   // catalog" capability Brands/Models already gate pro+.
   "inventory.bom.create": "pro",
+  // Pro+ Inventory money ledger (InventoryTransaction) — same tier as the
+  // BOM/catalog-authoring capability above. Page not built yet (this stage
+  // is foundations only); reserving the pageId now so later stages don't
+  // forget to gate it.
+  "inventory.transactions.list": "pro",
   "billing.reports.profit-loss": "ultimate",
 };
 

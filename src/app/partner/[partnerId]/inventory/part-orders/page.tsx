@@ -6,6 +6,7 @@ import { BulkUploadButton } from "@/components/BulkUploadButton";
 import { bulkImportPartOrdersAction } from "./actions";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { partOrderColumns, getPartOrderFormFields } from "@/lib/sample-data/warehouse";
+import { getBomOptionsForPartner } from "@/lib/sample-data/bom";
 import { listBusinessRecords } from "@/lib/businessRecords";
 
 registerPage({
@@ -29,6 +30,7 @@ export default async function PartOrdersPage({ params }: { params: { partnerId: 
   const columns = await applyCustomizations("inventory.part-orders.list", partOrderColumns);
   const rows = await listBusinessRecords(params.partnerId, "inventory-part-orders");
   const formFields = await getPartOrderFormFields(params.partnerId);
+  const materialOptions = await getBomOptionsForPartner(params.partnerId);
 
   return (
     <AppShell
@@ -43,7 +45,7 @@ export default async function PartOrdersPage({ params }: { params: { partnerId: 
             templateFilename="part-orders-template.csv"
             importAction={bulkImportPartOrdersAction.bind(null, params.partnerId)}
           />
-          <PartOrdersNewButton partnerId={params.partnerId} fields={formFields} />
+          <PartOrdersNewButton partnerId={params.partnerId} fields={formFields} materialOptions={materialOptions} />
         </div>
       }
     >

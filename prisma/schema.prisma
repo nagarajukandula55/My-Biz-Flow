@@ -1170,6 +1170,122 @@ model WorkorderReopenOtp {
   @@map("workorder_reopen_otps")
 }
 
+/// Generic, purpose-keyed OTP table shared with My-Biz-Flow-Admin (same
+/// physical DB, same table — see that app's src/lib/inventoryOtp.ts for
+/// the reference implementation this schema block is copied verbatim
+/// from). `purpose` distinguishes what the code is gating (e.g.
+/// "stock-take-close", "stock-transfer-close"); `targetRecordId` is the
+/// gated document's id. One row per (partnerId, targetRecordId, purpose)
+/// in practice — enforced at the application layer (delete-then-create on
+/// each new request), not by a DB unique constraint, since the table is
+/// shared across two independently-deployed codebases and neither owns a
+/// migration that could add one retroactively without coordinating the
+/// other.
+model OtpCode {
+  id             String    @id @default(cuid())
+  partnerId      String
+  purpose        String
+  targetRecordId String
+  code           String
+  expiresAt      DateTime
+  consumedAt     DateTime?
+  createdAt      DateTime  @default(now())
+
+  @@index([partnerId, targetRecordId, purpose])
+  @@map("otp_codes")
+}
+
+/// Pro+ money ledger (credit/debit) for Inventory documents that carry a
+/// cost impact — Stock Take, Stock Adjustments, Stock Transfers, Return
+/// Orders, Part Orders. One row per (partner, source document, source
+/// type), upserted idempotently so re-processing the same document never
+/// double-books it. `amount` is Int paise, matching every other money
+/// field in this schema (see e.g. WorkorderBooking.priceAmount). Shared
+/// physical table with My-Biz-Flow-Admin (same DB) — shape copied
+/// verbatim from that app's prisma/schema.prisma.
+model InventoryTransaction {
+  id             String   @id @default(cuid())
+  partnerId      String
+  sourceType     String
+  sourceRecordId String
+  direction      String
+  amount         Int
+  description    String
+  occurredAt     DateTime
+  createdAt      DateTime @default(now())
+
+  @@unique([partnerId, sourceRecordId, sourceType])
+  @@index([partnerId, occurredAt])
+  @@index([partnerId, sourceRecordId])
+  @@map("inventory_transactions")
+}
+
+/// Per-unit/per-batch stock lot — the substrate for FIFO draw order,
+/// serialized exact-ageing, and barcode/lot tracking. A serialized
+/// material gets one row per unit (serialNumber set, quantityReceived/
+/// quantityRemaining always 1/1 or 1/0); a non-serialized material gets
+/// one row per receipt batch, drawn down FIFO by receivedAt. `unitCost`
+/// is Int paise, same convention as InventoryTransaction.amount. Shared
+/// physical table with My-Biz-Flow-Admin (same DB) — every field except
+/// `condition` is copied verbatim from that app's shape.
+/// `condition` ("Good" | "Defective") is a My-Biz-Flow-only, additive,
+/// nullable column: this app tracks stock condition as a first-class
+/// dimension (return-orders, part-orders, inventoryStock.ts) but
+/// My-Biz-Flow-Admin does not, so it's added nullable specifically so
+/// Admin's existing rows/code are entirely unaffected — Admin simply
+/// never sets it.
+model StockLot {
+  id                String    @id @default(cuid())
+  partnerId         String
+  warehouseId       String?
+  warehouseName     String?
+  materialId        String
+  materialLabel     String
+  serialized        Boolean   @default(false)
+  serialNumber      String?
+  quantityReceived  Int
+  quantityRemaining Int
+  unitCost          Int
+  receivedAt        DateTime
+  sourceType        String?
+  sourceRecordId    String?
+  consumedAt        DateTime?
+  createdAt         DateTime  @default(now())
+  /// My-Biz-Flow-only additive column — see model doc comment above.
+  condition         String?
+
+  @@index([partnerId, materialId, warehouseId, receivedAt])
+  @@index([partnerId, materialId, serialNumber])
+  @@map("stock_lots")
+}
+
+/// Material consumption ledger (workorder deduction, POS sale,
+/// manufacturing production) — shared physical table with
+/// My-Biz-Flow-Admin (same DB), shape copied verbatim from that app's
+/// prisma/schema.prisma. Money fields here are Float RUPEES (not Int
+/// paise) — an intentional exception to this schema's usual paise
+/// convention, matching the table's actual live shape exactly.
+model MaterialConsumption {
+  id             String   @id @default(cuid())
+  partnerId      String
+  sourceType     String
+  sourceRecordId String
+  materialId     String
+  materialLabel  String
+  warehouseId    String?
+  warehouseName  String?
+  quantity       Float
+  unitCost       Float
+  valueAmount    Float
+  occurredAt     DateTime
+  createdAt      DateTime @default(now())
+
+  @@index([partnerId, occurredAt])
+  @@index([partnerId, sourceType])
+  @@index([partnerId, materialId])
+  @@map("material_consumption")
+}
+
 /// Links a Telegram message this app sent about a support ticket back to
 /// that ticket, so a reply in Telegram (which only carries the message_id
 /// it's replying to, not the ticket id) can be resolved to the right

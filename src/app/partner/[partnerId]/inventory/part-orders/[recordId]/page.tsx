@@ -53,6 +53,9 @@ export default async function PartOrdersDetailPage({
                 <p className="mt-1 text-xs text-text-muted">Part Order detail</p>
               </div>
               <div className="flex items-center gap-3">
+                <Link href={`/partner/${params.partnerId}/inventory/part-orders/${params.recordId}/document`} className="btn-outline">
+                  View document
+                </Link>
                 <Link href={`/partner/${params.partnerId}/inventory/part-orders`} className="btn-outline">
                   &larr; Back
                 </Link>

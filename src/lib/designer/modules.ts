@@ -135,6 +135,9 @@ export const MODULE_SUB_NAV: Record<string, PartnerNavSubItem[]> = {
     { key: "inventory.stock-take", label: "Stock Take", href: "inventory/stock-take" },
     { key: "inventory.return-orders", label: "Return Orders", href: "inventory/return-orders" },
     { key: "inventory.part-orders", label: "Part Orders", href: "inventory/part-orders" },
+    // Pro+ money ledger over the same 5 source types above — see
+    // src/lib/inventoryLedger.ts / inventory.transactions.list.
+    { key: "inventory.transactions", label: "Transactions", href: "inventory/transactions" },
     // Real per-workorder consumption history (deductInventoryForWorkorderAction
     // writes one row per part line actually deducted) — so a partner can see
     // usage trends and reorder ahead, not just the current on-hand snapshot.

@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition, type MouseEvent } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { ChevronDown, LogOut } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { ChevronDown, LogOut, Loader2 } from "lucide-react";
 import { BrandLogo } from "./BrandLogo";
 import { getIconComponent } from "@/lib/designer/icons";
 import { signOutAction } from "@/app/login/actions";
@@ -90,6 +90,27 @@ export function Sidebar({
   partnerName?: string | null;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
+  // Plain <Link> gives no visual feedback between the click and the new
+  // page's server render finishing, which read as "unresponsive" on a slow
+  // connection (user report). Wrapping the actual navigation in a
+  // transition lets each link show its own pending state (dimmed + a small
+  // spinner) for exactly the link that was clicked, cleared automatically
+  // once the transition (and the route's async render) settles.
+  const [isPending, startTransition] = useTransition();
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
+
+  function navigate(e: MouseEvent<HTMLAnchorElement>, href: string) {
+    // Let modified clicks (open in new tab/window, middle-click) behave
+    // exactly like a normal link — only intercept a plain left click.
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    if (href === pathname) return;
+    e.preventDefault();
+    setPendingHref(href);
+    startTransition(() => {
+      router.push(href);
+    });
+  }
 
   function hrefFor(relative: string) {
     return `/partner/${partnerId}/${relative}`;
@@ -174,8 +195,19 @@ export function Sidebar({
                               : "text-sidebar-text-dim hover:bg-sidebar-active/60 hover:text-sidebar-text"
                           }`}
                         >
-                          <Link href={itemHref} className="flex flex-1 items-center gap-2 px-2.5 py-1.5">
-                            {Icon ? (
+                          <Link
+                            href={itemHref}
+                            onClick={(e) => navigate(e, itemHref)}
+                            className={`flex flex-1 items-center gap-2 px-2.5 py-1.5 ${
+                              isPending && pendingHref === itemHref ? "opacity-50" : ""
+                            }`}
+                          >
+                            {isPending && pendingHref === itemHref ? (
+                              <Loader2
+                                className={`h-3.5 w-3.5 flex-shrink-0 animate-spin ${ICON_CLASS[item.dot]}`}
+                                strokeWidth={2.25}
+                              />
+                            ) : Icon ? (
                               <Icon
                                 className={`h-3.5 w-3.5 flex-shrink-0 ${ICON_CLASS[item.dot]}`}
                                 strokeWidth={2.25}
@@ -226,12 +258,16 @@ export function Sidebar({
                                   <div className="flex items-center gap-1">
                                     <Link
                                       href={subHref}
-                                      className={`block flex-1 rounded-md px-2 py-1 text-[12px] font-medium ${
+                                      onClick={(e) => navigate(e, subHref)}
+                                      className={`flex flex-1 items-center gap-1.5 rounded-md px-2 py-1 text-[12px] font-medium ${
                                         active2 || nestedActive
                                           ? "text-sidebar-text"
                                           : "text-sidebar-text-dim hover:text-sidebar-text"
-                                      }`}
+                                      } ${isPending && pendingHref === subHref ? "opacity-50" : ""}`}
                                     >
+                                      {isPending && pendingHref === subHref && (
+                                        <Loader2 className="h-3 w-3 flex-shrink-0 animate-spin" strokeWidth={2.5} />
+                                      )}
                                       {sub.label}
                                     </Link>
                                     {hasNested && (
@@ -257,12 +293,16 @@ export function Sidebar({
                                           <li key={nested.key}>
                                             <Link
                                               href={nestedHref}
-                                              className={`block rounded-md px-2 py-1 text-[12px] font-medium ${
+                                              onClick={(e) => navigate(e, nestedHref)}
+                                              className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-[12px] font-medium ${
                                                 nestedItemActive
                                                   ? "text-sidebar-text"
                                                   : "text-sidebar-text-dim hover:text-sidebar-text"
-                                              }`}
+                                              } ${isPending && pendingHref === nestedHref ? "opacity-50" : ""}`}
                                             >
+                                              {isPending && pendingHref === nestedHref && (
+                                                <Loader2 className="h-3 w-3 flex-shrink-0 animate-spin" strokeWidth={2.5} />
+                                              )}
                                               {nested.label}
                                             </Link>
                                           </li>

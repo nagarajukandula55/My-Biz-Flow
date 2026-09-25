@@ -327,6 +327,7 @@ export async function getStockAdjustmentFormFields(partnerId: string): Promise<F
     { key: "materialId", label: "Material — [warehouse: available qty]", type: "select", required: true, options: materialAvailability.options, optionLabels: materialAvailability.optionLabels },
     { key: "adjustmentType", label: "Type", type: "select", required: true, options: [...ADJUSTMENT_TYPES] },
     { key: "quantity", label: "Quantity", type: "number", required: true },
+    { key: "unitPrice", label: "Unit Price (₹)", type: "number", required: false, help: "Used for the Inventory ledger — Increase posts a debit (value paid in), Decrease posts a credit (value written off)." },
     {
       key: "serialNumbers",
       label: "Serial / Barcode Numbers",
@@ -348,6 +349,7 @@ export function getStockAdjustmentDetailFields(record: Row): RecordField[] {
     { label: "Material", value: r["materialId"], type: "text" },
     { label: "Type", value: r["adjustmentType"], type: "select" },
     { label: "Quantity", value: r["quantity"], type: "text" },
+    { label: "Unit Price (₹)", value: r["unitPrice"] || 0, type: "text" },
     {
       label: "Serial / Barcode Numbers",
       value: Array.isArray(r["serialNumbers"]) && r["serialNumbers"].length > 0 ? r["serialNumbers"].join(", ") : "—",
@@ -514,6 +516,7 @@ export async function getReturnOrderFormFields(partnerId: string): Promise<FormF
     { key: "returnType", label: "Return Type", type: "select", required: true, options: [...RETURN_TYPES] },
     { key: "materialId", label: "Material — [warehouse: available qty]", type: "select", required: true, options: materialAvailability.options, optionLabels: materialAvailability.optionLabels },
     { key: "quantity", label: "Quantity", type: "number", required: true },
+    { key: "unitPrice", label: "Unit Price (₹)", type: "number", required: false, help: "Used for the Inventory ledger once this Return Order reaches its final state — Received posts a credit (value/stock coming back), Dispatched posts a debit (value leaving as a write-off)." },
     { key: "sourceLocation", label: "Source Location (Inbound: Service Centre name; Outbound: your own Warehouse name, exactly)", type: "text", required: true },
     { key: "destinationWarehouseName", label: "Destination Warehouse (Inbound only)", type: "select", required: false, options: warehouseOptions.map((o) => o.label) },
     { key: "vendorName", label: "Vendor / OEM Name (Outbound only)", type: "text", required: false },
@@ -535,6 +538,7 @@ export function getReturnOrderDetailFields(record: Row): RecordField[] {
     { label: "Return Type", value: r["returnType"], type: "text" },
     { label: "Material", value: r["materialId"], type: "text" },
     { label: "Quantity", value: r["quantity"], type: "text" },
+    { label: "Unit Price (₹)", value: r["unitPrice"] || 0, type: "text" },
     { label: "Source Location", value: r["sourceLocation"], type: "text" },
     { label: "Destination Warehouse", value: r["destinationWarehouseName"] || "—", type: "text" },
     { label: "Vendor / OEM", value: r["vendorName"] || "—", type: "text" },
@@ -643,6 +647,7 @@ export async function getPartOrderFormFields(partnerId: string): Promise<FormFie
     { key: "linkedReturnOrderId", label: "Linked Return Order (optional)", type: "text", required: false },
     { key: "materialId", label: "Material — [warehouse: available qty]", type: "select", required: true, options: materialAvailability.options, optionLabels: materialAvailability.optionLabels },
     { key: "quantity", label: "Quantity", type: "number", required: true },
+    { key: "unitPrice", label: "Unit Price (₹)", type: "number", required: false, help: "Used for the Inventory ledger once this Part Order reaches Delivered — posts a debit (money spent on parts received)." },
     { key: "sourceWarehouseName", label: "Source Warehouse", type: "select", required: true, options: warehouseOptions.map((o) => o.label) },
     { key: "destinationLocation", label: "Destination Location", type: "text", required: true },
     { key: "status", label: "Status", type: "select", required: true, options: ["Pending", "Dispatched", "Delivered"] },
@@ -668,6 +673,7 @@ export function getPartOrderDetailFields(record: Row): RecordField[] {
     { label: "Linked Return Order", value: r["linkedReturnOrderId"], type: "relation" },
     { label: "Material", value: r["materialId"], type: "text" },
     { label: "Quantity", value: r["quantity"], type: "text" },
+    { label: "Unit Price (₹)", value: r["unitPrice"] || 0, type: "text" },
     { label: "Source Warehouse", value: r["sourceWarehouseName"], type: "text" },
     { label: "Destination Location", value: r["destinationLocation"], type: "text" },
     { label: "Status", value: r["status"], type: "select", chipVariant: PART_ORDER_STATUS_VARIANT[String(r["status"])] ?? "neutral" },
@@ -707,16 +713,31 @@ const STOCK_TRANSFER_STATUS_VARIANT: Record<string, StatusVariant> = {
 
 export const stockTransferColumns: Column[] = [
   { key: "id", label: "Transfer ID", type: "text" },
-  { key: "materialId", label: "Material", type: "text" },
   { key: "fromWarehouseName", label: "From Warehouse", type: "text" },
   { key: "toWarehouseName", label: "To Warehouse", type: "text" },
   { key: "toPartnerId", label: "To Partner", type: "text" },
-  { key: "quantity", label: "Quantity", type: "text" },
-  { key: "serialNumbers", label: "Serial / Barcode Numbers", type: "text" },
+  { key: "lineCount", label: "Lines", type: "text" },
   { key: "transferDate", label: "Transfer Date", type: "date" },
   { key: "reason", label: "Reason / Note", type: "text" },
   { key: "status", label: "Status", type: "select-chip", chipVariantMap: STOCK_TRANSFER_STATUS_VARIANT },
 ];
+
+/**
+ * A own-warehouse transfer document's line item shape (see
+ * createOwnWarehouseTransferCore, stock-transfers/actions.ts) — condition-
+ * aware (matches src/lib/inventoryStock.ts's StockCondition bucket) and
+ * carries its own unit cost for the ledger's no-net-effect movement row.
+ * A partner-to-partner transfer never has `lineItems` — it stays on the
+ * original flat materialId/quantity/serialNumbers shape untouched.
+ */
+export type StockTransferLineItem = {
+  materialId: string;
+  quantity: number;
+  condition: "Good" | "Defective";
+  /** Rupees. */
+  unitPrice: number;
+  serialNumbers: string[];
+};
 
 /** Partner-scoped — see getBomOptionsForPartner/getWarehouseOptionsForPartner's doc comments for why this can't be a plain array. */
 export async function getStockTransferFormFields(partnerId: string): Promise<FormFieldDef[]> {
@@ -732,12 +753,14 @@ export async function getStockTransferFormFields(partnerId: string): Promise<For
     { key: "toWarehouseName", label: "To Warehouse (leave blank for a partner-to-partner transfer)", type: "select", required: false, options: warehouseOptions.map((o) => o.label) },
     { key: "toPartnerId", label: "OR Transfer To Partner ID (e.g. SC0042) — requires Super Admin approval", type: "text", required: false },
     { key: "quantity", label: "Quantity", type: "number", required: true },
+    { key: "condition", label: "Material Type", type: "select", required: false, options: ["Good", "Defective"], help: "Own-warehouse transfer lines only — which bucket is moving." },
+    { key: "unitPrice", label: "Unit Price (₹)", type: "number", required: false, help: "Own-warehouse transfer lines only — used for the ledger's no-net-effect movement row." },
     {
       key: "serialNumbers",
       label: "Serial / Barcode Numbers",
       type: "textarea",
       required: false,
-      placeholder: "One serial/barcode per line. Only required for an own-warehouse transfer (moves stock immediately) of a material that's Serialized in BOM — count must match Quantity exactly. Leave blank for non-serialized materials or a partner-to-partner transfer (captured once Super Admin approves it).",
+      placeholder: "One serial/barcode per line. Only required for an own-warehouse transfer (moves stock only once the Reconcile OTP is verified — see the transfer's detail page) of a material that's Serialized in BOM — count must match Quantity exactly. Leave blank for non-serialized materials or a partner-to-partner transfer (captured once Super Admin approves it).",
     },
     { key: "transferDate", label: "Transfer Date", type: "date", required: true },
     { key: "reason", label: "Reason / Note", type: "text", required: false },
@@ -801,22 +824,67 @@ const STOCK_TAKE_STATUS_VARIANT: Record<string, StatusVariant> = {
   Reconciled: "success",
 };
 
+/**
+ * One "inventory-stock-take" BusinessRecord is now a whole physical-count
+ * document (header + one row per material counted), not a single
+ * material/warehouse line — see the module's actions.ts. `lineItems` is the
+ * authoritative source for what was counted; these top-level columns are
+ * document-level (shared header + a couple of summary figures for the list
+ * view), not per-material fields any more.
+ */
 export const stockTakeColumns: Column[] = [
   { key: "id", label: "Stock Take ID", type: "text" },
-  { key: "materialId", label: "Material", type: "text" },
   { key: "warehouseName", label: "Warehouse", type: "text" },
-  { key: "condition", label: "Material Type", type: "text" },
-  { key: "expectedQty", label: "Expected Qty", type: "text" },
-  { key: "countedQty", label: "Counted Qty", type: "text" },
-  { key: "variance", label: "Variance", type: "text" },
+  { key: "lineCount", label: "Lines", type: "text" },
+  { key: "netVariance", label: "Net Variance (Qty)", type: "text" },
   { key: "countedDate", label: "Counted Date", type: "date" },
   { key: "countedBy", label: "Counted By", type: "text" },
   { key: "note", label: "Note", type: "text" },
   { key: "status", label: "Status", type: "select-chip", chipVariantMap: STOCK_TAKE_STATUS_VARIANT },
 ];
 
-/** Partner-scoped — see getBomOptionsForPartner/getWarehouseOptionsForPartner's doc comments for why this can't be a plain array. */
+export type StockTakeLineItem = {
+  materialId: string;
+  condition: "Good" | "Defective";
+  expectedQty: number;
+  countedQty: number;
+  variance: number;
+  /** Rupees. */
+  unitPrice: number;
+  serialNumbers: string[];
+};
+
+/**
+ * Header-only fields for the new/edit form — the per-row Material/Expected
+ * Qty/Counted Qty/Material Type/Unit Price/Serials now live in
+ * MaterialLineItemsTable (see StockTakeNewButton.tsx), not this list.
+ * Status is never one of these — a Stock Take always starts "Pending" and
+ * only moves via the OTP-gated Reconcile action (actions.ts), never a form
+ * field (same lock Return Orders' status uses).
+ */
 export async function getStockTakeFormFields(partnerId: string): Promise<FormFieldDef[]> {
+  const warehouseOptions = await getWarehouseOptionsForPartner(partnerId);
+  return [
+    { key: "warehouseName", label: "Warehouse", type: "select", required: true, options: warehouseOptions.map((o) => o.label) },
+    { key: "countedDate", label: "Counted Date", type: "date", required: true },
+    { key: "countedBy", label: "Counted By", type: "text", required: false },
+    { key: "note", label: "Note", type: "text", required: false },
+  ];
+}
+
+/** Same partner-scoped material options MaterialLineItemsTable needs — re-exported here so the page/button don't reach into bom.ts directly. */
+export async function getStockTakeMaterialOptions(partnerId: string) {
+  return getBomOptionsForPartner(partnerId);
+}
+
+/**
+ * CSV bulk-import only (see stock-take/actions.ts's bulkImportStockTakeAction)
+ * — bulk import stays single-line-per-row (one material per CSV row, same
+ * scope decision the original file made), so it needs the full header +
+ * line-item field set for column matching, unlike getStockTakeFormFields
+ * (header-only, for the new multi-line modal).
+ */
+export async function getStockTakeCsvFields(partnerId: string): Promise<FormFieldDef[]> {
   const [bomOptions, warehouseOptions, availability] = await Promise.all([
     getBomOptionsForPartner(partnerId),
     getWarehouseOptionsForPartner(partnerId),
@@ -826,19 +894,13 @@ export async function getStockTakeFormFields(partnerId: string): Promise<FormFie
   return [
     { key: "materialId", label: "Material — [warehouse: available qty]", type: "select", required: true, options: materialAvailability.options, optionLabels: materialAvailability.optionLabels },
     { key: "warehouseName", label: "Warehouse", type: "select", required: true, options: warehouseOptions.map((o) => o.label) },
-    { key: "condition", label: "Material Type", type: "select", required: true, options: ["Good", "Defective"], help: "Which bucket you're physically counting — Good and Defective stock are counted and reconciled separately." },
-    { key: "expectedQty", label: "Expected Qty", type: "number", required: true, help: "Type the system's current quantity for this Material/Warehouse/Material Type — shown in the Material dropdown above (Good availability only) — before counting." },
+    { key: "condition", label: "Material Type", type: "select", required: true, options: ["Good", "Defective"] },
+    { key: "expectedQty", label: "Expected Qty", type: "number", required: true },
     { key: "countedQty", label: "Counted Qty", type: "number", required: true },
-    {
-      key: "serialNumbers",
-      label: "Serial / Barcode Numbers",
-      type: "textarea",
-      required: false,
-      placeholder: "One serial/barcode per line, as physically counted. Only required once Status is Reconciled AND the selected Material is Serialized in BOM — count must match Counted Qty exactly. Leave blank for non-serialized materials.",
-    },
+    { key: "unitPrice", label: "Unit Price (₹)", type: "number", required: false },
+    { key: "serialNumbers", label: "Serial / Barcode Numbers", type: "textarea", required: false },
     { key: "countedDate", label: "Counted Date", type: "date", required: true },
     { key: "countedBy", label: "Counted By", type: "text", required: false },
     { key: "note", label: "Note", type: "text", required: false },
-    { key: "status", label: "Status", type: "select", required: true, options: [...STOCK_TAKE_STATUSES] },
   ];
 }

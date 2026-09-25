@@ -64,6 +64,9 @@ export default async function ReturnOrdersDetailPage({
                 <p className="mt-1 text-xs text-text-muted">Return Order detail</p>
               </div>
               <div className="flex items-center gap-3">
+                <Link href={`/partner/${params.partnerId}/inventory/return-orders/${params.recordId}/document`} className="btn-outline">
+                  View document
+                </Link>
                 {!isFinal && (
                   <>
                     <CancelReturnOrderButton partnerId={params.partnerId} recordId={params.recordId} />
