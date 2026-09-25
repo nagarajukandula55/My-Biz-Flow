@@ -9,16 +9,29 @@ import {
   findPartnerIdByChatId,
   sendRawTelegramMessage,
   getTelegramSettings,
+  listPartnersWithReportsEnabled,
+  sendPartnerTelegramAlert,
 } from "@/lib/telegram";
 import { findTelegramTemplateDefByCommand, TELEGRAM_TEMPLATE_DEFS } from "@/lib/telegramTemplateDefs";
 import { getTelegramTemplateBody, renderTelegramTemplate } from "@/lib/telegramTemplatesData";
-import { businessReportMessage, helpMessageText, connectConfirmationMessage, pnaReportMessage, type ReportFrequency } from "@/lib/telegramTemplates";
+import { businessReportMessage, helpMessageText, connectConfirmationMessage, pnaReportMessage, generalAnnouncementMessage, type ReportFrequency } from "@/lib/telegramTemplates";
 import { computePartnerReportComparison } from "@/lib/telegramReportData";
+import { runTelegramReportsNow } from "@/lib/telegramReportRunner";
 import { computePnaTelegramReport } from "@/lib/analyticsData";
 import { findSupportTicketByReplyMessageId, appendSupportReply } from "@/lib/supportTickets";
+import { getOpsChatId } from "@/lib/platformSettings";
 
 function formatInr(n: number): string {
   return `₹${Math.round(n).toLocaleString("en-IN")}`;
+}
+
+/** Same HTML-escaping convention as errorLog.ts's own escapeHtml — messages
+ * are sent with parse_mode: "HTML" (see sendRawTelegramMessage), so raw
+ * operator-typed text must be escaped before it's interpolated into a
+ * template, or `<`/`&` in the announcement could break formatting or be
+ * misread as markup. */
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 /** Sample values for a /test_* command preview — same shape as the real
@@ -126,6 +139,13 @@ async function handleTemplateCommand(chatId: string, text: string): Promise<bool
  *      (buildTelegramConnectLink in src/lib/telegram.ts). Saves the chat
  *      that sent it as that partner's TelegramSettings.chatId and replies
  *      with a confirmation.
+ *   1c. `/sendreport` — manual on-demand trigger of the same report run the
+ *      telegram-reports cron performs, restricted to the ops chat only
+ *      (see the handler below for the full authorization rationale).
+ *   1d. `/announce <text>` — broadcasts a free-text "general announcement"
+ *      to every partner with a connected chat, also restricted to the ops
+ *      chat only. Meant to be paired with Telegram's own native "Schedule
+ *      Message" feature for one-off ad-hoc scheduled announcements.
  *   1b. Every other slash command in telegramTemplateDefs.ts — see
  *      handleTemplateCommand() below: /report_daily|weekly|monthly pull
  *      that chat's connected partner's real current digest on demand,
@@ -245,6 +265,82 @@ export async function POST(request: Request) {
     await connectTelegramChat(partnerId, chatId, slot, deriveChatDisplayName(message.chat));
     const slotLabel = slot === "group" ? "group chat" : "personal chat";
     await sendTelegramReply(message.chat.id, await connectConfirmationMessage(slotLabel));
+    return NextResponse.json({ ok: true });
+  }
+
+  // Case 1c: /sendreport — manual on-demand trigger for the same run the
+  // 9 PM IST cron endpoint performs (src/app/api/cron/telegram-reports/
+  // route.ts), added because GitHub Actions' own `schedule` trigger for
+  // that cron has been observed to drop most of its daily firings. This is
+  // a platform-wide action (it can send every partner's report), so it's
+  // only honored from the Super Admin's own connected ops chat
+  // (platform_settings.opsChatId / TELEGRAM_OPS_CHAT_ID) — never from an
+  // arbitrary partner's chat. Any other chat sending this gets no reply at
+  // all, same posture as an unrecognized command from Case 1b's
+  // handleTemplateCommand (only /help lists real commands).
+  if (text.trim().toLowerCase() === "/sendreport") {
+    const opsChatId = await getOpsChatId();
+    if (!opsChatId || String(opsChatId) !== chatId) {
+      return NextResponse.json({ ok: true });
+    }
+    try {
+      const result = await runTelegramReportsNow(new Date(), "manual");
+      await sendTelegramReply(
+        message.chat.id,
+        `Report send triggered — ${result.partnersConsidered} partner(s) considered, ${result.sent} sent, ${result.failed} failed, ${result.skipped} skipped (not due / already sent today).`
+      );
+    } catch (err) {
+      await sendTelegramReply(
+        message.chat.id,
+        `Report send failed to run: ${err instanceof Error ? err.message : "unknown error"}`
+      );
+    }
+    return NextResponse.json({ ok: true });
+  }
+
+  // Case 1d: /announce <text> — ad-hoc broadcast of a free-text message to
+  // every partner as a "general announcement". Composed in Telegram, this is
+  // meant to be sent via Telegram's own native "Schedule Message" feature so
+  // it arrives (and triggers this broadcast) at a chosen future time — a
+  // one-off scheduler with no cron/DB entry needed. Same ops-chat-only
+  // authorization as /sendreport above: this fans out to every partner, so
+  // it must never be reachable from an arbitrary partner's own chat.
+  //
+  // Note: telegramTemplateDefs.ts already registers "/announce" as the
+  // /test_* preview command for the "general_announcement" template (see
+  // handleTemplateCommand's generic fallback branch) — that preview only
+  // ever replies to the sender with sample data. This case is checked FIRST
+  // so a real "/announce <text>" from the ops chat performs the actual
+  // broadcast instead of falling into that preview path.
+  if (/^\/announce(?:@\S+)?(\s|$)/i.test(text)) {
+    const opsChatId = await getOpsChatId();
+    if (!opsChatId || String(opsChatId) !== chatId) {
+      return NextResponse.json({ ok: true });
+    }
+    const spaceIdx = text.indexOf(" ");
+    const announcementText = spaceIdx === -1 ? "" : text.slice(spaceIdx + 1);
+    if (!announcementText.trim()) {
+      await sendTelegramReply(message.chat.id, "Usage: /announce <your message>");
+      return NextResponse.json({ ok: true });
+    }
+
+    const partners = await listPartnersWithReportsEnabled(); // every partner with at least one connected chat (personal or group) — see that function's own doc comment
+    const rendered = await generalAnnouncementMessage(escapeHtml(announcementText));
+    let sentCount = 0;
+    for (const partner of partners) {
+      // Per-partner routing["generalAnnouncement"] ("none"/"personal"/"group"/"both")
+      // is resolved and honoured inside sendPartnerTelegramAlert — this loop
+      // never bypasses a partner's own opt-out.
+      const delivered = await sendPartnerTelegramAlert(partner.partnerId, "generalAnnouncement", rendered);
+      if (delivered) sentCount += 1;
+    }
+
+    await sendTelegramReply(
+      message.chat.id,
+      partners.length === 0
+        ? "0 partners have a connected chat — nothing was sent."
+        : `Announcement sent to ${sentCount} partner(s).`
+    );
     return NextResponse.json({ ok: true });
   }
 

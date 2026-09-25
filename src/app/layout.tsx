@@ -1,9 +1,27 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { mbfDisplay, mbfSans, mbfMono } from "@/lib/fonts";
 import { SITE_URL } from "@/lib/seo";
 import "./globals.css";
 
+// Next.js 14's `viewport` export is separate from `metadata` (theme-color
+// moved out of the metadata object in Next 14's API). Matches manifest.ts's
+// theme_color (--accent, #1A63BD) — the real MBF Brand Blue token.
+export const viewport: Viewport = {
+  themeColor: "#1A63BD",
+  width: "device-width",
+  initialScale: 1,
+};
+
 export const metadata: Metadata = {
+  // icon.tsx / apple-icon.tsx (App Router file conventions) already inject
+  // the matching <link> tags automatically; this explicit block is kept in
+  // sync with them so favicon/apple-touch-icon/shortcut intent is also
+  // discoverable straight from the metadata export.
+  icons: {
+    icon: [{ url: "/icon", type: "image/png" }],
+    apple: [{ url: "/apple-icon", type: "image/png" }],
+    shortcut: ["/icon"],
+  },
   metadataBase: new URL(SITE_URL),
   title: {
     default: "My Biz Flow — No-Code Business Management Platform for Every Business",

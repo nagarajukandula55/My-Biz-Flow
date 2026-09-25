@@ -6,6 +6,8 @@ import { PublicHelpBubble } from "@/components/PublicHelpBubble";
 import { registerPage } from "@/lib/designer/registry";
 import { listActivePartnerTypes } from "@/lib/designer/partnerTypesData";
 import { SITE_URL, SITE_NAME } from "@/lib/seo";
+import { MODULES, type ModuleDefinition } from "@/lib/designer/modules";
+import { getIconComponent } from "@/lib/designer/icons";
 
 // Public marketing homepage — reads Super-Admin-configured partner type
 // list, which changes rarely. ISR keeps it fresh within a minute without a
@@ -13,9 +15,9 @@ import { SITE_URL, SITE_NAME } from "@/lib/seo";
 export const revalidate = 60;
 
 export const metadata: Metadata = {
-  title: "No-Code Business Management Platform for Every Business",
+  title: "Run Every Part of Your Business From One Platform",
   description:
-    "My Biz Flow is a modular, no-code business/CRM platform: mix and match POS, Service Centre workorders, Billing, GST-compliant invoicing, Inventory, Clinic, and more on one account — no custom development required.",
+    "My Biz Flow brings your checkout, workorders, billing, GST invoicing, inventory, and patient/client records onto one account — so your team stops juggling separate apps and everything stays in sync automatically.",
   // Canonical stays the base "/" regardless of ?type= -- the Service Centre
   // variant is a content branch of the same page/URL, not a distinct page,
   // so a separate canonical would just create duplicate-content confusion.
@@ -26,7 +28,7 @@ const FAQS = [
   {
     question: "What is My Biz Flow?",
     answer:
-      "My Biz Flow is a modular, no-code, multi-vertical business/CRM platform. Instead of a separate product per industry, every business runs on one shared metadata engine — modules, fields, pipelines, and dashboards are all config-driven, so the same platform can run a service centre, a POS-driven retail store, a clinic, or an HR operation.",
+      "My Biz Flow is one platform that runs a business end to end — checkout, workorders, billing, inventory, staff, and more — instead of stitching together a separate app for each job. The same platform can run a service centre, a POS-driven retail store, a clinic, or an HR operation, all under one login.",
   },
   {
     question: "Which kinds of businesses can use it?",
@@ -34,9 +36,9 @@ const FAQS = [
       "Any business that fits one or more of the platform's modules — Point of Sale, Service Centre (repair/workorder shops), Billing, Clinic, Inventory/Warehouse, and other verticals such as real estate, education, and manufacturing. A business picks a business type at signup, which bundles a starting set of modules; modules can be mixed and matched afterward.",
   },
   {
-    question: "Is it really no-code?",
+    question: "Do I need developers to set this up?",
     answer:
-      "Yes — modules, fields, pipelines, and dashboards are config-driven rather than requiring custom development per business. A Super Admin/Designer layer lets page fields, labels, and module appearance be customized without writing code.",
+      "No — you set up fields, statuses, and page labels yourself from an admin screen, the same way you'd fill in a settings page, so a new module is ready to use the same day rather than waiting on a custom build.",
   },
   {
     question: "Does My Biz Flow support GST billing?",
@@ -77,6 +79,46 @@ const SERVICE_CENTRE_FAQS = [
   },
 ];
 
+// Icon per module for the homepage's "All modules" grid — reuses the same
+// curated lucide-react subset the Designer's module-appearance picker draws
+// from (src/lib/designer/icons.ts), never a new icon choice invented for
+// this page. Purely a display default; a Super Admin's real icon override
+// (ModuleDefinition.icon) isn't read here since this is the anonymous
+// marketing page, not a partner's own sidebar.
+const MODULE_ICON_NAMES: Record<string, string> = {
+  pos: "ShoppingCart",
+  "service-centre": "Wrench",
+  billing: "Receipt",
+  brand: "Building2",
+  clinic: "Stethoscope",
+  "amc-field-service": "ClipboardCheck",
+  "restaurant-pos": "UtensilsCrossed",
+  subscriptions: "Dumbbell",
+  "real-estate": "Home",
+  rentals: "CalendarDays",
+  education: "GraduationCap",
+  manufacturing: "Factory",
+  "wholesale-b2b": "Boxes",
+  "logistics-fleet": "Truck",
+  legal: "Scale",
+  "event-booking": "PartyPopper",
+  "salon-spa": "Scissors",
+  inventory: "Warehouse",
+  "accounting-gst": "FileSpreadsheet",
+  accounting: "Landmark",
+  "loyalty-rewards": "Gift",
+  hrms: "UserCog",
+  marketplace: "Store",
+  "field-force": "Users",
+  telecalling: "Phone",
+};
+
+// Modules with their own dedicated /solutions/<slug> marketing page.
+const MODULE_SOLUTIONS_SLUGS = new Set(["service-centre", "telecalling", "field-force", "pos"]);
+
+// The "Core four" per src/lib/designer/modules.ts's own grouping comment.
+const CORE_MODULE_SLUGS = ["pos", "service-centre", "billing", "brand"];
+
 registerPage({
   id: "platform.home",
   moduleSlug: "platform",
@@ -108,6 +150,50 @@ export default async function RootPage({
   searchParams: { type?: string };
 }) {
   const partnerTypes = await listActivePartnerTypes();
+  const partnerTypeIds = new Set(partnerTypes.map((t) => t.id));
+
+  // Where a module's card links: its own /solutions page if one exists,
+  // else /signup?type=<slug> if it's a real registerable PartnerType, else
+  // no link at all -- a cross-cutting add-on (HRMS, Accounting, Marketplace,
+  // Inventory, etc.) isn't something a business signs up for on its own,
+  // it's picked as part of an account during signup, so its card is
+  // informational only rather than pointing at a form that doesn't apply.
+  function moduleHref(slug: string): string | null {
+    if (MODULE_SOLUTIONS_SLUGS.has(slug)) return `/solutions/${slug}`;
+    if (partnerTypeIds.has(slug)) return `/signup?type=${encodeURIComponent(slug)}`;
+    return null;
+  }
+
+  const coreModules = CORE_MODULE_SLUGS.map((slug) => MODULES.find((m) => m.slug === slug)).filter(
+    (m): m is ModuleDefinition => Boolean(m)
+  );
+  const verticalModules = MODULES.filter((m) => m.taxonomy === "vertical" && !CORE_MODULE_SLUGS.includes(m.slug));
+  const crossCuttingModules = MODULES.filter((m) => m.taxonomy === "cross-cutting");
+
+  function ModuleCard({ mod, featured }: { mod: ModuleDefinition; featured?: boolean }) {
+    const Icon = getIconComponent(MODULE_ICON_NAMES[mod.slug]);
+    const href = moduleHref(mod.slug);
+    const card = (
+      <div className={`mbf-glass-card flex h-full flex-col gap-3 p-5 ${featured ? "ring-1 ring-accent/50" : ""}`}>
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent-soft text-accent">
+          {Icon ? <Icon className="h-5 w-5" /> : null}
+        </div>
+        <div className="flex-1">
+          <h3 className="font-display text-base font-bold text-text">{mod.label}</h3>
+          <p className="mt-1 text-sm leading-relaxed text-text-muted">{mod.description}</p>
+        </div>
+        {href && <span className="text-xs font-semibold text-accent">Learn more →</span>}
+      </div>
+    );
+    return href ? (
+      <Link href={href} className="block h-full">
+        {card}
+      </Link>
+    ) : (
+      card
+    );
+  }
+
   // Service Centre variant triggers on an explicit ?type=service-centre
   // (e.g. arriving from the pricing/signup business-type chooser), or when
   // Service Centre is the only active business type configured at all --
@@ -134,8 +220,8 @@ export default async function RootPage({
       operatingSystem: "Web",
       url: SITE_URL,
       description: isServiceCentre
-        ? "No-code Service Centre / repair-shop platform: workorder lifecycle tracking, fault/symptom/solution catalogs, inventory-linked GST billing, and public no-login repair tracking, on the same modular My Biz Flow platform."
-        : "Modular, no-code, multi-vertical business/CRM platform. Mix and match POS, Service Centre, Billing, Clinic, Inventory, and more modules on one account.",
+        ? "Service Centre / repair-shop platform: workorder lifecycle tracking, fault/symptom/solution catalogs, inventory-linked GST billing, and public no-login repair tracking, on the same My Biz Flow platform."
+        : "Run checkout, service workorders, billing, inventory, and more from one account — mix and match POS, Service Centre, Billing, Clinic, Inventory, and other modules without juggling separate apps.",
       offers: {
         "@type": "Offer",
         url: `${SITE_URL}/pricing${isServiceCentre ? "?type=service-centre" : ""}`,
@@ -201,10 +287,9 @@ export default async function RootPage({
               One platform. <span className="mbf-headline-mark">Every business you run.</span>
             </h1>
             <p className="mbf-prose mx-auto mt-5 text-lg leading-relaxed text-text-muted">
-              My Biz Flow is a modular, no-code, multi-vertical business/CRM platform. Instead of shipping a separate
-              product per industry, every business runs on one shared metadata engine — modules, fields, pipelines,
-              and dashboards are all config-driven. Mix and match POS, Service Centre, Telecalling, Billing, Clinic,
-              and more on a single account.
+              Stop juggling a different app for checkout, billing, workorders, and stock. My Biz Flow puts them all on
+              one account, with one login for your whole team — mix and match POS, Service Centre, Telecalling,
+              Billing, Clinic, and more, and they all stay in sync automatically.
             </p>
           </>
         )}
@@ -262,9 +347,9 @@ export default async function RootPage({
                     "Close a workorder and it can generate a GST-compliant invoice from the parts and labour used, deducting stock from Inventory automatically.",
                 },
                 {
-                  title: "No-code, same as every module",
+                  title: "Set up your way, same as every module",
                   description:
-                    "Fields, statuses, and catalogs are config-driven — a Super Admin can tailor Service Centre without custom development.",
+                    "Fields, statuses, and catalogs are yours to tailor from an admin screen — set up Service Centre to match how your shop actually works, no waiting on a developer.",
                 },
               ].map((f) => (
                 <div key={f.title} className="mbf-glass-card p-5">
@@ -282,6 +367,42 @@ export default async function RootPage({
             )}
           </div>
         </section>
+
+      <section className="border-t border-border px-6 py-16">
+        <div className="mx-auto max-w-5xl">
+          <p className="text-center text-xs font-semibold uppercase tracking-widest text-accent">All modules</p>
+          <h2 className="mt-2 text-center font-display text-2xl font-bold text-text">
+            Everything your business needs, on one account
+          </h2>
+          <p className="mbf-prose mx-auto mt-2 text-center text-base text-text-muted">
+            Turn on what you run today, add more the day you need it — no separate logins, no re-entering the same
+            customer or product twice.
+          </p>
+
+          <h3 className="mt-10 font-display text-sm font-bold uppercase tracking-wide text-text-muted">Core</h3>
+          <div className="mt-4 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {coreModules.map((m) => (
+              <ModuleCard key={m.slug} mod={m} featured={m.slug === "pos"} />
+            ))}
+          </div>
+
+          <h3 className="mt-12 font-display text-sm font-bold uppercase tracking-wide text-text-muted">Verticals</h3>
+          <div className="mt-4 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {verticalModules.map((m) => (
+              <ModuleCard key={m.slug} mod={m} />
+            ))}
+          </div>
+
+          <h3 className="mt-12 font-display text-sm font-bold uppercase tracking-wide text-text-muted">
+            Cross-cutting add-ons
+          </h3>
+          <div className="mt-4 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {crossCuttingModules.map((m) => (
+              <ModuleCard key={m.slug} mod={m} />
+            ))}
+          </div>
+        </div>
+      </section>
 
       <section className="border-t border-border px-6 py-16">
         <div className="mx-auto max-w-5xl">
