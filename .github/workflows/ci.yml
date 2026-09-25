@@ -44,7 +44,17 @@ jobs:
         run: npx tsc --noEmit
 
       - name: Apply schema to the throwaway CI database
-        run: npx prisma migrate deploy
+        # `db push` (schema-sync), NOT `migrate deploy` (migration-history
+        # replay) — this repo's migrations/ folder isn't self-contained on
+        # its own: it shares one production database with the sibling
+        # My-Biz-Flow-Admin repo, and a few tables (e.g. stock_lots) were
+        # only ever CREATE TABLE'd by a migration that lives in THAT repo's
+        # history, not this one's. Replaying this repo's migration history
+        # alone against a fresh empty database fails on those tables. `db
+        # push` sidesteps that entirely — it just syncs the throwaway CI
+        # database straight to the current schema.prisma state, which is
+        # all a disposable CI build needs.
+        run: npx prisma db push --skip-generate --accept-data-loss
         env:
           DATABASE_URL: postgres://ci:ci@localhost:5432/ci
           DATABASE_URL_UNPOOLED: postgres://ci:ci@localhost:5432/ci
