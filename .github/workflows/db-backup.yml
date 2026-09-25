@@ -1,10 +1,21 @@
 name: Database backup
 
-# Dumps the production Postgres DB (Neon) and the MongoDB cluster every 6
+# Dumps the production Postgres DB (Neon) and the MongoDB cluster every 3
 # hours and stores both as GitHub Release assets in this (private) repo,
 # tagged backup-<UTC timestamp>. A cleanup job then deletes any backup-*
 # release older than 7 days, so storage stays bounded. A final job posts a
 # success/failure confirmation to a Telegram group.
+#
+# Data-loss early warning (added 2026-09-25, after a same-day incident where
+# `prisma migrate deploy` emptied several core tables — partners/
+# partner_staff/business_records — between one backup and the next, only
+# noticed when a partner reported it): right after each dump, this workflow
+# compares that run's row-count manifest against the immediately PRECEDING
+# backup's manifest. Any table whose count DECREASED sends an immediate,
+# separate Telegram alert (not the routine success/failure summary at the
+# end) naming the table and the before/after counts, so a drop like this is
+# caught within one backup interval instead of only when someone notices the
+# app is broken.
 #
 # Requires these repo secrets (Settings -> Secrets and variables -> Actions):
 #   BACKUP_DATABASE_URL    - the DIRECT (unpooled) Postgres connection
@@ -34,7 +45,7 @@ name: Database backup
 
 on:
   schedule:
-    - cron: "0 */6 * * *"
+    - cron: "0 */3 * * *"
   workflow_dispatch: {}
 
 permissions:
@@ -85,6 +96,55 @@ jobs:
           done | jq -Rn '
             [inputs | split("\t") | {(.[0]): (.[1] | tonumber)}] | add // {}
           ' > "manifest-$TIMESTAMP.json"
+
+      - name: Alert immediately if any table's row count decreased vs the last backup
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_GROUP_CHAT_ID: ${{ secrets.TELEGRAM_GROUP_CHAT_ID }}
+        run: |
+          set -euo pipefail
+          # Most recent existing backup-* release (this run's own release
+          # doesn't exist yet — it's created in a later step) — the
+          # comparison baseline.
+          PREV_TAG=$(gh release list --repo "$GITHUB_REPOSITORY" --limit 5 \
+            | awk -F'\t' '{print $3}' | grep '^backup-' | head -n 1 || true)
+          if [ -z "$PREV_TAG" ]; then
+            echo "No previous backup release found - nothing to compare against yet."
+            exit 0
+          fi
+          PREV_MANIFEST_URL=$(gh release view "$PREV_TAG" --repo "$GITHUB_REPOSITORY" \
+            --json assets --jq '.assets[] | select(.name | startswith("manifest-")) | .name')
+          if [ -z "$PREV_MANIFEST_URL" ]; then
+            echo "Previous backup $PREV_TAG has no manifest asset (older backup) - skipping comparison."
+            exit 0
+          fi
+          gh release download "$PREV_TAG" --repo "$GITHUB_REPOSITORY" \
+            --pattern "manifest-*.json" -O "prev-manifest.json"
+
+          DROPS=$(jq -n --slurpfile prev prev-manifest.json --slurpfile cur "manifest-$TIMESTAMP.json" '
+            ($prev[0]) as $p | ($cur[0]) as $c |
+            [ $p | keys[] as $t
+              | select(($c[$t] // 0) < $p[$t])
+              | { table: $t, before: $p[$t], after: ($c[$t] // 0) }
+            ]
+          ')
+          echo "$DROPS" > drops.json
+          DROP_COUNT=$(jq 'length' drops.json)
+          echo "Tables with a decreased row count vs $PREV_TAG: $DROP_COUNT"
+
+          if [ "$DROP_COUNT" -gt 0 ]; then
+            if [ -z "${TELEGRAM_BOT_TOKEN:-}" ] || [ -z "${TELEGRAM_GROUP_CHAT_ID:-}" ]; then
+              echo "TELEGRAM_BOT_TOKEN / TELEGRAM_GROUP_CHAT_ID not set - cannot send the data-loss alert!" >&2
+              exit 1
+            fi
+            LINES=$(jq -r '.[] | "  \(.table): \(.before) -> \(.after) (-\(.before - .after))"' drops.json)
+            TEXT=$(printf '🚨 DATA DECREASE DETECTED in backup %s (vs %s)\n%s\n\nThis usually means rows were deleted/overwritten between backups (e.g. a migration or manual DB change) — check immediately.\nRepo: %s\nRun: https://github.com/%s/actions/runs/%s' \
+              "backup-$TIMESTAMP" "$PREV_TAG" "$LINES" "$GITHUB_REPOSITORY" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID")
+            curl -sf -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+              --data-urlencode "chat_id=${TELEGRAM_GROUP_CHAT_ID}" \
+              --data-urlencode "text=${TEXT}"
+          fi
 
       - name: Install MongoDB database tools
         run: |
