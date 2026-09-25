@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { getDocumentTemplate } from "@/lib/designer/documentTemplates";
 import { getPartner, resolveDocumentTerms } from "@/lib/partnerData";
 import { getBusinessRecord, getBusinessRecordSequenceIndexFiltered } from "@/lib/businessRecords";
+import { appendDocumentPrintedLogEntry } from "@/lib/documentPrintLog";
 import { formatDate } from "@/lib/format";
 import { ServiceCentreInvoiceDocument } from "./ServiceCentreInvoiceDocument";
 
@@ -29,6 +30,7 @@ export default async function ServiceCentreInvoicePage({
 }) {
   const record = await getBusinessRecord(params.partnerId, "service-centre", params.recordId);
   if (!record) notFound();
+  await appendDocumentPrintedLogEntry(params.partnerId, params.recordId, "Invoice");
   const partner = await getPartner(params.partnerId);
 
   // The real invoice number is assigned ONCE, atomically, at actual

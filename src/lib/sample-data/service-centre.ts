@@ -9,6 +9,7 @@ import {
 } from "@/lib/catalog/vehicleCategory";
 import { PRODUCT_DOMAIN_LABELS } from "@/lib/catalog/productDomains";
 import type { TelegramChatLogEntry } from "@/lib/telegram";
+import { documentPrintLogToTimelineEntries } from "@/lib/documentPrintLog";
 
 // Workorder (JobSheet) sample data for the service-centre module — realistic
 // field modeling, no backend wired up in this pass beyond the BusinessRecord
@@ -946,6 +947,9 @@ export function getServiceCentreTimeline(record: Row): TimelineEntry[] {
     const label = entry.direction === "in" ? `Telegram reply: "${entry.text}"` : `Telegram alert sent: "${entry.text}"`;
     push(`telegram-${i}`, label, entry.at);
   });
+
+  // Document print/view log — see src/lib/documentPrintLog.ts.
+  entries.push(...documentPrintLogToTimelineEntries(record));
 
   return entries.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
 }

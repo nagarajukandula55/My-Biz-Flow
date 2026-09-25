@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { registerPage } from "@/lib/designer/registry";
 import { getPartner, resolveDocumentTerms } from "@/lib/partnerData";
 import { getBusinessRecord } from "@/lib/businessRecords";
+import { appendDocumentPrintedLogEntry } from "@/lib/documentPrintLog";
 import { WARRANTY_STATUS_LABELS } from "@/lib/sample-data/service-centre";
 import { ServiceCentreJobCardDocument } from "./ServiceCentreJobCardDocument";
 
@@ -32,6 +33,7 @@ export default async function ServiceCentreDocumentPage({
 }) {
   const record = await getBusinessRecord(params.partnerId, "service-centre", params.recordId);
   if (!record) notFound();
+  await appendDocumentPrintedLogEntry(params.partnerId, params.recordId, "Workorder");
   const partner = await getPartner(params.partnerId);
 
   const r = record as Record<string, unknown>;

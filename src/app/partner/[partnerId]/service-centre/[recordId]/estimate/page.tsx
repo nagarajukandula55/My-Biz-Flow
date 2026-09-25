@@ -5,6 +5,7 @@ import { registerPage } from "@/lib/designer/registry";
 import { notFound } from "next/navigation";
 import { getPartner, resolveDocumentTerms } from "@/lib/partnerData";
 import { getBusinessRecord, getBusinessRecordSequenceIndex } from "@/lib/businessRecords";
+import { appendDocumentPrintedLogEntry } from "@/lib/documentPrintLog";
 
 registerPage({
   id: "service-centre.estimate",
@@ -55,6 +56,7 @@ export default async function ServiceCentreEstimatePage({
 }) {
   const record = await getBusinessRecord(params.partnerId, "service-centre", params.recordId);
   if (!record) notFound();
+  await appendDocumentPrintedLogEntry(params.partnerId, params.recordId, "Estimate");
   const partner = await getPartner(params.partnerId);
   const sequenceIndex = await getBusinessRecordSequenceIndex(params.partnerId, "service-centre", params.recordId);
   const lines = await buildServiceCentreLines(params.partnerId, record);

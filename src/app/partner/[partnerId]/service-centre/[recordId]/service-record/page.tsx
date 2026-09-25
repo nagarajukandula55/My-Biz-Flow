@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { registerPage } from "@/lib/designer/registry";
 import { getPartner, resolveDocumentTerms } from "@/lib/partnerData";
 import { getBusinessRecord } from "@/lib/businessRecords";
+import { appendDocumentPrintedLogEntry } from "@/lib/documentPrintLog";
 import { buildServiceCentreLines } from "@/lib/serviceCentreLines";
 import { ServiceCentreServiceRecordDocument } from "./ServiceCentreServiceRecordDocument";
 
@@ -32,6 +33,7 @@ export default async function ServiceCentreServiceRecordPage({
 }) {
   const record = await getBusinessRecord(params.partnerId, "service-centre", params.recordId);
   if (!record) notFound();
+  await appendDocumentPrintedLogEntry(params.partnerId, params.recordId, "Service Record");
   const partner = await getPartner(params.partnerId);
   const lines = await buildServiceCentreLines(params.partnerId, record);
 
