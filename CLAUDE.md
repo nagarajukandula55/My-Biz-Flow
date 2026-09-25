@@ -28,6 +28,51 @@ freelance on a page-level PR.
   Force's Engineer/Service/JobAllocation tables).
 - Deploy target: Vercel
 
+## Database safety — binding, no exceptions
+
+**Added 2026-09-25 after a real incident**: applying pending Prisma
+migrations against the shared production database emptied several core
+tables (`partners`, `partner_staff`, `business_records`) between one 3-hourly
+backup and the next. Data was recovered from the automated GitHub Release
+backup (see `.github/workflows/db-backup.yml`), but some writes made between
+the last backup and the incident were not recoverable. This must not happen
+again.
+
+- **This database is shared** with the sibling `My-Biz-Flow-Admin` repo (same
+  `DATABASE_URL`/`DATABASE_URL_UNPOOLED` host) — a schema change in either
+  repo affects both. Always check the other repo's `prisma/schema.prisma`
+  and recent migrations before adding a model, in case the table you're
+  about to create already exists there.
+- **Never run `prisma migrate dev`, `prisma migrate deploy`, `prisma db
+  push`, `prisma migrate reset`, or any other schema-mutating/data-mutating
+  command directly against this shared database from an agent session**,
+  even with a plausible-looking migration. These require a human to run them
+  from their own terminal, after reading exactly what SQL will execute —
+  never as something an agent executes on the user's behalf, and never
+  because a permission prompt was denied and it seems easy to route around
+  via another tool, encoding, or script.
+- **Before proposing ANY migration or schema change**, read every statement
+  in the generated SQL aloud in the response (not just "this looks
+  additive") and confirm explicitly: does this `DROP`, `ALTER ... DROP
+  COLUMN`, `TRUNCATE`, or rename anything with live rows? If unsure whether a
+  table/column has real data, query the row count first — never assume.
+- **Never resolve migration-history drift (`prisma migrate resolve
+  --applied`) without first verifying, live, table-by-table, exactly which
+  physical tables/columns already exist** — bookkeeping mismatches between
+  `_prisma_migrations` and the real schema are exactly what caused this
+  incident when reconciled carelessly.
+- **Prefer additive-only changes** (new nullable columns, new tables) over
+  anything that alters or drops existing structure. If a genuinely
+  destructive change is required, stop and get explicit, separate
+  confirmation from the user for that specific statement before it runs —
+  general permission to "build the feature" is not permission to alter or
+  drop existing data.
+- The automated backup (`.github/workflows/db-backup.yml`, every 3 hours,
+  with an immediate Telegram alert on any row-count decrease between
+  backups) is a safety net, not a substitute for care — a change that isn't
+  reversible within a backup window can still cause real, permanent loss for
+  a live partner's business.
+
 ## Integration constraints
 
 - This app integrates with a separate `central-api` service (business
