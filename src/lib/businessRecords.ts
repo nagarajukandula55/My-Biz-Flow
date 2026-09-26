@@ -121,20 +121,43 @@ export async function listBusinessRecordsPaginated(
     and.push({ data: { path: [options.dateRange.field], lte: options.dateRange.to } as any });
   }
 
-  if (options.search?.query) {
-    const query = options.search.query;
-    and.push({
-      OR: options.search.fields.map((field) => ({
-        data: { path: [field], string_contains: query, mode: "insensitive" } as any,
-      })),
-    });
-  }
-
   const where: Prisma.BusinessRecordWhereInput = {
     partnerId,
     moduleSlug,
     ...(and.length > 0 ? { AND: and } : {}),
   };
+
+  // `mode: "insensitive"` combined with a JSON `path` filter is rejected at
+  // runtime by this Prisma/Postgres combo ("Unknown argument mode") even
+  // though it type-checks (the old code cast it `as any`) — every search on
+  // every module list page using this path threw a 500 on ANY query, not
+  // just numeric/phone ones. Case-insensitive substring search across JSON
+  // fields is therefore done in-memory here instead of pushed down to the
+  // DB, after the other (DB-safe) filters/date-range have narrowed the set.
+  if (options.search?.query) {
+    const query = options.search.query.toLowerCase();
+    const fields = options.search.fields;
+    const matching = await prisma.businessRecord.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+    });
+    const filtered = matching.filter((row) => {
+      const data = row.data as Record<string, unknown>;
+      return fields.some((field) => {
+        const value = field === "id" ? row.recordKey : data[field];
+        return value != null && String(value).toLowerCase().includes(query);
+      });
+    });
+    const total = filtered.length;
+    const pageRows = filtered.slice((page - 1) * pageSize, page * pageSize);
+    return {
+      rows: pageRows.map(toRow),
+      total,
+      page,
+      pageSize,
+      totalPages: Math.max(1, Math.ceil(total / pageSize)),
+    };
+  }
 
   const [rows, total] = await Promise.all([
     prisma.businessRecord.findMany({

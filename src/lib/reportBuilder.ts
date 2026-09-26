@@ -183,6 +183,14 @@ export async function runReport(
   if (!source) return { rows: [], total: 0, truncated: false };
 
   const and: Prisma.BusinessRecordWhereInput[] = [];
+  // `contains` filters can't be pushed down to the DB: Prisma rejects
+  // `mode: "insensitive"` combined with a JSON `path` filter at runtime
+  // ("Unknown argument mode") even though it type-checks behind the `as
+  // any` cast below — every report using a "contains" filter threw a 500.
+  // Those are applied in-memory instead, after every other (DB-safe)
+  // filter has narrowed the set — same fix as listBusinessRecordsPaginated
+  // in businessRecords.ts.
+  const containsFilters: { field: string; value: string }[] = [];
   for (const filter of definition.filters) {
     const path = [filter.field];
     switch (filter.operator) {
@@ -193,7 +201,7 @@ export async function runReport(
         and.push({ NOT: { data: { path, equals: filter.value } as any } });
         break;
       case "contains":
-        and.push({ data: { path, string_contains: filter.value, mode: "insensitive" } as any });
+        containsFilters.push({ field: filter.field, value: filter.value });
         break;
       case "gte":
         and.push({ data: { path, gte: filter.value } as any });
@@ -212,6 +220,23 @@ export async function runReport(
     moduleSlug: source.slug,
     ...(and.length > 0 ? { AND: and } : {}),
   };
+
+  if (containsFilters.length > 0) {
+    const all = await prisma.businessRecord.findMany({ where, orderBy: { createdAt: "desc" } });
+    const filtered = all.filter((r) => {
+      const data = r.data as Record<string, unknown>;
+      return containsFilters.every(({ field, value }) => {
+        const cell = data[field];
+        return cell != null && String(cell).toLowerCase().includes(value.toLowerCase());
+      });
+    });
+    const records = filtered.slice(0, REPORT_ROW_LIMIT);
+    return {
+      rows: records.map((r) => ({ ...(r.data as Record<string, unknown>), id: r.recordKey })),
+      total: filtered.length,
+      truncated: filtered.length > records.length,
+    };
+  }
 
   const [records, total] = await Promise.all([
     prisma.businessRecord.findMany({ where, orderBy: { createdAt: "desc" }, take: REPORT_ROW_LIMIT }),
