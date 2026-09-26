@@ -1,10 +1,10 @@
 import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
-import { RecordForm } from "@/components/RecordForm";
-import { subscriptionsFormFields } from "@/lib/sample-data/subscriptions";
-import { applyCustomizations } from "@/lib/designer/customizations";
-import { createBusinessRecordAction } from "@/lib/businessRecordActions";
+import { RecordForm, type FormFieldDef } from "@/components/RecordForm";
+import { requirePartnerSessionForPage } from "@/lib/requirePartnerSession";
+import { listPlans, BILLING_CYCLES } from "@/lib/subscriptions";
+import { createSubscriberAction } from "../actions";
 
 registerPage({
   id: "subscriptions.create",
@@ -15,16 +15,31 @@ registerPage({
   superAdminOnly: false,
   customizableRegions: [
     { key: "form-fields", label: "Form fields" },
-    { key: "validation-rules", label: "Validation rules" },
     { key: "default-values", label: "Default values" },
   ],
-  explanation: "A config-driven creation form for a new membership in the subscriptions module, built from the module's real field set via the shared RecordForm component. Submission is a client-side demo stub — no backend is wired up in this pass.",
+  explanation: "A config-driven creation form for a new Subscriber (Prisma-backed) in the subscriptions module, built via the shared RecordForm component. Optionally links the new subscriber to an existing SubscriptionPlan; billing cycle/plan amount are otherwise entered directly as the subscriber's own snapshot values.",
   sourceFile: "src/app/partner/[partnerId]/subscriptions/new/page.tsx",
 });
 
 export default async function NewSubscriptionsPage({ params }: { params: { partnerId: string } }) {
+  await requirePartnerSessionForPage(params.partnerId);
   const mod = await getModule("subscriptions");
-  const fields = await applyCustomizations("subscriptions.create", subscriptionsFormFields);
+  const plans = await listPlans(params.partnerId);
+
+  const fields: FormFieldDef[] = [
+    { key: "memberName", label: "Member Name", type: "text", required: true },
+    {
+      key: "planId",
+      label: "Plan (optional)",
+      type: "select",
+      required: false,
+      options: plans.map((p) => p.id),
+      optionLabels: Object.fromEntries(plans.map((p) => [p.id, p.name])),
+    },
+    { key: "billingCycle", label: "Billing Cycle", type: "select", required: true, options: BILLING_CYCLES },
+    { key: "planAmountRupees", label: "Plan Amount", type: "currency", required: true },
+    { key: "startDate", label: "Start Date", type: "date", required: false },
+  ];
 
   return (
     <AppShell topbarTitle={`New Membership — ${mod?.label ?? "Subscriptions / Membership"}`}>
@@ -35,7 +50,7 @@ export default async function NewSubscriptionsPage({ params }: { params: { partn
           <RecordForm
             fields={fields}
             submitLabel="Create Membership"
-            action={createBusinessRecordAction.bind(null, params.partnerId, "subscriptions")}
+            action={createSubscriberAction.bind(null, params.partnerId)}
           />
         </div>
       </div>

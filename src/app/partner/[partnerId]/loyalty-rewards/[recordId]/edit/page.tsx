@@ -5,8 +5,8 @@ import { RecordForm } from "@/components/RecordForm";
 import { notFound } from "next/navigation";
 import { loyaltyRewardsFormFields } from "@/lib/sample-data/loyalty-rewards";
 import { applyCustomizations } from "@/lib/designer/customizations";
-import { getBusinessRecord } from "@/lib/businessRecords";
-import { updateBusinessRecordAction } from "@/lib/businessRecordActions";
+import { getLoyaltyMember } from "@/lib/loyaltyRewards";
+import { updateLoyaltyMemberAction } from "../../actions";
 
 registerPage({
   id: "loyalty-rewards.edit",
@@ -20,13 +20,13 @@ registerPage({
     { key: "validation-rules", label: "Validation rules" },
     { key: "default-values", label: "Default values" },
   ],
-  explanation: "The same config-driven RecordForm pre-populated with an existing member's sample data, letting a user edit and save changes (demo stub, no persistence yet).",
+  explanation: "The same config-driven RecordForm pre-populated with an existing LoyaltyMember's real Prisma-backed data, letting a user edit and save profile fields (points balance is not editable here — see the Earn/Redeem actions on the detail page).",
   sourceFile: "src/app/partner/[partnerId]/loyalty-rewards/[recordId]/edit/page.tsx",
 });
 
 export default async function EditLoyaltyRewardsPage({ params }: { params: { partnerId: string; recordId: string } }) {
   const mod = await getModule("loyalty-rewards");
-  const record = await getBusinessRecord(params.partnerId, "loyalty-rewards", params.recordId);
+  const record = await getLoyaltyMember(params.partnerId, params.recordId);
   if (!record) notFound();
   const fields = await applyCustomizations("loyalty-rewards.edit", loyaltyRewardsFormFields);
 
@@ -40,7 +40,7 @@ export default async function EditLoyaltyRewardsPage({ params }: { params: { par
             fields={fields}
             initialValues={record}
             submitLabel="Save changes"
-            action={updateBusinessRecordAction.bind(null, params.partnerId, "loyalty-rewards", params.recordId)}
+            action={updateLoyaltyMemberAction.bind(null, params.partnerId, params.recordId)}
           />
         </div>
       </div>

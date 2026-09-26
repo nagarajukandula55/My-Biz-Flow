@@ -123,6 +123,39 @@ export function taxonomyToNavDot(taxonomy: ModuleTaxonomy): NavDot {
  * module slug; a module without an entry falls back to the generic trio.
  */
 export const MODULE_SUB_NAV: Record<string, PartnerNavSubItem[]> = {
+  // Prisma-backed Property/Enquiry (see prisma/schema.prisma's Property/
+  // Enquiry block and src/lib/realEstateData.ts) — Enquiry (the lead
+  // pipeline) is the module's main list; Properties are their own section
+  // since an Enquiry references a real Property row via propertyId.
+  "real-estate": [
+    { key: "real-estate.list", label: "Enquiries", href: "real-estate" },
+    { key: "real-estate.new", label: "+ New Enquiry", href: "real-estate/new" },
+    { key: "real-estate.properties.list", label: "Properties", href: "real-estate/properties" },
+    { key: "real-estate.properties.new", label: "+ New Property", href: "real-estate/properties/new" },
+  ],
+  // Prisma-backed SubscriptionPlan/Subscriber (see prisma/schema.prisma's
+  // "Subscriptions" block and src/lib/subscriptions.ts), replacing the old
+  // single-page BusinessRecord list/create/detail trio — Memberships and
+  // Plans are now their own sections since a Subscriber optionally
+  // references a real SubscriptionPlan catalog row via planId rather than a
+  // free-typed plan name.
+  subscriptions: [
+    { key: "subscriptions.list", label: "Memberships", href: "subscriptions" },
+    { key: "subscriptions.create", label: "+ New Membership", href: "subscriptions/new" },
+    { key: "subscriptions.plans.list", label: "Plans", href: "subscriptions/plans" },
+    { key: "subscriptions.plans.create", label: "+ New Plan", href: "subscriptions/plans/new" },
+  ],
+  // Prisma-backed RentalAsset/RentalAgreement (see prisma/schema.prisma's
+  // "Rentals" block and src/lib/rentals.ts), replacing the old single-page
+  // BusinessRecord list/create/detail trio — Bookings and Assets are now
+  // their own sections since a booking references a real RentalAsset
+  // catalog row via an optional FK rather than a free-typed asset name.
+  rentals: [
+    { key: "rentals.list", label: "Bookings", href: "rentals" },
+    { key: "rentals.create", label: "+ New Booking", href: "rentals/new" },
+    { key: "rentals.assets.list", label: "Assets", href: "rentals/assets" },
+    { key: "rentals.assets.create", label: "+ New Asset", href: "rentals/assets/new" },
+  ],
   // Prisma-backed Patient/Appointment/Prescription (see prisma/schema.prisma's
   // "Clinic" block and src/lib/clinic.ts), replacing the old single-page
   // BusinessRecord list/create/detail trio — Patients and Appointments are
@@ -133,6 +166,17 @@ export const MODULE_SUB_NAV: Record<string, PartnerNavSubItem[]> = {
     { key: "clinic.patients.new", label: "+ New Patient", href: "clinic/patients/new" },
     { key: "clinic.appointments.list", label: "Appointments", href: "clinic/appointments" },
     { key: "clinic.appointments.new", label: "+ New Appointment", href: "clinic/appointments/new" },
+  ],
+  // Prisma-backed Vehicle/Driver/Trip (see prisma/schema.prisma's
+  // "Logistics / Fleet" block and src/lib/logisticsFleet.ts), replacing the
+  // old single-page BusinessRecord list/create/detail trio — Vehicles and
+  // Drivers are now their own sections since a Trip references real
+  // Vehicle/Driver rows rather than a free-typed vehicle number/driver name.
+  "logistics-fleet": [
+    { key: "logistics-fleet.list", label: "Trips", href: "logistics-fleet" },
+    { key: "logistics-fleet.create", label: "+ New Trip", href: "logistics-fleet/new" },
+    { key: "logistics-fleet.vehicles.list", label: "Vehicles", href: "logistics-fleet/vehicles" },
+    { key: "logistics-fleet.drivers.list", label: "Drivers", href: "logistics-fleet/drivers" },
   ],
   "salon-spa": [
     { key: "salon-spa.list", label: "Appointments", href: "salon-spa" },

@@ -112,7 +112,7 @@ export default function ServiceCentreSolutionPage() {
           { href: "/solutions/telecalling", label: "Telecalling" },
           { href: "/pricing", label: "Pricing" },
         ]}
-        ctaHref="/signup?type=service-centre"
+        ctaHref="/signup/service-centre"
         ctaClassName="mbf-cta-glow"
       />
 
@@ -127,7 +127,7 @@ export default function ServiceCentreSolutionPage() {
           ever logging in.
         </p>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
-          <Link href="/signup?type=service-centre" className="btn-accent mbf-cta-glow">Start free</Link>
+          <Link href="/signup/service-centre" className="btn-accent mbf-cta-glow">Start free</Link>
           <Link href="/book-appointment" className="btn-outline">See the public booking page</Link>
         </div>
       </section>
@@ -182,7 +182,7 @@ export default function ServiceCentreSolutionPage() {
       <section className="border-t border-border px-6 py-16 text-center">
         <h2 className="font-display text-2xl font-bold text-text">Ready to run your service centre from one screen?</h2>
         <div className="mt-6 flex flex-wrap items-center justify-center gap-4">
-          <Link href="/signup?type=service-centre" className="btn-accent mbf-cta-glow">Start free</Link>
+          <Link href="/signup/service-centre" className="btn-accent mbf-cta-glow">Start free</Link>
           <Link href="/pricing" className="btn-outline">See pricing</Link>
         </div>
       </section>

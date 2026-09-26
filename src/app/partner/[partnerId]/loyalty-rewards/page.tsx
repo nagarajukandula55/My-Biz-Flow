@@ -5,7 +5,7 @@ import { LoyaltyRewardsClientTable } from "./LoyaltyRewardsClientTable";
 import { LoyaltyRewardsNewButton } from "./LoyaltyRewardsNewButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { loyaltyRewardsColumns } from "@/lib/sample-data/loyalty-rewards";
-import { listBusinessRecords } from "@/lib/businessRecords";
+import { listLoyaltyMembers } from "@/lib/loyaltyRewards";
 
 registerPage({
   id: "loyalty-rewards.list",
@@ -19,7 +19,7 @@ registerPage({
     { key: "filters", label: "List filters" },
     { key: "view-toggle", label: "List / Kanban view options" },
   ],
-  explanation: "Lists every member record for the loyalty-rewards module in a sortable table, with a \"+ New\" action to create one and row-click navigation into the record's detail view.",
+  explanation: "Lists every LoyaltyMember row (Prisma-backed) in a sortable table, with a \"+ New\" action to create one and row-click navigation into the member's detail view.",
   sourceFile: "src/app/partner/[partnerId]/loyalty-rewards/page.tsx",
 });
 
@@ -28,7 +28,7 @@ export const dynamic = "force-dynamic";
 export default async function LoyaltyRewardsPage({ params }: { params: { partnerId: string } }) {
   const mod = await getModule("loyalty-rewards");
   const columns = await applyCustomizations("loyalty-rewards.list", loyaltyRewardsColumns);
-  const rows = await listBusinessRecords(params.partnerId, "loyalty-rewards");
+  const rows = await listLoyaltyMembers(params.partnerId);
 
   return (
     <AppShell

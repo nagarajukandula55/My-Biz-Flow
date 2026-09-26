@@ -4,8 +4,9 @@ import { registerPage } from "@/lib/designer/registry";
 import { RealEstateClientTable } from "./RealEstateClientTable";
 import { RealEstateNewButton } from "./RealEstateNewButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
-import { realEstateColumns } from "@/lib/sample-data/real-estate";
-import { listBusinessRecords } from "@/lib/businessRecords";
+import { realEstateColumns, realEstateFormFields, enquiryToRow } from "@/lib/sample-data/real-estate";
+import { listEnquiries, listProperties } from "@/lib/realEstateData";
+import type { FormFieldDef } from "@/components/RecordForm";
 
 registerPage({
   id: "real-estate.list",
@@ -19,7 +20,7 @@ registerPage({
     { key: "filters", label: "List filters" },
     { key: "view-toggle", label: "List / Kanban view options" },
   ],
-  explanation: "Lists every listing record for the real-estate module in a sortable table, with a \"+ New\" action to create one and row-click navigation into the record's detail view.",
+  explanation: "Lists every Enquiry (lead) for the real-estate module — Prisma-backed, linked to a Property — in a sortable table, with a \"+ New\" action to create one and row-click navigation into the record's detail view.",
   sourceFile: "src/app/partner/[partnerId]/real-estate/page.tsx",
 });
 
@@ -28,13 +29,24 @@ export const dynamic = "force-dynamic";
 export default async function RealEstatePage({ params }: { params: { partnerId: string } }) {
   const mod = await getModule("real-estate");
   const columns = await applyCustomizations("real-estate.list", realEstateColumns);
-  const rows = await listBusinessRecords(params.partnerId, "real-estate");
+  const enquiries = await listEnquiries(params.partnerId);
+  const rows = enquiries.map(enquiryToRow);
+  const properties = await listProperties(params.partnerId);
+  const newFormFields: FormFieldDef[] = realEstateFormFields.map((f) =>
+    f.key === "propertyId"
+      ? {
+          ...f,
+          options: properties.map((p) => p.id),
+          optionLabels: Object.fromEntries(properties.map((p) => [p.id, p.address])),
+        }
+      : f
+  );
 
   return (
     <AppShell
       topbarTitle={mod?.label ?? "Real Estate"}
       topbarActions={
-        <RealEstateNewButton partnerId={params.partnerId} />
+        <RealEstateNewButton partnerId={params.partnerId} fields={newFormFields} />
       }
     >
       <div>

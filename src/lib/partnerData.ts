@@ -57,6 +57,8 @@ export type PartnerRecord = {
    * ["ELECTRONICS"].
    */
   productDomains: ProductDomain[];
+  /** Values for this partner's PartnerType.customSignupFields, keyed by field `key`. */
+  customFieldValues: Record<string, string>;
   /** Which Service Centre service types (ONSITE/WALK_IN) this partner offers — see src/lib/serviceTypes.ts. */
   serviceCentreServiceTypes: string[];
   /** 6-digit pincodes this partner covers for Service Centre inquiries/appointments. */
@@ -111,6 +113,7 @@ function toRecord(row: {
   pan: string | null;
   businessCategory: string | null;
   productDomains: unknown;
+  customFieldValues: unknown;
   serviceCentreServiceTypes: unknown;
   serviceCentrePincodes: unknown;
   serviceTerms: string | null;
@@ -134,6 +137,7 @@ function toRecord(row: {
     ...row,
     addressLine: row.addressLine ?? "",
     productDomains: parseProductDomains(row.productDomains),
+    customFieldValues: (row.customFieldValues as Record<string, string> | null) ?? {},
     serviceCentreServiceTypes: parseServiceTypes(row.serviceCentreServiceTypes),
     serviceCentrePincodes: parsePincodeList(row.serviceCentrePincodes),
   };
@@ -438,6 +442,8 @@ export type PartnerSignupInput = {
   loginContact: string;
   /** Product domain codes ticked on the signup form. */
   productDomains?: string[];
+  /** Values for the PartnerType's own customSignupFields, keyed by field `key`. */
+  customFieldValues?: Record<string, string>;
   referredByPartnerId?: string;
 };
 
@@ -472,6 +478,7 @@ export async function createPartner(input: PartnerSignupInput): Promise<{ partne
         businessContact: input.businessContact,
         loginContact: input.loginContact,
         productDomains: parseProductDomains(input.productDomains),
+        customFieldValues: input.customFieldValues ?? {},
         referredByPartnerId: input.referredByPartnerId || null,
         passwordHash,
         ...trialDates(),
@@ -499,6 +506,7 @@ export async function createPartnerFromRequest(request: {
   loginContact: string;
   passwordHash: string;
   productDomains: unknown;
+  customFieldValues?: unknown;
 }): Promise<PartnerRecord> {
   const partner = await prisma.$transaction(async (tx) => {
     const id = await nextPartnerId(tx, request.partnerTypeId);
@@ -522,6 +530,7 @@ export async function createPartnerFromRequest(request: {
         // Preserved from the application rather than reset — the applicant
         // already told us what they deal in when they applied.
         productDomains: parseProductDomains(request.productDomains),
+        customFieldValues: (request.customFieldValues as Record<string, string> | null) ?? {},
         ...trialDates(),
       },
     });

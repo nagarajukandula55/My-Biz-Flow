@@ -3,8 +3,8 @@
 import { useState, useTransition } from "react";
 import { StatusChip } from "@/components/StatusChip";
 import { Modal } from "@/components/Modal";
-import { computeOverdueDays } from "@/lib/sample-data/rentals";
-import { returnAssetAction } from "./actions";
+import { computeOverdueDays } from "@/lib/rentals";
+import { returnAssetAction } from "../actions";
 
 export function RentalsLifecycle({
   partnerId,
@@ -19,11 +19,11 @@ export function RentalsLifecycle({
   partnerId: string;
   bookingId: string;
   bookingEnd?: string;
-  depositAmount?: number;
+  depositAmount?: number; // rupees
   status?: string;
   returned?: boolean;
-  refundableAmount?: number;
-  damageCharge?: number;
+  refundableAmount?: number; // rupees
+  damageCharge?: number; // rupees
 }) {
   const [returned, setReturned] = useState(Boolean(initialReturned));
   const [refundableAmount, setRefundableAmount] = useState(initialRefundableAmount);
@@ -33,7 +33,7 @@ export function RentalsLifecycle({
   const [error, setError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
-  const overdueDays = computeOverdueDays(bookingEnd, returned);
+  const overdueDays = computeOverdueDays(bookingEnd ? new Date(bookingEnd) : undefined, returned);
 
   function confirmReturn() {
     const damage = Number(damageCharge) || 0;

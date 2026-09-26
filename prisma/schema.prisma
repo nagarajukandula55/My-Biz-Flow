@@ -195,6 +195,13 @@ model PartnerType {
   /// Admin approves it. Off by default (confirmed 2026-08-08: no approval
   /// required unless explicitly turned on per type).
   requiresApproval  Boolean  @default(false)
+  /// Extra per-business-type signup fields, Super Admin configured (added
+  /// 2026-09-26 for per-type signup pages). Array of lightweight
+  /// FormFieldDef-shaped defs: { key, label, type: "text"|"number"|
+  /// "select"|"textarea", required, options? }. Rendered on this type's own
+  /// /signup/[type] page after the shared base fields; values are stored on
+  /// Partner.customFieldValues keyed by `key`.
+  customSignupFields Json    @default("[]")
   status            String   @default("Active")
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
@@ -270,6 +277,10 @@ model Partner {
   /// every row that predates the column, which reads as ELECTRONICS-only —
   /// what the module has always been.
   productDomains             Json    @default("[]")
+  /// Values for this Partner's PartnerType.customSignupFields, keyed by
+  /// field `key` (added 2026-09-26). Empty object for every row that
+  /// predates per-type custom signup fields.
+  customFieldValues          Json    @default("{}")
   /// Which Service Centre service types this partner offers — a JSON string
   /// array, e.g. ["ONSITE","WALK_IN"] (src/lib/serviceTypes.ts). Drives the
   /// public Book Appointment form (a customer only sees this partner as an
@@ -475,6 +486,10 @@ model PartnerSignupRequest {
   /// the Partner row by createPartnerFromRequest(). Same shape as
   /// Partner.productDomains.
   productDomains  Json     @default("[]")
+  /// Same purpose as productDomains above but for
+  /// PartnerType.customSignupFields values — carried through to
+  /// Partner.customFieldValues by createPartnerFromRequest() on approval.
+  customFieldValues Json   @default("{}")
   status          String   @default("Pending")
   createdAt       DateTime @default(now())
 
@@ -2188,12 +2203,29 @@ model Invoice {
   invoiceNumber  String
   invoiceType    String    @default("GST") // GST | Non-GST
   contact        String?
+  /// Loose reference to a billing-contacts BusinessRecord this customer was
+  /// picked from (BillingInvoiceForm's applyContact) — no FK since Billing
+  /// Contacts aren't migrated to a real table yet.
+  customerContactId String?
   customerGstin  String?
+  customerCompany String?
+  customerPhone   String?
+  customerEmail   String?
+  customerAddress String?  @db.Text
+  customerCity    String?
+  customerState   String?
+  customerPincode String?
+  /// INTRASTATE | INTERSTATE — BillingInvoiceForm's manual place-of-supply
+  /// toggle, driving the CGST+SGST vs IGST split.
+  supplyType     String?
   items          Json      @default("[]")
   issueDate      DateTime
   dueDate        DateTime?
   subtotal       Int       @default(0) // paise
   taxAmount      Int       @default(0) // paise
+  cgstAmount     Int?      // paise
+  sgstAmount     Int?      // paise
+  igstAmount     Int?      // paise
   discountAmount Int       @default(0) // paise
   roundOff       Int       @default(0) // paise
   totalAmount    Int       @default(0) // paise
@@ -2204,8 +2236,21 @@ model Invoice {
   paymentMode    String?
   /// Service Centre | POS Sale | Direct — see billing.ts's INVOICE_SOURCE_OPTIONS.
   invoiceSource  String?
+  /// Cross-link back to the Service Centre workorder that generated this
+  /// invoice (createInvoiceFromWorkorderAction) — used for a double-invoice
+  /// guard.
+  sourceWorkorderId String?
+  /// Same idea for a POS sale (pos/checkout/actions.ts).
+  sourcePosSaleId   String?
   notes          String?   @db.Text
   terms          String?   @db.Text
+  /// "On this Invoice" footer toggles from BillingInvoiceForm.tsx — each
+  /// defaults to true (via ?? true at the read site) so pre-existing
+  /// invoices keep printing everything they always did.
+  showBankDetails Boolean?
+  showUpiQr       Boolean?
+  showTerms       Boolean?
+  showNotes       Boolean?
   createdAt      DateTime  @default(now())
 
   payments    Payment[]
@@ -2248,6 +2293,10 @@ model CreditNote {
   invoiceId   String?
   invoice     Invoice? @relation(fields: [invoiceId], references: [id])
   reason      String?
+  /// Line items — CreditNoteForm collects a full LineItemsEditor table and
+  /// the printed credit-note document (credit-notes/[recordId]/document)
+  /// reads record["items"] directly; missing here would silently drop them.
+  items       Json     @default("[]")
   issueDate   DateTime
   subtotal    Int      @default(0) // paise
   taxAmount   Int      @default(0) // paise

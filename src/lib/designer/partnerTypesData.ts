@@ -13,6 +13,24 @@ import { prisma } from "@/lib/prisma";
 export type PlanTier = "basic" | "pro" | "ultimate";
 export const PLAN_TIERS: PlanTier[] = ["basic", "pro", "ultimate"];
 
+/**
+ * A single Super-Admin-configured extra signup field for one PartnerType,
+ * rendered on that type's own /signup/[type] page after the shared base
+ * fields (Business Name, Address, GSTIN, etc.). Deliberately a lightweight
+ * subset of src/components/RecordForm.tsx's FormFieldDef shape (same
+ * key/label/type/required/options vocabulary) rather than a new one, since
+ * these are conceptually the same kind of field definition.
+ */
+export type SignupFieldType = "text" | "number" | "select" | "textarea";
+export type SignupFieldDef = {
+  key: string;
+  label: string;
+  type: SignupFieldType;
+  required: boolean;
+  /** Only meaningful when type is "select". */
+  options?: string[];
+};
+
 export type PartnerTypeRecord = {
   id: string;
   description: string;
@@ -26,6 +44,8 @@ export type PartnerTypeRecord = {
   idPrefix: string;
   /** When true, signups against this type go to a review queue instead of getting an id immediately. */
   requiresApproval: boolean;
+  /** Extra per-type signup fields, Super Admin configured. Rendered on /signup/[type]. */
+  customSignupFields: SignupFieldDef[];
   status: string;
 };
 
@@ -38,6 +58,7 @@ function toRecord(row: {
   planIds: unknown;
   idPrefix: string;
   requiresApproval: boolean;
+  customSignupFields: unknown;
   status: string;
 }): PartnerTypeRecord {
   return {
@@ -49,6 +70,7 @@ function toRecord(row: {
     planIds: (row.planIds as string[] | null) ?? [],
     idPrefix: row.idPrefix || "VND",
     requiresApproval: row.requiresApproval,
+    customSignupFields: (row.customSignupFields as SignupFieldDef[] | null) ?? [],
     status: row.status,
   };
 }
@@ -84,6 +106,7 @@ export type PartnerTypeInput = {
   planIds: string[];
   idPrefix?: string;
   requiresApproval: boolean;
+  customSignupFields?: SignupFieldDef[];
   status: string;
 };
 

@@ -112,7 +112,7 @@ export default function TelecallingSolutionPage() {
           { href: "/solutions/service-centre", label: "Service Centre" },
           { href: "/pricing", label: "Pricing" },
         ]}
-        ctaHref="/signup?type=telecalling"
+        ctaHref="/signup/telecalling"
         ctaClassName="mbf-cta-glow"
       />
 
@@ -126,7 +126,7 @@ export default function TelecallingSolutionPage() {
           SMS/WhatsApp templates — its own business type, with its own pricing.
         </p>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
-          <Link href="/signup?type=telecalling" className="btn-accent mbf-cta-glow">Start free</Link>
+          <Link href="/signup/telecalling" className="btn-accent mbf-cta-glow">Start free</Link>
           <Link href="/pricing?type=telecalling" className="btn-outline">See pricing</Link>
         </div>
       </section>
@@ -181,7 +181,7 @@ export default function TelecallingSolutionPage() {
       <section className="border-t border-border px-6 py-16 text-center">
         <h2 className="font-display text-2xl font-bold text-text">Ready to put your lead list to work?</h2>
         <div className="mt-6 flex flex-wrap items-center justify-center gap-4">
-          <Link href="/signup?type=telecalling" className="btn-accent mbf-cta-glow">Start free</Link>
+          <Link href="/signup/telecalling" className="btn-accent mbf-cta-glow">Start free</Link>
           <Link href="/pricing?type=telecalling" className="btn-outline">See pricing</Link>
         </div>
       </section>

@@ -3,11 +3,12 @@
 import { useState, useTransition } from "react";
 import { StatusChip } from "@/components/StatusChip";
 import { Modal } from "@/components/Modal";
-import { computeTier, EARN_RATE, type LoyaltyTierName, type LoyaltyTransaction } from "@/lib/sample-data/loyalty-rewards";
+import { computeTier, EARN_RATE, type LoyaltyTierName, type LoyaltyTransaction } from "@/lib/loyaltyRewards";
 import { earnPointsAction, redeemPointsAction } from "./actions";
 import { formatDateTime } from "@/lib/format";
 
 const TIER_VARIANT: Record<LoyaltyTierName, "neutral" | "amber" | "teal"> = {
+  Bronze: "neutral",
   Silver: "neutral",
   Gold: "amber",
   Platinum: "teal",
@@ -104,7 +105,7 @@ export function LoyaltyLifecycle({
           </div>
         </div>
         <p className="mt-2 text-xs text-text-muted">
-          Tiers: Silver 0–999, Gold 1,000–4,999, Platinum 5,000+ lifetime points earned. Points earn at {EARN_RATE * 100}% of purchase amount.
+          Tiers: Bronze 0–999, Silver 1,000–2,999, Gold 3,000–4,999, Platinum 5,000+ lifetime points earned. Points earn at {EARN_RATE * 100}% of purchase amount.
         </p>
         {error && (
           <div className="mt-3 rounded-md border border-danger bg-danger-soft px-3 py-2 text-sm text-danger">{error}</div>

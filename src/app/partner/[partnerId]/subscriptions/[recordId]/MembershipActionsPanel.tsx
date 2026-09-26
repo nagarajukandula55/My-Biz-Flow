@@ -4,11 +4,22 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/Modal";
 import { StatusChip } from "@/components/StatusChip";
-import type { Membership } from "@/lib/sample-data/subscriptions";
 import { checkInAction, freezeMembershipAction, recordPaymentAction, resumeMembershipAction } from "../actions";
 import { formatDateTime } from "@/lib/format";
 
-export function MembershipActionsPanel({ partnerId, membership }: { partnerId: string; membership: Membership }) {
+export type MembershipPanelData = {
+  id: string;
+  memberName: string;
+  planName: string | null;
+  billingCycle: string;
+  planAmount: number; // paise
+  nextBillingDate: string | null;
+  status: string;
+  resumeDate: string | null;
+  checkIns: { timestamp: string }[];
+};
+
+export function MembershipActionsPanel({ partnerId, membership }: { partnerId: string; membership: MembershipPanelData }) {
   const router = useRouter();
   const [freezeOpen, setFreezeOpen] = useState(false);
   const [resumeDate, setResumeDate] = useState("");
@@ -42,13 +53,19 @@ export function MembershipActionsPanel({ partnerId, membership }: { partnerId: s
           />
         </div>
         <div className="mt-3 space-y-1 text-sm text-text-muted">
+          {membership.planName && (
+            <div className="flex justify-between">
+              <span>Plan</span>
+              <span className="text-text">{membership.planName}</span>
+            </div>
+          )}
           <div className="flex justify-between">
             <span>Billing cycle</span>
             <span className="text-text">{membership.billingCycle}</span>
           </div>
           <div className="flex justify-between">
             <span>Cycle amount</span>
-            <span className="tabular-nums text-text">₹{membership.planAmount}</span>
+            <span className="tabular-nums text-text">₹{(membership.planAmount / 100).toLocaleString("en-IN")}</span>
           </div>
           <div className="flex justify-between">
             <span>Next billing date</span>

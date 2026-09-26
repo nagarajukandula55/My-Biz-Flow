@@ -67,11 +67,13 @@ export const loyaltyRewardsRows: Row[] = [
   },
 ];
 
+// Note: pointsBalance/tier/lifetimePointsEarned are deliberately NOT
+// editable form fields — a member's balance only ever changes via the
+// Earn/Redeem ledger actions on the detail page (see
+// src/lib/loyaltyRewards.ts), and tier is derived from lifetime points,
+// never hand-set. A new member starts at 0 points / Bronze.
 export const loyaltyRewardsFormFields: FormFieldDef[] = [
-  { key: "id", label: "Loyalty ID", type: "text", required: true },
   { key: "customerName", label: "Customer Name", type: "text", required: true },
-  { key: "pointsBalance", label: "Points Balance", type: "number", required: true },
-  { key: "tier", label: "Tier", type: "select", required: true, options: ["Bronze","Silver","Gold","Platinum"] },
   { key: "lastRedemption", label: "Last Redemption", type: "date", required: false },
   { key: "cashbackEarned", label: "Cashback Earned (lifetime)", type: "currency", required: false },
   { key: "enrolledModule", label: "Enrolled Via Module", type: "select", required: false, options: ["POS","Restaurant POS","Clinic","Subscriptions"] },
@@ -82,44 +84,11 @@ export function getLoyaltyRewardsRecord(recordId: string): Row {
   return loyaltyRewardsRows.find((r) => String(r["id"]) === recordId) ?? loyaltyRewardsRows[0];
 }
 
-// --- Points engine / tiered membership / transaction ledger ---------------
-// Stored as extra keys on the generic BusinessRecord JSON blob.
-
-export const EARN_RATE = 0.05; // 5% of a linked purchase amount, earned as points
-
-export type LoyaltyTierName = "Silver" | "Gold" | "Platinum";
-
-/** Real tier thresholds, derived from lifetime points earned — never manually set. */
-export function computeTier(lifetimePointsEarned: number): LoyaltyTierName {
-  if (lifetimePointsEarned >= 5000) return "Platinum";
-  if (lifetimePointsEarned >= 1000) return "Gold";
-  return "Silver";
-}
-
-export interface LoyaltyTransaction {
-  id: string;
-  type: "Earn" | "Redeem";
-  points: number;
-  amount?: number; // linked purchase amount, for Earn entries
-  timestamp: string;
-}
-
-export interface LoyaltyLifecycle {
-  pointsBalance: number;
-  lifetimePointsEarned: number;
-  tier: LoyaltyTierName;
-  transactions: LoyaltyTransaction[];
-}
-
-export function extractLoyaltyLifecycleFromRecord(record: Row): LoyaltyLifecycle {
-  const lifetimePointsEarned = Number(record["lifetimePointsEarned"] ?? 0);
-  return {
-    pointsBalance: Number(record["pointsBalance"] ?? 0),
-    lifetimePointsEarned,
-    tier: computeTier(lifetimePointsEarned),
-    transactions: Array.isArray(record["transactions"]) ? (record["transactions"] as LoyaltyTransaction[]) : [],
-  };
-}
+// Points engine / tier thresholds / ledger types now live in
+// src/lib/loyaltyRewards.ts, the Prisma-backed data-access module for this
+// module's real LoyaltyMember/PointsLedgerEntry tables. This file stays the
+// Designer-facing sample Column/FormFieldDef source (see moduleData.ts,
+// fieldSchema.ts) plus the two Row -> UI-shape helpers below.
 
 export function getLoyaltyRewardsDetailFields(record: Row): RecordField[] {
   const r = record;

@@ -128,7 +128,7 @@ registerPage({
   superAdminOnly: false,
   customizableRegions: [],
   explanation:
-    "Public marketing home page (no AppShell). Hero, then a single merged 'every business, one platform' section driven by the live Active PartnerType rows (listActivePartnerTypes()) intersected with a static allowlist of modules that actually have dedicated Prisma tables (DEDICATED_TABLE_MODULE_SLUGS) — a module only ever gets a card once it is genuinely complete: its own tables AND a real, live, Active PartnerType. No 'coming soon'/informational-only cards. Each card links to /signup?type=<id> or its /solutions/<slug> page, so the home page can never drift from what Super Admin has actually configured or advertise a signup that isn't live yet. Also a screenshots section with real screenshots of the running app (public/screenshots/*.png), captured from the standing DEMO0001 demo partner account (see scripts/create-demo-partner.ts / src/lib/demoPartnerSeed.ts) so they're always real product, never mockups. CTAs to /signup and /pricing.",
+    "Public marketing home page (no AppShell). Hero, then a single merged 'every business, one platform' section driven by the live Active PartnerType rows (listActivePartnerTypes()) intersected with a static allowlist of modules that actually have dedicated Prisma tables (DEDICATED_TABLE_MODULE_SLUGS) — a module only ever gets a card once it is genuinely complete: its own tables AND a real, live, Active PartnerType. No 'coming soon'/informational-only cards. Each card links to /signup/<id> or its /solutions/<slug> page, so the home page can never drift from what Super Admin has actually configured or advertise a signup that isn't live yet. Also a screenshots section with real screenshots of the running app (public/screenshots/*.png), captured from the standing DEMO0001 demo partner account (see scripts/create-demo-partner.ts / src/lib/demoPartnerSeed.ts) so they're always real product, never mockups. CTAs to /signup and /pricing.",
   sourceFile: "src/app/page.tsx",
 });
 
@@ -162,7 +162,7 @@ export default async function RootPage({
   const tp = (key: Parameters<typeof tPublic>[1], vars?: Record<string, string | number>) => tPublic(locale, key, vars);
 
   function moduleHref(slug: string): string {
-    return MODULE_SOLUTIONS_SLUGS.has(slug) ? `/solutions/${slug}` : `/signup?type=${encodeURIComponent(slug)}`;
+    return MODULE_SOLUTIONS_SLUGS.has(slug) ? `/solutions/${slug}` : `/signup/${encodeURIComponent(slug)}`;
   }
 
   function BusinessCard({ typeId, description }: { typeId: string; description: string }) {
@@ -316,7 +316,7 @@ export default async function RootPage({
         </div>
 
         <div className="mt-8 flex items-center justify-center gap-4">
-          <Link href={isServiceCentre ? "/signup?type=service-centre" : "/signup"} className="btn-accent mbf-cta-glow">
+          <Link href={isServiceCentre ? "/signup/service-centre" : "/signup"} className="btn-accent mbf-cta-glow">
             {tp("registerBusiness")}
           </Link>
           <Link href={isServiceCentre ? "/pricing?type=service-centre" : "/pricing"} className="btn-outline">
@@ -351,7 +351,7 @@ export default async function RootPage({
             </div>
             {!isServiceCentre && (
               <div className="mt-8 text-center">
-                <Link href="/signup?type=service-centre" className="btn-accent mbf-cta-glow">
+                <Link href="/signup/service-centre" className="btn-accent mbf-cta-glow">
                   {tp("signUpAsServiceCentre")}
                 </Link>
               </div>

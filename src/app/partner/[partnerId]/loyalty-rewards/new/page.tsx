@@ -4,7 +4,7 @@ import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { loyaltyRewardsFormFields } from "@/lib/sample-data/loyalty-rewards";
 import { applyCustomizations } from "@/lib/designer/customizations";
-import { createBusinessRecordAction } from "@/lib/businessRecordActions";
+import { createLoyaltyMemberAction } from "../actions";
 
 registerPage({
   id: "loyalty-rewards.create",
@@ -18,7 +18,7 @@ registerPage({
     { key: "validation-rules", label: "Validation rules" },
     { key: "default-values", label: "Default values" },
   ],
-  explanation: "A config-driven creation form for a new member in the loyalty-rewards module, built from the module's real field set via the shared RecordForm component. Submission is a client-side demo stub — no backend is wired up in this pass.",
+  explanation: "A config-driven creation form for a new LoyaltyMember, built from the module's real field set via the shared RecordForm component. Submission creates a real LoyaltyMember row (Prisma-backed) starting at 0 points / Bronze tier — points are only ever added via the detail page's Earn/Redeem actions.",
   sourceFile: "src/app/partner/[partnerId]/loyalty-rewards/new/page.tsx",
 });
 
@@ -35,7 +35,7 @@ export default async function NewLoyaltyRewardsPage({ params }: { params: { part
           <RecordForm
             fields={fields}
             submitLabel="Create Member"
-            action={createBusinessRecordAction.bind(null, params.partnerId, "loyalty-rewards")}
+            action={createLoyaltyMemberAction.bind(null, params.partnerId)}
           />
         </div>
       </div>

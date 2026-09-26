@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { StatusChip } from "@/components/StatusChip";
 import { Modal } from "@/components/Modal";
 import { SearchSelectModal, type SearchSelectOption } from "@/components/SearchSelectModal";
-import { DELIVERY_STAGES, type DeliveryStage } from "@/lib/sample-data/logistics-fleet";
+import { DELIVERY_STAGES, type DeliveryStage } from "@/lib/logisticsFleet";
 import { assignDriverAction, advanceDeliveryStageAction } from "./actions";
 
 const STAGE_VARIANT: Record<DeliveryStage, "neutral" | "teal" | "success" | "danger"> = {
@@ -17,33 +17,39 @@ const STAGE_VARIANT: Record<DeliveryStage, "neutral" | "teal" | "success" | "dan
 
 export function DeliveryLifecycle({
   partnerId,
-  shipmentId,
+  tripId,
   initialStage,
   driverId,
   driverName,
+  vehicleId,
   vehicleNumber,
   recipientName,
   deliveryNotes,
   failureReason,
   driverOptions,
+  vehicleOptions,
 }: {
   partnerId: string;
-  shipmentId: string;
+  tripId: string;
   initialStage: DeliveryStage;
   driverId?: string;
   driverName?: string;
+  vehicleId?: string;
   vehicleNumber?: string;
   recipientName?: string;
   deliveryNotes?: string;
   failureReason?: string;
-  /** This partner's own active team members (Users) eligible as drivers. */
+  /** This partner's own registered Drivers eligible for assignment. */
   driverOptions: SearchSelectOption[];
+  /** This partner's own registered Vehicles eligible for assignment. */
+  vehicleOptions: SearchSelectOption[];
 }) {
   const router = useRouter();
   const [stage, setStage] = useState<DeliveryStage>(initialStage);
   const [driver, setDriver] = useState({ id: driverId, name: driverName });
-  const [vehicle, setVehicle] = useState(vehicleNumber ?? "");
+  const [vehicle, setVehicle] = useState({ id: vehicleId, name: vehicleNumber });
   const [driverPickerOpen, setDriverPickerOpen] = useState(false);
+  const [vehiclePickerOpen, setVehiclePickerOpen] = useState(false);
   const [proofOpen, setProofOpen] = useState(false);
   const [failOpen, setFailOpen] = useState(false);
   const [proofRecipient, setProofRecipient] = useState(recipientName ?? "");
@@ -59,15 +65,18 @@ export function DeliveryLifecycle({
     setDriver({ id: option.value, name: option.label });
     setDriverPickerOpen(false);
     startPersist(async () => {
-      await assignDriverAction(partnerId, shipmentId, option.value, option.label, vehicle);
+      await assignDriverAction(partnerId, tripId, option.value, option.label, vehicle.id);
       router.refresh();
     });
   }
 
-  function persistVehicle() {
+  function selectVehicle(option: SearchSelectOption) {
+    setVehicle({ id: option.value, name: option.label });
+    setVehiclePickerOpen(false);
     if (!driver.id) return;
     startPersist(async () => {
-      await assignDriverAction(partnerId, shipmentId, driver.id!, driver.name!, vehicle);
+      await assignDriverAction(partnerId, tripId, driver.id!, driver.name!, option.value);
+      router.refresh();
     });
   }
 
@@ -85,7 +94,7 @@ export function DeliveryLifecycle({
     setBlockedMessage(null);
     setStage(next);
     startPersist(async () => {
-      await advanceDeliveryStageAction(partnerId, shipmentId, next);
+      await advanceDeliveryStageAction(partnerId, tripId, next);
       router.refresh();
     });
   }
@@ -95,7 +104,7 @@ export function DeliveryLifecycle({
     setStage("Delivered");
     setProofOpen(false);
     startPersist(async () => {
-      await advanceDeliveryStageAction(partnerId, shipmentId, "Delivered", {
+      await advanceDeliveryStageAction(partnerId, tripId, "Delivered", {
         recipientName: proofRecipient,
         deliveryNotes: proofNotes,
       });
@@ -107,7 +116,7 @@ export function DeliveryLifecycle({
     setStage("Failed");
     setFailOpen(false);
     startPersist(async () => {
-      await advanceDeliveryStageAction(partnerId, shipmentId, "Failed", undefined, failReasonInput);
+      await advanceDeliveryStageAction(partnerId, tripId, "Failed", undefined, failReasonInput);
       router.refresh();
     });
   }
@@ -144,18 +153,15 @@ export function DeliveryLifecycle({
           <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">Driver</div>
           <div className="mt-0.5 text-text">{driver.name ?? "Unassigned"}</div>
         </button>
-        <div className="rounded-md border border-border bg-bg-raised px-3 py-2 text-sm">
-          <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">Vehicle Number</div>
-          <input
-            type="text"
-            value={vehicle}
-            disabled={terminal}
-            onChange={(e) => setVehicle(e.target.value)}
-            onBlur={persistVehicle}
-            placeholder="e.g. KA-05-AB-4471"
-            className="mt-0.5 w-full bg-transparent text-text outline-none disabled:opacity-60"
-          />
-        </div>
+        <button
+          type="button"
+          onClick={() => setVehiclePickerOpen(true)}
+          disabled={terminal}
+          className="rounded-md border border-border bg-bg-raised px-3 py-2 text-left text-sm disabled:opacity-60"
+        >
+          <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">Vehicle</div>
+          <div className="mt-0.5 text-text">{vehicle.name ?? "Unassigned"}</div>
+        </button>
       </div>
 
       {blockedMessage && (
@@ -194,6 +200,14 @@ export function DeliveryLifecycle({
         title="Assign Driver"
         options={driverOptions}
         onSelect={selectDriver}
+      />
+
+      <SearchSelectModal
+        open={vehiclePickerOpen}
+        onClose={() => setVehiclePickerOpen(false)}
+        title="Assign Vehicle"
+        options={vehicleOptions}
+        onSelect={selectVehicle}
       />
 
       <Modal

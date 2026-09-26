@@ -1,12 +1,11 @@
 import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
-import { RecordForm } from "@/components/RecordForm";
+import { RecordForm, type FormFieldDef } from "@/components/RecordForm";
 import { notFound } from "next/navigation";
-import { subscriptionsFormFields } from "@/lib/sample-data/subscriptions";
-import { applyCustomizations } from "@/lib/designer/customizations";
-import { getBusinessRecord } from "@/lib/businessRecords";
-import { updateBusinessRecordAction } from "@/lib/businessRecordActions";
+import { requirePartnerSessionForPage } from "@/lib/requirePartnerSession";
+import { getSubscriber, listPlans, BILLING_CYCLES } from "@/lib/subscriptions";
+import { updateSubscriberAction } from "../../actions";
 
 registerPage({
   id: "subscriptions.edit",
@@ -17,30 +16,51 @@ registerPage({
   superAdminOnly: false,
   customizableRegions: [
     { key: "form-fields", label: "Form fields" },
-    { key: "validation-rules", label: "Validation rules" },
     { key: "default-values", label: "Default values" },
   ],
-  explanation: "The same config-driven RecordForm pre-populated with an existing membership's sample data, letting a user edit and save changes (demo stub, no persistence yet).",
+  explanation: "The same config-driven RecordForm pre-populated with an existing Subscriber's real data, letting a user edit member name, linked plan, billing cycle, plan amount, and start date.",
   sourceFile: "src/app/partner/[partnerId]/subscriptions/[recordId]/edit/page.tsx",
 });
 
 export default async function EditSubscriptionsPage({ params }: { params: { partnerId: string; recordId: string } }) {
+  await requirePartnerSessionForPage(params.partnerId);
   const mod = await getModule("subscriptions");
-  const record = await getBusinessRecord(params.partnerId, "subscriptions", params.recordId);
-  if (!record) notFound();
-  const fields = await applyCustomizations("subscriptions.edit", subscriptionsFormFields);
+  const subscriber = await getSubscriber(params.partnerId, params.recordId);
+  if (!subscriber) notFound();
+  const plans = await listPlans(params.partnerId);
+
+  const fields: FormFieldDef[] = [
+    { key: "memberName", label: "Member Name", type: "text", required: true },
+    {
+      key: "planId",
+      label: "Plan (optional)",
+      type: "select",
+      required: false,
+      options: plans.map((p) => p.id),
+      optionLabels: Object.fromEntries(plans.map((p) => [p.id, p.name])),
+    },
+    { key: "billingCycle", label: "Billing Cycle", type: "select", required: true, options: BILLING_CYCLES },
+    { key: "planAmountRupees", label: "Plan Amount", type: "currency", required: true },
+    { key: "startDate", label: "Start Date", type: "date", required: false },
+  ];
 
   return (
     <AppShell topbarTitle={`Edit Membership — ${mod?.label ?? "Subscriptions / Membership"}`}>
       <div>
         <h1 className="font-display text-2xl font-bold text-text">Edit Membership</h1>
-        <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>
+        <p className="mt-1 text-sm text-text-muted">{subscriber.memberName}</p>
         <div className="mt-6">
           <RecordForm
             fields={fields}
-            initialValues={record}
+            initialValues={{
+              memberName: subscriber.memberName,
+              planId: subscriber.planId ?? "",
+              billingCycle: subscriber.billingCycle,
+              planAmountRupees: subscriber.planAmount / 100,
+              startDate: subscriber.startDate ? subscriber.startDate.toISOString().slice(0, 10) : "",
+            }}
             submitLabel="Save changes"
-            action={updateBusinessRecordAction.bind(null, params.partnerId, "subscriptions", params.recordId)}
+            action={updateSubscriberAction.bind(null, params.partnerId, params.recordId)}
           />
         </div>
       </div>

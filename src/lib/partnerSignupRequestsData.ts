@@ -57,6 +57,8 @@ export type SignupRequestInput = {
   loginContact: string;
   /** Product domain codes ticked on the signup form; held until approval. */
   productDomains?: string[];
+  /** Values for the PartnerType's own customSignupFields; held until approval. */
+  customFieldValues?: Record<string, string>;
 };
 
 /** Creates a pending signup request with a freshly generated password (hashed immediately, same as a direct Partner signup). */
@@ -75,6 +77,7 @@ export async function createSignupRequest(input: SignupRequestInput): Promise<{ 
       businessContact: input.businessContact,
       loginContact: input.loginContact,
       productDomains: parseProductDomains(input.productDomains),
+      customFieldValues: input.customFieldValues ?? {},
       passwordHash: hashPassword(password),
     },
   });
@@ -107,6 +110,7 @@ export async function approveSignupRequest(requestId: string): Promise<PartnerRe
     loginContact: request.loginContact,
     passwordHash: request.passwordHash,
     productDomains: request.productDomains,
+    customFieldValues: request.customFieldValues,
   });
 
   await prisma.partnerSignupRequest.update({ where: { id: requestId }, data: { status: "Approved" } });

@@ -1,23 +1,15 @@
 import type { Metadata } from "next";
+import Link from "next/link";
+import { redirect } from "next/navigation";
 import { PublicHeader } from "@/components/PublicHeader";
 import { registerPage } from "@/lib/designer/registry";
 import { listActivePartnerTypes } from "@/lib/designer/partnerTypesData";
-import { PincodeLookupFields } from "./PincodeLookupFields";
-import { registerBusiness } from "./actions";
-import {
-  PRODUCT_DOMAINS,
-  PRODUCT_DOMAIN_DESCRIPTIONS,
-  PRODUCT_DOMAIN_LABELS,
-} from "@/lib/catalog/productDomains";
 
 export const dynamic = "force-dynamic";
 
-// Defense-in-depth alongside robots.ts's existing Disallow: a Disallow'd URL
-// that's still linked internally (homepage nav) can surface as a bare,
-// snippet-less "no information available" listing in search results. This
-// meta tag has no effect while crawling stays blocked (Google can't read a
-// page it isn't allowed to fetch) but covers the case where that Disallow
-// is ever loosened later.
+// Defense-in-depth alongside robots.ts's existing Disallow — see the old
+// version of this page's comment (preserved here) for why this stays
+// noindex regardless.
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
@@ -31,222 +23,54 @@ registerPage({
   superAdminOnly: false,
   customizableRegions: [],
   explanation:
-    "Public 'Register your business' flow, full-page layout (not a centered card). Partner Type is the only thing the partner picks/sees (modules, Roles, and plan tiers stay Super-Admin-configured, never shown here) — everything else is business details needed for invoicing plus a login contact number, and the product domain(s) the business deals in (Electronics and/or Automobiles — a multi-select that shapes the Device Type/Brand/Model catalog the Service Centre module later offers them; editable afterwards from Settings). No password field: one is generated internally (never shown), and the new partner is signed straight into a real session and redirected to /change-password?welcome=1 to set their own (or held for approval on /signup/pending if the type requires it).",
+    "Business-type picker, no longer the signup form itself (each Active PartnerType now has its own real /signup/<type> page — see platform.signup.type). Old bookmarks/links of the form /signup?type=<slug> still work: this page redirects straight into /signup/<slug> when that query param names a known, Active type, preserving ?ref= and ?error=. With no ?type= (or an unknown one), it shows a plain list of every Active business type linking into its own page.",
   sourceFile: "src/app/signup/page.tsx",
 });
 
-export default async function SignupPage({
+export default async function SignupPickerPage({
   searchParams,
 }: {
   searchParams: { type?: string; error?: string; ref?: string };
 }) {
   const partnerTypes = await listActivePartnerTypes();
-  const selected = partnerTypes.find((t) => t.id === searchParams.type) ?? partnerTypes[0];
+
+  // Preserve old /signup?type=<slug>[&ref=...][&error=...] links/bookmarks
+  // by forwarding straight into that type's own page, rather than 404ing
+  // them or silently dropping the type they asked for.
+  if (searchParams.type && partnerTypes.some((t) => t.id === searchParams.type)) {
+    const qs = new URLSearchParams();
+    if (searchParams.ref) qs.set("ref", searchParams.ref);
+    if (searchParams.error) qs.set("error", searchParams.error);
+    const suffix = qs.toString() ? `?${qs.toString()}` : "";
+    redirect(`/signup/${encodeURIComponent(searchParams.type)}${suffix}`);
+  }
 
   return (
     <div className="min-h-screen w-full bg-bg">
       <PublicHeader showCta={false} signInLabel="Already have an account? Sign in" />
 
-      <div className="mx-auto grid max-w-6xl grid-cols-1 gap-10 px-6 py-12 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <div>
-          <h1 className="font-display text-3xl font-bold text-text">Register your business</h1>
-          <p className="mt-2 max-w-xl text-sm text-text-muted">
-            You&apos;ll be assigned a Partner ID (e.g. VND0001) and a one-time password once you submit — no
-            password to make up here.
+      <div className="mx-auto max-w-3xl px-6 py-12">
+        <h1 className="font-display text-3xl font-bold text-text">Register your business</h1>
+        <p className="mt-2 max-w-xl text-sm text-text-muted">Choose the type of business you run to continue.</p>
+
+        {partnerTypes.length === 0 ? (
+          <p className="mt-8 rounded-md border border-dashed border-border bg-bg-raised p-6 text-center text-sm text-text-muted">
+            No business types are open for signup yet — check back soon.
           </p>
-
-          {searchParams.error === "contact_taken" && (
-            <p className="mt-4 rounded-md border border-danger bg-danger-soft px-3 py-2 text-sm text-danger">
-              That contact number is already registered. Try signing in instead, or use a different number.
-            </p>
-          )}
-
-          {partnerTypes.length === 0 ? (
-            <p className="mt-8 rounded-md border border-dashed border-border bg-bg-raised p-6 text-center text-sm text-text-muted">
-              No business types are open for signup yet — check back soon.
-            </p>
-          ) : (
-            <form action={registerBusiness} className="mt-8 space-y-8">
-              <div>
-                <label className="text-xs font-semibold uppercase tracking-wide text-text-muted">
-                  Business Type
-                  <select
-                    name="partnerTypeId"
-                    required
-                    defaultValue={selected?.id ?? ""}
-                    className="mt-1 w-full max-w-sm rounded-md border border-border bg-bg px-3 py-2 text-sm text-text outline-none focus:border-teal"
-                  >
-                    <option value="" disabled>
-                      Select your business type
-                    </option>
-                    {partnerTypes.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.id}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-
-              <div>
-                <h2 className="font-display text-base font-bold text-text">Business Details</h2>
-                <p className="mt-1 text-xs text-text-muted">Used on your invoices.</p>
-                <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <label className="text-xs font-semibold uppercase tracking-wide text-text-muted sm:col-span-2">
-                    Company / Business Name
-                    <input
-                      type="text"
-                      name="businessName"
-                      required
-                      className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text outline-none focus:border-teal"
-                    />
-                  </label>
-                  <label className="text-xs font-semibold uppercase tracking-wide text-text-muted sm:col-span-2">
-                    Address
-                    <input
-                      type="text"
-                      name="addressLine"
-                      className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text outline-none focus:border-teal"
-                    />
-                  </label>
-                  <div className="sm:col-span-2">
-                    <PincodeLookupFields />
-                  </div>
-                  <label className="text-xs font-semibold uppercase tracking-wide text-text-muted sm:col-span-2">
-                    GSTIN <span className="normal-case text-text-muted">(optional — skip if unregistered)</span>
-                    <input
-                      type="text"
-                      name="gstin"
-                      placeholder="22AAAAA0000A1Z5"
-                      className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text outline-none focus:border-teal"
-                    />
-                    <span className="mt-1 block text-xs font-normal normal-case text-text-muted">
-                      Without a GSTIN you can still invoice customers, but B2B GST invoices won&apos;t be
-                      available — only B2C.
-                    </span>
-                  </label>
-                  <label className="text-xs font-semibold uppercase tracking-wide text-text-muted">
-                    Business Email
-                    <input
-                      type="email"
-                      name="businessEmail"
-                      required
-                      className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text outline-none focus:border-teal"
-                    />
-                  </label>
-                  <label className="text-xs font-semibold uppercase tracking-wide text-text-muted">
-                    Business Contact Number
-                    <input
-                      type="tel"
-                      name="businessContact"
-                      required
-                      className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text outline-none focus:border-teal"
-                    />
-                  </label>
-                </div>
-              </div>
-
-              <div>
-                <h2 className="font-display text-base font-bold text-text">What do you deal in?</h2>
-                <p className="mt-1 text-xs text-text-muted">
-                  Pick everything that applies — you can service more than one. This decides which device
-                  types, brands and models you&apos;re offered when booking a job in, and you can change it
-                  later from Settings.
-                </p>
-                <div className="mt-4 grid max-w-xl grid-cols-1 gap-3 sm:grid-cols-2">
-                  {PRODUCT_DOMAINS.map((domain) => (
-                    <label
-                      key={domain}
-                      className="flex cursor-pointer gap-3 rounded-md border border-border bg-bg-raised p-3"
-                    >
-                      <input
-                        type="checkbox"
-                        name="productDomains"
-                        value={domain}
-                        defaultChecked={domain === "ELECTRONICS"}
-                        className="mt-0.5 h-4 w-4 flex-shrink-0 rounded border-border accent-current text-teal"
-                      />
-                      <span>
-                        <span className="block text-sm font-semibold text-text">
-                          {PRODUCT_DOMAIN_LABELS[domain]}
-                        </span>
-                        <span className="mt-0.5 block text-xs text-text-muted">
-                          {PRODUCT_DOMAIN_DESCRIPTIONS[domain]}
-                        </span>
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <h2 className="font-display text-base font-bold text-text">Login</h2>
-                <p className="mt-1 text-xs text-text-muted">
-                  This number is what you&apos;ll sign in with, alongside your Partner ID. OTP verification is
-                  coming soon — for now, a generated password.
-                </p>
-                <div className="mt-4 max-w-sm">
-                  <label className="text-xs font-semibold uppercase tracking-wide text-text-muted">
-                    Registered Contact Number
-                    <input
-                      type="tel"
-                      name="loginContact"
-                      required
-                      className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text outline-none focus:border-teal"
-                    />
-                  </label>
-                </div>
-              </div>
-
-              <div className="max-w-sm">
-                <label className="text-xs font-semibold uppercase tracking-wide text-text-muted">
-                  Referral code (optional)
-                  <input
-                    type="text"
-                    name="referralCode"
-                    defaultValue={searchParams.ref ?? ""}
-                    placeholder="REF-SC0001"
-                    className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm normal-case text-text outline-none focus:border-teal"
-                  />
-                </label>
-              </div>
-
-              <button type="submit" className="btn-accent w-full sm:w-auto">
-                Create account
-              </button>
-            </form>
-          )}
-        </div>
-
-        <aside className="h-fit rounded-lg border border-border bg-bg-raised p-6">
-          <h2 className="font-display text-base font-bold text-text">What happens next</h2>
-          <ol className="mt-4 space-y-3 text-sm text-text-muted">
-            <li className="flex gap-2.5">
-              <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-accent-soft text-xs font-bold text-accent">
-                1
-              </span>
-              We assign your Partner ID and a one-time password.
-            </li>
-            <li className="flex gap-2.5">
-              <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-accent-soft text-xs font-bold text-accent">
-                2
-              </span>
-              Sign in with your Partner ID (or contact number) and that password.
-            </li>
-            <li className="flex gap-2.5">
-              <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-accent-soft text-xs font-bold text-accent">
-                3
-              </span>
-              You&apos;ll be asked to set your own password before doing anything else.
-            </li>
-          </ol>
-          {selected?.description && (
-            <div className="mt-6 border-t border-border pt-4">
-              <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">{selected.id}</div>
-              <p className="mt-1 text-sm text-text-muted">{selected.description}</p>
-            </div>
-          )}
-        </aside>
+        ) : (
+          <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {partnerTypes.map((t) => (
+              <Link
+                key={t.id}
+                href={`/signup/${encodeURIComponent(t.id)}${searchParams.ref ? `?ref=${encodeURIComponent(searchParams.ref)}` : ""}`}
+                className="rounded-md border border-border bg-bg-raised p-4 text-sm font-semibold text-text hover:border-teal"
+              >
+                {t.id}
+                {t.description && <span className="mt-1 block text-xs font-normal text-text-muted">{t.description}</span>}
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

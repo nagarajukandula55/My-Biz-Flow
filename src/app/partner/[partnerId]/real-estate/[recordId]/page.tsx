@@ -4,10 +4,9 @@ import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { RecordDetail } from "@/components/RecordDetail";
-import { DeleteBusinessRecordButton } from "@/components/DeleteBusinessRecordButton";
-import { getRealEstateDetailFields, getRealEstateTimeline, realEstateRelated, realEstateColumns, extractRealEstateLifecycle } from "@/lib/sample-data/real-estate";
+import { getRealEstateDetailFields, getRealEstateTimeline, realEstateRelated, realEstateColumns, extractRealEstateLifecycle, enquiryToRow } from "@/lib/sample-data/real-estate";
 import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
-import { getBusinessRecord } from "@/lib/businessRecords";
+import { getEnquiry, getProperty, paiseToRupees } from "@/lib/realEstateData";
 import { RealEstateLifecycle } from "./RealEstateLifecycle";
 
 registerPage({
@@ -22,7 +21,7 @@ registerPage({
     { key: "timeline", label: "Activity timeline" },
     { key: "related-records", label: "Related records rail" },
   ],
-  explanation: "Read-only detail view of a single listing, rendered via the shared RecordDetail component (field grid + activity timeline), with Edit and Delete actions in the header. The RealEstateLifecycle panel above it carries the real domain logic: a New -> Site Visit Scheduled -> Negotiation -> Agreement Signed -> Closed/Lost pipeline stepper, server-side conflict-checked site-visit scheduling (an agent can't double-book overlapping visits), and server-computed commission on Agreement Signed.",
+  explanation: "Read-only detail view of a single Enquiry (lead), rendered via the shared RecordDetail component (field grid + activity timeline), with an Edit action in the header — Prisma-backed. The RealEstateLifecycle panel above it carries the real domain logic: a New -> Site Visit Scheduled -> Negotiation -> Agreement Signed -> Closed/Lost pipeline stepper, server-side conflict-checked site-visit scheduling (an agent can't double-book overlapping visits), and server-computed commission on Agreement Signed.",
   sourceFile: "src/app/partner/[partnerId]/real-estate/[recordId]/page.tsx",
 });
 
@@ -36,12 +35,14 @@ export default async function RealEstateDetailPage({
   searchParams?: { created?: string; updated?: string };
 }) {
   const mod = await getModule("real-estate");
-  const record = await getBusinessRecord(params.partnerId, "real-estate", params.recordId);
-  if (!record) notFound();
+  const enquiry = await getEnquiry(params.partnerId, params.recordId);
+  if (!enquiry) notFound();
+  const record = enquiryToRow(enquiry);
   const fields = await applyCustomizationsToDetailFields("real-estate.detail", getRealEstateDetailFields(record), realEstateColumns);
   const timeline = getRealEstateTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
   const lifecycle = extractRealEstateLifecycle(record);
+  const property = enquiry.propertyId ? await getProperty(params.partnerId, enquiry.propertyId) : null;
 
   return (
     <AppShell topbarTitle={mod?.label ?? "Real Estate"}>
@@ -56,7 +57,7 @@ export default async function RealEstateDetailPage({
           initialSiteVisitEnd={lifecycle.siteVisitEnd}
           initialDealValue={lifecycle.dealValue}
           initialCommissionAmount={lifecycle.commissionAmount}
-          price={record["price"] as number | undefined}
+          price={property ? paiseToRupees(property.price) : undefined}
         />
 
         <div className="mt-8">
@@ -70,7 +71,7 @@ export default async function RealEstateDetailPage({
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="font-display text-xl font-bold text-text">{recordLabel}</h1>
-                <p className="mt-1 text-xs text-text-muted">Listing detail</p>
+                <p className="mt-1 text-xs text-text-muted">Enquiry detail</p>
               </div>
               <div className="flex items-center gap-3">
                 <Link href={`/partner/${params.partnerId}/real-estate`} className="btn-outline">
@@ -82,7 +83,6 @@ export default async function RealEstateDetailPage({
                 >
                   Edit
                 </Link>
-                <DeleteBusinessRecordButton partnerId={params.partnerId} moduleSlug="real-estate" recordKey={params.recordId} recordLabel={recordLabel} />
               </div>
             </div>
           }

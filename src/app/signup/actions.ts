@@ -48,6 +48,20 @@ export async function registerBusiness(formData: FormData) {
   }
 
   const partnerType = await getPartnerType(partnerTypeId);
+
+  // Server-side validation for this type's own custom signup fields — the
+  // form marks required ones with the `required` attribute, but that's
+  // client-side only, so re-check here from the PartnerType's own
+  // customSignupFields rather than trusting the submitted set of names.
+  const customFieldValues: Record<string, string> = {};
+  for (const field of partnerType?.customSignupFields ?? []) {
+    const value = String(formData.get(`custom_${field.key}`) ?? "").trim();
+    if (field.required && !value) {
+      throw new Error(`Missing required field: ${field.label}`);
+    }
+    if (value) customFieldValues[field.key] = value;
+  }
+
   // No self-referral, no fabricated match — an unknown/malformed code
   // simply resolves to undefined and the signup proceeds as organic.
   const referredByPartnerId = referralCode ? await partnerIdFromReferralCode(referralCode) : undefined;
@@ -63,6 +77,7 @@ export async function registerBusiness(formData: FormData) {
     businessContact,
     loginContact,
     productDomains,
+    customFieldValues,
     referredByPartnerId,
   };
 
@@ -71,7 +86,7 @@ export async function registerBusiness(formData: FormData) {
     try {
       ({ password } = await createSignupRequest(input));
     } catch {
-      redirect(`/signup?type=${encodeURIComponent(partnerTypeId)}&error=contact_taken`);
+      redirect(`/signup/${encodeURIComponent(partnerTypeId)}?error=contact_taken`);
     }
     // Best-effort, awaited for the same reason as sendPartnerWelcomeEmail
     // below — redirect() throws to navigate, so a fire-and-forget promise
@@ -98,7 +113,7 @@ export async function registerBusiness(formData: FormData) {
     // intentionally never shown or emailed — the visitor is auto-signed-in
     // below straight into setting their own password.
   } catch {
-    redirect(`/signup?type=${encodeURIComponent(partnerTypeId)}&error=contact_taken`);
+    redirect(`/signup/${encodeURIComponent(partnerTypeId)}?error=contact_taken`);
   }
 
   // Best-effort — sendPartnerWelcomeEmail never throws — but awaited

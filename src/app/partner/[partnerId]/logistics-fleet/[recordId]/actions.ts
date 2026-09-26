@@ -1,37 +1,80 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { updateBusinessRecord, getBusinessRecord } from "@/lib/businessRecords";
+import { redirect } from "next/navigation";
 import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
-import type { DeliveryStage } from "@/lib/sample-data/logistics-fleet";
+import {
+  createTrip,
+  updateTrip,
+  deleteTrip,
+  assignTripDriverVehicle,
+  advanceTripDeliveryStage,
+  type DeliveryStage,
+} from "@/lib/logisticsFleet";
 
-/** Assigns driver + vehicle to a shipment — assignedAt is stamped server-side. */
-export async function assignDriverAction(
-  partnerId: string,
-  shipmentId: string,
-  driverId: string,
-  driverName: string,
-  vehicleNumber?: string
-): Promise<void> {
-  partnerId = await requireSessionPartnerId(partnerId);
-  const record = await getBusinessRecord(partnerId, "logistics-fleet", shipmentId);
-  if (!record) return;
-  await updateBusinessRecord(partnerId, "logistics-fleet", shipmentId, {
-    ...record,
-    driverId,
-    driverName,
-    vehicleNumber: vehicleNumber ?? record["vehicleNumber"],
-    assignedAt: new Date().toISOString(),
-  });
-  revalidatePath(`/partner/${partnerId}/logistics-fleet/${shipmentId}`);
+function toInput(values: Record<string, unknown>) {
+  return {
+    vehicleId: values["vehicleId"] ? String(values["vehicleId"]) : undefined,
+    driverId: values["driverId"] ? String(values["driverId"]) : undefined,
+    origin: String(values["origin"] ?? "").trim(),
+    destination: String(values["destination"] ?? "").trim(),
+    currentLatitude: values["currentLatitude"] !== undefined && values["currentLatitude"] !== "" ? Number(values["currentLatitude"]) : undefined,
+    currentLongitude: values["currentLongitude"] !== undefined && values["currentLongitude"] !== "" ? Number(values["currentLongitude"]) : undefined,
+    deliveryEta: values["deliveryEta"] ? new Date(String(values["deliveryEta"])) : undefined,
+  };
 }
 
-const STAGE_TIMESTAMP_FIELD: Record<DeliveryStage, string> = {
-  Pending: "pendingAt",
-  "Out for Delivery": "outForDeliveryAt",
-  Delivered: "deliveredAt",
-  Failed: "failedAt",
-};
+/** Bind with .bind(null, partnerId) before passing as RecordForm's `action` prop. */
+export async function createTripAction(
+  partnerId: string,
+  values: Record<string, unknown>
+): Promise<void | { error?: string }> {
+  partnerId = await requireSessionPartnerId(partnerId);
+  const input = toInput(values);
+  if (!input.origin) return { error: "Origin is required." };
+  if (!input.destination) return { error: "Destination is required." };
+
+  const trip = await createTrip(partnerId, input);
+  revalidatePath(`/partner/${partnerId}/logistics-fleet`);
+  redirect(`/partner/${partnerId}/logistics-fleet/${trip.id}`);
+}
+
+/** Bind with .bind(null, partnerId, tripId). */
+export async function updateTripAction(
+  partnerId: string,
+  tripId: string,
+  values: Record<string, unknown>
+): Promise<void | { error?: string }> {
+  partnerId = await requireSessionPartnerId(partnerId);
+  const input = toInput(values);
+  if (!input.origin) return { error: "Origin is required." };
+  if (!input.destination) return { error: "Destination is required." };
+
+  await updateTrip(partnerId, tripId, input);
+  revalidatePath(`/partner/${partnerId}/logistics-fleet`);
+  revalidatePath(`/partner/${partnerId}/logistics-fleet/${tripId}`);
+  redirect(`/partner/${partnerId}/logistics-fleet/${tripId}`);
+}
+
+export async function deleteTripAction(partnerId: string, tripId: string): Promise<void> {
+  partnerId = await requireSessionPartnerId(partnerId);
+  await deleteTrip(partnerId, tripId);
+  revalidatePath(`/partner/${partnerId}/logistics-fleet`);
+  redirect(`/partner/${partnerId}/logistics-fleet`);
+}
+
+/** Assigns driver + vehicle to a trip — assignedAt is stamped server-side. */
+export async function assignDriverAction(
+  partnerId: string,
+  tripId: string,
+  driverId: string,
+  driverName: string,
+  vehicleId?: string
+): Promise<void> {
+  partnerId = await requireSessionPartnerId(partnerId);
+  await assignTripDriverVehicle(partnerId, tripId, driverId, driverName, vehicleId);
+  revalidatePath(`/partner/${partnerId}/logistics-fleet/${tripId}`);
+}
 
 /**
  * Advances the delivery stage, stamping the transition's timestamp
@@ -42,27 +85,12 @@ const STAGE_TIMESTAMP_FIELD: Record<DeliveryStage, string> = {
  */
 export async function advanceDeliveryStageAction(
   partnerId: string,
-  shipmentId: string,
+  tripId: string,
   nextStage: DeliveryStage,
   proof?: { recipientName: string; deliveryNotes: string },
   failureReason?: string
 ): Promise<void> {
   partnerId = await requireSessionPartnerId(partnerId);
-  const record = await getBusinessRecord(partnerId, "logistics-fleet", shipmentId);
-  if (!record) return;
-
-  if (nextStage === "Delivered") {
-    if (!proof?.recipientName?.trim()) return; // refuse silently — the client validates too, this is the real gate
-  }
-
-  await updateBusinessRecord(partnerId, "logistics-fleet", shipmentId, {
-    ...record,
-    deliveryStage: nextStage,
-    [STAGE_TIMESTAMP_FIELD[nextStage]]: new Date().toISOString(),
-    ...(nextStage === "Delivered" && proof
-      ? { recipientName: proof.recipientName, deliveryNotes: proof.deliveryNotes }
-      : {}),
-    ...(nextStage === "Failed" && failureReason ? { failureReason } : {}),
-  });
-  revalidatePath(`/partner/${partnerId}/logistics-fleet/${shipmentId}`);
+  await advanceTripDeliveryStage(partnerId, tripId, nextStage, proof, failureReason);
+  revalidatePath(`/partner/${partnerId}/logistics-fleet/${tripId}`);
 }

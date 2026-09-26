@@ -1,7 +1,7 @@
 "use client";
 
 import { RecordFormModal, useRecordFormModal } from "@/components/RecordFormModal";
-import { createBusinessRecordAction } from "@/lib/businessRecordActions";
+import { createLoyaltyMemberAction } from "./actions";
 import { loyaltyRewardsFormFields } from "@/lib/sample-data/loyalty-rewards";
 
 /** Create-as-modal for loyalty-rewards (see src/components/RecordFormModal.tsx). */
@@ -18,7 +18,7 @@ export function LoyaltyRewardsNewButton({ partnerId }: { partnerId: string }) {
         title="New Member"
         fields={loyaltyRewardsFormFields}
         submitLabel="Create Member"
-        action={createBusinessRecordAction.bind(null, partnerId, "loyalty-rewards")}
+        action={createLoyaltyMemberAction.bind(null, partnerId)}
       />
     </>
   );

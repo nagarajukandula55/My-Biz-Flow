@@ -2,13 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import { DataTable, type Row, type Column } from "@/components/DataTable";
-import { rentalsColumns } from "@/lib/sample-data/rentals";
 
-export function RentalsClientTable({ partnerId, columns, rows }: { partnerId: string; columns?: Column[]; rows: Row[] }) {
+export function RentalsClientTable({ partnerId, columns, rows }: { partnerId: string; columns: Column[]; rows: Row[] }) {
   const router = useRouter();
   return (
     <DataTable
-      columns={columns ?? rentalsColumns}
+      columns={columns}
       rows={rows}
       onRowClick={(row: Row) => router.push(`/partner/${partnerId}/rentals/${row["id"]}`)}
       enableQuickView

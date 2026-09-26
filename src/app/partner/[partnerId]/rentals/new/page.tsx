@@ -1,10 +1,10 @@
 import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
-import { RecordForm } from "@/components/RecordForm";
-import { rentalsFormFields } from "@/lib/sample-data/rentals";
-import { applyCustomizations } from "@/lib/designer/customizations";
-import { createBusinessRecordAction } from "@/lib/businessRecordActions";
+import { RecordForm, type FormFieldDef } from "@/components/RecordForm";
+import { requirePartnerSessionForPage } from "@/lib/requirePartnerSession";
+import { listActiveAssets, RENTAL_AGREEMENT_STATUSES } from "@/lib/rentals";
+import { createAgreementAction } from "../actions";
 
 registerPage({
   id: "rentals.create",
@@ -16,15 +16,46 @@ registerPage({
   customizableRegions: [
     { key: "form-fields", label: "Form fields" },
     { key: "validation-rules", label: "Validation rules" },
-    { key: "default-values", label: "Default values" },
   ],
-  explanation: "A config-driven creation form for a new booking in the rentals module, built from the module's real field set via the shared RecordForm component. Submission is a client-side demo stub — no backend is wired up in this pass.",
+  explanation: "A config-driven creation form for a new RentalAgreement booking, optionally against a catalog RentalAsset, built via the shared RecordForm component. Submission runs createAgreementAction, which rejects the save server-side if the chosen asset already has an overlapping booking before persisting.",
   sourceFile: "src/app/partner/[partnerId]/rentals/new/page.tsx",
 });
 
-export default async function NewRentalsPage({ params }: { params: { partnerId: string } }) {
+export const dynamic = "force-dynamic";
+
+export default async function NewRentalsPage({
+  params,
+  searchParams,
+}: {
+  params: { partnerId: string };
+  searchParams?: { assetId?: string };
+}) {
+  await requirePartnerSessionForPage(params.partnerId);
   const mod = await getModule("rentals");
-  const fields = await applyCustomizations("rentals.create", rentalsFormFields);
+  const assets = await listActiveAssets(params.partnerId);
+  const preselected = assets.find((a) => a.id === searchParams?.assetId);
+
+  const fields: FormFieldDef[] = [
+    ...(assets.length > 0
+      ? [
+          {
+            key: "assetId",
+            label: "Catalog Asset (optional)",
+            type: "select" as const,
+            required: false,
+            options: assets.map((a) => a.id),
+            optionLabels: Object.fromEntries(assets.map((a) => [a.id, a.assetName])),
+          },
+        ]
+      : []),
+    { key: "assetName", label: "Asset / Venue Name", type: "text", required: true },
+    { key: "renter", label: "Renter", type: "text", required: true },
+    { key: "bookingStart", label: "Booking Start", type: "date", required: true },
+    { key: "bookingEnd", label: "Booking End", type: "date", required: true },
+    { key: "depositAmountRupees", label: "Deposit Amount", type: "currency", required: false },
+    { key: "rentalAmountRupees", label: "Rental Amount", type: "currency", required: true },
+    { key: "status", label: "Status", type: "select", required: false, options: RENTAL_AGREEMENT_STATUSES },
+  ];
 
   return (
     <AppShell topbarTitle={`New Booking — ${mod?.label ?? "Rentals / Booking"}`}>
@@ -34,8 +65,9 @@ export default async function NewRentalsPage({ params }: { params: { partnerId: 
         <div className="mt-6">
           <RecordForm
             fields={fields}
+            initialValues={preselected ? { assetId: preselected.id, assetName: preselected.assetName } : undefined}
             submitLabel="Create Booking"
-            action={createBusinessRecordAction.bind(null, params.partnerId, "rentals")}
+            action={createAgreementAction.bind(null, params.partnerId)}
           />
         </div>
       </div>
