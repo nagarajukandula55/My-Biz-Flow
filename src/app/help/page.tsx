@@ -1,7 +1,10 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { BrandLogo } from "@/components/BrandLogo";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { registerPage } from "@/lib/designer/registry";
+import { getLocaleFromCookie } from "@/lib/i18n/cookie";
+import { tPublic } from "@/lib/i18n/publicLocales";
 import "@/lib/designer/registerAll";
 
 export const metadata: Metadata = {
@@ -24,50 +27,28 @@ registerPage({
   sourceFile: "src/app/help/page.tsx",
 });
 
-const FAQS: { q: string; a: string }[] = [
-  {
-    q: "What is My Biz Flow?",
-    a: "A modular, no-code, multi-vertical business/CRM platform. Instead of shipping a separate product per industry, every business runs on one shared metadata engine — modules, fields, pipelines, and dashboards are all config-driven, and a business simply enables the modules it needs.",
-  },
-  {
-    q: "Which module is right for my business?",
-    a: "Start from what your business actually does day to day, not a category label: running repair jobs points at Service Centre, ringing up in-store sales points at POS, and pure invoicing without a shop floor points at Billing — many businesses run more than one at once (a repair shop, for instance, often pairs Service Centre with Inventory and Billing). The Module Guide breaks down every module with its own Basic/Pro/Ultimate feature list so you can compare what each one actually unlocks before choosing.",
-  },
-  {
-    q: "What is a Partner, and what does a module 'type' mean?",
-    a: "A signed-up company on the platform is called a Partner. A Partner doesn't have a fixed 'type' from a hardcoded list — its type is just the set of modules it has enabled (POS, Service Centre, Clinic, and so on). Enabling or disabling a module changes what a Partner can do without changing any code.",
-  },
-  {
-    q: "How do I navigate the sidebar?",
-    a: "The sidebar groups modules by taxonomy: Brand (amber dot) for multi-location/partner hierarchy, Modules (teal dot) for vertical business modules like POS or Clinic, and Cross-cutting (neutral dot) for modules like Inventory that plug into any vertical. Click a module to open its list page.",
-  },
-  {
-    q: "How does Create / Edit / Delete work?",
-    a: "Every module's list page has a \"+ New\" button that opens a create form. Clicking a row opens that record's detail view, which has Edit and Delete actions in the header. Edit opens the same form pre-filled with the record's data. Delete opens a confirmation dialog before anything is removed. In this pass there is no backend wired up yet, so Create/Edit/Delete are demo stubs — the UI and field coverage are real, persistence is a follow-up build.",
-  },
-  {
-    q: "How do I add a custom field?",
-    a: "Custom fields aren't editable from the UI yet in this pass. Every module's admin page (Super Admin only) is scaffolded as the future home for field/pipeline configuration — see a module's \"Admin\" section in the sidebar. Until that editor is built, field sets are defined in code per module and shown in the Designer.",
-  },
-  {
-    q: "What does a module's admin page do?",
-    a: "Each module has an admin/ subfolder gated to Super Admin. It's meant for no-code configuration of that module: custom fields, pipeline/workflow stages, and role permissions. It's scaffolded across all modules today; the actual field/pipeline editor UI is a follow-up build.",
-  },
-  {
-    q: "Who can access admin pages?",
-    a: "Admin pages (anything under a module's admin/ folder, plus platform tools like the Designer) are meant for Super Admins only. Auth/session enforcement isn't wired up yet in this pass, so admin pages show a visible warning banner instead of silently pretending to be protected — that keeps the gap honest until real auth lands.",
-  },
-  {
-    q: "What is the Designer, and why does every page register there?",
-    a: "The Designer (/admin/designer, Super Admin only) lists every page in the product, grouped by module, with a detail view per page showing its purpose and actual source code. Every page in the app calls registerPage() so it's guaranteed to show up there — a page that never registers is a page nobody can find or customize, which the design system treats as a bug.",
-  },
-];
+// Translated via tPublic() inside HelpPage — key pairs kept here so the
+// English source strings live in one place (src/lib/i18n/dict-public/en.ts).
+const HELP_FAQ_KEYS = [
+  ["hFaq1Q", "hFaq1A"],
+  ["hFaq2Q", "hFaq2A"],
+  ["hFaq3Q", "hFaq3A"],
+  ["hFaq4Q", "hFaq4A"],
+  ["hFaq5Q", "hFaq5A"],
+  ["hFaq6Q", "hFaq6A"],
+  ["hFaq7Q", "hFaq7A"],
+  ["hFaq8Q", "hFaq8A"],
+  ["hFaq9Q", "hFaq9A"],
+] as const;
 
 export default function HelpPage() {
+  const locale = getLocaleFromCookie();
+  const tp = (key: Parameters<typeof tPublic>[1], vars?: Record<string, string | number>) => tPublic(locale, key, vars);
+  const faqs = HELP_FAQ_KEYS.map(([qKey, aKey]) => ({ q: tp(qKey), a: tp(aKey) }));
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
-    mainEntity: FAQS.map((item) => ({
+    mainEntity: faqs.map((item) => ({
       "@type": "Question",
       name: item.q,
       acceptedAnswer: { "@type": "Answer", text: item.a },
@@ -85,69 +66,50 @@ export default function HelpPage() {
         <Link href="/" className="flex items-center gap-2">
           <BrandLogo height={30} />
         </Link>
+        <LanguageSwitcher current={locale} />
       </header>
       <div>
         <div className="mbf-prose">
-          <h1 className="font-display text-3xl font-bold text-text">Help &amp; Documentation</h1>
+          <h1 className="font-display text-3xl font-bold text-text">{tp("helpTitle")}</h1>
           <p className="mt-3 text-base leading-relaxed text-text-muted">
-            My Biz Flow is a modular, no-code, multi-vertical business/CRM platform.
-            Businesses mix and match modules — POS, Service Centre, Billing,
-            Clinic, and more — on a single account, all built on one
-            shared metadata engine. This page is a general orientation guide;
-            it's visible to any signed-in user, not just admins.
+            {tp("helpIntro")}
           </p>
 
           <p className="mt-4">
             <Link href="/help/modules" className="text-accent hover:underline">
-              See the full Module Guide &rarr;
+              {tp("seeModuleGuide")}
             </Link>{" "}
-            — every module, and what Basic/Pro/Ultimate unlocks for each. Already know which one
-            fits? Head straight to{" "}
+            {tp("moduleGuideFollowup")}{" "}
             <Link href="/pricing" className="text-accent hover:underline">
-              Pricing
+              {tp("pricingLinkLabel")}
             </Link>{" "}
-            to see plans by business type.
+            {tp("toSeePlans")}
           </p>
 
           <h2 className="mt-10 font-display text-xl font-bold text-text">
-            The Partner &amp; module concept
+            {tp("partnerConceptTitle")}
           </h2>
           <p className="mt-2 text-base leading-relaxed text-text-muted">
-            A company that signs up is a <strong className="text-text">Partner</strong>.
-            Partners don't pick a fixed business "type" from a list — they enable
-            the modules relevant to how they operate. A repair shop might enable
-            Service Centre + Inventory + Billing; a clinic might enable Clinic +
-            Billing. Each module owns its own records, fields, and
-            pipeline, but they all share the same underlying platform.
+            {tp("partnerConceptBody")}
           </p>
 
           <h2 className="mt-10 font-display text-xl font-bold text-text">
-            Navigating the sidebar
+            {tp("sidebarTitle")}
           </h2>
           <p className="mt-2 text-base leading-relaxed text-text-muted">
-            The sidebar nav is grouped by taxonomy. An amber dot marks Brand /
-            multi-location modules, a teal dot marks vertical business
-            modules (the industry-specific ones like POS or Real Estate), and
-            a neutral dot marks cross-cutting modules (Inventory,
-            Accounting) that plug into whichever vertical modules you're
-            running. Click any module to land on its list page.
+            {tp("sidebarBody")}
           </p>
 
           <h2 className="mt-10 font-display text-xl font-bold text-text">
-            Create, Edit, and Delete
+            {tp("cedTitle")}
           </h2>
           <p className="mt-2 text-base leading-relaxed text-text-muted">
-            Every module follows the same pattern. The list page shows every
-            record in a table with a "+ New" button top-right. Clicking a row
-            opens that record's detail page, which shows Edit and Delete in
-            its header. Edit reopens the same form pre-filled with the
-            record's values; Delete asks for confirmation first, naming the
-            record so you don't delete the wrong thing by accident.
+            {tp("cedBody")}
           </p>
 
-          <h2 className="mt-10 font-display text-xl font-bold text-text">FAQ</h2>
+          <h2 className="mt-10 font-display text-xl font-bold text-text">{tp("helpFaqTitle")}</h2>
           <dl className="mt-4 space-y-6">
-            {FAQS.map((item) => (
+            {faqs.map((item) => (
               <div key={item.q}>
                 <dt className="font-display text-base font-bold text-text">{item.q}</dt>
                 <dd className="mt-1.5 text-base leading-relaxed text-text-muted">{item.a}</dd>

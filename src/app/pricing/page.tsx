@@ -18,6 +18,8 @@ import { SITE_URL, SITE_NAME } from "@/lib/seo";
 // visitor sees the real amount they'd pay up front instead of only a
 // monthly base rate with billing-cycle math left implicit.
 import { BILLING_CYCLES, CYCLE_DISCOUNT_PCT, computeCyclePrice, currentMonthlyRate, isLaunchPricingActive, cycleLabel } from "@/lib/subscriptionData";
+import { getLocaleFromCookie } from "@/lib/i18n/cookie";
+import { tPublic } from "@/lib/i18n/publicLocales";
 
 // Reads live DB-backed module label overrides / partner type + plan data —
 // must not be permanently baked into a static build. Plans/labels only
@@ -157,6 +159,8 @@ export default async function PricingPage({
 }: {
   searchParams: { type?: string };
 }) {
+  const locale = getLocaleFromCookie();
+  const tp = (key: Parameters<typeof tPublic>[1], vars?: Record<string, string | number>) => tPublic(locale, key, vars);
   const partnerTypes = await listActivePartnerTypes();
   const selectedType = searchParams.type
     ? partnerTypes.find((t) => t.id === searchParams.type)
@@ -228,32 +232,31 @@ export default async function PricingPage({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <PublicHeader ctaClassName="mbf-cta-glow" />
+      <PublicHeader ctaClassName="mbf-cta-glow" locale={locale} />
 
       <div className="px-6 py-16 text-center">
         {selectedType ? (
           <>
             <div className="mb-3 flex items-center justify-center gap-2 text-sm">
               <Link href="/pricing" className="font-semibold text-accent hover:underline">
-                ← Change business type
+                {tp("changeBusinessType")}
               </Link>
             </div>
             <h1 className="font-display text-3xl font-bold text-text sm:text-4xl">
-              Plans for <span className="mbf-headline-mark">{selectedType.id}</span>
+              {tp("plansTitleForType", { type: selectedType.id }).split(selectedType.id)[0]}
+              <span className="mbf-headline-mark">{selectedType.id}</span>
             </h1>
             <p className="mbf-prose mx-auto mt-3 text-base text-text-muted">
-              {selectedType.description || "No-code stays no-code at every tier."} What changes as you grow is how
-              many modules and seats you get — not whether the builder works.
+              {selectedType.description || tp("noCodeStaysNoCode")} {tp("growsCopy")}
             </p>
           </>
         ) : (
           <>
             <h1 className="font-display text-3xl font-bold text-text sm:text-4xl">
-              Plans for <span className="mbf-headline-mark">every stage</span>
+              {tp("plansTitleGeneric")}
             </h1>
             <p className="mbf-prose mx-auto mt-3 text-base text-text-muted">
-              No-code stays no-code at every tier. Pick the kind of business you run to see the modules, tiers, and
-              pricing bundled for it.
+              {tp("plansIntroGeneric")}
             </p>
           </>
         )}
@@ -262,7 +265,7 @@ export default async function PricingPage({
       {selectedType && typeCopy && whatYouGetModules.length > 0 && (
         <section className="border-t border-border bg-bg-raised px-6 py-16">
           <div className="mx-auto max-w-5xl">
-            <p className="text-center text-xs font-semibold uppercase tracking-widest text-accent">What you get</p>
+            <p className="text-center text-xs font-semibold uppercase tracking-widest text-accent">{tp("whatYouGetLabel")}</p>
             <h2 className="mt-2 text-center font-display text-2xl font-bold text-text">{typeCopy.heading}</h2>
             <p className="mbf-prose mx-auto mt-2 text-center text-base text-text-muted">{typeCopy.intro}</p>
             <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
@@ -273,7 +276,7 @@ export default async function PricingPage({
                 </div>
               ))}
             </div>
-            <p className="mt-8 text-center text-sm font-semibold text-text-muted">Pick your plan below to get started ↓</p>
+            <p className="mt-8 text-center text-sm font-semibold text-text-muted">{tp("pickPlanBelow")}</p>
           </div>
         </section>
       )}
@@ -281,7 +284,7 @@ export default async function PricingPage({
       {!selectedType ? (
         partnerTypes.length === 0 ? (
           <p className="mx-auto max-w-md rounded-lg border border-dashed border-border bg-bg-raised p-6 text-center text-sm text-text-muted">
-            No business types are available yet — check back soon.
+            {tp("noBusinessTypesYet")}
           </p>
         ) : (
           <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 px-6 pb-20 sm:grid-cols-3">
@@ -293,14 +296,14 @@ export default async function PricingPage({
               >
                 <h2 className="font-display text-base font-bold text-text">{t.id}</h2>
                 <p className="mt-1 flex-1 text-sm text-text-muted">{t.description || "—"}</p>
-                <span className="mt-4 font-semibold text-accent">See plans →</span>
+                <span className="mt-4 font-semibold text-accent">{tp("seePlans")}</span>
               </Link>
             ))}
           </div>
         )
       ) : PLANS.length === 0 ? (
         <p className="mx-auto max-w-md rounded-lg border border-dashed border-border bg-bg-raised p-6 text-center text-sm text-text-muted">
-          No plans are published yet for this business type — check back soon.
+          {tp("noPlansPublished")}
         </p>
       ) : (
       <div className="mx-auto grid max-w-6xl grid-cols-1 gap-6 px-6 pb-20 sm:grid-cols-3">
@@ -313,17 +316,17 @@ export default async function PricingPage({
             className={`mbf-glass-card flex flex-col p-6 ${i === 1 ? "mbf-cta-glow border-accent/50" : ""}`}
           >
             {i === 1 && (
-              <StatusChip label="Most popular" variant="amber" className="mb-3 w-fit" />
+              <StatusChip label={tp("mostPopular")} variant="amber" className="mb-3 w-fit" />
             )}
             <h2 className="font-display text-xl font-bold text-text">{plan.name}</h2>
             <p className="mt-0.5 text-xs font-semibold uppercase tracking-wide text-text-muted">
-              {TIER_LABEL[tier]} tier
+              {TIER_LABEL[tier]} {tp("tierSuffix")}
             </p>
             <div className="mt-3 flex items-baseline gap-1">
               <span className="font-mono text-3xl font-bold tabular-nums text-text">
                 ₹{currentMonthlyRate(plan).toLocaleString("en-IN")}
               </span>
-              <span className="text-sm text-text-muted">/ month</span>
+              <span className="text-sm text-text-muted">{tp("perMonth")}</span>
               {isLaunchPricingActive() && plan.launchPrice != null && (
                 <span className="ml-1 font-mono text-sm text-text-muted line-through">
                   ₹{plan.price.toLocaleString("en-IN")}
@@ -331,10 +334,10 @@ export default async function PricingPage({
               )}
             </div>
             {isLaunchPricingActive() && plan.launchPrice != null && (
-              <p className="mt-0.5 text-xs font-semibold text-success">Launch pricing</p>
+              <p className="mt-0.5 text-xs font-semibold text-success">{tp("launchPricing")}</p>
             )}
             <p className="mt-2 text-sm text-text-muted">
-              Up to {plan.maxUsers} users · {plan.maxLocations} location{plan.maxLocations === 1 ? "" : "s"}
+              {tp("upToUsersLocations", { users: plan.maxUsers, locations: plan.maxLocations })}
             </p>
             <div className="mt-2 space-y-0.5 text-xs text-text-muted">
               {BILLING_CYCLES.map((c) => (
@@ -346,7 +349,7 @@ export default async function PricingPage({
 
             <div className="mt-5 flex-1">
               <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted">
-                Modules included ({plan.includedModuleSlugs.length})
+                {tp("modulesIncluded", { count: plan.includedModuleSlugs.length })}
               </div>
               <ul className="space-y-1.5">
                 {plan.includedModuleSlugs.map((slug) => (
@@ -359,7 +362,7 @@ export default async function PricingPage({
               {tierFeatures.length > 0 && (
                 <>
                   <div className="mb-2 mt-4 text-xs font-semibold uppercase tracking-wide text-text-muted">
-                    What you get at {TIER_LABEL[tier]}
+                    {tp("whatYouGetAtTier", { tier: TIER_LABEL[tier] })}
                   </div>
                   <ul className="space-y-1.5">
                     {tierFeatures.map((feature) => (
@@ -374,7 +377,7 @@ export default async function PricingPage({
             </div>
 
             <Link href={`/subscribe/${plan.id}`} className="btn-accent mt-6 w-full text-center">
-              Choose {plan.name}
+              {tp("choosePlanPrefix", { plan: plan.name })}
             </Link>
           </div>
           );
@@ -384,12 +387,12 @@ export default async function PricingPage({
 
       {selectedType && PLANS.length > 0 && (
         <div className="mx-auto max-w-3xl px-6 pb-20">
-          <h2 className="font-display text-2xl font-bold text-text">Pricing FAQ</h2>
+          <h2 className="font-display text-2xl font-bold text-text">{tp("pricingFaqTitle")}</h2>
           <dl className="mt-6 space-y-6">
-            {PRICING_FAQ.map((item) => (
-              <div key={item.q}>
-                <dt className="text-sm font-semibold text-text">{item.q}</dt>
-                <dd className="mt-1 text-sm text-text-muted">{item.a}</dd>
+            {PRICING_FAQ_KEYS.map(([qKey, aKey]) => (
+              <div key={qKey}>
+                <dt className="text-sm font-semibold text-text">{tp(qKey)}</dt>
+                <dd className="mt-1 text-sm text-text-muted">{tp(aKey)}</dd>
               </div>
             ))}
           </dl>
@@ -406,21 +409,11 @@ export default async function PricingPage({
  * pricing FAQ which references its 15-day trial and Cancellation Policy;
  * see this task's report for what was deliberately left out and why).
  */
-const PRICING_FAQ: { q: string; a: string }[] = [
-  {
-    q: "What changes between tiers?",
-    a: "The builder itself never changes — every tier is the same no-code platform. What changes is which modules are bundled (a higher tier adds inventory, billing documents, and full accounting/GST tooling on top of the base workflow) and how many users and locations you get.",
-  },
-  {
-    q: "Is GST included in the price shown?",
-    a: "Prices shown are the plan's base subscription rate. Once you're signed up, GST and non-GST invoicing is available from the Starter tier up — check your plan's included modules above for what's bundled.",
-  },
-  {
-    q: "Can I change plans later?",
-    a: "Yes — an admin can move a business to a different plan from Plan & Billing inside the partner portal at any time; the modules and seat limits update to match the new plan.",
-  },
-  {
-    q: "Are there per-user charges on top of the plan price?",
-    a: "No — each plan already includes a maximum user and location count shown on its card. There's no separate per-seat add-on.",
-  },
-];
+// Translated via tPublic() above — key pairs kept here so the English
+// source strings live in one place (src/lib/i18n/dict-public/en.ts).
+const PRICING_FAQ_KEYS = [
+  ["pricingFaq1Q", "pricingFaq1A"],
+  ["pricingFaq2Q", "pricingFaq2A"],
+  ["pricingFaq3Q", "pricingFaq3A"],
+  ["pricingFaq4Q", "pricingFaq4A"],
+] as const;

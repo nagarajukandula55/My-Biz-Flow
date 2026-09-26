@@ -1,5 +1,8 @@
 import Link from "next/link";
 import { BrandLogo } from "@/components/BrandLogo";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import type { Locale } from "@/lib/i18n/locales";
+import { tPublic } from "@/lib/i18n/publicLocales";
 
 export interface PublicHeaderLink {
   href: string;
@@ -22,6 +25,13 @@ interface PublicHeaderProps {
   /** Extra classes appended to the CTA's base `btn-accent`, e.g.
    * "mbf-cta-glow" on pages that want the animated glow treatment. */
   ctaClassName?: string;
+  /** Current locale (from the same `mbf_ff_locale` cookie Field Force
+   * uses — see src/lib/i18n/cookie.ts). When provided, renders a compact
+   * language switcher in the nav, and defaults signInLabel/ctaLabel to
+   * their translated public-page strings (still overridable per page).
+   * Omitted entirely on pages that haven't been wired for i18n yet — this
+   * prop is optional so the switcher is opt-in per page. */
+  locale?: Locale;
 }
 
 /**
@@ -36,12 +46,15 @@ export function PublicHeader({
   links = [],
   showSignIn = true,
   signInHref = "/login",
-  signInLabel = "Sign in",
+  signInLabel,
   showCta = true,
   ctaHref = "/signup",
-  ctaLabel = "Get started",
+  ctaLabel,
   ctaClassName = "",
+  locale,
 }: PublicHeaderProps) {
+  const resolvedSignInLabel = signInLabel ?? (locale ? tPublic(locale, "signIn") : "Sign in");
+  const resolvedCtaLabel = ctaLabel ?? (locale ? tPublic(locale, "getStarted") : "Get started");
   return (
     <header className="flex flex-wrap items-center justify-between gap-y-3 border-b border-border px-6 py-5">
       <Link href="/" className="flex shrink-0 items-center gap-2">
@@ -53,14 +66,15 @@ export function PublicHeader({
             {link.label}
           </Link>
         ))}
+        {locale && <LanguageSwitcher current={locale} />}
         {showSignIn && (
           <Link href={signInHref} className="text-text-muted hover:text-text">
-            {signInLabel}
+            {resolvedSignInLabel}
           </Link>
         )}
         {showCta && (
           <Link href={ctaHref} className={ctaClassName ? `btn-accent ${ctaClassName}` : "btn-accent"}>
-            {ctaLabel}
+            {resolvedCtaLabel}
           </Link>
         )}
       </nav>

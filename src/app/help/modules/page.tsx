@@ -1,9 +1,12 @@
 import Link from "next/link";
 import { BrandLogo } from "@/components/BrandLogo";
 import { StatusChip } from "@/components/StatusChip";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { registerPage } from "@/lib/designer/registry";
 import { MODULES } from "@/lib/designer/modules";
 import { MODULE_TIER_FEATURES } from "@/lib/designer/moduleTiers";
+import { getLocaleFromCookie } from "@/lib/i18n/cookie";
+import { tPublic } from "@/lib/i18n/publicLocales";
 
 registerPage({
   id: "platform.guide.modules",
@@ -18,29 +21,30 @@ registerPage({
   sourceFile: "src/app/help/modules/page.tsx",
 });
 
-const TAXONOMY_LABEL: Record<string, string> = {
-  vertical: "Business Module",
-  "cross-cutting": "Cross-cutting Add-on",
-  brand: "Brand / Multi-location",
-};
-
 export default function ModuleGuideIndexPage() {
+  const locale = getLocaleFromCookie();
+  const tp = (key: Parameters<typeof tPublic>[1]) => tPublic(locale, key);
+  const TAXONOMY_LABEL: Record<string, string> = {
+    vertical: tp("taxBusinessModule"),
+    "cross-cutting": tp("taxCrossCutting"),
+    brand: tp("taxBrand"),
+  };
   const groups: Record<string, typeof MODULES> = { vertical: [], "cross-cutting": [], brand: [] };
   for (const m of MODULES) groups[m.taxonomy].push(m);
 
   return (
     <div className="mbf-page min-h-screen bg-bg-sunken">
       <div className="mx-auto max-w-4xl px-6 py-10">
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center justify-between gap-2.5">
           <BrandLogo height={34} />
+          <LanguageSwitcher current={locale} />
         </div>
-        <h1 className="mt-6 font-display text-2xl font-bold text-text">Module Guide</h1>
+        <h1 className="mt-6 font-display text-2xl font-bold text-text">{tp("moduleGuideTitle")}</h1>
         <p className="mt-2 max-w-[70ch] text-sm text-text-muted">
-          Every module the platform offers, grouped by type. Each one has its own Basic / Pro / Ultimate
-          breakdown — click through to see exactly what each tier unlocks.
+          {tp("moduleGuideIntro")}
         </p>
         <Link href="/help" className="mt-2 inline-block text-sm text-accent hover:underline">
-          &larr; Back to Help
+          {tp("backToHelp")}
         </Link>
 
         {(["vertical", "brand", "cross-cutting"] as const).map((tax) =>
@@ -58,7 +62,7 @@ export default function ModuleGuideIndexPage() {
                     >
                       <div className="flex items-center justify-between">
                         <h3 className="font-display text-sm font-bold text-text">{m.label}</h3>
-                        {tiers && <StatusChip label="Basic · Pro · Ultimate" variant="neutral" />}
+                        {tiers && <StatusChip label={tp("basicProUltimate")} variant="neutral" />}
                       </div>
                       <p className="mt-1 text-xs text-text-muted">{m.description}</p>
                     </Link>
