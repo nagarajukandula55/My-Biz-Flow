@@ -26,6 +26,7 @@ import { verifyProviderLogin, getCurrentProvider, PROVIDER_SESSION_COOKIE } from
 import { markRead, notify } from "@/lib/fieldForce/notifications";
 import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import { ADMIN_COOKIE_NAME, isValidAdminCookie } from "@/lib/adminAuth";
+import { prisma } from "@/lib/prisma";
 
 export async function onboardProviderAction(partnerId: string, formData: FormData) {
   partnerId = await requireSessionPartnerId(partnerId);
@@ -234,6 +235,7 @@ export async function loginCustomerAction(partnerId: string, formData: FormData)
   const customer = await verifyCustomerLogin(partnerId, phone, password);
   if (!customer) redirect(`/partner/${partnerId}/field-force/customer/login?error=1`);
 
+  await prisma.customer.update({ where: { id: customer.id }, data: { lastLoginAt: new Date() } });
   cookies().set(CUSTOMER_SESSION_COOKIE, customer.id, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 30 });
   redirect(`/partner/${partnerId}/field-force/customer/bookings`);
 }
@@ -306,6 +308,7 @@ export async function loginProviderAction(partnerId: string, formData: FormData)
   const provider = await verifyProviderLogin(partnerId, phone, password);
   if (!provider) redirect(`/partner/${partnerId}/field-force/provider/login?error=1`);
 
+  await prisma.provider.update({ where: { id: provider.id }, data: { lastLoginAt: new Date() } });
   cookies().set(PROVIDER_SESSION_COOKIE, provider.id, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 30 });
   redirect(`/partner/${partnerId}/field-force/provider/dashboard`);
 }

@@ -49,6 +49,7 @@ export async function loginPosStaffAction(partnerId: string, formData: FormData)
   const staff = await verifyPosStaffLogin(partnerId, staffCode, password);
   if (!staff) redirect(`/partner/${partnerId}/pos/staff/login?error=1`);
 
+  await prisma.posStaff.update({ where: { id: staff.id }, data: { lastLoginAt: new Date() } });
   cookies().set(POS_STAFF_SESSION_COOKIE, staff.id, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 30 });
   redirect(`/partner/${partnerId}/pos`);
 }

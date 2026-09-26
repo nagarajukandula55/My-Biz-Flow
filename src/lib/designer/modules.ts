@@ -54,6 +54,11 @@ export const MODULES: ModuleDefinition[] = [
   { slug: "legal", label: "Legal / Case Management", description: "Client matters, billable hours, document tracking.", taxonomy: "vertical" },
   { slug: "event-booking", label: "Event / Venue Booking", description: "Event scheduling, banquet halls, catering.", taxonomy: "vertical" },
   { slug: "salon-spa", label: "Salon & Spa", description: "Beauty/personal-care bookings — service menu, stylist assignment, appointment scheduling.", taxonomy: "vertical" },
+  // Real standalone business type with its own live PartnerType (prefix
+  // "CC", see scripts/seed-telecalling-partner-type.ts) and dedicated
+  // Lead/Call/MessageTemplate/MessageLog Prisma tables — not a plug-in
+  // add-on to another vertical, so "vertical" not "cross-cutting".
+  { slug: "telecalling", label: "Telecalling", description: "Outbound calling business: bulk-upload leads, assign them to telecaller agents by territory, work a click-to-call queue, and trigger SMS/WhatsApp template messages (welcome, product links) per contact.", taxonomy: "vertical" },
 
   // --- Cross-cutting (plug into any vertical, not standalone verticals) ---
   { slug: "inventory", label: "Inventory / Warehouse", description: "Stock, purchase orders, suppliers — shared across POS/SC/Restaurant/etc.", taxonomy: "cross-cutting" },
@@ -73,7 +78,6 @@ export const MODULES: ModuleDefinition[] = [
 
   { slug: "field-force", label: "Field Force", description: "A full home-services booking system: priced service catalog, customer bookings, dispatch of skilled/unskilled engineers by service and pincode, payment collection, and ratings.", taxonomy: "cross-cutting" },
 
-  { slug: "telecalling", label: "Telecalling / Tele-marketing", description: "Bulk-upload a contact list, assign it to telecaller agents, click-to-call from the app to the phone's dialer, and trigger SMS/WhatsApp template messages (welcome, product links) per contact.", taxonomy: "cross-cutting" },
 ];
 
 /**
@@ -333,6 +337,7 @@ export const MODULE_SUB_NAV: Record<string, PartnerNavSubItem[]> = {
   telecalling: [
     { key: "telecalling.leads", label: "Leads", href: "telecalling" },
     { key: "telecalling.agents", label: "Agents", href: "telecalling/agents" },
+    { key: "telecalling.queue", label: "Queue", href: "telecalling/queue" },
     { key: "telecalling.templates", label: "Message Templates", href: "telecalling/templates" },
   ],
   legal: [

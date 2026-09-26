@@ -16,6 +16,7 @@ import { redirect } from "next/navigation";
 import { findPartnerStaffByLoginId, verifyPartnerStaffPassword, setPartnerStaffPassword } from "@/lib/partnerStaff";
 import { createStaffSessionToken, STAFF_SESSION_COOKIE, STAFF_SESSION_MAX_AGE_SECONDS } from "@/lib/partnerSession";
 import { getStaffSession } from "@/lib/requirePartnerSession";
+import { prisma } from "@/lib/prisma";
 
 export async function staffLoginAction(partnerId: string, formData: FormData) {
   const agentLoginId = String(formData.get("agentId") ?? "").trim();
@@ -34,6 +35,8 @@ export async function staffLoginAction(partnerId: string, formData: FormData) {
     path: "/",
     maxAge: STAFF_SESSION_MAX_AGE_SECONDS,
   });
+
+  await prisma.partnerStaff.update({ where: { id: staff.id }, data: { lastLoginAt: new Date() } });
 
   if (staff.mustChangePassword) {
     redirect(`/partner/${partnerId}/telecalling/change-password`);

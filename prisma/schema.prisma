@@ -256,6 +256,11 @@ model Partner {
   /// shown/emailed once).
   mustChangePassword  Boolean @default(true)
   status              String  @default("Active")
+  /// Stamped on every successful login (password, Google, Telegram — see
+  /// completePartnerLogin.ts/signInAsPartner). Null for every row that
+  /// predates this column or hasn't logged in since. Powers
+  /// active-vs-dormant partner analytics.
+  lastLoginAt         DateTime?
 
   /// --- Business profile (editable by the partner from /partner/<id>/settings) ---
   /// Signup only ever collected the bare minimum needed to create an
@@ -564,6 +569,10 @@ model PartnerStaff {
   /// autoAssignByTerritory().
   assignedStates     Json     @default("[]")
   assignedCities     Json     @default("[]")
+  /// Stamped on every successful staff login (Telecaller agent login today —
+  /// see staffLoginAction). Null for every row that predates this column or
+  /// hasn't logged in since.
+  lastLoginAt        DateTime?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
@@ -637,6 +646,9 @@ model Provider {
   teamLeadId        String?
   teamLead          Provider?  @relation("ProviderTeam", fields: [teamLeadId], references: [id])
   teamMembers       Provider[] @relation("ProviderTeam")
+  /// Stamped on every successful provider login (see loginProviderAction).
+  /// Null for every row that predates this column or hasn't logged in since.
+  lastLoginAt       DateTime?
   createdAt         DateTime   @default(now())
   updatedAt         DateTime   @updatedAt
 
@@ -953,6 +965,9 @@ model Customer {
   email             String?
   passwordHash      String?
   preferredLanguage String   @default("en")
+  /// Stamped on every successful customer login (see loginCustomerAction).
+  /// Null for every row that predates this column or hasn't logged in since.
+  lastLoginAt       DateTime?
   createdAt         DateTime @default(now())
 
   addresses Address[]
@@ -1431,6 +1446,9 @@ model PosStaff {
   role         String     @default("Cashier") // Cashier | Manager
   passwordHash String
   status       String     @default("Active") // Active | Inactive
+  /// Stamped on every successful POS staff login (see loginPosStaffAction).
+  /// Null for every row that predates this column or hasn't logged in since.
+  lastLoginAt  DateTime?
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
 

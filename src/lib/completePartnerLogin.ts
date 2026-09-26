@@ -15,6 +15,7 @@ import {
 } from "@/lib/partnerSession";
 import { getPartnerHomePath } from "@/lib/partnerHome";
 import type { PartnerRecord } from "@/lib/partnerData";
+import { prisma } from "@/lib/prisma";
 
 /**
  * Sets the partner session cookie for an already-authenticated partner and
@@ -40,6 +41,8 @@ export async function completePartnerLogin(
     path: "/",
     maxAge: PARTNER_SESSION_MAX_AGE_SECONDS,
   });
+
+  await prisma.partner.update({ where: { id: partner.id }, data: { lastLoginAt: new Date() } });
 
   if (partner.mustChangePassword) {
     return { ok: true, redirectPath: "/change-password" };

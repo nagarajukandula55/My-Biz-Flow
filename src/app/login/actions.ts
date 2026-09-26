@@ -9,6 +9,7 @@ import {
 } from "@/lib/partnerSession";
 import { findPartnerByLoginIdentifier, verifyPartnerPassword } from "@/lib/partnerData";
 import { getPartnerHomePath } from "@/lib/partnerHome";
+import { prisma } from "@/lib/prisma";
 
 /**
  * Real partner login — universal across every business type. There is one
@@ -62,6 +63,8 @@ export async function signInAsPartner(formData: FormData) {
     path: "/",
     maxAge: PARTNER_SESSION_MAX_AGE_SECONDS,
   });
+
+  await prisma.partner.update({ where: { id: partner.id }, data: { lastLoginAt: new Date() } });
 
   if (partner.mustChangePassword) {
     redirect("/change-password");
