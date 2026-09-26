@@ -4,13 +4,13 @@ import { registerPage } from "@/lib/designer/registry";
 import { AmcFieldServiceClientTable } from "./AmcFieldServiceClientTable";
 import { AmcFieldServiceNewButton } from "./AmcFieldServiceNewButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
+import { amcFieldServiceColumns } from "@/lib/sample-data/amc-field-service";
 import {
-  amcFieldServiceColumns,
-  extractAmcLifecycleFromRecord,
+  listAmcContractsWithVisits,
+  extractAmcLifecycle,
   computeSlaBreach,
   computeRenewalDue,
-} from "@/lib/sample-data/amc-field-service";
-import { listBusinessRecords } from "@/lib/businessRecords";
+} from "@/lib/amcContractsData";
 import type { Column } from "@/components/DataTable";
 
 registerPage({
@@ -41,14 +41,25 @@ export default async function AmcFieldServicePage({ params }: { params: { partne
     chipVariantMap: { "SLA Breached": "danger", "Renewal Due": "warning" },
   };
   const columns = [...baseColumns, alertsColumn];
-  const records = await listBusinessRecords(params.partnerId, "amc-field-service");
+  const contracts = await listAmcContractsWithVisits(params.partnerId);
   // SLA-breach and renewal-due are computed server-side at read time, never stored — see computeSlaBreach/computeRenewalDue.
-  const rows = records.map((r) => {
-    const lifecycle = extractAmcLifecycleFromRecord(r);
+  const rows = contracts.map((c) => {
+    const lifecycle = extractAmcLifecycle(c);
     const breached = computeSlaBreach(lifecycle);
     const due = computeRenewalDue(lifecycle);
     const alerts = breached ? "SLA Breached" : due ? "Renewal Due" : "";
-    return { ...r, alerts };
+    return {
+      id: c.id,
+      customer: c.customer,
+      equipment: c.equipment,
+      technicianName: lifecycle.technicianName ?? "",
+      contractEndDate: c.contractEndDate.toISOString().slice(0, 10),
+      slaHours: c.slaHours,
+      contractValue: c.contractValue,
+      status: lifecycle.serviceStatus,
+      contractStatus: c.contractStatus,
+      alerts,
+    };
   });
 
   return (

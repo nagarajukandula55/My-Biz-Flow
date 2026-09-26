@@ -2,11 +2,15 @@ import type { Column, Row } from "@/components/DataTable";
 import type { RecordField, TimelineEntry, RelatedRecord } from "@/components/RecordDetail";
 import type { StatusVariant } from "@/components/StatusChip";
 import type { FormFieldDef } from "@/components/RecordForm";
+import type { SalonAppointmentRecord } from "@/lib/salonSpa/appointmentsData";
+import type { SalonServiceRecord } from "@/lib/salonSpa/servicesData";
 
-// Booking sample data for the salon-spa module — realistic field modeling,
-// same generic-CRUD pattern as every other un-deepened module (see CLAUDE.md).
+// Field/column definitions for the Salon & Spa module — real data now comes
+// from SalonAppointment/SalonService (Prisma), not BusinessRecord/static
+// rows; this file keeps only the Column/FormFieldDef/RecordField vocabulary
+// (see CLAUDE.md) plus the row-shaping helpers the pages call.
 
-const STATUS_VARIANT: Record<string, StatusVariant> = {
+export const SALON_STATUS_VARIANT: Record<string, StatusVariant> = {
   Booked: "teal",
   "In Progress": "warning",
   Completed: "success",
@@ -14,89 +18,82 @@ const STATUS_VARIANT: Record<string, StatusVariant> = {
   "No-show": "danger",
 };
 
+/** Default appointment slot length (minutes) used for schedule-conflict-window checks when a service has no explicit duration. */
+export const DEFAULT_BOOKING_DURATION_MINUTES = 30;
+
 export const salonSpaColumns: Column[] = [
   { key: "id", label: "Booking ID", type: "text" },
   { key: "customer", label: "Customer", type: "relation-link" },
-  { key: "service", label: "Service", type: "select-chip" },
+  { key: "serviceName", label: "Service", type: "select-chip" },
   { key: "stylist", label: "Stylist / Therapist", type: "text" },
-  { key: "duration", label: "Duration (min)", type: "text" },
+  { key: "durationMinutes", label: "Duration (min)", type: "text" },
   { key: "price", label: "Price", type: "currency" },
-  { key: "status", label: "Status", type: "select-chip", chipVariantMap: STATUS_VARIANT },
+  { key: "status", label: "Status", type: "select-chip", chipVariantMap: SALON_STATUS_VARIANT },
   { key: "appointmentDate", label: "Appointment Date", type: "date" },
   { key: "branch", label: "Branch", type: "text" },
   { key: "commissionPercent", label: "Stylist Commission %", type: "text" },
 ];
 
-/** Default booking slot length (minutes) used for schedule-conflict-window checks when a booking has no explicit duration. */
-export const DEFAULT_BOOKING_DURATION_MINUTES = 30;
-
-export const salonSpaRows: Row[] = [
-  {
-    id: "BKG-3301",
-    customer: "Anita Rao",
-    service: "Haircut & Style",
-    stylist: "Divya S.",
-    duration: 45,
-    price: 600,
-    status: "Booked",
-    appointmentDate: "2026-09-06T11:00:00",
-    branch: "Indiranagar",
-    commissionPercent: 15,
-  },
-  {
-    id: "BKG-3300",
-    customer: "Karthik Iyer",
-    service: "Deep Tissue Massage",
-    stylist: "Rohan T.",
-    duration: 60,
-    price: 1400,
-    status: "Completed",
-    appointmentDate: "2026-09-05T15:30:00",
-    branch: "Koramangala",
-    commissionPercent: 20,
-    commissionAmount: 280,
-  },
-  {
-    id: "BKG-3299",
-    customer: "Meera Pillai",
-    service: "Manicure & Pedicure",
-    stylist: "Sana K.",
-    duration: 50,
-    price: 900,
-    status: "In Progress",
-    appointmentDate: "2026-09-05T14:00:00",
-    branch: "Indiranagar",
-    commissionPercent: 15,
-  },
-  {
-    id: "BKG-3298",
-    customer: "Farhan Ali",
-    service: "Facial",
-    stylist: "Divya S.",
-    duration: 40,
-    price: 1100,
-    status: "No-show",
-    appointmentDate: "2026-09-04T17:00:00",
-    branch: "HSR Layout",
-    commissionPercent: 15,
-  },
-];
-
+/** Static field defs for the appointment form; the "serviceId" field's `options`/`optionLabels` are
+ * filled in per-request by the page (from the partner's real active SalonService catalog) via
+ * buildSalonSpaFormFields() below — a service catalog is partner-specific data, not a fixed list. */
 export const salonSpaFormFields: FormFieldDef[] = [
-  { key: "id", label: "Booking ID", type: "text", required: false, placeholder: "Auto-generated if left empty" },
   { key: "customer", label: "Customer", type: "relation", required: true },
-  { key: "service", label: "Service", type: "select", required: true, options: ["Haircut & Style", "Hair Coloring", "Facial", "Manicure & Pedicure", "Deep Tissue Massage", "Aromatherapy", "Waxing", "Bridal Package"] },
+  { key: "serviceId", label: "Service", type: "select", required: true, options: [] },
   { key: "stylist", label: "Stylist / Therapist", type: "text", required: true },
-  { key: "duration", label: "Duration (min)", type: "number", required: true },
-  { key: "price", label: "Price", type: "currency", required: true },
-  { key: "status", label: "Status", type: "select", required: true, options: ["Booked", "In Progress", "Completed", "Cancelled", "No-show"] },
+  { key: "status", label: "Status", type: "select", required: true, options: [...Object.keys(SALON_STATUS_VARIANT)], createHidden: true },
   { key: "appointmentDate", label: "Appointment Date", type: "datetime", required: true },
   { key: "branch", label: "Branch", type: "text", required: false },
   { key: "commissionPercent", label: "Stylist Commission %", type: "percentage", required: false, placeholder: "15" },
 ];
 
-export function getSalonSpaRecord(recordId: string): Row {
-  return salonSpaRows.find((r) => String(r["id"]) === recordId) ?? salonSpaRows[0];
+/** Injects the partner's real active services as the Service field's options (value = service id). */
+export function buildSalonSpaFormFields(services: SalonServiceRecord[]): FormFieldDef[] {
+  const options = services.map((s) => s.id);
+  const optionLabels = Object.fromEntries(services.map((s) => [s.id, `${s.name} — ₹${s.price} (${s.durationMinutes} min)`]));
+  return salonSpaFormFields.map((f) => (f.key === "serviceId" ? { ...f, options, optionLabels } : f));
+}
+
+export const salonServiceFormFields: FormFieldDef[] = [
+  { key: "name", label: "Service Name", type: "text", required: true, placeholder: "Haircut & Style" },
+  { key: "durationMinutes", label: "Duration (min)", type: "number", required: true, placeholder: "30" },
+  { key: "price", label: "Price", type: "currency", required: true },
+  { key: "isActive", label: "Active", type: "boolean", required: false, createHidden: true },
+];
+
+export const salonServiceColumns: Column[] = [
+  { key: "name", label: "Service Name", type: "text" },
+  { key: "durationMinutes", label: "Duration (min)", type: "text" },
+  { key: "price", label: "Price", type: "currency" },
+  { key: "isActive", label: "Active", type: "text" },
+];
+
+export function salonAppointmentToRow(r: SalonAppointmentRecord): Row {
+  return {
+    id: r.id,
+    customer: r.customer,
+    serviceId: r.serviceId ?? "",
+    serviceName: r.serviceName,
+    stylist: r.stylist,
+    durationMinutes: r.durationMinutes,
+    price: r.price,
+    status: r.status,
+    appointmentDate: r.appointmentDate.toISOString(),
+    branch: r.branch ?? "",
+    commissionPercent: r.commissionPercent ?? "",
+    commissionAmount: r.commissionAmount ?? "",
+    invoiceId: r.invoiceId ?? "",
+  };
+}
+
+export function salonServiceToRow(s: SalonServiceRecord): Row {
+  return {
+    id: s.id,
+    name: s.name,
+    durationMinutes: s.durationMinutes,
+    price: s.price,
+    isActive: s.isActive ? "Yes" : "No",
+  };
 }
 
 export function getSalonSpaDetailFields(record: Row): RecordField[] {
@@ -104,15 +101,15 @@ export function getSalonSpaDetailFields(record: Row): RecordField[] {
   return [
     { label: "Booking ID", value: r["id"], type: "text" },
     { label: "Customer", value: r["customer"], type: "relation" },
-    { label: "Service", value: r["service"], type: "select", chipVariant: "neutral" },
+    { label: "Service", value: r["serviceName"], type: "select", chipVariant: "neutral" },
     { label: "Stylist / Therapist", value: r["stylist"], type: "text" },
-    { label: "Duration (min)", value: r["duration"], type: "text" },
+    { label: "Duration (min)", value: r["durationMinutes"], type: "text" },
     { label: "Price", value: r["price"], type: "currency" },
-    { label: "Status", value: r["status"], type: "select", chipVariant: STATUS_VARIANT[String(r["status"])] ?? "neutral" },
+    { label: "Status", value: r["status"], type: "select", chipVariant: SALON_STATUS_VARIANT[String(r["status"])] ?? "neutral" },
     { label: "Appointment Date", value: r["appointmentDate"], type: "date" },
     { label: "Branch", value: r["branch"], type: "text" },
-    { label: "Stylist Commission %", value: r["commissionPercent"] ?? 0, type: "percentage" },
-    { label: "Commission Amount", value: r["commissionAmount"] ?? "Not yet computed (completed bookings only)", type: r["commissionAmount"] ? "currency" : "text" },
+    { label: "Stylist Commission %", value: r["commissionPercent"] || 0, type: "percentage" },
+    { label: "Commission Amount", value: r["commissionAmount"] || "Not yet computed (completed bookings only)", type: r["commissionAmount"] ? "currency" : "text" },
     { label: "Invoice", value: r["invoiceId"] || "Not yet invoiced", type: "text" },
   ];
 }

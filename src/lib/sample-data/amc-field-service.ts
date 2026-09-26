@@ -3,11 +3,15 @@ import type { RecordField, TimelineEntry, RelatedRecord } from "@/components/Rec
 import type { StatusVariant } from "@/components/StatusChip";
 import type { FormFieldDef } from "@/components/RecordForm";
 
-// Contract sample data for the amc-field-service module. A contract carries
-// its own SLA (response-time, in hours) and end date; whether it's SLA-breached
-// or renewal-due is never stored — both are computed server-side at read time
-// from serviceRequestRaisedAt/technicianId and contractEndDate (see
-// computeSlaBreach / computeRenewalDue below), so the badge can never go stale.
+// UI schema (columns/form fields) for the amc-field-service module — now
+// Prisma-backed (AmcContract + ServiceVisit, see src/lib/amcContractsData.ts
+// for the real data access, lifecycle extraction, and computeSlaBreach/
+// computeRenewalDue, which moved there since they now read off a contract's
+// joined serviceVisits rather than a BusinessRecord's flat fields). This
+// file keeps only the presentational column/field defs plus the demo
+// timeline used by RecordDetail — a contract carries its own SLA
+// (response-time, in hours) and end date; whether it's SLA-breached or
+// renewal-due is never stored on the contract itself.
 
 export type ContractStatus = "Active" | "Renewed" | "Expired";
 export type ServiceRequestStatus = "Scheduled" | "Technician en route" | "Checked in" | "Completed" | "Overdue";
@@ -38,83 +42,45 @@ export const amcFieldServiceColumns: Column[] = [
   { key: "contractStatus", label: "Contract Status", type: "select-chip", chipVariantMap: CONTRACT_STATUS_VARIANT },
 ];
 
+/**
+ * Static demo fixture — kept only for src/lib/moduleData.ts's cross-module
+ * MODULE_DATA registry (Type-wise dashboard / Analytics bar chart), which
+ * needs a Row[] for every module generically. The real list/detail pages
+ * read live AmcContract/ServiceVisit rows via amcContractsData.ts instead.
+ */
 export const amcFieldServiceRows: Row[] = [
   {
     id: "AMC-0871",
     customer: "Greenfield Apartments",
     equipment: "Central AC Chiller Unit 3",
-    contractStartDate: "2026-02-08",
-    contractEndDate: "2026-09-20",
-    renewalTermMonths: 12,
-    slaHours: 24,
-    serviceRequestRaisedAt: "2026-09-03T09:00:00",
-    technicianId: undefined,
     technicianName: undefined,
-    assignedAt: undefined,
+    contractEndDate: "2026-09-20",
+    slaHours: 24,
     contractValue: 84000,
     status: "Scheduled",
     contractStatus: "Active",
-    checkInLatitude: null,
-    checkInLongitude: null,
   },
   {
     id: "AMC-0870",
     customer: "Om Sai Textiles",
     equipment: "Industrial Generator 250kVA",
-    contractStartDate: "2025-08-06",
-    contractEndDate: "2026-08-06",
-    renewalTermMonths: 12,
-    slaHours: 48,
-    serviceRequestRaisedAt: undefined,
-    technicianId: "USR-RAMESH",
     technicianName: "Ramesh N.",
-    assignedAt: "2026-07-25T14:30:00",
+    contractEndDate: "2026-08-06",
+    slaHours: 48,
     contractValue: 120000,
     status: "Completed",
     contractStatus: "Active",
-    checkInLatitude: 19.076,
-    checkInLongitude: 72.8777,
-  },
-  {
-    id: "AMC-0869",
-    customer: "Lakeview Mall",
-    equipment: "Escalator Bank — Wing B",
-    contractStartDate: "2026-02-07",
-    contractEndDate: "2027-02-07",
-    renewalTermMonths: 12,
-    slaHours: 12,
-    serviceRequestRaisedAt: "2026-08-07T05:00:00",
-    technicianId: "USR-VIKRAM",
-    technicianName: "Vikram S.",
-    assignedAt: "2026-08-07T09:00:00",
-    contractValue: 65000,
-    status: "Checked in",
-    contractStatus: "Active",
-    checkInLatitude: 12.9611,
-    checkInLongitude: 77.6387,
-  },
-  {
-    id: "AMC-0868",
-    customer: "Radiant Hospital",
-    equipment: "Backup UPS Bank",
-    contractStartDate: "2025-08-04",
-    contractEndDate: "2026-08-04",
-    renewalTermMonths: 12,
-    slaHours: 6,
-    serviceRequestRaisedAt: "2026-08-04T02:00:00",
-    technicianId: undefined,
-    technicianName: undefined,
-    assignedAt: undefined,
-    contractValue: 98000,
-    status: "Overdue",
-    contractStatus: "Active",
-    checkInLatitude: null,
-    checkInLongitude: null,
   },
 ];
 
+/**
+ * Contract-only fields — the AmcContract model itself. Service-visit fields
+ * (service status, technician, check-in geo) now belong to ServiceVisit and
+ * are captured via the AmcLifecycle panel / "Add Visit" form on the detail
+ * page instead of this create/edit form — see
+ * src/lib/amcContractsData.ts.
+ */
 export const amcFieldServiceFormFields: FormFieldDef[] = [
-  { key: "id", label: "Contract ID", type: "text", required: true },
   { key: "customer", label: "Customer", type: "relation", required: true },
   { key: "equipment", label: "Equipment", type: "text", required: true },
   { key: "contractStartDate", label: "Contract Start Date", type: "date", required: true },
@@ -122,14 +88,7 @@ export const amcFieldServiceFormFields: FormFieldDef[] = [
   { key: "renewalTermMonths", label: "Renewal Term (months)", type: "number", required: false },
   { key: "slaHours", label: "SLA — Response Time (hours)", type: "number", required: true },
   { key: "contractValue", label: "Contract Value", type: "currency", required: false },
-  { key: "status", label: "Service Status", type: "select", required: true, options: ["Scheduled", "Technician en route", "Checked in", "Completed", "Overdue"] },
-  { key: "checkInLatitude", label: "Technician Check-in Latitude", type: "number", required: false },
-  { key: "checkInLongitude", label: "Technician Check-in Longitude", type: "number", required: false },
 ];
-
-export function getAmcFieldServiceRecord(recordId: string): Row {
-  return amcFieldServiceRows.find((r) => String(r["id"]) === recordId) ?? amcFieldServiceRows[0];
-}
 
 export function getAmcFieldServiceDetailFields(record: Row): RecordField[] {
   const r = record;
@@ -164,56 +123,7 @@ export function getAmcFieldServiceTimeline(record: Row): TimelineEntry[] {
 
 export const amcFieldServiceRelated: RelatedRecord[] = [];
 
-/** Normalized view of a contract's dispatch/SLA/renewal-relevant fields, read off the raw record. */
-export type AmcContractLifecycle = {
-  contractStatus: ContractStatus;
-  serviceStatus: string;
-  slaHours: number;
-  contractEndDate?: string;
-  renewalTermMonths: number;
-  serviceRequestRaisedAt?: string;
-  technicianId?: string;
-  technicianName?: string;
-  assignedAt?: string;
-  renewedFromId?: string;
-  renewedToId?: string;
-};
-
-export function extractAmcLifecycleFromRecord(record: Row): AmcContractLifecycle {
-  return {
-    contractStatus: (record["contractStatus"] as ContractStatus) ?? "Active",
-    serviceStatus: String(record["status"] ?? "Scheduled"),
-    slaHours: Number(record["slaHours"] ?? 24),
-    contractEndDate: record["contractEndDate"] ? String(record["contractEndDate"]) : undefined,
-    renewalTermMonths: Number(record["renewalTermMonths"] ?? 12),
-    serviceRequestRaisedAt: record["serviceRequestRaisedAt"] ? String(record["serviceRequestRaisedAt"]) : undefined,
-    technicianId: record["technicianId"] ? String(record["technicianId"]) : undefined,
-    technicianName: record["technicianName"] ? String(record["technicianName"]) : undefined,
-    assignedAt: record["assignedAt"] ? String(record["assignedAt"]) : undefined,
-    renewedFromId: record["renewedFromId"] ? String(record["renewedFromId"]) : undefined,
-    renewedToId: record["renewedToId"] ? String(record["renewedToId"]) : undefined,
-  };
-}
-
-/**
- * SLA breached: there's an open service request (raised, not yet resolved)
- * that has had no technician dispatched for longer than the contract's SLA
- * response-time window. Always computed against `now` at call time — never
- * persisted, so it can't go stale.
- */
-export function computeSlaBreach(lifecycle: AmcContractLifecycle, now: Date = new Date()): boolean {
-  if (!lifecycle.serviceRequestRaisedAt || lifecycle.technicianId) return false;
-  const raised = new Date(lifecycle.serviceRequestRaisedAt).getTime();
-  if (Number.isNaN(raised)) return false;
-  const hoursSince = (now.getTime() - raised) / (1000 * 60 * 60);
-  return hoursSince > lifecycle.slaHours;
-}
-
-/** Renewal due: contract is Active and its end date falls within the next 30 days (or has already passed). */
-export function computeRenewalDue(lifecycle: AmcContractLifecycle, now: Date = new Date()): boolean {
-  if (lifecycle.contractStatus !== "Active" || !lifecycle.contractEndDate) return false;
-  const end = new Date(lifecycle.contractEndDate).getTime();
-  if (Number.isNaN(end)) return false;
-  const daysUntil = (end - now.getTime()) / (1000 * 60 * 60 * 24);
-  return daysUntil <= 30;
-}
+// Lifecycle extraction (extractAmcLifecycle) and computeSlaBreach/
+// computeRenewalDue now live in src/lib/amcContractsData.ts, since they read
+// off a contract's joined serviceVisits (Prisma) rather than a flat
+// BusinessRecord Row.

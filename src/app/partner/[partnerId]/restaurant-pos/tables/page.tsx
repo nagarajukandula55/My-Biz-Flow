@@ -3,8 +3,7 @@ import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
 import { StatusChip } from "@/components/StatusChip";
-import { listBusinessRecords } from "@/lib/businessRecords";
-import { extractOrderFromRecord, isOrderOpenForTable, restaurantTables } from "@/lib/sample-data/restaurant-pos";
+import { listOpenOrdersForPartner, listTableNumbersForPartner } from "@/lib/restaurantPos/data";
 
 registerPage({
   id: "restaurant-pos.tables",
@@ -23,13 +22,9 @@ export const dynamic = "force-dynamic";
 
 export default async function RestaurantTablesPage({ params }: { params: { partnerId: string } }) {
   const mod = await getModule("restaurant-pos");
-  const records = await listBusinessRecords(params.partnerId, "restaurant-pos");
-  const openByTable = new Map(
-    records
-      .map(extractOrderFromRecord)
-      .filter((o) => isOrderOpenForTable(o.status))
-      .map((o) => [o.tableNumber, o] as const)
-  );
+  const restaurantTables = await listTableNumbersForPartner(params.partnerId);
+  const openOrders = await listOpenOrdersForPartner(params.partnerId);
+  const openByTable = new Map(openOrders.map((o) => [o.tableNumber, o] as const));
 
   return (
     <AppShell topbarTitle={`${mod?.label ?? "Restaurant POS"} — Tables`}>

@@ -2,176 +2,135 @@ import type { Column, Row } from "@/components/DataTable";
 import type { RecordField, TimelineEntry, RelatedRecord } from "@/components/RecordDetail";
 import type { StatusVariant } from "@/components/StatusChip";
 import type { FormFieldDef } from "@/components/RecordForm";
-import { getWarehouseOptions, getWarehouseOptionsForPartner } from "./warehouse";
+import { getWarehouseOptionsForPartner } from "./warehouse";
+import { paiseToRupees, type BrandRow, type BrandRollup, type LocationRow } from "@/lib/brandData";
 
-// Location sample data for the brand module — realistic field modeling,
-// no backend wired up in this pass (see CLAUDE.md).
-//
-// mappedWarehouse: confirmed 2026-08-08 — a Service Centre location's
-// Return Orders/Part Orders route through this warehouse. Configured
-// here (on the Location), not on the Warehouse itself, since Brand
-// already owns the location hierarchy.
+// Field vocabulary for the Brand module (Brand + Location, Prisma-backed —
+// see src/lib/brandData.ts). Real backend as of the 2026-09-25 second-pass
+// migration; this file used to hold the whole demo dataset itself when the
+// module was BusinessRecord-backed — it now only holds column/field
+// definitions and Row-shape converters, mirroring wholesaleCustomers.ts's
+// pattern.
 
 const STATUS_VARIANT: Record<string, StatusVariant> = {
-  "Active": "success",
-  "Onboarding": "warning",
-  "Suspended": "danger"
+  Active: "success",
+  Onboarding: "warning",
+  Suspended: "danger",
 };
 
+export const BRAND_STATUSES = ["Active", "Onboarding", "Suspended"] as const;
+
+/* ------------------------------------------------------------------ *
+ * Brand
+ * ------------------------------------------------------------------ */
+
 export const brandColumns: Column[] = [
-  { key: "id", label: "Location ID", type: "text" },
-  { key: "brandName", label: "Brand", type: "relation-link" },
-  { key: "partnerName", label: "Partner", type: "text" },
+  { key: "name", label: "Brand", type: "text" },
+  { key: "isActive", label: "Active", type: "boolean" },
+  { key: "createdAt", label: "Created", type: "date" },
+];
+
+export const brandFormFields: FormFieldDef[] = [
+  { key: "name", label: "Brand Name", type: "text", required: true },
+  { key: "isActive", label: "Active", type: "boolean", required: false },
+];
+
+// Static demo rows only for the generic design-system reference page
+// (src/lib/moduleData.ts) — the real list page reads live Brand rows via
+// listBrands(), never this array. Kept exported under this same name
+// because moduleData.ts/fieldSchema.ts import it by name (see
+// wholesale-b2b.ts's identical convention after its own Prisma conversion).
+export const brandRows: Row[] = [
+  { id: "demo-brand-1", name: "Café Meridian", isActive: true, createdAt: "2024-03-11" },
+];
+
+export function brandToRow(b: BrandRow): Row {
+  return {
+    id: b.id,
+    name: b.name,
+    isActive: b.isActive,
+    createdAt: b.createdAt.toISOString().slice(0, 10),
+  };
+}
+
+export function getBrandDetailFields(row: Row): RecordField[] {
+  return [
+    { label: "Brand Name", value: row["name"], type: "text" },
+    { label: "Active", value: row["isActive"], type: "boolean" },
+    { label: "Created", value: row["createdAt"], type: "date" },
+  ];
+}
+
+export function getBrandTimeline(row: Row): TimelineEntry[] {
+  return [
+    { id: "t1", label: "Brand created", timestamp: `${row["createdAt"]}T00:00:00`, actor: "System" },
+  ];
+}
+
+export const brandRelated: RelatedRecord[] = [];
+
+/* ------------------------------------------------------------------ *
+ * Location (nested under a Brand)
+ * ------------------------------------------------------------------ */
+
+export const locationColumns: Column[] = [
   { key: "locationName", label: "Location Name", type: "text" },
   { key: "city", label: "City", type: "text" },
   { key: "modulesEnabled", label: "Modules Enabled", type: "text" },
-  { key: "mappedWarehouse", label: "Mapped Warehouse", type: "text" },
+  { key: "mappedWarehouseId", label: "Mapped Warehouse", type: "text" },
   { key: "monthlyRevenue", label: "Monthly Revenue", type: "currency" },
   { key: "status", label: "Status", type: "select-chip", chipVariantMap: STATUS_VARIANT },
   { key: "openedDate", label: "Opened Date", type: "date" },
 ];
 
-export const brandRows: Row[] = [
-  {
-    id: "LOC-014",
-    brandName: "Café Meridian",
-    partnerName: "Meridian South Pvt Ltd",
-    locationName: "Meridian — Indiranagar",
-    city: "Bengaluru",
-    modulesEnabled: "Restaurant POS, Inventory, Loyalty",
-    mappedWarehouse: "Central Warehouse — Bengaluru",
-    monthlyRevenue: 1180000,
-    status: "Active",
-    openedDate: "2024-03-11",
-  },
-  {
-    id: "LOC-013",
-    brandName: "Café Meridian",
-    partnerName: "Meridian West Pvt Ltd",
-    locationName: "Meridian — Andheri",
-    city: "Mumbai",
-    modulesEnabled: "Restaurant POS, Inventory",
-    mappedWarehouse: "Regional Warehouse — Mumbai",
-    monthlyRevenue: 940000,
-    status: "Active",
-    openedDate: "2024-08-02",
-  },
-  {
-    id: "LOC-012",
-    brandName: "FitZone Gyms",
-    partnerName: "FitZone Pune LLP",
-    locationName: "FitZone — Baner",
-    city: "Pune",
-    modulesEnabled: "Subscriptions, HRMS",
-    mappedWarehouse: "",
-    monthlyRevenue: 610000,
-    status: "Onboarding",
-    openedDate: "2026-07-20",
-  },
-  {
-    id: "LOC-011",
-    brandName: "FitZone Gyms",
-    partnerName: "FitZone Delhi LLP",
-    locationName: "FitZone — Saket",
-    city: "New Delhi",
-    modulesEnabled: "Subscriptions, HRMS, Loyalty",
-    mappedWarehouse: "",
-    monthlyRevenue: 0,
-    status: "Suspended",
-    openedDate: "2023-11-05",
-  },
-];
-
-/**
- * Field-shape-only version — Designer's field-customization schema
- * introspection (src/lib/designer/fieldSchema.ts) needs a synchronous
- * FormFieldDef[] and only reads key/label/type/required/options for its
- * own SUPER-ADMIN-facing editor UI, not a real partner form, so the
- * DEMO/PLACEHOLDER warehouse list is the correct (and only feasible) choice
- * here — see getWarehouseOptions()'s doc comment.
- */
-export const brandFormFields: FormFieldDef[] = [
-  { key: "id", label: "Location ID", type: "text", required: true },
-  { key: "brandName", label: "Brand", type: "relation", required: true },
-  { key: "partnerName", label: "Partner", type: "text", required: false },
-  { key: "locationName", label: "Location Name", type: "text", required: true },
-  { key: "city", label: "City", type: "text", required: true },
-  { key: "modulesEnabled", label: "Modules Enabled", type: "textarea", required: false },
-  { key: "mappedWarehouse", label: "Mapped Warehouse", type: "select", required: false, options: getWarehouseOptions().map((o) => o.label) },
-  { key: "monthlyRevenue", label: "Monthly Revenue", type: "currency", required: false },
-  { key: "status", label: "Status", type: "select", required: true, options: ["Active", "Onboarding", "Suspended"] },
-  { key: "openedDate", label: "Opened Date", type: "date", required: false },
-];
-
-/** Partner-scoped — Mapped Warehouse previously pulled warehouse.ts's hardcoded dummy list (a cross-module leak: every partner saw the same fixed warehouses regardless of what they'd actually created under Inventory > Warehouses). See getWarehouseOptionsForPartner's doc comment. */
-export async function getBrandFormFields(partnerId: string): Promise<FormFieldDef[]> {
+/** Partner-scoped — Mapped Warehouse pulls THIS partner's own real warehouses (see getWarehouseOptionsForPartner's doc comment), never a fixed demo list. */
+export async function getLocationFormFields(partnerId: string): Promise<FormFieldDef[]> {
   const warehouseOptions = await getWarehouseOptionsForPartner(partnerId);
   return [
-    { key: "id", label: "Location ID", type: "text", required: true },
-    { key: "brandName", label: "Brand", type: "relation", required: true },
-    { key: "partnerName", label: "Partner", type: "text", required: false },
     { key: "locationName", label: "Location Name", type: "text", required: true },
     { key: "city", label: "City", type: "text", required: true },
     { key: "modulesEnabled", label: "Modules Enabled", type: "textarea", required: false },
-    { key: "mappedWarehouse", label: "Mapped Warehouse", type: "select", required: false, options: warehouseOptions.map((o) => o.label) },
-    { key: "monthlyRevenue", label: "Monthly Revenue", type: "currency", required: false },
-    { key: "status", label: "Status", type: "select", required: true, options: ["Active", "Onboarding", "Suspended"] },
+    { key: "mappedWarehouseId", label: "Mapped Warehouse", type: "select", required: false, options: warehouseOptions.map((o) => o.label) },
+    { key: "monthlyRevenue", label: "Monthly Revenue (₹)", type: "currency", required: false },
+    { key: "status", label: "Status", type: "select", required: true, options: [...BRAND_STATUSES] },
     { key: "openedDate", label: "Opened Date", type: "date", required: false },
   ];
 }
 
-export function getBrandRecord(recordId: string): Row {
-  return brandRows.find((r) => String(r["id"]) === recordId) ?? brandRows[0];
-}
-
-// --- Multi-location rollup + cross-location role assignment ---------------
-
-export interface BrandRollup {
-  locationCount: number;
-  totalMonthlyRevenue: number;
-  statusBreakdown: Record<string, number>;
-}
-
-/** Aggregates all sibling locations sharing this record's brandName — a focused local helper, not analyticsData.ts. */
-export function computeBrandRollup(brandName: string, allBrandRecords: Row[]): BrandRollup {
-  const siblings = allBrandRecords.filter((r) => r["brandName"] === brandName);
-  const statusBreakdown: Record<string, number> = {};
-  for (const s of siblings) {
-    const status = String(s["status"] ?? "Unknown");
-    statusBreakdown[status] = (statusBreakdown[status] ?? 0) + 1;
-  }
+export function locationToRow(l: LocationRow): Row {
   return {
-    locationCount: siblings.length,
-    totalMonthlyRevenue: siblings.reduce((sum, s) => sum + Number(s["monthlyRevenue"] ?? 0), 0),
-    statusBreakdown,
+    id: l.id,
+    brandId: l.brandId,
+    locationName: l.locationName,
+    city: l.city,
+    modulesEnabled: l.modulesEnabled ?? "",
+    mappedWarehouseId: l.mappedWarehouseId ?? "",
+    monthlyRevenue: paiseToRupees(l.monthlyRevenue),
+    status: l.status,
+    openedDate: l.openedDate ? l.openedDate.toISOString().slice(0, 10) : "",
   };
 }
 
+export function getLocationDetailFields(row: Row): RecordField[] {
+  return [
+    { label: "Location Name", value: row["locationName"], type: "text" },
+    { label: "City", value: row["city"], type: "text" },
+    { label: "Modules Enabled", value: row["modulesEnabled"], type: "text" },
+    { label: "Mapped Warehouse", value: row["mappedWarehouseId"], type: "text" },
+    { label: "Monthly Revenue", value: row["monthlyRevenue"], type: "currency" },
+    { label: "Status", value: row["status"], type: "select", chipVariant: STATUS_VARIANT[String(row["status"])] ?? "neutral" },
+    { label: "Opened Date", value: row["openedDate"], type: "date" },
+  ];
+}
+
+export function getLocationTimeline(row: Row): TimelineEntry[] {
+  return [
+    { id: "t1", label: "Location added to the brand", timestamp: `${row["openedDate"] || new Date().toISOString().slice(0, 10)}T00:00:00`, actor: "System" },
+  ];
+}
+
+export const locationRelated: RelatedRecord[] = [];
+
+export type { BrandRollup };
+
 export type AccessScope = "brand-wide" | "single-location";
-
-export function getBrandDetailFields(record: Row): RecordField[] {
-  const r = record;
-  return [
-    { label: "Location ID", value: r["id"], type: "text" },
-    { label: "Brand", value: r["brandName"], type: "relation" },
-    { label: "Partner", value: r["partnerName"], type: "text" },
-    { label: "Location Name", value: r["locationName"], type: "text" },
-    { label: "City", value: r["city"], type: "text" },
-    { label: "Modules Enabled", value: r["modulesEnabled"], type: "text" },
-    { label: "Mapped Warehouse", value: r["mappedWarehouse"], type: "text" },
-    { label: "Monthly Revenue", value: r["monthlyRevenue"], type: "currency" },
-    { label: "Status", value: r["status"], type: "select", chipVariant: STATUS_VARIANT[String(r["status"])] ?? "neutral" },
-    { label: "Opened Date", value: r["openedDate"], type: "date" },
-  ];
-}
-
-export function getBrandTimeline(record: Row): TimelineEntry[] {
-  return [
-    { id: "t1", label: "Location onboarded to the brand account by Karthik N. (Brand Admin) — IP 103.21.44.25", timestamp: "2026-06-15T12:00:00", actor: "Karthik N." },
-    { id: "t2", label: "Module bundle enabled for this location by Karthik N. — IP 103.21.44.25", timestamp: "2026-06-15T12:10:00", actor: "Karthik N." },
-    { id: "t3", label: "Monthly revenue figure synced from POS/billing modules", timestamp: "2026-08-01T00:05:00", actor: "System" },
-    { id: "t4", label: "Location status reviewed at monthly ops check-in", timestamp: "2026-08-05T17:30:00", actor: "Karthik N." },
-  ];
-}
-
-export const brandRelated: RelatedRecord[] = [];

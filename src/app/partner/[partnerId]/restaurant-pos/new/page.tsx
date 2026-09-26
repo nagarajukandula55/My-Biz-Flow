@@ -4,7 +4,7 @@ import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { restaurantPosFormFields } from "@/lib/sample-data/restaurant-pos";
 import { applyCustomizations } from "@/lib/designer/customizations";
-import { createBusinessRecordAction } from "@/lib/businessRecordActions";
+import { createOrderFormAction } from "../actions";
 
 registerPage({
   id: "restaurant-pos.create",
@@ -35,7 +35,7 @@ export default async function NewRestaurantPosPage({ params }: { params: { partn
           <RecordForm
             fields={fields}
             submitLabel="Create Order"
-            action={createBusinessRecordAction.bind(null, params.partnerId, "restaurant-pos")}
+            action={createOrderFormAction.bind(null, params.partnerId)}
           />
         </div>
       </div>

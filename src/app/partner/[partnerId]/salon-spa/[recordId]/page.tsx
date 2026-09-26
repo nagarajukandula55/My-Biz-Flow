@@ -4,10 +4,9 @@ import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { RecordDetail } from "@/components/RecordDetail";
-import { DeleteBusinessRecordButton } from "@/components/DeleteBusinessRecordButton";
-import { getSalonSpaDetailFields, getSalonSpaTimeline, salonSpaRelated, salonSpaColumns } from "@/lib/sample-data/salon-spa";
+import { getSalonSpaDetailFields, getSalonSpaTimeline, salonSpaRelated, salonSpaColumns, salonAppointmentToRow } from "@/lib/sample-data/salon-spa";
 import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
-import { getBusinessRecord } from "@/lib/businessRecords";
+import { getSalonAppointment } from "@/lib/salonSpa/appointmentsData";
 import { SalonSpaLifecycle } from "./SalonSpaLifecycle";
 
 registerPage({
@@ -23,7 +22,7 @@ registerPage({
     { key: "related-records", label: "Related records rail" },
     { key: "completion-panel", label: "Completion, commission & billing panel" },
   ],
-  explanation: "Read-only detail view of a single booking, rendered via the shared RecordDetail component (field grid + activity timeline), with Edit and Delete actions in the header. Real data — Prisma-backed (BusinessRecord table). The SalonSpaLifecycle panel above it marks the booking Completed (computing the stylist's commission amount server-side from price x commissionPercent) and creates a real Billing invoice for the service price from there.",
+  explanation: "Read-only detail view of a single appointment, rendered via the shared RecordDetail component (field grid + activity timeline), with an Edit action in the header. Real data — Prisma-backed (SalonAppointment table). The SalonSpaLifecycle panel above it marks the appointment Completed (computing the stylist's commission amount server-side from price x commissionPercent) and creates a real Billing invoice for the service price from there.",
   sourceFile: "src/app/partner/[partnerId]/salon-spa/[recordId]/page.tsx",
 });
 
@@ -37,8 +36,9 @@ export default async function SalonSpaDetailPage({
   searchParams?: { created?: string; updated?: string };
 }) {
   const mod = await getModule("salon-spa");
-  const record = await getBusinessRecord(params.partnerId, "salon-spa", params.recordId);
-  if (!record) notFound();
+  const appointment = await getSalonAppointment(params.partnerId, params.recordId);
+  if (!appointment) notFound();
+  const record = salonAppointmentToRow(appointment);
   const fields = await applyCustomizationsToDetailFields("salon-spa.detail", getSalonSpaDetailFields(record), salonSpaColumns);
   const timeline = getSalonSpaTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
@@ -67,7 +67,7 @@ export default async function SalonSpaDetailPage({
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="font-display text-xl font-bold text-text">{recordLabel}</h1>
-                <p className="mt-1 text-xs text-text-muted">Booking detail</p>
+                <p className="mt-1 text-xs text-text-muted">Appointment detail</p>
               </div>
               <div className="flex items-center gap-3">
                 <Link href={`/partner/${params.partnerId}/salon-spa`} className="btn-outline">
@@ -76,12 +76,6 @@ export default async function SalonSpaDetailPage({
                 <Link href={`/partner/${params.partnerId}/salon-spa/${params.recordId}/edit`} className="btn-outline">
                   Edit
                 </Link>
-                <DeleteBusinessRecordButton
-                  partnerId={params.partnerId}
-                  moduleSlug="salon-spa"
-                  recordKey={params.recordId}
-                  recordLabel={recordLabel}
-                />
               </div>
             </div>
           }

@@ -1,7 +1,7 @@
 "use client";
 
 import { RecordFormModal, useRecordFormModal } from "@/components/RecordFormModal";
-import { createBusinessRecordAction } from "@/lib/businessRecordActions";
+import { createOrderFormAction } from "./actions";
 import { restaurantPosFormFields } from "@/lib/sample-data/restaurant-pos";
 
 /** Create-as-modal for restaurant-pos (see src/components/RecordFormModal.tsx). */
@@ -18,7 +18,7 @@ export function RestaurantPosNewButton({ partnerId }: { partnerId: string }) {
         title="New Order"
         fields={restaurantPosFormFields}
         submitLabel="Create Order"
-        action={createBusinessRecordAction.bind(null, partnerId, "restaurant-pos")}
+        action={createOrderFormAction.bind(null, partnerId)}
       />
     </>
   );

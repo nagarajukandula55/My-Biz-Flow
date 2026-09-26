@@ -7,7 +7,7 @@ import { RecordDetail } from "@/components/RecordDetail";
 import { DeleteBusinessRecordButton } from "@/components/DeleteBusinessRecordButton";
 import { getRestaurantPosDetailFields, getRestaurantPosTimeline, restaurantPosRelated, restaurantPosColumns, extractOrderFromRecord } from "@/lib/sample-data/restaurant-pos";
 import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
-import { getBusinessRecord } from "@/lib/businessRecords";
+import { getOrderRow } from "@/lib/restaurantPos/data";
 
 registerPage({
   id: "restaurant-pos.detail",
@@ -35,7 +35,7 @@ export default async function RestaurantPosDetailPage({
   searchParams?: { created?: string; updated?: string };
 }) {
   const mod = await getModule("restaurant-pos");
-  const record = await getBusinessRecord(params.partnerId, "restaurant-pos", params.recordId);
+  const record = await getOrderRow(params.partnerId, params.recordId);
   if (!record) notFound();
   const fields = await applyCustomizationsToDetailFields("restaurant-pos.detail", getRestaurantPosDetailFields(record), restaurantPosColumns);
   const timeline = getRestaurantPosTimeline(record);

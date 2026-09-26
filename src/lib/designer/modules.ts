@@ -123,6 +123,22 @@ export function taxonomyToNavDot(taxonomy: ModuleTaxonomy): NavDot {
  * module slug; a module without an entry falls back to the generic trio.
  */
 export const MODULE_SUB_NAV: Record<string, PartnerNavSubItem[]> = {
+  // Prisma-backed Patient/Appointment/Prescription (see prisma/schema.prisma's
+  // "Clinic" block and src/lib/clinic.ts), replacing the old single-page
+  // BusinessRecord list/create/detail trio — Patients and Appointments are
+  // now their own sections since an Appointment references a real Patient
+  // row rather than a free-typed patient name.
+  clinic: [
+    { key: "clinic.patients.list", label: "Patients", href: "clinic/patients" },
+    { key: "clinic.patients.new", label: "+ New Patient", href: "clinic/patients/new" },
+    { key: "clinic.appointments.list", label: "Appointments", href: "clinic/appointments" },
+    { key: "clinic.appointments.new", label: "+ New Appointment", href: "clinic/appointments/new" },
+  ],
+  "salon-spa": [
+    { key: "salon-spa.list", label: "Appointments", href: "salon-spa" },
+    { key: "salon-spa.new", label: "+ New Appointment", href: "salon-spa/new" },
+    { key: "salon-spa.services", label: "Services", href: "salon-spa/services" },
+  ],
   // Suggested Basic/Pro/Ultimate split for Super Admin to configure in
   // PartnerType.planTierByPage (/admin/partner-types) — config-only
   // guidance, same as every module; nothing here runtime-enforces it.
@@ -311,6 +327,14 @@ export const MODULE_SUB_NAV: Record<string, PartnerNavSubItem[]> = {
     { key: "marketplace.orders", label: "Orders", href: "marketplace/orders" },
     { key: "marketplace.vendor", label: "Vendor Settings", href: "marketplace/vendor" },
   ],
+  // Prisma-backed (Brand/Location — see prisma/schema.prisma,
+  // "2026-09-25, second pass", and src/lib/brandData.ts), replacing the
+  // old single-page BusinessRecord flat-location-list. Locations are now
+  // nested under their own Brand rather than a flat list on the module root.
+  brand: [
+    { key: "brand.list", label: "Brands", href: "brand" },
+    { key: "brand.new", label: "+ New Brand", href: "brand/new" },
+  ],
   // Enrollments (root list) stayed BusinessRecord-backed; Batches/Courses/
   // Students moved onto real Prisma tables (Course/Batch/Student/
   // Enrollment/FeeInstallment/ClassAttendance — see src/lib/education.ts).
@@ -320,6 +344,15 @@ export const MODULE_SUB_NAV: Record<string, PartnerNavSubItem[]> = {
     { key: "education.batches", label: "Batches", href: "education/batches" },
     { key: "education.courses", label: "Courses", href: "education/courses" },
     { key: "education.students", label: "Students", href: "education/students" },
+  ],
+  // Now Prisma-backed (AmcContract + ServiceVisit — see
+  // src/lib/amcContractsData.ts and prisma/schema.prisma "2026-09-25,
+  // second pass"). Still the generic List/+New trio; the ServiceVisit log
+  // lives nested on each contract's own detail page rather than as a
+  // separate top-level sub-nav entry.
+  "amc-field-service": [
+    { key: "amc-field-service.list", label: "Contracts", href: "amc-field-service" },
+    { key: "amc-field-service.new", label: "+ New Contract", href: "amc-field-service/new" },
   ],
 };
 

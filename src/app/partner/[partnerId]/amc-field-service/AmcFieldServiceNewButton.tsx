@@ -1,7 +1,7 @@
 "use client";
 
 import { RecordFormModal, useRecordFormModal } from "@/components/RecordFormModal";
-import { createBusinessRecordAction } from "@/lib/businessRecordActions";
+import { createAmcContractAction } from "@/lib/amcContractActions";
 import { amcFieldServiceFormFields } from "@/lib/sample-data/amc-field-service";
 
 /** Create-as-modal for amc-field-service (see src/components/RecordFormModal.tsx). */
@@ -18,7 +18,7 @@ export function AmcFieldServiceNewButton({ partnerId }: { partnerId: string }) {
         title="New Contract"
         fields={amcFieldServiceFormFields}
         submitLabel="Create Contract"
-        action={createBusinessRecordAction.bind(null, partnerId, "amc-field-service")}
+        action={createAmcContractAction.bind(null, partnerId)}
       />
     </>
   );

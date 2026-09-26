@@ -3,10 +3,10 @@ import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { notFound } from "next/navigation";
-import { getBrandFormFields } from "@/lib/sample-data/brand";
+import { brandFormFields, brandToRow } from "@/lib/sample-data/brand";
 import { applyCustomizations } from "@/lib/designer/customizations";
-import { getBusinessRecord } from "@/lib/businessRecords";
-import { updateBusinessRecordAction } from "@/lib/businessRecordActions";
+import { getBrand } from "@/lib/brandData";
+import { updateBrandAction } from "../../actions";
 
 registerPage({
   id: "brand.edit",
@@ -20,28 +20,28 @@ registerPage({
     { key: "validation-rules", label: "Validation rules" },
     { key: "default-values", label: "Default values" },
   ],
-  explanation: "The same config-driven RecordForm pre-populated with an existing location's sample data, letting a user edit and save changes (demo stub, no persistence yet).",
+  explanation: "The same config-driven RecordForm pre-populated with an existing Brand's real data (Prisma-backed).",
   sourceFile: "src/app/partner/[partnerId]/brand/[recordId]/edit/page.tsx",
 });
 
 export default async function EditBrandPage({ params }: { params: { partnerId: string; recordId: string } }) {
   const mod = await getModule("brand");
-  const record = await getBusinessRecord(params.partnerId, "brand", params.recordId);
-  if (!record) notFound();
-  const formFields = await getBrandFormFields(params.partnerId);
-  const fields = await applyCustomizations("brand.edit", formFields);
+  const brand = await getBrand(params.partnerId, params.recordId);
+  if (!brand) notFound();
+  const fields = await applyCustomizations("brand.edit", brandFormFields);
+  const row = brandToRow(brand);
 
   return (
-    <AppShell topbarTitle={`Edit Location — ${mod?.label ?? "Brand"}`}>
+    <AppShell topbarTitle={`Edit Brand — ${mod?.label ?? "Brand"}`}>
       <div>
-        <h1 className="font-display text-2xl font-bold text-text">Edit Location</h1>
-        <p className="mt-1 text-sm text-text-muted">{String(record["id"])}</p>
+        <h1 className="font-display text-2xl font-bold text-text">Edit Brand</h1>
+        <p className="mt-1 text-sm text-text-muted">{brand.name}</p>
         <div className="mt-6">
           <RecordForm
             fields={fields}
-            initialValues={record}
+            initialValues={row}
             submitLabel="Save changes"
-            action={updateBusinessRecordAction.bind(null, params.partnerId, "brand", params.recordId)}
+            action={updateBrandAction.bind(null, params.partnerId, params.recordId)}
           />
         </div>
       </div>

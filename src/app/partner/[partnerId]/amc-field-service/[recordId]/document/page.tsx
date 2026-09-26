@@ -3,7 +3,7 @@ import { amcFieldServiceColumns } from "@/lib/sample-data/amc-field-service";
 import { registerPage } from "@/lib/designer/registry";
 import { notFound } from "next/navigation";
 import { getPartner } from "@/lib/partnerData";
-import { getBusinessRecord, getBusinessRecordSequenceIndex } from "@/lib/businessRecords";
+import { getAmcContract } from "@/lib/amcContractsData";
 
 registerPage({
   id: "amc-field-service.document",
@@ -25,10 +25,30 @@ export default async function AmcFieldServiceDocumentPage({
 }: {
   params: { partnerId: string; recordId: string };
 }) {
-  const record = await getBusinessRecord(params.partnerId, "amc-field-service", params.recordId);
-  if (!record) notFound();
+  const contract = await getAmcContract(params.partnerId, params.recordId);
+  if (!contract) notFound();
+  const latestVisit = contract.serviceVisits[0];
+  const record = {
+    id: contract.id,
+    customer: contract.customer,
+    equipment: contract.equipment,
+    technicianName: latestVisit?.technicianName ?? "",
+    contractEndDate: contract.contractEndDate.toISOString().slice(0, 10),
+    slaHours: contract.slaHours,
+    contractValue: contract.contractValue,
+    status: latestVisit?.status ?? "Scheduled",
+    contractStatus: contract.contractStatus,
+    checkInLatitude: latestVisit?.checkInLatitude ?? null,
+    checkInLongitude: latestVisit?.checkInLongitude ?? null,
+  };
   const partner = await getPartner(params.partnerId);
-  const sequenceIndex = await getBusinessRecordSequenceIndex(params.partnerId, "amc-field-service", params.recordId);
+  // Sequence index within the AmcContract stream, newest-created-last — mirrors what
+  // getBusinessRecordSequenceIndex computed for the retired BusinessRecord-backed version.
+  const { prisma } = await import("@/lib/prisma");
+  const earlierCount = await prisma.amcContract.count({
+    where: { partnerId: params.partnerId, createdAt: { lt: contract.createdAt } },
+  });
+  const sequenceIndex = earlierCount + 1;
   return (
     <DocumentView
       pageId="amc-field-service.document"

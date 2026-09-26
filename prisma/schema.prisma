@@ -2142,3 +2142,772 @@ model FiscalPeriod {
   @@index([partnerId])
   @@map("fiscal_periods")
 }
+
+// =====================================================================
+// Schema-design-only stage (2026-09-25, second pass): dedicated tables
+// for every REMAINING module that would otherwise use the generic
+// BusinessRecord store, except Service Centre, Inventory's own
+// core-document migration, and Accounting-GST — all explicitly excluded
+// per CLAUDE.md / this stage's instructions and left completely
+// untouched. Every model here is NEW. POS itself needs no new tables
+// (PosAccount/PosStaff/PosTillSession already exist) — see the note at
+// the end of this block about POS's missing PartnerType row, which a
+// later stage will seed.
+//
+// Migration SQL for this block lives at
+// prisma/migrations/20260925180000_add_remaining_modules_tables/migration.sql
+// and has NOT been applied — a human must review and run it.
+// =====================================================================
+
+// ---------------------------------------------------------------------
+// ==== Billing ====
+// Line items stay as Json on each document (matching how billing.ts's
+// LineItem[] already works) rather than being normalized into their own
+// table — same "don't over-normalize on a first pass" call the other 8
+// modules made for BomLine/WholesaleOrderLine, except those really are
+// simple qty*price lines with no per-document variability, whereas
+// Billing's LineItem already carries optional tax-mode/HSN/catalog-link
+// fields that would need their own migration once printable documents
+// need to read them structurally — left as Json for this pass.
+// Billing Items (moduleSlug "billing-items") and Contacts (moduleSlug
+// "billing-contacts") are NOT converted here — every document below
+// still points at a contact/customer by loose display name/string
+// (`contact`/`customerName`), same convention StockLot/MaterialConsumption
+// already use for pointing at another BusinessRecord-backed catalog.
+// ---------------------------------------------------------------------
+
+/// The core sales document — GST or Non-GST. Mirrors billing.ts's real
+/// BusinessRecord shape (billingColumns/billingFormFields) closely:
+/// subtotal/taxAmount/discountAmount/roundOff/totalAmount/amountPaid/
+/// amountDue, paymentStatus, paymentMode, invoiceSource. `contact` is a
+/// loose display-name reference into billing-contacts (still
+/// BusinessRecord, see note above), not a Prisma relation.
+model Invoice {
+  id             String    @id @default(cuid())
+  partnerId      String
+  invoiceNumber  String
+  invoiceType    String    @default("GST") // GST | Non-GST
+  contact        String?
+  customerGstin  String?
+  items          Json      @default("[]")
+  issueDate      DateTime
+  dueDate        DateTime?
+  subtotal       Int       @default(0) // paise
+  taxAmount      Int       @default(0) // paise
+  discountAmount Int       @default(0) // paise
+  roundOff       Int       @default(0) // paise
+  totalAmount    Int       @default(0) // paise
+  amountPaid     Int       @default(0) // paise
+  amountDue      Int       @default(0) // paise
+  /// Draft | Sent | Paid | Overdue | Partially Paid
+  paymentStatus  String    @default("Draft")
+  paymentMode    String?
+  /// Service Centre | POS Sale | Direct — see billing.ts's INVOICE_SOURCE_OPTIONS.
+  invoiceSource  String?
+  notes          String?   @db.Text
+  terms          String?   @db.Text
+  createdAt      DateTime  @default(now())
+
+  payments    Payment[]
+  creditNotes CreditNote[]
+
+  @@unique([partnerId, invoiceNumber])
+  @@index([partnerId])
+  @@index([partnerId, issueDate])
+  @@map("invoices")
+}
+
+/// A payment recorded against an Invoice — separate row so an invoice can
+/// carry multiple partial payments, matching billing-payments.ts's real
+/// shape exactly (getInvoiceBalance sums these to compute balance).
+model Payment {
+  id        String   @id @default(cuid())
+  partnerId String
+  invoiceId String?
+  invoice   Invoice? @relation(fields: [invoiceId], references: [id])
+  contact   String?
+  amount    Int // paise
+  mode      String
+  paidAt    DateTime
+  reference String?
+  createdAt DateTime @default(now())
+
+  @@index([partnerId])
+  @@index([invoiceId])
+  @@map("payments")
+}
+
+/// Credit Note or Debit Note — same document shape, distinguished by
+/// `noteType`, matching billing-credit-notes.ts's shared model exactly.
+model CreditNote {
+  id          String   @id @default(cuid())
+  partnerId   String
+  noteNumber  String
+  noteType    String   @default("Credit Note") // Credit Note | Debit Note
+  contact     String?
+  invoiceId   String?
+  invoice     Invoice? @relation(fields: [invoiceId], references: [id])
+  reason      String?
+  issueDate   DateTime
+  subtotal    Int      @default(0) // paise
+  taxAmount   Int      @default(0) // paise
+  totalAmount Int      @default(0) // paise
+  createdAt   DateTime @default(now())
+
+  @@unique([partnerId, noteNumber])
+  @@index([partnerId])
+  @@index([invoiceId])
+  @@map("credit_notes")
+}
+
+/// Matches billing-sales-documents.ts's shared quotation/challan/proforma
+/// shape — this model covers Quotation specifically (validUntil, no
+/// challan-only or proforma-only fields).
+model Quotation {
+  id              String    @id @default(cuid())
+  partnerId       String
+  quotationNumber String
+  contact         String?
+  items           Json      @default("[]")
+  issueDate       DateTime
+  validUntil      DateTime?
+  subtotal        Int       @default(0) // paise
+  taxAmount       Int       @default(0) // paise
+  totalAmount     Int       @default(0) // paise
+  /// Draft | Sent | Accepted | Rejected | Cancelled
+  status          String    @default("Draft")
+  notes           String?   @db.Text
+  createdAt       DateTime  @default(now())
+
+  @@unique([partnerId, quotationNumber])
+  @@index([partnerId])
+  @@map("quotations")
+}
+
+/// Matches billing-sales-documents.ts's Delivery Challan shape (purpose,
+/// vehicleNumber, dispatchAddress instead of Quotation's validUntil).
+model DeliveryChallan {
+  id              String   @id @default(cuid())
+  partnerId       String
+  challanNumber   String
+  contact         String?
+  items           Json     @default("[]")
+  issueDate       DateTime
+  purpose         String?
+  vehicleNumber   String?
+  dispatchAddress String?
+  subtotal        Int      @default(0) // paise
+  taxAmount       Int      @default(0) // paise
+  totalAmount     Int      @default(0) // paise
+  status          String   @default("Draft")
+  notes           String?  @db.Text
+  createdAt       DateTime @default(now())
+
+  @@unique([partnerId, challanNumber])
+  @@index([partnerId])
+  @@map("delivery_challans")
+}
+
+/// Matches billing-sales-documents.ts's Proforma Invoice shape (same as
+/// Quotation's validUntil + status/totals).
+model ProformaInvoice {
+  id             String    @id @default(cuid())
+  partnerId      String
+  proformaNumber String
+  contact        String?
+  items          Json      @default("[]")
+  issueDate      DateTime
+  validUntil     DateTime?
+  subtotal       Int       @default(0) // paise
+  taxAmount      Int       @default(0) // paise
+  totalAmount    Int       @default(0) // paise
+  status         String    @default("Draft")
+  notes          String?   @db.Text
+  createdAt      DateTime  @default(now())
+
+  @@unique([partnerId, proformaNumber])
+  @@index([partnerId])
+  @@map("proforma_invoices")
+}
+
+/// Flat cash-out record — matches billing-expenses.ts exactly (ported
+/// from AN-CRM's vendor Expenses page per that file's own doc comment).
+model Expense {
+  id              String   @id @default(cuid())
+  partnerId       String
+  expenseDate     DateTime
+  category        String
+  description     String?
+  vendorName      String?
+  paymentMode     String
+  amount          Int // paise
+  referenceNumber String?
+  taxAmount       Int? // paise
+  createdAt       DateTime @default(now())
+
+  @@index([partnerId])
+  @@index([partnerId, expenseDate])
+  @@map("expenses")
+}
+
+/// Matches billing-recurring.ts's template shape — the cron route
+/// (src/app/api/cron/billing-recurring-invoices/route.ts) creates a real
+/// Invoice from any row whose nextRunDate has passed, then advances it
+/// (see advanceNextRunDate) and stamps lastGeneratedInvoiceId.
+model RecurringInvoiceSchedule {
+  id                     String    @id @default(cuid())
+  partnerId              String
+  customer               String
+  items                  Json      @default("[]")
+  frequency              String // Weekly | Monthly | Quarterly | Yearly
+  startDate              DateTime?
+  nextRunDate            DateTime
+  totalAmount            Int       @default(0) // paise
+  /// Active | Paused
+  status                 String    @default("Active")
+  lastGeneratedInvoiceId String?
+  createdAt              DateTime  @default(now())
+
+  @@index([partnerId])
+  @@map("recurring_invoice_schedules")
+}
+
+// ---------------------------------------------------------------------
+// ==== Brand (multi-location hierarchy) ====
+// IMPORTANT — POS/Location relationship: PosTillSession.locationId
+// (prisma/schema.prisma above) already references a Brand > Location
+// row's id, but ONLY as a loose string (no @relation), because Brand >
+// Location has always lived in the generic BusinessRecord store (see
+// brand.ts's own doc comment: "not a Prisma relation, since Brand/
+// Location still lives in the generic BusinessRecord store"). Existing
+// PosTillSession rows already carry BusinessRecord-style ids (e.g.
+// "LOC-014") in that column. Introducing a REAL Location table now would
+// mint new cuid ids that do NOT match those existing string values, so
+// adding a hard FK today would either (a) silently orphan every existing
+// PosTillSession.locationId, or (b) require a data-migration step
+// backfilling/remapping ids — out of scope for a schema-only pass and
+// exactly the kind of write CLAUDE.md says needs separate, explicit
+// confirmation. Decision: Location.id below is a fresh cuid-keyed table;
+// PosTillSession.locationId is DELIBERATELY LEFT AS-IS (loose string, no
+// FK added) so POS is not broken. A future stage can add a nullable
+// `locationRefId` FK column to PosTillSession alongside the existing
+// loose field and backfill it — not done here.
+// ---------------------------------------------------------------------
+
+model Brand {
+  id        String   @id @default(cuid())
+  partnerId String
+  name      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  locations Location[]
+
+  @@index([partnerId])
+  @@map("brands")
+}
+
+/// One location under a Brand. `partnerId` is the location's OWN partner
+/// (brand.ts's sample data shows sibling locations under one Brand
+/// belonging to different partners, e.g. "Meridian South Pvt Ltd" vs.
+/// "Meridian West Pvt Ltd") — distinct from Brand.partnerId, which is the
+/// brand-account owner. mappedWarehouseId stays a loose string (brand.ts's
+/// mappedWarehouse already points at a BusinessRecord-backed warehouse
+/// catalog, not a Prisma model).
+model Location {
+  id                String    @id @default(cuid())
+  brandId           String
+  brand             Brand     @relation(fields: [brandId], references: [id])
+  partnerId         String
+  locationName      String
+  city              String
+  modulesEnabled    String?
+  mappedWarehouseId String?
+  monthlyRevenue    Int       @default(0) // paise
+  /// Active | Onboarding | Suspended
+  status            String    @default("Onboarding")
+  openedDate        DateTime?
+  createdAt         DateTime  @default(now())
+
+  @@index([brandId])
+  @@index([partnerId])
+  @@map("locations")
+}
+
+// ---------------------------------------------------------------------
+// ==== Clinic ====
+// ---------------------------------------------------------------------
+
+model Patient {
+  id                String   @id @default(cuid())
+  partnerId         String
+  name              String
+  phone             String?
+  email             String?
+  insuranceProvider String?
+  createdAt         DateTime @default(now())
+
+  appointments Appointment[]
+
+  @@index([partnerId])
+  @@map("patients")
+}
+
+model Appointment {
+  id                  String   @id @default(cuid())
+  partnerId           String
+  patientId           String
+  patient             Patient  @relation(fields: [patientId], references: [id])
+  doctor              String
+  appointmentDateTime DateTime
+  durationMinutes     Int      @default(30)
+  diagnosis           String?
+  consultationFee     Int      @default(0) // paise
+  /// Scheduled | In consultation | Completed | No-show | Cancelled
+  status              String   @default("Scheduled")
+  /// Loose reference into Billing's Invoice once one is raised for this
+  /// appointment — not a hard FK, same convention as other cross-module
+  /// pointers in this pass (Billing stays its own independently-scoped
+  /// module).
+  invoiceId           String?
+  createdAt           DateTime @default(now())
+
+  prescriptions Prescription[]
+
+  @@index([partnerId])
+  @@index([patientId])
+  @@map("appointments")
+}
+
+/// Tenant-scoped via its parent Appointment (no own partnerId).
+model Prescription {
+  id            String      @id @default(cuid())
+  appointmentId String
+  appointment   Appointment @relation(fields: [appointmentId], references: [id])
+  notes         String      @db.Text
+  createdAt     DateTime    @default(now())
+
+  @@index([appointmentId])
+  @@map("prescriptions")
+}
+
+// ---------------------------------------------------------------------
+// ==== AMC / Field Service ====
+// Distinct from the separate `field-force` module (Provider/Booking/
+// JobAllocation etc. above) — this is the amc-field-service module's own
+// namespace, matching amc-field-service.ts's real fields (SLA hours,
+// contract renewal, technician check-in lat/lng).
+// ---------------------------------------------------------------------
+
+model AmcContract {
+  id                String   @id @default(cuid())
+  partnerId         String
+  customer          String
+  equipment         String
+  contractStartDate DateTime
+  contractEndDate   DateTime
+  renewalTermMonths Int      @default(12)
+  slaHours          Int      @default(24)
+  contractValue     Int      @default(0) // paise
+  /// Active | Renewed | Expired
+  contractStatus    String   @default("Active")
+  /// Loose self-referencing chain for a renewed contract's old/new id —
+  /// kept as plain strings (not a Prisma self-relation) since a renewal
+  /// creates a brand-new AmcContract row rather than mutating this one.
+  renewedFromId     String?
+  renewedToId       String?
+  createdAt         DateTime @default(now())
+
+  serviceVisits ServiceVisit[]
+
+  @@index([partnerId])
+  @@map("amc_contracts")
+}
+
+/// One dispatched service visit/request against an AmcContract — mirrors
+/// amc-field-service.ts's serviceRequestRaisedAt/technicianId/assignedAt/
+/// status/checkInLatitude/checkInLongitude fields, and is what
+/// computeSlaBreach() in that file reads to decide SLA breach.
+model ServiceVisit {
+  id                     String      @id @default(cuid())
+  contractId             String
+  contract               AmcContract @relation(fields: [contractId], references: [id])
+  partnerId              String
+  serviceRequestRaisedAt DateTime?
+  technicianId           String?
+  technicianName         String?
+  assignedAt             DateTime?
+  /// Scheduled | Technician en route | Checked in | Completed | Overdue
+  status                 String      @default("Scheduled")
+  checkInLatitude        Float?
+  checkInLongitude       Float?
+  createdAt              DateTime    @default(now())
+
+  @@index([contractId])
+  @@index([partnerId])
+  @@map("service_visits")
+}
+
+// ---------------------------------------------------------------------
+// ==== Restaurant POS ====
+// Deliberately namespaced Restaurant* — separate from POS's own
+// PosAccount/PosStaff/PosTillSession/PosSale tables above, and from Brand
+// > Location (restaurant-pos.ts's table list is a static string array
+// today, restaurantTables, not backed by any per-partner record — this
+// gives it a real one).
+// ---------------------------------------------------------------------
+
+model RestaurantTable {
+  id          String  @id @default(cuid())
+  partnerId   String
+  tableNumber String
+  isActive    Boolean @default(true)
+
+  @@unique([partnerId, tableNumber])
+  @@index([partnerId])
+  @@map("restaurant_tables")
+}
+
+/// Matches restaurant-pos.ts's real RestaurantOrder domain type exactly
+/// (lines/covers/status/subtotal/taxAmount/totalAmount/kotSentAt/
+/// billedAt/cancelReason/invoiceIds) — `lines` (OrderLine[]) kept as Json,
+/// same "don't over-normalize" call as Billing's `items`.
+model RestaurantOrder {
+  id           String    @id @default(cuid())
+  partnerId    String
+  tableNumber  String
+  waiter       String?
+  lines        Json      @default("[]")
+  covers       Int       @default(1)
+  /// Open | In kitchen | Served | Billed | Cancelled
+  status       String    @default("Open")
+  subtotal     Int       @default(0) // paise
+  taxAmount    Int       @default(0) // paise
+  totalAmount  Int       @default(0) // paise
+  orderTime    DateTime  @default(now())
+  kotSentAt    DateTime?
+  billedAt     DateTime?
+  cancelReason String?
+  invoiceIds   Json      @default("[]")
+
+  @@index([partnerId])
+  @@index([partnerId, status])
+  @@map("restaurant_orders")
+}
+
+// ---------------------------------------------------------------------
+// ==== Subscriptions / Membership ====
+// This is the business-module "Subscriptions" (a partner's own gym/club/
+// coaching members) — NOT the platform's own Partner.subscriptionStatus/
+// Plan/Offer/SubscriptionPayment system above, which is untouched.
+// ---------------------------------------------------------------------
+
+model SubscriptionPlan {
+  id           String   @id @default(cuid())
+  partnerId    String
+  name         String
+  /// Monthly | Quarterly | Yearly
+  billingCycle String   @default("Monthly")
+  planAmount   Int      @default(0) // paise
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  subscribers Subscriber[]
+
+  @@index([partnerId])
+  @@map("subscription_plans")
+}
+
+/// Matches subscriptions.ts's real Membership domain type (billingCycle/
+/// nextBillingDate/frozenAt/resumeDate/checkIns/invoiceIds).
+model Subscriber {
+  id              String            @id @default(cuid())
+  partnerId       String
+  planId          String?
+  plan            SubscriptionPlan? @relation(fields: [planId], references: [id])
+  memberName      String
+  billingCycle    String            @default("Monthly")
+  planAmount      Int               @default(0) // paise
+  startDate       DateTime?
+  nextBillingDate DateTime?
+  /// Active | Paused | Expired | Cancelled
+  status          String            @default("Active")
+  frozenAt        DateTime?
+  resumeDate      DateTime?
+  /// CheckIn[] ({ timestamp }) — kept as Json, an append-only log with no
+  /// query need beyond "show recent check-ins" on the detail page.
+  checkIns        Json              @default("[]")
+  invoiceIds      Json              @default("[]")
+  createdAt       DateTime          @default(now())
+
+  @@index([partnerId])
+  @@index([planId])
+  @@map("subscribers")
+}
+
+// ---------------------------------------------------------------------
+// ==== Real Estate ====
+// ---------------------------------------------------------------------
+
+model Property {
+  id            String    @id @default(cuid())
+  partnerId     String
+  propertyType  String // Apartment | Villa | Plot | Commercial
+  address       String
+  latitude      Float?
+  longitude     Float?
+  price         Int       @default(0) // paise
+  areaSqft      Int?
+  bedrooms      Int?
+  /// Available | Under Offer | Sold | Rented
+  listingStatus String    @default("Available")
+  agentName     String?
+  siteVisitDate DateTime?
+  createdAt     DateTime  @default(now())
+
+  enquiries Enquiry[]
+
+  @@index([partnerId])
+  @@map("properties")
+}
+
+/// Matches real-estate.ts's RealEstateLifecycle (lead pipeline: stage/
+/// agent/site-visit window/deal value/commission/closed-lost reason).
+model Enquiry {
+  id               String    @id @default(cuid())
+  partnerId        String
+  propertyId       String?
+  property         Property? @relation(fields: [propertyId], references: [id])
+  /// New | Site Visit Scheduled | Negotiation | Agreement Signed | Closed/Lost
+  stage            String    @default("New")
+  agentName        String?
+  siteVisitStart   DateTime?
+  siteVisitEnd     DateTime?
+  dealValue        Int? // paise
+  commissionPct    Int?
+  commissionAmount Int? // paise
+  closedLostReason String?
+  createdAt        DateTime  @default(now())
+
+  @@index([partnerId])
+  @@index([propertyId])
+  @@map("enquiries")
+}
+
+// ---------------------------------------------------------------------
+// ==== Rentals ====
+// ---------------------------------------------------------------------
+
+model RentalAsset {
+  id        String  @id @default(cuid())
+  partnerId String
+  assetName String
+  isActive  Boolean @default(true)
+
+  agreements RentalAgreement[]
+
+  @@index([partnerId])
+  @@map("rental_assets")
+}
+
+/// Matches rentals.ts's RentalsLifecycle (deposit/damage/refund/return
+/// tracking) plus its base columns. assetId is nullable — an agreement
+/// may be created before a matching RentalAsset row exists (rentals.ts's
+/// own extractRentalsLifecycle falls back to assetName for double-booking
+/// checks when there's no separate asset catalog entry).
+model RentalAgreement {
+  id               String       @id @default(cuid())
+  partnerId        String
+  assetId          String?
+  asset            RentalAsset? @relation(fields: [assetId], references: [id])
+  assetName        String
+  renter           String
+  bookingStart     DateTime
+  bookingEnd       DateTime
+  depositAmount    Int          @default(0) // paise
+  rentalAmount     Int          @default(0) // paise
+  damageCharge     Int? // paise
+  refundableAmount Int? // paise
+  returned         Boolean      @default(false)
+  returnedAt       DateTime?
+  returnNotes      String?
+  latitude         Float?
+  longitude        Float?
+  /// Requested | Confirmed | Ongoing | Completed | Cancelled
+  status           String       @default("Requested")
+  createdAt        DateTime     @default(now())
+
+  @@index([partnerId])
+  @@index([assetId])
+  @@map("rental_agreements")
+}
+
+// ---------------------------------------------------------------------
+// ==== Logistics / Fleet ====
+// ---------------------------------------------------------------------
+
+model Vehicle {
+  id            String  @id @default(cuid())
+  partnerId     String
+  vehicleNumber String
+  isActive      Boolean @default(true)
+
+  trips Trip[]
+
+  @@unique([partnerId, vehicleNumber])
+  @@index([partnerId])
+  @@map("vehicles")
+}
+
+model Driver {
+  id        String  @id @default(cuid())
+  partnerId String
+  name      String
+  phone     String?
+  isActive  Boolean @default(true)
+
+  trips Trip[]
+
+  @@index([partnerId])
+  @@map("drivers")
+}
+
+/// The shipment/delivery record — matches logistics-fleet.ts's
+/// LogisticsLifecycle exactly (delivery stage machine + lat/lng tracking +
+/// failure/delivery details).
+model Trip {
+  id               String    @id @default(cuid())
+  partnerId        String
+  vehicleId        String?
+  vehicle          Vehicle?  @relation(fields: [vehicleId], references: [id])
+  driverId         String?
+  driver           Driver?   @relation(fields: [driverId], references: [id])
+  driverName       String?
+  origin           String
+  destination      String
+  currentLatitude  Float?
+  currentLongitude Float?
+  deliveryEta      DateTime?
+  /// Pending | Out for Delivery | Delivered | Failed
+  deliveryStage    String    @default("Pending")
+  assignedAt       DateTime?
+  pendingAt        DateTime?
+  outForDeliveryAt DateTime?
+  deliveredAt      DateTime?
+  failedAt         DateTime?
+  failureReason    String?
+  recipientName    String?
+  deliveryNotes    String?
+  createdAt        DateTime  @default(now())
+
+  @@index([partnerId])
+  @@index([vehicleId])
+  @@index([driverId])
+  @@map("trips")
+}
+
+// ---------------------------------------------------------------------
+// ==== Salon / Spa ====
+// ---------------------------------------------------------------------
+
+model SalonService {
+  id              String  @id @default(cuid())
+  partnerId       String
+  name            String
+  durationMinutes Int     @default(30)
+  price           Int     @default(0) // paise
+  isActive        Boolean @default(true)
+
+  appointments SalonAppointment[]
+
+  @@index([partnerId])
+  @@map("salon_services")
+}
+
+/// Matches salon-spa.ts exactly, including stylist commission fields.
+/// `customer` stays a loose display-name string (no dedicated Salon
+/// customer catalog exists in the current real fields).
+model SalonAppointment {
+  id                String        @id @default(cuid())
+  partnerId         String
+  customer          String
+  serviceId         String?
+  service           SalonService? @relation(fields: [serviceId], references: [id])
+  serviceName       String
+  stylist           String
+  durationMinutes   Int           @default(30)
+  price             Int           @default(0) // paise
+  /// Booked | In Progress | Completed | Cancelled | No-show
+  status            String        @default("Booked")
+  appointmentDate   DateTime
+  branch            String?
+  commissionPercent Int?
+  commissionAmount  Int? // paise
+  invoiceId         String?
+  createdAt         DateTime      @default(now())
+
+  @@index([partnerId])
+  @@index([serviceId])
+  @@map("salon_appointments")
+}
+
+// ---------------------------------------------------------------------
+// ==== Loyalty & Rewards ====
+// Cross-cutting module usable across POS/Restaurant/Clinic/Subscriptions
+// etc. (see loyalty-rewards.ts) — `enrolledModule` stays a plain string
+// label, not a Prisma relation into any of those modules' own tables.
+// ---------------------------------------------------------------------
+
+model LoyaltyMember {
+  id                   String    @id @default(cuid())
+  partnerId            String
+  customerName         String
+  pointsBalance        Int       @default(0)
+  lifetimePointsEarned Int       @default(0)
+  /// Bronze | Silver | Gold | Platinum — derived by computeTier() in
+  /// loyalty-rewards.ts from lifetimePointsEarned, stored here as the
+  /// last-computed value rather than recomputed on every read.
+  tier                 String    @default("Bronze")
+  lastRedemption       DateTime?
+  cashbackEarned       Int       @default(0) // paise
+  enrolledModule       String?
+  /// Active | Inactive
+  status               String    @default("Active")
+  createdAt            DateTime  @default(now())
+
+  ledgerEntries PointsLedgerEntry[]
+
+  @@index([partnerId])
+  @@map("loyalty_members")
+}
+
+/// Tenant-scoped via its parent LoyaltyMember (no own partnerId) — mirrors
+/// loyalty-rewards.ts's LoyaltyTransaction ({ type, points, amount?,
+/// timestamp }), given a real row instead of a Json array entry so a
+/// ledger can be queried/paginated later without a migration.
+model PointsLedgerEntry {
+  id        String        @id @default(cuid())
+  memberId  String
+  member    LoyaltyMember @relation(fields: [memberId], references: [id])
+  /// Earn | Redeem
+  type      String
+  points    Int
+  amount    Int? // paise — linked purchase amount, for Earn entries
+  createdAt DateTime      @default(now())
+
+  @@index([memberId])
+  @@map("points_ledger_entries")
+}
+
+// ---------------------------------------------------------------------
+// ==== POS ====
+// NOTE (no new tables): POS already has real, dedicated tables
+// (PosAccount/PosStaff/PosTillSession, defined earlier in this schema)
+// but — confirmed by a prior audit — has NO PartnerType row, so it has
+// never been an independently signup-able business type on its own
+// (today it's only reachable as an add-on module under some other
+// type's defaultModules). Writing that PartnerType row (idPrefix, e.g.
+// "POS", defaultModules: ["pos"], etc.) is a data-seeding action, not a
+// schema change, and is explicitly left to a later stage per this task's
+// instructions.
+// ---------------------------------------------------------------------

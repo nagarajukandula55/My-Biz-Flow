@@ -2,14 +2,15 @@ import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
-import { salonSpaFormFields } from "@/lib/sample-data/salon-spa";
+import { buildSalonSpaFormFields } from "@/lib/sample-data/salon-spa";
 import { applyCustomizations } from "@/lib/designer/customizations";
+import { listSalonServices } from "@/lib/salonSpa/servicesData";
 import { createSalonSpaBookingAction } from "../[recordId]/actions";
 
 registerPage({
   id: "salon-spa.create",
   moduleSlug: "salon-spa",
-  title: "Salon & Spa — Create",
+  title: "Salon & Spa — New Appointment",
   path: "/partner/[partnerId]/salon-spa/new",
   kind: "form",
   superAdminOnly: false,
@@ -18,7 +19,7 @@ registerPage({
     { key: "validation-rules", label: "Validation rules" },
     { key: "default-values", label: "Default values" },
   ],
-  explanation: "A config-driven creation form for a new booking in the salon-spa module, built from the module's real field set via the shared RecordForm component. Submission runs createSalonSpaBookingAction, which rejects the save server-side if the chosen stylist already has an overlapping booking before persisting.",
+  explanation: "A config-driven creation form for a new appointment in the salon-spa module, built from the module's real field set (including the partner's real active SalonService catalog as the Service dropdown) via the shared RecordForm component. Submission runs createSalonSpaBookingAction, which rejects the save server-side if the chosen stylist already has an overlapping booking before persisting.",
   sourceFile: "src/app/partner/[partnerId]/salon-spa/new/page.tsx",
 });
 
@@ -30,13 +31,14 @@ export default async function NewSalonSpaPage({
   searchParams: { conflict?: string };
 }) {
   const mod = await getModule("salon-spa");
-  const fields = await applyCustomizations("salon-spa.create", salonSpaFormFields);
+  const services = await listSalonServices(params.partnerId);
+  const fields = await applyCustomizations("salon-spa.create", buildSalonSpaFormFields(services));
 
   return (
-    <AppShell topbarTitle={`New Booking — ${mod?.label ?? "Salon & Spa"}`}>
+    <AppShell topbarTitle={`New Appointment — ${mod?.label ?? "Salon & Spa"}`}>
       <div>
-        <h1 className="font-display text-2xl font-bold text-text">New Booking</h1>
-        <p className="mt-1 text-sm text-text-muted">Create a new booking record for Salon &amp; Spa.</p>
+        <h1 className="font-display text-2xl font-bold text-text">New Appointment</h1>
+        <p className="mt-1 text-sm text-text-muted">Create a new appointment for Salon &amp; Spa.</p>
         {searchParams.conflict && (
           <div className="mt-4 rounded-md border border-danger bg-danger-soft px-3 py-2 text-sm text-danger">
             {searchParams.conflict}
@@ -45,7 +47,8 @@ export default async function NewSalonSpaPage({
         <div className="mt-6">
           <RecordForm
             fields={fields}
-            submitLabel="Create Booking"
+            submitLabel="Create Appointment"
+            mode="create"
             action={createSalonSpaBookingAction.bind(null, params.partnerId)}
           />
         </div>

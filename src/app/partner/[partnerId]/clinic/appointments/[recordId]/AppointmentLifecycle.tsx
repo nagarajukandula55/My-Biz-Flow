@@ -2,46 +2,53 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { StatusChip } from "@/components/StatusChip";
+import { StatusChip, type StatusVariant } from "@/components/StatusChip";
 import { Modal } from "@/components/Modal";
-import { completeClinicAppointmentAction, createInvoiceFromAppointmentAction } from "./actions";
+import { completeAppointmentAction, createInvoiceFromAppointmentAction } from "../actions";
+
+const STATUS_VARIANT: Record<string, StatusVariant> = {
+  Scheduled: "teal",
+  "In consultation": "warning",
+  Completed: "success",
+  "No-show": "danger",
+  Cancelled: "neutral",
+};
 
 /**
  * Consultation completion + billing panel shown above the read-only
- * RecordDetail grid — mirrors WorkorderLifecycle's "capture something at
- * completion, then let staff invoice from it" shape, scoped to the
- * clinic module's own fields (prescription notes, consultation fee).
+ * appointment detail grid — same shape as the previous BusinessRecord-era
+ * ClinicLifecycle: marking an appointment Completed appends a new
+ * Prescription row (see completeAppointmentAction -> completeAppointment),
+ * then a Billing invoice can be raised for the consultation fee.
  */
-export function ClinicLifecycle({
+export function AppointmentLifecycle({
   partnerId,
-  recordId,
+  appointmentId,
   initialStatus,
-  initialPrescriptionNotes,
   invoiceId,
 }: {
   partnerId: string;
-  recordId: string;
+  appointmentId: string;
   initialStatus: string;
-  initialPrescriptionNotes?: string;
-  invoiceId?: string;
+  invoiceId?: string | null;
 }) {
   const [status, setStatus] = useState(initialStatus);
-  const [prescriptionNotes, setPrescriptionNotes] = useState(initialPrescriptionNotes ?? "");
+  const [prescriptionNotes, setPrescriptionNotes] = useState("");
   const [completeOpen, setCompleteOpen] = useState(false);
-  const [invoice, setInvoice] = useState(invoiceId);
+  const [invoice, setInvoice] = useState(invoiceId ?? undefined);
   const [, startPersist] = useTransition();
 
   function submitCompletion() {
     setStatus("Completed");
     setCompleteOpen(false);
     startPersist(async () => {
-      await completeClinicAppointmentAction(partnerId, recordId, prescriptionNotes);
+      await completeAppointmentAction(partnerId, appointmentId, prescriptionNotes);
     });
   }
 
   function createInvoice() {
     startPersist(async () => {
-      await createInvoiceFromAppointmentAction(partnerId, recordId);
+      await createInvoiceFromAppointmentAction(partnerId, appointmentId);
       setInvoice("pending"); // optimistic; page revalidation fills in the real id on next load
     });
   }
@@ -51,10 +58,7 @@ export function ClinicLifecycle({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <span className="text-xs font-semibold uppercase tracking-wide text-text-muted">Status</span>
-          <StatusChip
-            label={status}
-            variant={status === "Completed" ? "success" : status === "Cancelled" || status === "No-show" ? "danger" : "teal"}
-          />
+          <StatusChip label={status} variant={STATUS_VARIANT[status] ?? "neutral"} />
         </div>
         <div className="flex items-center gap-3">
           {status !== "Completed" && status !== "Cancelled" && (
@@ -67,7 +71,7 @@ export function ClinicLifecycle({
               Create Invoice
             </button>
           )}
-          {status === "Completed" && invoice && (
+          {status === "Completed" && invoice && invoice !== "pending" && (
             <Link href={`/partner/${partnerId}/billing/${invoice}`} className="btn-outline">
               Sales Invoice
             </Link>

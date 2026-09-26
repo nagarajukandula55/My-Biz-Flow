@@ -85,10 +85,18 @@ import "@/app/partner/[partnerId]/brand/page";
 import "@/app/partner/[partnerId]/brand/new/page";
 import "@/app/partner/[partnerId]/brand/[recordId]/page";
 import "@/app/partner/[partnerId]/brand/[recordId]/edit/page";
+import "@/app/partner/[partnerId]/brand/[recordId]/locations/page";
+import "@/app/partner/[partnerId]/brand/[recordId]/locations/new/page";
+import "@/app/partner/[partnerId]/brand/[recordId]/locations/[locationId]/page";
+import "@/app/partner/[partnerId]/brand/[recordId]/locations/[locationId]/edit/page";
 import "@/app/partner/[partnerId]/clinic/page";
-import "@/app/partner/[partnerId]/clinic/new/page";
-import "@/app/partner/[partnerId]/clinic/[recordId]/page";
-import "@/app/partner/[partnerId]/clinic/[recordId]/edit/page";
+import "@/app/partner/[partnerId]/clinic/patients/page";
+import "@/app/partner/[partnerId]/clinic/patients/new/page";
+import "@/app/partner/[partnerId]/clinic/patients/[recordId]/page";
+import "@/app/partner/[partnerId]/clinic/appointments/page";
+import "@/app/partner/[partnerId]/clinic/appointments/new/page";
+import "@/app/partner/[partnerId]/clinic/appointments/[recordId]/page";
+import "@/app/partner/[partnerId]/clinic/appointments/[recordId]/edit/page";
 import "@/app/partner/[partnerId]/amc-field-service/page";
 import "@/app/partner/[partnerId]/amc-field-service/new/page";
 import "@/app/partner/[partnerId]/amc-field-service/[recordId]/page";
@@ -254,6 +262,9 @@ import "@/app/partner/[partnerId]/salon-spa/page";
 import "@/app/partner/[partnerId]/salon-spa/new/page";
 import "@/app/partner/[partnerId]/salon-spa/[recordId]/page";
 import "@/app/partner/[partnerId]/salon-spa/[recordId]/edit/page";
+import "@/app/partner/[partnerId]/salon-spa/services/page";
+import "@/app/partner/[partnerId]/salon-spa/services/new/page";
+import "@/app/partner/[partnerId]/salon-spa/services/[recordId]/page";
 
 // No Users management page -- removed per explicit direction (this app has
 // only single-login-per-partner). See partnerAdminNav.ts's comment.

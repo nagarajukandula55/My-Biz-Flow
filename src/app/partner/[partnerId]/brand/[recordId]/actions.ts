@@ -5,7 +5,7 @@ import { getBusinessRecord, updateBusinessRecord } from "@/lib/businessRecords";
 import type { AccessScope } from "@/lib/sample-data/brand";
 import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 
-/** Sets a partner User's cross-location access scope — patches the generic `users` BusinessRecord (same store, different moduleSlug), editable here from the Brand record's detail page. */
+/** Sets a partner User's cross-location access scope — patches the generic `users` BusinessRecord (unrelated to the Brand/Location Prisma tables), editable here from the Brand record's detail page. */
 export async function setUserAccessScopeAction(
   partnerId: string,
   userId: string,

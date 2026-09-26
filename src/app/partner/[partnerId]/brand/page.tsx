@@ -4,8 +4,8 @@ import { registerPage } from "@/lib/designer/registry";
 import { BrandClientTable } from "./BrandClientTable";
 import { BrandNewButton } from "./BrandNewButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
-import { brandColumns, getBrandFormFields } from "@/lib/sample-data/brand";
-import { listBusinessRecords } from "@/lib/businessRecords";
+import { brandColumns, brandFormFields, brandToRow } from "@/lib/sample-data/brand";
+import { listBrands } from "@/lib/brandData";
 
 registerPage({
   id: "brand.list",
@@ -19,7 +19,7 @@ registerPage({
     { key: "filters", label: "List filters" },
     { key: "view-toggle", label: "List / Kanban view options" },
   ],
-  explanation: "Lists every location record for the brand module in a sortable table, with a \"+ New\" action to create one and row-click navigation into the record's detail view.",
+  explanation: "Lists every Brand for this partner (Prisma-backed — see src/lib/brandData.ts), with a \"+ New\" action to create one and row-click navigation into the brand's detail view, which manages its own nested Locations.",
   sourceFile: "src/app/partner/[partnerId]/brand/page.tsx",
 });
 
@@ -28,14 +28,14 @@ export const dynamic = "force-dynamic";
 export default async function BrandPage({ params }: { params: { partnerId: string } }) {
   const mod = await getModule("brand");
   const columns = await applyCustomizations("brand.list", brandColumns);
-  const rows = await listBusinessRecords(params.partnerId, "brand");
-  const formFields = await getBrandFormFields(params.partnerId);
+  const brands = await listBrands(params.partnerId);
+  const rows = brands.map(brandToRow);
 
   return (
     <AppShell
       topbarTitle={mod?.label ?? "Brand"}
       topbarActions={
-        <BrandNewButton partnerId={params.partnerId} fields={formFields} />
+        <BrandNewButton partnerId={params.partnerId} fields={brandFormFields} />
       }
     >
       <div>
@@ -47,4 +47,3 @@ export default async function BrandPage({ params }: { params: { partnerId: strin
     </AppShell>
   );
 }
-

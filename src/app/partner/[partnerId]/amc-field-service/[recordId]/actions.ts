@@ -1,14 +1,21 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createBusinessRecord, updateBusinessRecord, getBusinessRecord } from "@/lib/businessRecords";
+import {
+  getAmcContract,
+  createAmcContract,
+  updateAmcContract,
+  createServiceVisit,
+  updateServiceVisit,
+  findOpenVisit,
+} from "@/lib/amcContractsData";
 import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 
 /**
- * Dispatches a technician to a contract's currently-open service request —
+ * Dispatches a technician to the contract's currently-open ServiceVisit —
  * assignedAt is stamped server-side (never trust a client-submitted
  * timestamp), which is also what clears an SLA-breach reading, since a
- * breach only fires while a request is raised but undispatched.
+ * breach only fires while a visit is raised but undispatched.
  */
 export async function dispatchTechnicianAction(
   partnerId: string,
@@ -17,42 +24,58 @@ export async function dispatchTechnicianAction(
   technicianName: string
 ): Promise<void> {
   partnerId = await requireSessionPartnerId(partnerId);
-  const record = await getBusinessRecord(partnerId, "amc-field-service", contractId);
-  if (!record) return;
-  await updateBusinessRecord(partnerId, "amc-field-service", contractId, {
-    ...record,
+  const contract = await getAmcContract(partnerId, contractId);
+  if (!contract) return;
+  const openVisit = findOpenVisit(contract);
+  if (!openVisit) return;
+  await updateServiceVisit(partnerId, openVisit.id, {
     technicianId,
     technicianName,
-    assignedAt: new Date().toISOString(),
+    assignedAt: new Date(),
   });
   revalidatePath(`/partner/${partnerId}/amc-field-service/${contractId}`);
 }
 
-/** Opens a new service request against the contract (e.g. a fresh complaint call) — clears any prior dispatch. */
+/** Opens a new ServiceVisit against the contract (e.g. a fresh complaint call). */
 export async function raiseServiceRequestAction(partnerId: string, contractId: string): Promise<void> {
   partnerId = await requireSessionPartnerId(partnerId);
-  const record = await getBusinessRecord(partnerId, "amc-field-service", contractId);
-  if (!record) return;
-  await updateBusinessRecord(partnerId, "amc-field-service", contractId, {
-    ...record,
-    serviceRequestRaisedAt: new Date().toISOString(),
-    technicianId: undefined,
-    technicianName: undefined,
-    assignedAt: undefined,
+  const contract = await getAmcContract(partnerId, contractId);
+  if (!contract) return;
+  await createServiceVisit(partnerId, contractId, {
+    serviceRequestRaisedAt: new Date(),
     status: "Scheduled",
   });
   revalidatePath(`/partner/${partnerId}/amc-field-service/${contractId}`);
 }
 
-/** Marks the current open service request resolved — closes the SLA-breach window. */
+/** Marks the current open ServiceVisit resolved — closes the SLA-breach window. */
 export async function resolveServiceRequestAction(partnerId: string, contractId: string): Promise<void> {
   partnerId = await requireSessionPartnerId(partnerId);
-  const record = await getBusinessRecord(partnerId, "amc-field-service", contractId);
-  if (!record) return;
-  await updateBusinessRecord(partnerId, "amc-field-service", contractId, {
-    ...record,
-    serviceRequestRaisedAt: undefined,
-    status: "Completed",
+  const contract = await getAmcContract(partnerId, contractId);
+  if (!contract) return;
+  const openVisit = findOpenVisit(contract);
+  if (!openVisit) return;
+  await updateServiceVisit(partnerId, openVisit.id, { status: "Completed" });
+  revalidatePath(`/partner/${partnerId}/amc-field-service/${contractId}`);
+}
+
+/**
+ * Adds a service visit log entry directly (the nested ServiceVisit log's
+ * manual "Add Visit" form) — technician, status, and visit date, all
+ * server-validated/defaulted rather than trusting client state.
+ */
+export async function addServiceVisitAction(
+  partnerId: string,
+  contractId: string,
+  values: { visitDate?: string; technicianName?: string; status?: string }
+): Promise<void> {
+  partnerId = await requireSessionPartnerId(partnerId);
+  const contract = await getAmcContract(partnerId, contractId);
+  if (!contract) return;
+  await createServiceVisit(partnerId, contractId, {
+    serviceRequestRaisedAt: values.visitDate ? new Date(values.visitDate) : new Date(),
+    technicianName: values.technicianName || undefined,
+    status: values.status || "Scheduled",
   });
   revalidatePath(`/partner/${partnerId}/amc-field-service/${contractId}`);
 }
@@ -67,36 +90,34 @@ export async function resolveServiceRequestAction(partnerId: string, contractId:
  */
 export async function renewContractAction(partnerId: string, contractId: string): Promise<{ newContractId: string } | void> {
   partnerId = await requireSessionPartnerId(partnerId);
-  const record = await getBusinessRecord(partnerId, "amc-field-service", contractId);
-  if (!record) return;
-  if (record["contractStatus"] === "Renewed") return; // already renewed — don't double-renew
+  const contract = await getAmcContract(partnerId, contractId);
+  if (!contract) return;
+  if (contract.contractStatus === "Renewed") return; // already renewed — don't double-renew
 
-  const termMonths = Number(record["renewalTermMonths"] ?? 12);
-  const prevEnd = record["contractEndDate"] ? new Date(String(record["contractEndDate"])) : new Date();
+  const termMonths = contract.renewalTermMonths || 12;
+  const prevEnd = contract.contractEndDate;
   const newStart = new Date(prevEnd);
   const newEnd = new Date(prevEnd);
   newEnd.setMonth(newEnd.getMonth() + termMonths);
 
-  const newContract = await createBusinessRecord(partnerId, "amc-field-service", {
-    customer: record["customer"],
-    equipment: record["equipment"],
-    contractStartDate: newStart.toISOString().slice(0, 10),
-    contractEndDate: newEnd.toISOString().slice(0, 10),
+  const newContract = await createAmcContract(partnerId, {
+    customer: contract.customer,
+    equipment: contract.equipment,
+    contractStartDate: newStart,
+    contractEndDate: newEnd,
     renewalTermMonths: termMonths,
-    slaHours: record["slaHours"],
-    contractValue: record["contractValue"],
-    status: "Scheduled",
+    slaHours: contract.slaHours,
+    contractValue: contract.contractValue,
     contractStatus: "Active",
     renewedFromId: contractId,
   });
 
-  await updateBusinessRecord(partnerId, "amc-field-service", contractId, {
-    ...record,
+  await updateAmcContract(partnerId, contractId, {
     contractStatus: "Renewed",
     renewedToId: newContract.id,
   });
 
   revalidatePath(`/partner/${partnerId}/amc-field-service`);
   revalidatePath(`/partner/${partnerId}/amc-field-service/${contractId}`);
-  return { newContractId: String(newContract.id) };
+  return { newContractId: newContract.id };
 }

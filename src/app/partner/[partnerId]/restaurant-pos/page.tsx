@@ -6,7 +6,7 @@ import { RestaurantPosClientTable } from "./RestaurantPosClientTable";
 import { RestaurantPosNewButton } from "./RestaurantPosNewButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { restaurantPosColumns } from "@/lib/sample-data/restaurant-pos";
-import { listBusinessRecords } from "@/lib/businessRecords";
+import { listOrdersForPartner } from "@/lib/restaurantPos/data";
 
 registerPage({
   id: "restaurant-pos.list",
@@ -29,7 +29,7 @@ export const dynamic = "force-dynamic";
 export default async function RestaurantPosPage({ params }: { params: { partnerId: string } }) {
   const mod = await getModule("restaurant-pos");
   const columns = await applyCustomizations("restaurant-pos.list", restaurantPosColumns);
-  const rows = await listBusinessRecords(params.partnerId, "restaurant-pos");
+  const rows = await listOrdersForPartner(params.partnerId);
 
   return (
     <AppShell

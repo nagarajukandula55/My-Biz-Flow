@@ -5,8 +5,8 @@ import { RecordForm } from "@/components/RecordForm";
 import { notFound } from "next/navigation";
 import { restaurantPosFormFields } from "@/lib/sample-data/restaurant-pos";
 import { applyCustomizations } from "@/lib/designer/customizations";
-import { getBusinessRecord } from "@/lib/businessRecords";
-import { updateBusinessRecordAction } from "@/lib/businessRecordActions";
+import { getOrderRow } from "@/lib/restaurantPos/data";
+import { updateOrderFormAction } from "../../actions";
 
 registerPage({
   id: "restaurant-pos.edit",
@@ -26,7 +26,7 @@ registerPage({
 
 export default async function EditRestaurantPosPage({ params }: { params: { partnerId: string; recordId: string } }) {
   const mod = await getModule("restaurant-pos");
-  const record = await getBusinessRecord(params.partnerId, "restaurant-pos", params.recordId);
+  const record = await getOrderRow(params.partnerId, params.recordId);
   if (!record) notFound();
   const fields = await applyCustomizations("restaurant-pos.edit", restaurantPosFormFields);
 
@@ -40,7 +40,7 @@ export default async function EditRestaurantPosPage({ params }: { params: { part
             fields={fields}
             initialValues={record}
             submitLabel="Save changes"
-            action={updateBusinessRecordAction.bind(null, params.partnerId, "restaurant-pos", params.recordId)}
+            action={updateOrderFormAction.bind(null, params.partnerId, params.recordId)}
           />
         </div>
       </div>

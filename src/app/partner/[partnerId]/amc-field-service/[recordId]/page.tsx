@@ -4,18 +4,15 @@ import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { RecordDetail } from "@/components/RecordDetail";
-import { DeleteBusinessRecordButton } from "@/components/DeleteBusinessRecordButton";
 import {
   getAmcFieldServiceDetailFields,
   getAmcFieldServiceTimeline,
   amcFieldServiceRelated,
   amcFieldServiceColumns,
-  extractAmcLifecycleFromRecord,
-  computeSlaBreach,
-  computeRenewalDue,
 } from "@/lib/sample-data/amc-field-service";
 import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
-import { getBusinessRecord, listBusinessRecords } from "@/lib/businessRecords";
+import { getAmcContract, extractAmcLifecycle, computeSlaBreach, computeRenewalDue } from "@/lib/amcContractsData";
+import { listBusinessRecords } from "@/lib/businessRecords";
 import { AmcLifecycle } from "./AmcLifecycle";
 
 registerPage({
@@ -44,14 +41,33 @@ export default async function AmcFieldServiceDetailPage({
   searchParams?: { created?: string; updated?: string };
 }) {
   const mod = await getModule("amc-field-service");
-  const record = await getBusinessRecord(params.partnerId, "amc-field-service", params.recordId);
-  if (!record) notFound();
+  const contract = await getAmcContract(params.partnerId, params.recordId);
+  if (!contract) notFound();
+  const record = {
+    id: contract.id,
+    customer: contract.customer,
+    equipment: contract.equipment,
+    contractStartDate: contract.contractStartDate.toISOString().slice(0, 10),
+    contractEndDate: contract.contractEndDate.toISOString().slice(0, 10),
+    slaHours: contract.slaHours,
+    contractValue: contract.contractValue,
+    status: contract.serviceVisits[0]?.status ?? "Scheduled",
+    contractStatus: contract.contractStatus,
+    checkInLatitude: contract.serviceVisits[0]?.checkInLatitude ?? null,
+    checkInLongitude: contract.serviceVisits[0]?.checkInLongitude ?? null,
+  };
   const fields = await applyCustomizationsToDetailFields("amc-field-service.detail", getAmcFieldServiceDetailFields(record), amcFieldServiceColumns);
   const timeline = getAmcFieldServiceTimeline(record);
-  const recordLabel = String(record["id"] ?? params.recordId);
-  const lifecycle = extractAmcLifecycleFromRecord(record);
+  const recordLabel = contract.id;
+  const lifecycle = extractAmcLifecycle(contract);
   const slaBreached = computeSlaBreach(lifecycle);
   const renewalDue = computeRenewalDue(lifecycle);
+  const serviceVisits = contract.serviceVisits.map((v) => ({
+    id: v.id,
+    visitDate: (v.serviceRequestRaisedAt ?? v.createdAt).toISOString(),
+    technicianName: v.technicianName,
+    status: v.status,
+  }));
 
   const userRecords = await listBusinessRecords(params.partnerId, "users");
   const technicianOptions = userRecords
@@ -64,7 +80,7 @@ export default async function AmcFieldServiceDetailPage({
         <AmcLifecycle
           partnerId={params.partnerId}
           contractId={recordLabel}
-          contractStatus={lifecycle.contractStatus}
+          contractStatus={lifecycle.contractStatus as "Active" | "Renewed" | "Expired"}
           serviceRequestRaisedAt={lifecycle.serviceRequestRaisedAt}
           technicianId={lifecycle.technicianId}
           technicianName={lifecycle.technicianName}
@@ -73,6 +89,7 @@ export default async function AmcFieldServiceDetailPage({
           renewalDue={renewalDue}
           contractEndDate={lifecycle.contractEndDate}
           technicianOptions={technicianOptions}
+          serviceVisits={serviceVisits}
         />
 
         <div className="mt-8">
@@ -104,7 +121,8 @@ export default async function AmcFieldServiceDetailPage({
                 >
                   Edit
                 </Link>
-                <DeleteBusinessRecordButton partnerId={params.partnerId} moduleSlug="amc-field-service" recordKey={params.recordId} recordLabel={recordLabel} />
+                {/* No delete affordance — deleting saved business records isn't offered anywhere in the app (see the
+                    now-retired DeleteBusinessRecordButton); archive via Contract Status instead. */}
               </div>
             </div>
           }
