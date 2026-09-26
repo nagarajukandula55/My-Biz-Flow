@@ -30,6 +30,10 @@ const FAQS: { q: string; a: string }[] = [
     a: "A modular, no-code, multi-vertical business/CRM platform. Instead of shipping a separate product per industry, every business runs on one shared metadata engine — modules, fields, pipelines, and dashboards are all config-driven, and a business simply enables the modules it needs.",
   },
   {
+    q: "Which module is right for my business?",
+    a: "Start from what your business actually does day to day, not a category label: running repair jobs points at Service Centre, ringing up in-store sales points at POS, and pure invoicing without a shop floor points at Billing — many businesses run more than one at once (a repair shop, for instance, often pairs Service Centre with Inventory and Billing). The Module Guide breaks down every module with its own Basic/Pro/Ultimate feature list so you can compare what each one actually unlocks before choosing.",
+  },
+  {
     q: "What is a Partner, and what does a module 'type' mean?",
     a: "A signed-up company on the platform is called a Partner. A Partner doesn't have a fixed 'type' from a hardcoded list — its type is just the set of modules it has enabled (POS, Service Centre, Clinic, and so on). Enabling or disabling a module changes what a Partner can do without changing any code.",
   },
@@ -97,7 +101,12 @@ export default function HelpPage() {
             <Link href="/help/modules" className="text-accent hover:underline">
               See the full Module Guide &rarr;
             </Link>{" "}
-            — every module, and what Basic/Pro/Ultimate unlocks for each.
+            — every module, and what Basic/Pro/Ultimate unlocks for each. Already know which one
+            fits? Head straight to{" "}
+            <Link href="/pricing" className="text-accent hover:underline">
+              Pricing
+            </Link>{" "}
+            to see plans by business type.
           </p>
 
           <h2 className="mt-10 font-display text-xl font-bold text-text">

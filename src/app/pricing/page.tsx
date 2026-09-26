@@ -62,6 +62,96 @@ function tierFeaturesForType(type: PartnerTypeRecord, tier: PlanTier): string[] 
   return features;
 }
 
+/**
+ * Short, outcome-focused per-business-type copy for the generic "What you
+ * get" section below — grounded in what each type's bundled modules
+ * actually do (see modules.ts descriptions / MODULE_TIER_FEATURES), never
+ * an unbuilt feature. Only the types with real, distinctive copy worth
+ * hand-writing get an entry here; any PartnerType id not listed (including
+ * ones seeded later) falls back to BUSINESS_TYPE_FALLBACK below, built from
+ * the type's own stored `description` plus its module list, so no business
+ * type ever renders a bare "manages my-biz-flow.com/{slug} things"
+ * placeholder.
+ */
+const BUSINESS_TYPE_COPY: Record<string, { heading: string; intro: string }> = {
+  "service-centre": {
+    heading: "Everything a repair shop actually needs, in one screen",
+    intro:
+      "Service Centre isn't a generic ticketing tool bent into shape — this is what it actually does, ready the moment you sign up below.",
+  },
+  pos: {
+    heading: "Ring up sales without losing track of stock",
+    intro:
+      "A till built for a single-store checkout counter — cart, tender capture, and receipts on Basic, with real-time stock deduction and split-tender payments as you grow into Pro.",
+  },
+  telecalling: {
+    heading: "Turn a contact list into a working call floor",
+    intro:
+      "Upload a contact list once, hand it to agents who click-to-call straight from the app, and trigger SMS/WhatsApp templates per contact — no separate dialer or spreadsheet hand-offs.",
+  },
+  "field-force": {
+    heading: "Run a home-services booking desk end to end",
+    intro:
+      "A priced service catalog, customer bookings, dispatch of engineers by service and pincode, payment collection, and ratings — the whole loop from a customer's booking to a rated, paid job.",
+  },
+  manufacturing: {
+    heading: "Track a job from raw material to finished stock",
+    intro:
+      "Bills of materials, production work orders, and raw-material consumption tracking so a production run's real cost and stage aren't guesswork kept on a whiteboard.",
+  },
+  "wholesale-b2b": {
+    heading: "Give every dealer their own price list and terms",
+    intro:
+      "Bulk pricing tiers, dealer/distributor accounts, and credit terms — so a repeat B2B buyer gets the rate and credit line you've agreed with them, not a walk-in retail price.",
+  },
+  "event-booking": {
+    heading: "Keep every booking, vendor, and date straight",
+    intro:
+      "Event and venue scheduling with catering and resource coordination in one calendar, so double-booking a hall or forgetting a vendor stops being a manual cross-check.",
+  },
+  legal: {
+    heading: "Keep every matter, hour, and document in one file",
+    intro:
+      "Client matter records, billable hours, and document tracking — so a case's paper trail and the hours billed against it live in one place instead of a folder plus a separate timesheet.",
+  },
+  education: {
+    heading: "Run enrollment, batches, and fees without the spreadsheet juggle",
+    intro:
+      "Student enrollment, batch/course scheduling, fee collection, and attendance in one place — so a coaching centre or school stops reconciling three separate registers.",
+  },
+  clinic: {
+    heading: "Track every patient, appointment, and prescription in one place",
+    intro:
+      "Patient records, appointment scheduling, and consultation billing together — no more juggling a paper register, a separate billing book, and a phone for appointment calls.",
+  },
+  "amc-field-service": {
+    heading: "Never miss a contract renewal or a scheduled visit",
+    intro:
+      "Recurring annual maintenance contracts, technician dispatch, and service-visit logging — so a contract's renewal date and its visit history are tracked, not remembered.",
+  },
+  "restaurant-pos": {
+    heading: "Run the floor and the kitchen off the same order",
+    intro:
+      "Table and KOT management with per-table order carts and split-bill settlement, so a server's order and the kitchen's ticket are always the same record, not two.",
+  },
+  "salon-spa": {
+    heading: "Book appointments without double-booking a stylist",
+    intro:
+      "A service menu, stylist assignment, and appointment scheduling built for walk-in and booked slots together, so two customers never land on the same chair at the same time.",
+  },
+};
+
+/** Built from the type's own DB-stored description and module set — the
+ * fallback for any PartnerType id without a hand-written entry above. */
+function fallbackCopyForType(type: PartnerTypeRecord): { heading: string; intro: string } {
+  return {
+    heading: `Everything ${type.id.replace(/-/g, " ")} needs, bundled in one account`,
+    intro:
+      type.description ||
+      "The modules bundled for this business type, ready the moment you sign up below.",
+  };
+}
+
 export default async function PricingPage({
   searchParams,
 }: {
@@ -82,6 +172,29 @@ export default async function PricingPage({
     await Promise.all(allSlugs.map(async (slug) => [slug, (await getModule(slug))?.label ?? slug] as const))
   );
 
+  // Feature cards for the generic "What you get" section below — resolved
+  // from the selected type's own defaultModules against the canonical
+  // MODULES registry, so the copy always matches what the type actually
+  // bundles. Vertical modules (the type's "core" business) are shown ahead
+  // of cross-cutting add-ons (Inventory, HRMS, etc.) when there are more
+  // than 4, since the vertical modules are what makes this business type
+  // distinct.
+  const typeModuleDefs = selectedType
+    ? (
+        await Promise.all(
+          selectedType.defaultModules.map((slug) => getModule(slug))
+        )
+      ).filter((m): m is NonNullable<typeof m> => Boolean(m))
+    : [];
+  const sortedTypeModuleDefs = [...typeModuleDefs].sort((a, b) => {
+    const rank = (t: string) => (t === "vertical" ? 0 : t === "brand" ? 1 : 2);
+    return rank(a.taxonomy) - rank(b.taxonomy);
+  });
+  const whatYouGetModules = sortedTypeModuleDefs.slice(0, 4);
+  const typeCopy = selectedType
+    ? BUSINESS_TYPE_COPY[selectedType.id] ?? fallbackCopyForType(selectedType)
+    : undefined;
+
   // Product/Offer structured data straight from the same live Plan rows the
   // page renders below -- prices, billing cycle, and plan names here can
   // never drift out of sync with what's shown, so this stays accurate as an
@@ -92,6 +205,11 @@ export default async function PricingPage({
     "@context": "https://schema.org",
     "@type": "Product",
     name: selectedType ? `${SITE_NAME} plans for ${selectedType.id}` : `${SITE_NAME} plans`,
+    // Real per-type intro copy (same BUSINESS_TYPE_COPY/fallback used in the
+    // "What you get" section below) instead of a generic line, so an
+    // AI-answer-engine reading this structured data gets the same
+    // outcome-focused explanation a visitor sees on the page.
+    description: typeCopy?.intro,
     brand: { "@type": "Brand", name: SITE_NAME },
     offers: PLANS.map((plan) => ({
       "@type": "Offer",
@@ -99,7 +217,7 @@ export default async function PricingPage({
       url: `${SITE_URL}/pricing${selectedType ? `?type=${encodeURIComponent(selectedType.id)}` : ""}`,
       price: currentMonthlyRate(plan),
       priceCurrency: "INR",
-      description: `Up to ${plan.maxUsers} users, ${plan.maxLocations} location${plan.maxLocations === 1 ? "" : "s"}, billed ${plan.billingCycle}.`,
+      description: `Up to ${plan.maxUsers} users, ${plan.maxLocations} location${plan.maxLocations === 1 ? "" : "s"}, ${plan.includedModuleSlugs.length} module${plan.includedModuleSlugs.length === 1 ? "" : "s"} included, billed ${plan.billingCycle}.`,
     })),
   };
 
@@ -141,43 +259,17 @@ export default async function PricingPage({
         )}
       </div>
 
-      {selectedType?.id === "service-centre" && (
+      {selectedType && typeCopy && whatYouGetModules.length > 0 && (
         <section className="border-t border-border bg-bg-raised px-6 py-16">
           <div className="mx-auto max-w-5xl">
             <p className="text-center text-xs font-semibold uppercase tracking-widest text-accent">What you get</p>
-            <h2 className="mt-2 text-center font-display text-2xl font-bold text-text">
-              Everything a repair shop actually needs, in one screen
-            </h2>
-            <p className="mbf-prose mx-auto mt-2 text-center text-base text-text-muted">
-              Service Centre isn't a generic ticketing tool bent into shape — this is what it actually does, ready
-              the moment you sign up below.
-            </p>
+            <h2 className="mt-2 text-center font-display text-2xl font-bold text-text">{typeCopy.heading}</h2>
+            <p className="mbf-prose mx-auto mt-2 text-center text-base text-text-muted">{typeCopy.intro}</p>
             <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              {[
-                {
-                  title: "Full workorder lifecycle",
-                  description:
-                    "Created → In Progress → Completed → Closed, with fault/symptom/solution details and brand/model on every job.",
-                },
-                {
-                  title: "Public repair tracking",
-                  description:
-                    "Every workorder gets a shareable tracking link — customers check status without an account or a phone call.",
-                },
-                {
-                  title: "Inventory-linked billing",
-                  description:
-                    "Close a workorder and it can generate a GST-compliant invoice from the parts and labour used, deducting stock from Inventory automatically.",
-                },
-                {
-                  title: "No-code, same as every module",
-                  description:
-                    "Fields, statuses, and catalogs are config-driven — a Super Admin can tailor Service Centre without custom development.",
-                },
-              ].map((f) => (
-                <div key={f.title} className="mbf-glass-card p-5">
-                  <h3 className="font-display text-base font-bold text-text">{f.title}</h3>
-                  <p className="mt-1.5 text-sm leading-relaxed text-text-muted">{f.description}</p>
+              {whatYouGetModules.map((m) => (
+                <div key={m.slug} className="mbf-glass-card p-5">
+                  <h3 className="font-display text-base font-bold text-text">{m.label}</h3>
+                  <p className="mt-1.5 text-sm leading-relaxed text-text-muted">{m.description}</p>
                 </div>
               ))}
             </div>
@@ -254,7 +346,7 @@ export default async function PricingPage({
 
             <div className="mt-5 flex-1">
               <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted">
-                Modules included
+                Modules included ({plan.includedModuleSlugs.length})
               </div>
               <ul className="space-y-1.5">
                 {plan.includedModuleSlugs.map((slug) => (
