@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -55,6 +56,26 @@ const STAFF_ROLE_ALLOWED_PREFIX: Record<string, string> = {
  * several modules (service-centre, billing, pos, amc-field-service, …).
  */
 const PRINT_ROUTE_SUFFIXES = ["/document", "/estimate", "/invoice", "/service-record", "/receipt"];
+
+/**
+ * Overrides the root layout's long marketing tagline
+ * ("My Biz Flow — No-Code Business Management Platform for Every
+ * Business") for every logged-in app screen under /partner/[partnerId]/*
+ * — that tagline is meant for the public marketing/SEO pages, not a
+ * partner's own workorder/billing/etc. tab title. Falls back to the bare
+ * app name when the partner record isn't available (matches how the
+ * Sidebar above already treats a missing partner as "no branding this
+ * render" rather than failing the page).
+ */
+export async function generateMetadata({ params }: { params: { partnerId: string } }): Promise<Metadata> {
+  const partner = await getPartner(params.partnerId).catch(() => undefined);
+  return {
+    title: {
+      default: partner?.businessName ? `${partner.businessName} | My Biz Flow` : "My Biz Flow",
+      template: "%s | My Biz Flow",
+    },
+  };
+}
 
 function isPrintRoute(pathname: string | null): boolean {
   if (!pathname) return false;
