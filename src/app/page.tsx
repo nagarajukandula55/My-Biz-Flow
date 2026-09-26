@@ -6,7 +6,7 @@ import { PublicHelpBubble } from "@/components/PublicHelpBubble";
 import { registerPage } from "@/lib/designer/registry";
 import { listActivePartnerTypes } from "@/lib/designer/partnerTypesData";
 import { SITE_URL, SITE_NAME } from "@/lib/seo";
-import { MODULES, type ModuleDefinition } from "@/lib/designer/modules";
+import { MODULES } from "@/lib/designer/modules";
 import { getIconComponent } from "@/lib/designer/icons";
 
 // Public marketing homepage — reads Super-Admin-configured partner type
@@ -116,8 +116,35 @@ const MODULE_ICON_NAMES: Record<string, string> = {
 // Modules with their own dedicated /solutions/<slug> marketing page.
 const MODULE_SOLUTIONS_SLUGS = new Set(["service-centre", "telecalling", "field-force", "pos"]);
 
-// The "Core four" per src/lib/designer/modules.ts's own grouping comment.
-const CORE_MODULE_SLUGS = ["pos", "service-centre", "billing", "brand"];
+// Modules that are genuinely, fully complete per the site's listing bar:
+// (a) their own dedicated Prisma tables (not the generic BusinessRecord),
+// AND (b) verified against prisma/schema.prisma directly (2026-09-26 audit)
+// to actually have those tables. This is a static allowlist, cross-checked
+// against the LIVE `listActivePartnerTypes()` result below -- a slug only
+// ever renders a card when it is in BOTH this set AND that live query, so a
+// written-but-unrun seed script (e.g. a future clinic/amc-field-service/
+// restaurant-pos/salon-spa/brand PartnerType seed) can never surface a card
+// before its PartnerType row actually exists in the database. Billing,
+// Accounting, HRMS, Inventory, and Marketplace all have dedicated tables
+// too, but are bundled add-on modules, not their own signup-able business
+// type (no standalone PartnerType) -- "1 module = 1 business" excludes them
+// from this list on that basis, not a data-model one.
+const DEDICATED_TABLE_MODULE_SLUGS = new Set([
+  "pos",
+  "service-centre",
+  "telecalling",
+  "field-force",
+  "manufacturing",
+  "wholesale-b2b",
+  "event-booking",
+  "legal",
+  "education",
+  "clinic",
+  "amc-field-service",
+  "restaurant-pos",
+  "salon-spa",
+  "brand",
+]);
 
 registerPage({
   id: "platform.home",
@@ -128,7 +155,7 @@ registerPage({
   superAdminOnly: false,
   customizableRegions: [],
   explanation:
-    "Public marketing home page (no AppShell). Hero, a 'choose your business type' section pulling live Active Partner Types from the PartnerType Prisma table (each card links to /signup?type=<id>, so the home page can never drift from what Super Admin has actually configured), and a screenshots section with real screenshots of the running app (public/screenshots/*.png), captured from the standing DEMO0001 demo partner account (see scripts/create-demo-partner.ts / src/lib/demoPartnerSeed.ts) so they're always real product, never mockups. CTAs to /signup and /pricing.",
+    "Public marketing home page (no AppShell). Hero, then a single merged 'every business, one platform' section driven by the live Active PartnerType rows (listActivePartnerTypes()) intersected with a static allowlist of modules that actually have dedicated Prisma tables (DEDICATED_TABLE_MODULE_SLUGS) — a module only ever gets a card once it is genuinely complete: its own tables AND a real, live, Active PartnerType. No 'coming soon'/informational-only cards. Each card links to /signup?type=<id> or its /solutions/<slug> page, so the home page can never drift from what Super Admin has actually configured or advertise a signup that isn't live yet. Also a screenshots section with real screenshots of the running app (public/screenshots/*.png), captured from the standing DEMO0001 demo partner account (see scripts/create-demo-partner.ts / src/lib/demoPartnerSeed.ts) so they're always real product, never mockups. CTAs to /signup and /pricing.",
   sourceFile: "src/app/page.tsx",
 });
 
@@ -150,47 +177,55 @@ export default async function RootPage({
   searchParams: { type?: string };
 }) {
   const partnerTypes = await listActivePartnerTypes();
-  const partnerTypeIds = new Set(partnerTypes.map((t) => t.id));
 
-  // Where a module's card links: its own /solutions page if one exists,
-  // else /signup?type=<slug> if it's a real registerable PartnerType, else
-  // no link at all -- a cross-cutting add-on (HRMS, Accounting, Marketplace,
-  // Inventory, etc.) isn't something a business signs up for on its own,
-  // it's picked as part of an account during signup, so its card is
-  // informational only rather than pointing at a form that doesn't apply.
-  function moduleHref(slug: string): string | null {
-    if (MODULE_SOLUTIONS_SLUGS.has(slug)) return `/solutions/${slug}`;
-    if (partnerTypeIds.has(slug)) return `/signup?type=${encodeURIComponent(slug)}`;
-    return null;
+  // The single live-driven list behind both the (now merged) module
+  // showcase and the business-type picker: only a PartnerType that is (a)
+  // Active in the real database right now, AND (b) backed by dedicated
+  // Prisma tables per DEDICATED_TABLE_MODULE_SLUGS above, is genuinely,
+  // fully complete enough to list -- per this site's "1 module = 1
+  // business" rule, nothing is ever shown as greyed-out/"coming soon".
+  const qualifyingPartnerTypes = partnerTypes.filter((t) => DEDICATED_TABLE_MODULE_SLUGS.has(t.id));
+
+  function moduleHref(slug: string): string {
+    return MODULE_SOLUTIONS_SLUGS.has(slug) ? `/solutions/${slug}` : `/signup?type=${encodeURIComponent(slug)}`;
   }
 
-  const coreModules = CORE_MODULE_SLUGS.map((slug) => MODULES.find((m) => m.slug === slug)).filter(
-    (m): m is ModuleDefinition => Boolean(m)
-  );
-  const verticalModules = MODULES.filter((m) => m.taxonomy === "vertical" && !CORE_MODULE_SLUGS.includes(m.slug));
-  const crossCuttingModules = MODULES.filter((m) => m.taxonomy === "cross-cutting");
-
-  function ModuleCard({ mod, featured }: { mod: ModuleDefinition; featured?: boolean }) {
-    const Icon = getIconComponent(MODULE_ICON_NAMES[mod.slug]);
-    const href = moduleHref(mod.slug);
-    const card = (
-      <div className={`mbf-glass-card flex h-full flex-col gap-3 p-5 ${featured ? "ring-1 ring-accent/50" : ""}`}>
+  function BusinessCard({ typeId, description }: { typeId: string; description: string }) {
+    const mod = MODULES.find((m) => m.slug === typeId);
+    const Icon = getIconComponent(MODULE_ICON_NAMES[typeId]);
+    const label = mod?.label ?? typeId;
+    const href = moduleHref(typeId);
+    return (
+      <div className="mbf-glass-card flex h-full flex-col gap-3 p-5">
         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent-soft text-accent">
           {Icon ? <Icon className="h-5 w-5" /> : null}
         </div>
         <div className="flex-1">
-          <h3 className="font-display text-base font-bold text-text">{mod.label}</h3>
-          <p className="mt-1 text-sm leading-relaxed text-text-muted">{mod.description}</p>
+          <h3 className="font-display text-base font-bold text-text">{label}</h3>
+          <p className="mt-1 text-sm leading-relaxed text-text-muted">{description || mod?.description || "—"}</p>
         </div>
-        {href && <span className="text-xs font-semibold text-accent">Learn more →</span>}
+        <div className="mt-1 flex items-center gap-3">
+          {typeId === "field-force" ? (
+            // Field Force isn't a business you register a paid account for
+            // -- it's a free marketplace individuals join directly (see
+            // /solutions/field-force), so it skips the signup form.
+            <Link href="/solutions/field-force" className="btn-accent mbf-cta-glow flex-1 text-center">
+              Join or request a service — free
+            </Link>
+          ) : (
+            <>
+              <Link href={href} className="btn-accent mbf-cta-glow flex-1 text-center">
+                Sign up as {label}
+              </Link>
+              {MODULE_SOLUTIONS_SLUGS.has(typeId) && typeId !== "field-force" && (
+                <Link href={`/solutions/${typeId}`} className="btn-outline shrink-0">
+                  Learn more
+                </Link>
+              )}
+            </>
+          )}
+        </div>
       </div>
-    );
-    return href ? (
-      <Link href={href} className="block h-full">
-        {card}
-      </Link>
-    ) : (
-      card
     );
   }
 
@@ -370,80 +405,24 @@ export default async function RootPage({
 
       <section className="border-t border-border px-6 py-16">
         <div className="mx-auto max-w-5xl">
-          <p className="text-center text-xs font-semibold uppercase tracking-widest text-accent">All modules</p>
+          <p className="text-center text-xs font-semibold uppercase tracking-widest text-accent">
+            Every business, one platform
+          </p>
           <h2 className="mt-2 text-center font-display text-2xl font-bold text-text">
-            Everything your business needs, on one account
+            Pick the business you run — everything else is ready
           </h2>
           <p className="mbf-prose mx-auto mt-2 text-center text-base text-text-muted">
-            Turn on what you run today, add more the day you need it — no separate logins, no re-entering the same
-            customer or product twice.
+            Each one is its own complete, standalone system on My Biz Flow — sign up and it's ready to run your
+            business the same day, not a lesser add-on bundled onto something else.
           </p>
-
-          <h3 className="mt-10 font-display text-sm font-bold uppercase tracking-wide text-text-muted">Core</h3>
-          <div className="mt-4 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {coreModules.map((m) => (
-              <ModuleCard key={m.slug} mod={m} featured={m.slug === "pos"} />
-            ))}
-          </div>
-
-          <h3 className="mt-12 font-display text-sm font-bold uppercase tracking-wide text-text-muted">Verticals</h3>
-          <div className="mt-4 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {verticalModules.map((m) => (
-              <ModuleCard key={m.slug} mod={m} />
-            ))}
-          </div>
-
-          <h3 className="mt-12 font-display text-sm font-bold uppercase tracking-wide text-text-muted">
-            Cross-cutting add-ons
-          </h3>
-          <div className="mt-4 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {crossCuttingModules.map((m) => (
-              <ModuleCard key={m.slug} mod={m} />
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="border-t border-border px-6 py-16">
-        <div className="mx-auto max-w-5xl">
-          <h2 className="text-center font-display text-2xl font-bold text-text">Choose your business type</h2>
-          <p className="mbf-prose mx-auto mt-2 text-center text-base text-text-muted">
-            Pick the type that matches how you run your business — everything else (modules, pricing tiers)
-            is configured for you.
-          </p>
-          {partnerTypes.length === 0 ? (
+          {qualifyingPartnerTypes.length === 0 ? (
             <p className="mx-auto mt-10 max-w-md rounded-lg border border-dashed border-border bg-bg-raised p-6 text-center text-sm text-text-muted">
               No business types are available for signup yet — check back soon.
             </p>
           ) : (
-            <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-3">
-              {partnerTypes.map((t) => (
-                <div key={t.id} className="mbf-glass-card flex flex-col p-5">
-                  <h3 className="font-display text-base font-bold text-text">{t.id}</h3>
-                  <p className="mt-1 flex-1 text-sm text-text-muted">{t.description || "—"}</p>
-                  <div className="mt-4 flex items-center gap-3">
-                    {t.id === "field-force" ? (
-                      // Field Force isn't a business you register for a paid
-                      // account — it's a free marketplace individuals join
-                      // directly (see /solutions/field-force), so it skips
-                      // the generic business-registration signup form.
-                      <Link href="/solutions/field-force" className="btn-accent mbf-cta-glow flex-1 text-center">
-                        Join or request a service — free
-                      </Link>
-                    ) : (
-                      <>
-                        <Link href={`/signup?type=${encodeURIComponent(t.id)}`} className="btn-accent mbf-cta-glow flex-1 text-center">
-                          Sign up as {t.id}
-                        </Link>
-                        {(t.id === "service-centre" || t.id === "telecalling") && (
-                          <Link href={`/solutions/${t.id}`} className="btn-outline shrink-0">
-                            Learn more
-                          </Link>
-                        )}
-                      </>
-                    )}
-                  </div>
-                </div>
+            <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {qualifyingPartnerTypes.map((t) => (
+                <BusinessCard key={t.id} typeId={t.id} description={t.description} />
               ))}
             </div>
           )}
