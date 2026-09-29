@@ -13,6 +13,7 @@ import {
   type ReportFilter,
 } from "@/lib/reportBuilder";
 import { saveReportDefinitionAction } from "@/lib/reportBuilderActions";
+import { RecordCsvExportButton } from "@/components/RecordCsvExportButton";
 
 registerPage({
   id: "service-centre.reports",
@@ -234,9 +235,18 @@ export default async function ReportBuilderPage({
                     </>
                   ) : null}
                 </div>
-                <button type="submit" className="btn-outline">
-                  {searchParams.recordKey ? "Update saved report" : "Save this report"}
-                </button>
+                <div className="flex items-center gap-3">
+                  {result && result.rows.length > 0 && (
+                    <RecordCsvExportButton
+                      columns={outputColumns.map((c) => ({ key: c.key, type: c.type === "date" ? "date" : c.type === "datetime" ? "datetime" : undefined }))}
+                      rows={result.rows}
+                      filename={`report-${definition.source}-${params.partnerId}-${new Date().toISOString().slice(0, 10)}.csv`}
+                    />
+                  )}
+                  <button type="submit" className="btn-outline">
+                    {searchParams.recordKey ? "Update saved report" : "Save this report"}
+                  </button>
+                </div>
               </div>
             </form>
             <DataTable columns={outputColumns} rows={result?.rows ?? []} />

@@ -3,6 +3,7 @@ import { registerPage } from "@/lib/designer/registry";
 import { StockTakeClientTable } from "./StockTakeClientTable";
 import { StockTakeNewButton } from "./StockTakeNewButton";
 import { BulkUploadButton } from "@/components/BulkUploadButton";
+import { RecordCsvExportButton } from "@/components/RecordCsvExportButton";
 import { bulkImportStockTakeAction } from "./actions";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { stockTakeColumns, getStockTakeFormFields, getStockTakeCsvFields, getStockTakeMaterialOptions } from "@/lib/sample-data/warehouse";
@@ -47,6 +48,11 @@ export default async function StockTakePage({ params }: { params: { partnerId: s
             importAction={bulkImportStockTakeAction.bind(null, params.partnerId)}
           />
           <StockTakeNewButton partnerId={params.partnerId} fields={formFields} materialOptions={materialOptions} />
+          <RecordCsvExportButton
+            columns={columns.map((c) => ({ key: c.key, type: c.type === "date" ? "date" : c.type === "datetime" ? "datetime" : undefined }))}
+            rows={rows}
+            filename={`stock-takes-${params.partnerId}-${new Date().toISOString().slice(0, 10)}.csv`}
+          />
         </div>
       }
     >

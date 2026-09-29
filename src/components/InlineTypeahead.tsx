@@ -23,6 +23,8 @@ export function InlineTypeahead({
   placeholder,
   disabled,
   className,
+  restrictToOptions,
+  invalidMessage = "No match found — pick one from the list.",
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -31,6 +33,15 @@ export function InlineTypeahead({
   placeholder?: string;
   disabled?: boolean;
   className?: string;
+  /** When true, the committed value must match an existing option's label
+   * exactly (case-insensitive) — free text that doesn't match anything is
+   * rejected on blur (reverted to empty) instead of being accepted as a new
+   * value. Off by default so existing free-text consumers (Stock Take,
+   * Return Orders' notes, etc.) are unaffected. */
+  restrictToOptions?: boolean;
+  /** Shown under the input, restrictToOptions only, while the typed text
+   * doesn't match any option. */
+  invalidMessage?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [highlighted, setHighlighted] = useState(0);
@@ -53,6 +64,11 @@ export function InlineTypeahead({
     setOpen(false);
   }
 
+  const matchesOption =
+    !restrictToOptions ||
+    !value.trim() ||
+    options.some((o) => o.label.toLowerCase() === value.trim().toLowerCase());
+
   return (
     <div ref={wrapRef} className="relative">
       <input
@@ -69,6 +85,9 @@ export function InlineTypeahead({
         onBlur={() => {
           // Let a click on a suggestion register before the list closes.
           window.setTimeout(() => setOpen(false), 120);
+          if (restrictToOptions && value.trim() && !matchesOption) {
+            onChange("");
+          }
           onBlur?.();
         }}
         onKeyDown={(e) => {
@@ -88,6 +107,9 @@ export function InlineTypeahead({
         }}
         className={className}
       />
+      {restrictToOptions && value.trim() && !matchesOption && (
+        <p className="mt-1 text-[11px] text-danger">{invalidMessage}</p>
+      )}
       {open && !disabled && visible.length > 0 && (
         <ul className="absolute left-0 top-full z-20 mt-1 max-h-56 w-full min-w-[14rem] overflow-y-auto rounded-md border border-border bg-bg-raised shadow-lg">
           {visible.map((o, i) => (

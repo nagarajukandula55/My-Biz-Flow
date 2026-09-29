@@ -3,6 +3,7 @@ import { registerPage } from "@/lib/designer/registry";
 import { renderTierGate } from "@/lib/pageTierGate";
 import { formatCurrencyINR } from "@/lib/format";
 import { getTrialBalance } from "@/lib/accounting";
+import { RecordCsvExportButton } from "@/components/RecordCsvExportButton";
 
 registerPage({
   id: "accounting.reports.trial-balance",
@@ -43,8 +44,23 @@ export default async function TrialBalancePage({
   return (
     <AppShell topbarTitle="Trial Balance">
       <div>
-        <h1 className="font-display text-xl font-bold text-text">Trial Balance</h1>
-        <p className="mt-1 text-xs text-text-muted">Every account's summed debit/credit from posted Journal Entries.</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="font-display text-xl font-bold text-text">Trial Balance</h1>
+            <p className="mt-1 text-xs text-text-muted">Every account's summed debit/credit from posted Journal Entries.</p>
+          </div>
+          <RecordCsvExportButton
+            columns={["accountCode", "accountName", "accountType", "totalDebit", "totalCredit"]}
+            rows={nonZeroRows.map((r) => ({
+              accountCode: r.accountCode,
+              accountName: r.accountName,
+              accountType: r.accountType,
+              totalDebit: r.totalDebit / 100,
+              totalCredit: r.totalCredit / 100,
+            }))}
+            filename={`trial-balance-${params.partnerId}-${new Date().toISOString().slice(0, 10)}.csv`}
+          />
+        </div>
 
         <form method="get" className="mt-4 flex flex-wrap items-end gap-3">
           <label className="block">

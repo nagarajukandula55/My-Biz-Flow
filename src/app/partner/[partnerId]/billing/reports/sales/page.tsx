@@ -1,6 +1,7 @@
 import { AppShell } from "@/components/AppShell";
 import { registerPage } from "@/lib/designer/registry";
 import { DataTable, type Column, type Row } from "@/components/DataTable";
+import { RecordCsvExportButton } from "@/components/RecordCsvExportButton";
 import { listBusinessRecords } from "@/lib/businessRecords";
 
 registerPage({
@@ -84,10 +85,17 @@ export default async function SalesRegisterPage({
             <a href={`/partner/${params.partnerId}/billing/reports/sales`} className="btn-outline">Clear</a>
           )}
         </form>
-        <p className="mt-4 text-sm text-text-muted">
-          {rows.length} invoice{rows.length === 1 ? "" : "s"} — Subtotal ₹{totals.subtotal.toLocaleString("en-IN")}, Tax ₹
-          {totals.taxAmount.toLocaleString("en-IN")}, Total ₹{totals.totalAmount.toLocaleString("en-IN")}
-        </p>
+        <div className="mt-4 flex items-center justify-between">
+          <p className="text-sm text-text-muted">
+            {rows.length} invoice{rows.length === 1 ? "" : "s"} — Subtotal ₹{totals.subtotal.toLocaleString("en-IN")}, Tax ₹
+            {totals.taxAmount.toLocaleString("en-IN")}, Total ₹{totals.totalAmount.toLocaleString("en-IN")}
+          </p>
+          <RecordCsvExportButton
+            columns={SALES_COLUMNS.map((c) => ({ key: c.key, type: c.type === "date" ? "date" : undefined }))}
+            rows={rows}
+            filename={`sales-register-${params.partnerId}-${new Date().toISOString().slice(0, 10)}.csv`}
+          />
+        </div>
         <div className="mt-4">
           <DataTable columns={SALES_COLUMNS} rows={rows} />
         </div>

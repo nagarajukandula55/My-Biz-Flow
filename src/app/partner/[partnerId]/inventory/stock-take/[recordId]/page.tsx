@@ -6,6 +6,7 @@ import { StatusChip } from "@/components/StatusChip";
 import { getBusinessRecord } from "@/lib/businessRecords";
 import type { StockTakeLineItem } from "@/lib/sample-data/warehouse";
 import { StockTakeReconcileGate } from "./StockTakeReconcileGate";
+import { StockTakeCancelButton } from "./StockTakeCancelButton";
 
 registerPage({
   id: "inventory.stock-take.detail",
@@ -75,7 +76,10 @@ export default async function StockTakeDetailPage({
           <div>
             <div className="text-xs uppercase tracking-wide text-text-muted">Status</div>
             <div className="mt-1">
-              <StatusChip label={status} variant={status === "Reconciled" ? "success" : "warning"} />
+              <StatusChip
+                label={status}
+                variant={status === "Reconciled" ? "success" : status === "Cancelled" ? "neutral" : "warning"}
+              />
             </div>
           </div>
           {record["note"] ? (
@@ -89,7 +93,10 @@ export default async function StockTakeDetailPage({
         <div className="mt-6 flex items-center justify-between">
           <h2 className="font-display text-sm font-bold text-text">Line items</h2>
           {status === "Pending" && (
-            <StockTakeReconcileGate partnerId={params.partnerId} recordId={params.recordId} recordLabel={recordLabel} />
+            <div className="flex items-center gap-2">
+              <StockTakeCancelButton partnerId={params.partnerId} recordId={params.recordId} />
+              <StockTakeReconcileGate partnerId={params.partnerId} recordId={params.recordId} recordLabel={recordLabel} />
+            </div>
           )}
         </div>
 

@@ -2,6 +2,7 @@ import { AppShell } from "@/components/AppShell";
 import { renderTierGate } from "@/lib/pageTierGate";
 import { registerPage } from "@/lib/designer/registry";
 import { DataTable, type Column, type Row } from "@/components/DataTable";
+import { RecordCsvExportButton } from "@/components/RecordCsvExportButton";
 import { listBusinessRecords } from "@/lib/businessRecords";
 import { expensesByCategory, sumExpenses } from "@/lib/sample-data/billing-expenses";
 import { formatCurrencyINR } from "@/lib/format";
@@ -146,7 +147,14 @@ export default async function ProfitLossReportPage({
           <span className="font-mono font-semibold text-text">{margin.toFixed(1)}%</span>
         </p>
 
-        <h2 className="mt-8 font-display text-base font-bold text-text">Expenses by category</h2>
+        <div className="mt-8 flex items-center justify-between">
+          <h2 className="font-display text-base font-bold text-text">Expenses by category</h2>
+          <RecordCsvExportButton
+            columns={CATEGORY_COLUMNS.map((c) => c.key)}
+            rows={categoryRows}
+            filename={`profit-loss-expenses-${params.partnerId}-${new Date().toISOString().slice(0, 10)}.csv`}
+          />
+        </div>
         <div className="mt-3">
           <DataTable columns={CATEGORY_COLUMNS} rows={categoryRows} />
         </div>

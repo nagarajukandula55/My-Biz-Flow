@@ -205,7 +205,7 @@ export const bomFormFields: FormFieldDef[] = [
     required: false,
     placeholder: "This material's own product barcode (one per material type) — NOT a per-unit serial/IMEI. Serial numbers are captured later, when stock actually moves (Part Orders, Stock Transfers, Stock Take).",
   },
-  { key: "hsnCode", label: "HSN Code", type: "select", required: true, options: HSN_CODES.map((h) => `${h.code} — ${h.description}`) },
+  { key: "hsnCode", label: "HSN Code", type: "select", required: true, options: HSN_CODES.map((h) => h.code) },
   { key: "type", label: "Type", type: "select", required: true, options: [...MATERIAL_TYPES] },
   { key: "uom", label: "UOM", type: "select", required: true, options: UOM_OPTIONS },
   { key: "rate", label: "Rate", type: "currency", required: true },

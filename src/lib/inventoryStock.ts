@@ -141,6 +141,57 @@ export async function adjustStockQty(
 }
 
 /**
+ * Adjusts ONLY `reservedQty` (positive to reserve, negative to release) for a
+ * material/warehouse/condition, recomputing `availableQty = qtyOnHand -
+ * reservedQty` in the same write — never touches `qtyOnHand` itself. Used to
+ * protect live stock while a Stock Take variance is pending its OTP-gated
+ * reconcile: reserving `abs(variance)` on create keeps that quantity out of
+ * `availableQty` (so it can't be sold/consumed elsewhere) until the count is
+ * either applied (setStockQty, reservation released) or the document is
+ * cancelled/discarded (reservation also released). Floors at 0 on both ends
+ * — a release larger than what's currently reserved (e.g. from a bug or a
+ * double-release) never drives reservedQty negative.
+ */
+export async function adjustReservedQty(
+  partnerId: string,
+  materialId: string,
+  materialLabel: string,
+  warehouseName: string,
+  delta: number,
+  condition: StockCondition = "Good"
+): Promise<number> {
+  if (delta === 0) return 0;
+  const now = new Date().toISOString();
+  const existing = await findStockRecord(partnerId, materialId, warehouseName, condition);
+  if (!existing) {
+    // No stock record yet to reserve against (e.g. a Stock Take found extra
+    // units of a material never stocked before) — still record the
+    // reservation so it's released correctly later, with 0 on-hand/available
+    // until the real receipt/adjustment happens.
+    const reservedQty = Math.max(0, delta);
+    await createBusinessRecord(partnerId, "inventory-stock", {
+      materialId: materialLabel || materialId,
+      warehouseName,
+      condition,
+      qtyOnHand: 0,
+      reservedQty,
+      availableQty: 0,
+      lastUpdated: now,
+    });
+    return reservedQty;
+  }
+  const qtyOnHand = Number(existing["qtyOnHand"] ?? 0);
+  const reservedQty = Math.max(0, Number(existing["reservedQty"] ?? 0) + delta);
+  await updateBusinessRecord(partnerId, "inventory-stock", String(existing["id"]), {
+    ...existing,
+    reservedQty,
+    availableQty: Math.max(0, qtyOnHand - reservedQty),
+    lastUpdated: now,
+  });
+  return reservedQty;
+}
+
+/**
  * Moves `qty` units of a material from the "Good" bucket to "Defective" in
  * one call — the shape every Good-stock deduction that represents a part
  * actually failing (not just being sold/used up) should use, so the failed

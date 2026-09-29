@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { InlineTypeahead } from "@/components/InlineTypeahead";
 
 export type MaterialLineItem = {
@@ -63,6 +63,8 @@ export function MaterialLineItemsTable({
   conditionOptions,
   showUnitPrice,
   stockTakeMode,
+  restrictMaterialToBom,
+  onLookupExpectedQty,
 }: {
   items: MaterialLineItem[];
   onChange: (items: MaterialLineItem[]) => void;
@@ -84,32 +86,74 @@ export function MaterialLineItemsTable({
   showUnitPrice?: boolean;
   /** Stock Take only — renders Expected Qty (editable) ahead of Quantity (relabelled "Counted Qty") plus a read-only Variance = Counted − Expected column. */
   stockTakeMode?: boolean;
+  /** Stock Adjustments only — material must be an existing BOM entry
+   * (materialOptions), no free-typed new part/material name. Stock Take and
+   * other consumers leave this unset and keep free text, since Stock Take
+   * is a physical count of whatever's found, not an adjustment against the
+   * BOM catalog. */
+  restrictMaterialToBom?: boolean;
+  /** Stock Take only — called (materialId, condition) whenever a row's
+   * material is picked/changed, or its Material Type is changed, so Expected
+   * Qty can be pre-filled from live inventory instead of defaulting to 0.
+   * Resolves to `undefined` when there's nothing to fill (e.g. no warehouse
+   * picked yet in the form header) — the row's Expected Qty is left
+   * untouched in that case, still a plain editable input either way. */
+  onLookupExpectedQty?: (materialId: string, condition?: string) => Promise<number | undefined>;
 }) {
   const [search, setSearch] = useState("");
+
+  // Lets the async lookup callbacks below always patch the CURRENT items
+  // array (this is a controlled component — `items` is a prop, so a promise
+  // that resolves after a later render must not clobber rows added/removed
+  // in the meantime using a stale closure over `items`).
+  const itemsRef = useRef(items);
+  useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
 
   function materialMeta(materialId: string): MaterialLineOption | undefined {
     return materialOptions.find((o) => o.label === materialId);
   }
 
+  function runExpectedQtyLookup(idx: number, materialId: string, condition: string | undefined) {
+    if (!stockTakeMode || !onLookupExpectedQty) return;
+    void onLookupExpectedQty(materialId, condition).then((qty) => {
+      if (qty === undefined) return;
+      const current = itemsRef.current;
+      if (idx < 0 || idx >= current.length) return;
+      onChange(current.map((it, i) => (i === idx ? { ...it, expectedQty: qty } : it)));
+    });
+  }
+
   function addRow(materialId: string) {
     if (!materialId.trim()) return;
-    onChange([
-      ...items,
-      {
-        materialId,
-        quantity: stockTakeMode ? 0 : 1,
-        serialNumbers: "",
-        returnType: returnTypeOptions?.[0],
-        condition: conditionOptions?.[0],
-        unitPrice: showUnitPrice ? 0 : undefined,
-        expectedQty: stockTakeMode ? 0 : undefined,
-      },
-    ]);
+    if (
+      restrictMaterialToBom &&
+      !materialOptions.some((o) => o.label.toLowerCase() === materialId.trim().toLowerCase())
+    ) {
+      return;
+    }
+    const newItem: MaterialLineItem = {
+      materialId,
+      quantity: stockTakeMode ? 0 : 1,
+      serialNumbers: "",
+      returnType: returnTypeOptions?.[0],
+      condition: conditionOptions?.[0],
+      unitPrice: showUnitPrice ? 0 : undefined,
+      expectedQty: stockTakeMode ? 0 : undefined,
+    };
+    const nextItems = [...items, newItem];
+    onChange(nextItems);
     setSearch("");
+    runExpectedQtyLookup(nextItems.length - 1, materialId, newItem.condition);
   }
 
   function updateRow(idx: number, patch: Partial<MaterialLineItem>) {
     onChange(items.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
+    if (stockTakeMode && ("materialId" in patch || "condition" in patch)) {
+      const merged = { ...items[idx], ...patch };
+      runExpectedQtyLookup(idx, merged.materialId, merged.condition);
+    }
   }
 
   function removeRow(idx: number) {
@@ -136,6 +180,8 @@ export function MaterialLineItemsTable({
             placeholder="Search material name or code…"
             options={materialOptions.map((o) => ({ value: o.value, label: o.label }))}
             className="w-full rounded-md border border-border bg-bg px-2.5 py-1.5 text-sm text-text outline-none focus:border-accent"
+            restrictToOptions={restrictMaterialToBom}
+            invalidMessage="Material not found — add it in BOM first."
           />
         </div>
         <button type="button" onClick={() => addRow(search)} className="btn-accent px-3 py-1.5 text-xs">
@@ -177,6 +223,8 @@ export function MaterialLineItemsTable({
                         placeholder="Material"
                         options={materialOptions.map((o) => ({ value: o.value, label: o.label }))}
                         className="w-full rounded-md border border-border bg-bg px-2.5 py-1.5 text-sm text-text outline-none focus:border-accent"
+                        restrictToOptions={restrictMaterialToBom}
+                        invalidMessage="Material not found — add it in BOM first."
                       />
                       {availabilityLabels?.[item.materialId.split(" — ")[0]?.trim()] && (
                         <p className="mt-1 text-[11px] text-text-muted">

@@ -1,6 +1,7 @@
 import { AppShell } from "@/components/AppShell";
 import { registerPage } from "@/lib/designer/registry";
 import { DataTable, type Column, type Row } from "@/components/DataTable";
+import { RecordCsvExportButton } from "@/components/RecordCsvExportButton";
 import { listBusinessRecords } from "@/lib/businessRecords";
 import type { LineItem } from "@/lib/sample-data/billing";
 
@@ -94,7 +95,14 @@ export default async function TaxSummaryPage({
             <a href={`/partner/${params.partnerId}/billing/reports/tax-summary`} className="btn-outline">Clear</a>
           )}
         </form>
-        <p className="mt-4 text-sm text-text-muted">GST rate-wise taxable value and tax collected across invoices in this date range.</p>
+        <div className="mt-4 flex items-center justify-between">
+          <p className="text-sm text-text-muted">GST rate-wise taxable value and tax collected across invoices in this date range.</p>
+          <RecordCsvExportButton
+            columns={TAX_COLUMNS.map((c) => c.key)}
+            rows={rows}
+            filename={`tax-summary-${params.partnerId}-${new Date().toISOString().slice(0, 10)}.csv`}
+          />
+        </div>
         <div className="mt-4">
           <DataTable columns={TAX_COLUMNS} rows={rows} />
         </div>

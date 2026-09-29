@@ -7,7 +7,7 @@ import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import { runBulkImport, type BulkImportResult } from "@/lib/bulkImportCsv";
 import { getStockTakeCsvFields, getWarehouseOptionsForPartner, type StockTakeLineItem } from "@/lib/sample-data/warehouse";
 import { getBomOptionsForPartner } from "@/lib/sample-data/bom";
-import { setStockQty, parseSerialNumbers, validateSerialNumbers, type StockCondition } from "@/lib/inventoryStock";
+import { setStockQty, getQtyOnHand, adjustReservedQty, parseSerialNumbers, validateSerialNumbers, type StockCondition } from "@/lib/inventoryStock";
 import { createStockLots, consumeFifo } from "@/lib/stockLots";
 import { recordInventoryTransaction } from "@/lib/inventoryLedger";
 import { requestInventoryOtp, verifyInventoryOtp } from "@/lib/inventoryOtp";
@@ -18,6 +18,29 @@ function stockCondition(condition: unknown): StockCondition {
 
 function bareMaterialCode(materialId: string): string {
   return materialId.split(" — ")[0].trim();
+}
+
+/**
+ * Live "expected qty" lookup for the New Stock Take modal — called from the
+ * client (MaterialLineItemsTable, in stockTakeMode) whenever a row's
+ * material/warehouse/type is picked or changed, so Expected Qty is
+ * pre-filled from the system's current qtyOnHand (not manually typed 0) —
+ * matching the modal's own copy ("Expected Qty is the system's current
+ * figure"). Deliberately reads qtyOnHand, not availableQty: a physical
+ * count's expected figure is the full quantity supposed to be on the shelf,
+ * not qty minus whatever's already reserved elsewhere. Still just a
+ * pre-fill — the returned value remains an editable input for an auditor to
+ * correct.
+ */
+export async function getExpectedQtyAction(
+  partnerId: string,
+  materialId: string,
+  warehouseName: string,
+  condition?: string
+): Promise<number> {
+  partnerId = await requireSessionPartnerId(partnerId);
+  if (!materialId.trim() || !warehouseName.trim()) return 0;
+  return getQtyOnHand(partnerId, materialId, warehouseName, stockCondition(condition));
 }
 
 type RawLine = {
@@ -100,6 +123,18 @@ export async function createStockTakeMultiAction(
     status: "Pending",
   });
 
+  // Protect the affected quantity from being sold/consumed elsewhere while
+  // this count sits Pending, awaiting its OTP-gated reconcile: reserve
+  // abs(variance) per line (a zero variance has nothing to protect — the
+  // physical count already matches the live figure). Released either by
+  // verifyAndReconcileStockTakeAction (applying the real adjustment) or by
+  // a future cancel/discard path — see that function's own comment.
+  for (const line of lineItems) {
+    if (line.variance !== 0) {
+      await adjustReservedQty(partnerId, line.materialId, line.materialId, warehouseName, Math.abs(line.variance), line.condition);
+    }
+  }
+
   revalidatePath(`/partner/${partnerId}/inventory/stock-take`);
   redirect(`/partner/${partnerId}/inventory/stock-take/${record.id}?created=1`);
 }
@@ -153,6 +188,13 @@ export async function verifyAndReconcileStockTakeAction(
 
     await setStockQty(partnerId, line.materialId, line.materialId, warehouseName, line.countedQty, line.condition);
 
+    // Release the reservation createStockTakeMultiAction placed on this
+    // line's variance now that the real adjustment (setStockQty above, plus
+    // the lot creation/consumption below) has actually been applied.
+    if (line.variance !== 0) {
+      await adjustReservedQty(partnerId, line.materialId, line.materialId, warehouseName, -Math.abs(line.variance), line.condition);
+    }
+
     if (warehouse) {
       if (line.variance > 0) {
         await createStockLots({
@@ -198,6 +240,43 @@ export async function verifyAndReconcileStockTakeAction(
 }
 
 /**
+ * Cancels a still-Pending Stock Take without applying it, releasing every
+ * reservation createStockTakeMultiAction/bulkImportStockTakeAction placed on
+ * its lines — otherwise an abandoned count with a nonzero variance would
+ * hold that stock reserved (unavailable to sell/consume) forever, since only
+ * verifyAndReconcileStockTakeAction (above) previously released it.
+ */
+export async function cancelStockTakeAction(
+  partnerId: string,
+  recordId: string
+): Promise<{ error?: string }> {
+  partnerId = await requireSessionPartnerId(partnerId);
+
+  const record = await getBusinessRecord(partnerId, "inventory-stock-take", recordId);
+  if (!record) return { error: "Stock Take not found." };
+  if (record["status"] !== "Pending") return { error: "Only a Pending Stock Take can be cancelled." };
+
+  const warehouseName = String(record["warehouseName"] ?? "").trim();
+  const lineItems = (record["lineItems"] as StockTakeLineItem[] | undefined) ?? [];
+
+  for (const line of lineItems) {
+    if (line.variance !== 0) {
+      await adjustReservedQty(partnerId, line.materialId, line.materialId, warehouseName, -Math.abs(line.variance), line.condition);
+    }
+  }
+
+  await updateBusinessRecord(partnerId, "inventory-stock-take", recordId, {
+    ...record,
+    status: "Cancelled",
+  });
+
+  revalidatePath(`/partner/${partnerId}/inventory/stock-take`);
+  revalidatePath(`/partner/${partnerId}/inventory/stock-take/${recordId}`);
+  revalidatePath(`/partner/${partnerId}/inventory/stock`);
+  return {};
+}
+
+/**
  * CSV bulk import — kept single-line-per-row for simplicity (same scope
  * decision the original file made). Every imported row becomes its own
  * one-line Stock Take document, always starting "Pending" — it no longer
@@ -237,6 +316,14 @@ export async function bulkImportStockTakeAction(partnerId: string, formData: For
           },
         ]
       : [];
+
+    // Same reservation createStockTakeMultiAction places on a manually
+    // entered count — a bulk-imported row starts Pending too and must not
+    // leave its variance unprotected until reconciled.
+    const bulkWarehouseName = String(values["warehouseName"] ?? "").trim();
+    if (materialId && bulkWarehouseName && countedQty - expectedQty !== 0) {
+      await adjustReservedQty(partnerId, materialId, materialId, bulkWarehouseName, Math.abs(countedQty - expectedQty), condition);
+    }
 
     return {
       warehouseName: values["warehouseName"],

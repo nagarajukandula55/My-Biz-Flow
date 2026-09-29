@@ -2357,7 +2357,7 @@ export function WorkorderLifecycle({
                 <option value="">Select…</option>
                 {HSN_CODES.map((h) => (
                   <option key={h.code} value={h.code}>
-                    {h.code} — {h.description}
+                    {h.code}
                   </option>
                 ))}
               </select>

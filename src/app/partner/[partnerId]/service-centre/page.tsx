@@ -4,6 +4,7 @@ import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
 import { ServiceCentreClientTable } from "./ServiceCentreClientTable";
 import { ServiceCentreNewButton } from "./ServiceCentreNewButton";
+import { RecordCsvExportButton } from "@/components/RecordCsvExportButton";
 import { buildServiceCentreCreateFields } from "@/lib/serviceCentreCreateFields";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import {
@@ -226,7 +227,14 @@ export default async function ServiceCentrePage({
     <AppShell
       topbarTitle={mod?.label ?? "Manage SC"}
       topbarActions={
-        <ServiceCentreNewButton partnerId={params.partnerId} fields={createFields} />
+        <div className="flex items-center gap-3">
+          <RecordCsvExportButton
+            columns={columns.map((c) => ({ key: c.key, type: c.type === "date" ? "date" : c.type === "datetime" ? "datetime" : undefined }))}
+            rows={cardRows}
+            filename={`workorders-${params.partnerId}-${new Date().toISOString().slice(0, 10)}.csv`}
+          />
+          <ServiceCentreNewButton partnerId={params.partnerId} fields={createFields} />
+        </div>
       }
     >
       <div>

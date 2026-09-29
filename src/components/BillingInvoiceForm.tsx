@@ -202,7 +202,9 @@ export function BillingInvoiceForm({
   );
   const [supplyTypeManual, setSupplyTypeManual] = useState(Boolean(initialValues?.supplyType));
   const [browseCustomersOpen, setBrowseCustomersOpen] = useState(false);
-  const [issueDate, setIssueDate] = useState(initialValues?.issueDate ?? "");
+  const [issueDate, setIssueDate] = useState(
+    initialValues?.issueDate ?? new Date().toISOString().slice(0, 10)
+  );
   const [dueDate, setDueDate] = useState(initialValues?.dueDate ?? "");
   const [discountAmount, setDiscountAmount] = useState(initialValues?.discountAmount ?? 0);
   const [notes, setNotes] = useState(initialValues?.notes ?? "");

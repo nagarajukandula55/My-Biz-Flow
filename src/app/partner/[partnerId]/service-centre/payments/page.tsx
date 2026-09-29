@@ -3,6 +3,7 @@ import { DataTable } from "@/components/DataTable";
 import { registerPage } from "@/lib/designer/registry";
 import { listBusinessRecords } from "@/lib/businessRecords";
 import { billingPaymentColumns } from "@/lib/sample-data/billing-payments";
+import { RecordCsvExportButton } from "@/components/RecordCsvExportButton";
 import { prisma } from "@/lib/prisma";
 import { formatCurrencyINR, formatDate } from "@/lib/format";
 
@@ -42,7 +43,20 @@ export default async function PaymentsSettlementsPage({ params }: { params: { pa
         <div>
           <div className="flex items-baseline justify-between">
             <h2 className="font-display text-base font-bold text-text">Your subscription payments to My Biz Flow</h2>
-            <span className="text-sm font-semibold text-text">{formatCurrencyINR(subscriptionTotal / 100)}</span>
+            <div className="flex items-center gap-3">
+              {subscriptionPayments.length > 0 && (
+                <RecordCsvExportButton
+                  columns={["date", "amount", "razorpayPaymentId"]}
+                  rows={subscriptionPayments.map((p) => ({
+                    date: p.capturedAt.toISOString(),
+                    amount: p.amount / 100,
+                    razorpayPaymentId: p.razorpayPaymentId,
+                  }))}
+                  filename={`subscription-payments-${params.partnerId}-${new Date().toISOString().slice(0, 10)}.csv`}
+                />
+              )}
+              <span className="text-sm font-semibold text-text">{formatCurrencyINR(subscriptionTotal / 100)}</span>
+            </div>
           </div>
           {subscriptionPayments.length === 0 ? (
             <p className="mt-2 text-sm text-text-muted">No subscription payments captured yet.</p>
@@ -73,7 +87,16 @@ export default async function PaymentsSettlementsPage({ params }: { params: { pa
         <div>
           <div className="flex items-baseline justify-between">
             <h2 className="font-display text-base font-bold text-text">Payments collected from your customers</h2>
-            <span className="text-sm font-semibold text-text">{formatCurrencyINR(customerTotal)}</span>
+            <div className="flex items-center gap-3">
+              {customerPayments.length > 0 && (
+                <RecordCsvExportButton
+                  columns={billingPaymentColumns.map((c) => ({ key: c.key, type: c.type === "date" ? "date" : c.type === "datetime" ? "datetime" : undefined }))}
+                  rows={customerPayments}
+                  filename={`customer-payments-${params.partnerId}-${new Date().toISOString().slice(0, 10)}.csv`}
+                />
+              )}
+              <span className="text-sm font-semibold text-text">{formatCurrencyINR(customerTotal)}</span>
+            </div>
           </div>
           {customerPayments.length === 0 ? (
             <p className="mt-2 text-sm text-text-muted">No customer payments recorded yet.</p>

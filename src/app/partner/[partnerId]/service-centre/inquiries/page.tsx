@@ -2,6 +2,7 @@ import { AppShell } from "@/components/AppShell";
 import { registerPage } from "@/lib/designer/registry";
 import { InquiryClientTable } from "./InquiryClientTable";
 import { InquiryNewButton } from "./InquiryNewButton";
+import { RecordCsvExportButton } from "@/components/RecordCsvExportButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { inquiryColumns } from "@/lib/sample-data/service-centre-inquiry";
 import { listBusinessRecords } from "@/lib/businessRecords";
@@ -29,7 +30,19 @@ export default async function InquiryListPage({ params }: { params: { partnerId:
   const rows = await listBusinessRecords(params.partnerId, "service-centre-inquiry");
 
   return (
-    <AppShell topbarTitle="Inquiries" topbarActions={<InquiryNewButton partnerId={params.partnerId} />}>
+    <AppShell
+      topbarTitle="Inquiries"
+      topbarActions={
+        <div className="flex items-center gap-3">
+          <RecordCsvExportButton
+            columns={columns.map((c) => ({ key: c.key, type: c.type === "date" ? "date" : c.type === "datetime" ? "datetime" : undefined }))}
+            rows={rows}
+            filename={`inquiries-${params.partnerId}-${new Date().toISOString().slice(0, 10)}.csv`}
+          />
+          <InquiryNewButton partnerId={params.partnerId} />
+        </div>
+      }
+    >
       <div>
         <div className="mt-2">
           <InquiryClientTable partnerId={params.partnerId} columns={columns} rows={rows} />

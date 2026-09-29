@@ -3,6 +3,7 @@ import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
 import { BillingClientTable } from "./BillingClientTable";
+import { RecordCsvExportButton } from "@/components/RecordCsvExportButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { billingColumns } from "@/lib/sample-data/billing";
 import { listBusinessRecords, listBusinessRecordsPaginated } from "@/lib/businessRecords";
@@ -136,9 +137,16 @@ export default async function BillingPage({
     <AppShell
       topbarTitle={mod?.label ?? "Billing"}
       topbarActions={
-        <Link href={`/partner/${params.partnerId}/billing/new`} className="btn-accent">
-          + New Invoice
-        </Link>
+        <div className="flex items-center gap-3">
+          <RecordCsvExportButton
+            columns={billingColumns.map((c) => ({ key: c.key, type: c.type === "date" ? "date" : c.type === "datetime" ? "datetime" : undefined }))}
+            rows={filteredRows}
+            filename={`invoices-${params.partnerId}-${new Date().toISOString().slice(0, 10)}.csv`}
+          />
+          <Link href={`/partner/${params.partnerId}/billing/new`} className="btn-accent">
+            + New Invoice
+          </Link>
+        </div>
       }
     >
       <div>

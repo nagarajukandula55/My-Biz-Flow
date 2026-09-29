@@ -168,6 +168,15 @@ type RecordFormProps = {
     watchKey: string;
     run: (value: string) => Promise<(Record<string, unknown> & { source?: string }) | null>;
   };
+  /**
+   * Optional mirror hook: fires with the full values object on every field
+   * change, so a parent that renders something OUTSIDE this form (e.g. a
+   * line-items table above it that needs the header's current Warehouse to
+   * do a live per-row lookup) can read the form's live state without
+   * controlling it. Purely a side-channel read — never changes what this
+   * form itself does with its state.
+   */
+  onValuesChange?: (values: Record<string, unknown>) => void;
 };
 
 /**
@@ -179,7 +188,7 @@ type RecordFormProps = {
  * submission falls back to the original client-side demo stub (logs the
  * values, shows "Saved (demo)") for anything not yet migrated.
  */
-export function RecordForm({ fields: allFields, initialValues, submitLabel, onSubmitDemo, action, lookup, mode, layout }: RecordFormProps) {
+export function RecordForm({ fields: allFields, initialValues, submitLabel, onSubmitDemo, action, lookup, mode, layout, onValuesChange }: RecordFormProps) {
   // A create render drops lifecycle/outcome fields; every other render (and
   // every field with no flag) is unchanged.
   const fields = mode === "create" ? allFields.filter((f) => !f.createHidden) : allFields;
@@ -249,6 +258,7 @@ export function RecordForm({ fields: allFields, initialValues, submitLabel, onSu
       for (const f of fields) {
         if (f.parentKey === key && next[f.key]) next[f.key] = "";
       }
+      onValuesChange?.(next);
       return next;
     });
     setSaved(false);

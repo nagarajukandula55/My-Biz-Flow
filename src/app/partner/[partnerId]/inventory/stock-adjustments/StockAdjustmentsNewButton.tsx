@@ -47,7 +47,14 @@ export function StockAdjustmentsNewButton({
             Add one row per material — a Serialized material asks for its serial/barcode numbers instead of a typed
             quantity (quantity is derived from how many you enter).
           </p>
-          <MaterialLineItemsTable items={items} onChange={setItems} materialOptions={materialOptions} showSerials showUnitPrice />
+          <MaterialLineItemsTable
+            items={items}
+            onChange={setItems}
+            materialOptions={materialOptions}
+            showSerials
+            showUnitPrice
+            restrictMaterialToBom
+          />
         </div>
         <RecordForm
           fields={headerFields}

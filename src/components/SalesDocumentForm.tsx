@@ -50,7 +50,9 @@ export function SalesDocumentForm({
   itemOptions?: ItemOption[];
 }) {
   const [contact, setContact] = useState(initialValues?.contact ?? "");
-  const [issueDate, setIssueDate] = useState(initialValues?.issueDate ?? "");
+  const [issueDate, setIssueDate] = useState(
+    initialValues?.issueDate ?? new Date().toISOString().slice(0, 10)
+  );
   const [validUntil, setValidUntil] = useState(initialValues?.validUntil ?? "");
   const [purpose, setPurpose] = useState(initialValues?.purpose ?? CHALLAN_PURPOSES[0]);
   const [vehicleNumber, setVehicleNumber] = useState(initialValues?.vehicleNumber ?? "");
