@@ -37,7 +37,10 @@ export default async function NewExpensePage({ params }: { params: { partnerId: 
           <RecordForm
             fields={fields}
             submitLabel="Record Expense"
-            action={(values: Record<string, unknown>) => createBusinessRecordAction(params.partnerId, "billing-expenses", values, "billing/expenses")}
+            action={async (values: Record<string, unknown>) => {
+              "use server";
+              return createBusinessRecordAction(params.partnerId, "billing-expenses", values, "billing/expenses");
+            }}
           />
         </div>
       </div>

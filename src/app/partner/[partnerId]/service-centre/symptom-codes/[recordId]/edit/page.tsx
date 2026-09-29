@@ -38,7 +38,10 @@ export default async function EditScSymptomCodePage({ params }: { params: { part
             fields={fields}
             initialValues={record}
             submitLabel="Save changes"
-            action={(values: Record<string, unknown>) => updateBusinessRecordAction(params.partnerId, "service-centre-symptom-codes", params.recordId, values, "service-centre/symptom-codes")}
+            action={async (values: Record<string, unknown>) => {
+              "use server";
+              return updateBusinessRecordAction(params.partnerId, "service-centre-symptom-codes", params.recordId, values, "service-centre/symptom-codes");
+            }}
           />
         </div>
       </div>

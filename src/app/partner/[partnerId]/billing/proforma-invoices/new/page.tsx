@@ -42,7 +42,10 @@ export default async function NewProformaInvoicePage({ params }: { params: { par
             docKind="proforma-invoice"
             docLabel="Proforma Invoice"
             submitLabel="Create Proforma Invoice"
-            action={(values: Record<string, unknown>) => createBusinessRecordAction(params.partnerId, "billing-proforma-invoices", values, "billing/proforma-invoices")}
+            action={async (values: Record<string, unknown>) => {
+              "use server";
+              return createBusinessRecordAction(params.partnerId, "billing-proforma-invoices", values, "billing/proforma-invoices");
+            }}
             contactOptions={contactOptions}
             itemOptions={itemOptions}
           />

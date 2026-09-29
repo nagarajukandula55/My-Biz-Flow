@@ -22,7 +22,7 @@ export type MaterialLineItem = {
   expectedQty?: number;
 };
 
-export type MaterialLineOption = { value: string; label: string; serialized: boolean };
+export type MaterialLineOption = { value: string; label: string; serialized: boolean; rate?: number };
 
 /**
  * Shared "add row / remove row / one row per material" line-items table for
@@ -133,13 +133,19 @@ export function MaterialLineItemsTable({
     ) {
       return;
     }
+    // Default a new line's Unit Price from the BOM catalog's own rate for
+    // the picked material, instead of always starting at ₹0 — matches how
+    // BomForm/WorkorderLifecycle already stamp a picked material's catalog
+    // price onto its line. Still a plain editable input afterward, so a
+    // different price for this specific document is one edit away.
+    const meta = materialMeta(materialId);
     const newItem: MaterialLineItem = {
       materialId,
       quantity: stockTakeMode ? 0 : 1,
       serialNumbers: "",
       returnType: returnTypeOptions?.[0],
       condition: conditionOptions?.[0],
-      unitPrice: showUnitPrice ? 0 : undefined,
+      unitPrice: showUnitPrice ? meta?.rate ?? 0 : undefined,
       expectedQty: stockTakeMode ? 0 : undefined,
     };
     const nextItems = [...items, newItem];
@@ -149,9 +155,17 @@ export function MaterialLineItemsTable({
   }
 
   function updateRow(idx: number, patch: Partial<MaterialLineItem>) {
-    onChange(items.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
+    // Re-picking a row's material (not every keystroke while searching —
+    // only once the typed text exactly matches a catalog entry) re-stamps
+    // Unit Price from that material's catalog rate too, same as addRow.
+    let finalPatch = patch;
+    if (showUnitPrice && typeof patch.materialId === "string") {
+      const meta = materialMeta(patch.materialId);
+      if (meta?.rate !== undefined) finalPatch = { ...patch, unitPrice: meta.rate };
+    }
+    onChange(items.map((it, i) => (i === idx ? { ...it, ...finalPatch } : it)));
     if (stockTakeMode && ("materialId" in patch || "condition" in patch)) {
-      const merged = { ...items[idx], ...patch };
+      const merged = { ...items[idx], ...finalPatch };
       runExpectedQtyLookup(idx, merged.materialId, merged.condition);
     }
   }

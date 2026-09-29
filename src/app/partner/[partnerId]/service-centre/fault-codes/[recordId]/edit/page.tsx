@@ -38,7 +38,10 @@ export default async function EditScFaultCodePage({ params }: { params: { partne
             fields={fields}
             initialValues={record}
             submitLabel="Save changes"
-            action={(values: Record<string, unknown>) => updateBusinessRecordAction(params.partnerId, "service-centre-fault-codes", params.recordId, values, "service-centre/fault-codes")}
+            action={async (values: Record<string, unknown>) => {
+              "use server";
+              return updateBusinessRecordAction(params.partnerId, "service-centre-fault-codes", params.recordId, values, "service-centre/fault-codes");
+            }}
           />
         </div>
       </div>

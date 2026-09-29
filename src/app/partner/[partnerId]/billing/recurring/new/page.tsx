@@ -40,7 +40,10 @@ export default async function NewRecurringInvoicePage({ params }: { params: { pa
         <div className="mt-6">
           <RecurringInvoiceForm
             submitLabel="Create Template"
-            action={(values: Record<string, unknown>) => createBusinessRecordAction(params.partnerId, "billing-recurring", values, "billing/recurring")}
+            action={async (values: Record<string, unknown>) => {
+              "use server";
+              return createBusinessRecordAction(params.partnerId, "billing-recurring", values, "billing/recurring");
+            }}
             contactOptions={contactOptions}
             itemOptions={itemOptions}
           />

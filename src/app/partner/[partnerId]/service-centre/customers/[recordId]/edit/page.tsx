@@ -38,7 +38,10 @@ export default async function EditScCustomerPage({ params }: { params: { partner
             fields={fields}
             initialValues={record}
             submitLabel="Save changes"
-            action={(values: Record<string, unknown>) => updateBusinessRecordAction(params.partnerId, "service-centre-customers", params.recordId, values, "service-centre/customers")}
+            action={async (values: Record<string, unknown>) => {
+              "use server";
+              return updateBusinessRecordAction(params.partnerId, "service-centre-customers", params.recordId, values, "service-centre/customers");
+            }}
           />
         </div>
       </div>

@@ -42,15 +42,16 @@ export default async function EditInquiryPage({ params }: { params: { partnerId:
             fields={fields}
             initialValues={record}
             submitLabel="Save changes"
-            action={(values: Record<string, unknown>) =>
-              updateBusinessRecordAction(
+            action={async (values: Record<string, unknown>) => {
+              "use server";
+              return updateBusinessRecordAction(
                 params.partnerId,
                 "service-centre-inquiry",
                 params.recordId,
                 values,
                 "service-centre/inquiries"
-              )
-            }
+              );
+            }}
           />
         </div>
       </div>

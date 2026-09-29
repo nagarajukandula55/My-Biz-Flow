@@ -40,7 +40,10 @@ export default async function NewScStaffNamePage({ params }: { params: { partner
           <RecordForm
             fields={fields}
             submitLabel="Add Name"
-            action={(values: Record<string, unknown>) => createBusinessRecordAction(params.partnerId, "service-centre-staff-names", values, "service-centre/staff-names")}
+            action={async (values: Record<string, unknown>) => {
+              "use server";
+              return createBusinessRecordAction(params.partnerId, "service-centre-staff-names", values, "service-centre/staff-names");
+            }}
           />
         </div>
       </div>

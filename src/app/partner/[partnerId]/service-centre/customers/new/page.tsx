@@ -37,7 +37,10 @@ export default async function NewScCustomerPage({ params }: { params: { partnerI
           <RecordForm
             fields={fields}
             submitLabel="Create Customer"
-            action={(values: Record<string, unknown>) => createBusinessRecordAction(params.partnerId, "service-centre-customers", values, "service-centre/customers")}
+            action={async (values: Record<string, unknown>) => {
+              "use server";
+              return createBusinessRecordAction(params.partnerId, "service-centre-customers", values, "service-centre/customers");
+            }}
           />
         </div>
       </div>

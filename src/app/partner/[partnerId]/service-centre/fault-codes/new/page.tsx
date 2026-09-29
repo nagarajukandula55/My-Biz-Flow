@@ -37,7 +37,10 @@ export default async function NewScFaultCodePage({ params }: { params: { partner
           <RecordForm
             fields={fields}
             submitLabel="Create Fault Code"
-            action={(values: Record<string, unknown>) => createBusinessRecordAction(params.partnerId, "service-centre-fault-codes", values, "service-centre/fault-codes")}
+            action={async (values: Record<string, unknown>) => {
+              "use server";
+              return createBusinessRecordAction(params.partnerId, "service-centre-fault-codes", values, "service-centre/fault-codes");
+            }}
           />
         </div>
       </div>

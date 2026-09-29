@@ -37,7 +37,10 @@ export default async function NewScSymptomCodePage({ params }: { params: { partn
           <RecordForm
             fields={fields}
             submitLabel="Create Symptom Code"
-            action={(values: Record<string, unknown>) => createBusinessRecordAction(params.partnerId, "service-centre-symptom-codes", values, "service-centre/symptom-codes")}
+            action={async (values: Record<string, unknown>) => {
+              "use server";
+              return createBusinessRecordAction(params.partnerId, "service-centre-symptom-codes", values, "service-centre/symptom-codes");
+            }}
           />
         </div>
       </div>

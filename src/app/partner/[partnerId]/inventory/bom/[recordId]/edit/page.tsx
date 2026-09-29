@@ -38,7 +38,10 @@ export default async function EditBomPage({ params }: { params: { partnerId: str
             fields={fields}
             initialValues={record}
             submitLabel="Save changes"
-            action={(values: Record<string, unknown>) => updateBusinessRecordAction(params.partnerId, "inventory-bom", params.recordId, values, "inventory/bom")}
+            action={async (values: Record<string, unknown>) => {
+              "use server";
+              return updateBusinessRecordAction(params.partnerId, "inventory-bom", params.recordId, values, "inventory/bom");
+            }}
           />
         </div>
       </div>

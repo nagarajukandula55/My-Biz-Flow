@@ -308,9 +308,22 @@ export function getBomOptions(): { value: string; label: string }[] {
  * (materialCode() in inventoryStock.ts splits on " — ", so this "CODE —
  * Description" shape is load-bearing, not cosmetic).
  */
-export async function getBomOptionsForPartner(partnerId: string): Promise<{ value: string; label: string; serialized: boolean }[]> {
+export async function getBomOptionsForPartner(
+  partnerId: string
+): Promise<{ value: string; label: string; serialized: boolean; rate?: number }[]> {
   const rows = await listBusinessRecords(partnerId, "inventory-bom");
   return rows
     .filter((r) => (r["status"] ?? "Active") === "Active")
-    .map((r) => ({ value: String(r["id"]), label: `${r["id"]} — ${r["description"]}`, serialized: Boolean(r["serialized"]) }));
+    .map((r) => ({
+      value: String(r["id"]),
+      label: `${r["id"]} — ${r["description"]}`,
+      serialized: Boolean(r["serialized"]),
+      // The BOM catalog's own selling/costing rate — carried through so a
+      // document line that picks a material (Stock Adjustment, Return
+      // Order, Stock Take, Stock Transfer, Part Order) can default its
+      // Unit Price from the catalog instead of always starting at ₹0 (see
+      // MaterialLineItemsTable's addRow/updateRow, which stamp this onto a
+      // newly-added or re-picked line).
+      rate: typeof r["rate"] === "number" ? r["rate"] : Number(r["rate"]) || undefined,
+    }));
 }

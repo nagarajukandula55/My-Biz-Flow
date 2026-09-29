@@ -33,7 +33,10 @@ export default async function NewWarehousesPage({ params }: { params: { partnerI
           <RecordForm
             fields={fields}
             submitLabel="Create Warehouse"
-            action={(values: Record<string, unknown>) => createBusinessRecordAction(params.partnerId, "inventory-warehouses", values, "inventory/warehouses")}
+            action={async (values: Record<string, unknown>) => {
+              "use server";
+              return createBusinessRecordAction(params.partnerId, "inventory-warehouses", values, "inventory/warehouses");
+            }}
           />
         </div>
       </div>
