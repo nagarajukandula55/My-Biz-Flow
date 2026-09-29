@@ -28,7 +28,15 @@ export default async function BomDetailPage({ params }: { params: { partnerId: s
   const materialOptions = await getBomOptionsForPartner(params.partnerId);
 
   const initialLines: MaterialLineItem[] = bom.lines.map((l) => ({
-    materialId: l.materialLabel,
+    // MaterialLineItemsTable's InlineTypeahead matches/stores the combined
+    // "CODE — Description" label (see materialOptions from
+    // getBomOptionsForPartner), not the bare materialLabel — passing just
+    // l.materialLabel here left existing rows unmatched on the edit screen
+    // and, worse, caused BomForm's submit (which derives materialId by
+    // splitting on " — ") to save the description text as the materialId,
+    // silently swapping a saved line's real material code for its label
+    // text and breaking stock lookups on production completion.
+    materialId: `${l.materialId} — ${l.materialLabel}`,
     quantity: l.quantity,
     unitPrice: l.unitCost / 100,
   }));

@@ -27,8 +27,14 @@ export function BomForm({
 }) {
   const [items, setItems] = useState<MaterialLineItem[]>(initialLines ?? []);
 
+  // `it.materialId` here is InlineTypeahead's stored value, which is the
+  // full "CODE — Description" combined label (see MaterialLineItemsTable),
+  // not the bare code — materialOptions[].value is the bare code, so the
+  // lookup below must split first or it never matches and silently falls
+  // back to saving the whole "CODE — Description" string as the label.
   function materialLabelFor(materialId: string): string {
-    return materialOptions.find((o) => o.value === materialId)?.label ?? materialId;
+    const code = materialId.split(" — ")[0]?.trim() || materialId;
+    return materialOptions.find((o) => o.value === code)?.label.split(" — ").slice(1).join(" — ") ?? materialId;
   }
 
   return (
