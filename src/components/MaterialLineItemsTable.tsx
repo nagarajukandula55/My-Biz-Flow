@@ -63,7 +63,7 @@ export function MaterialLineItemsTable({
   conditionOptions,
   showUnitPrice,
   stockTakeMode,
-  restrictMaterialToBom,
+  restrictMaterialToBom = true,
   onLookupExpectedQty,
 }: {
   items: MaterialLineItem[];
@@ -86,11 +86,10 @@ export function MaterialLineItemsTable({
   showUnitPrice?: boolean;
   /** Stock Take only — renders Expected Qty (editable) ahead of Quantity (relabelled "Counted Qty") plus a read-only Variance = Counted − Expected column. */
   stockTakeMode?: boolean;
-  /** Stock Adjustments only — material must be an existing BOM entry
-   * (materialOptions), no free-typed new part/material name. Stock Take and
-   * other consumers leave this unset and keep free text, since Stock Take
-   * is a physical count of whatever's found, not an adjustment against the
-   * BOM catalog. */
+  /** Defaults to true for every consumer — a material must be picked from the
+   * list (this partner's BOM catalog plus anything already in stock), never
+   * free-typed, so a typo can't create a phantom stock row that no BOM entry
+   * backs. Pass false only for a consumer that genuinely needs free text. */
   restrictMaterialToBom?: boolean;
   /** Stock Take only — called (materialId, condition) whenever a row's
    * material is picked/changed, or its Material Type is changed, so Expected

@@ -64,7 +64,7 @@ export function QueueClient({
       const result = await boundSendTemplate(formData);
       setMessageStatus((prev) => ({
         ...prev,
-        [leadId]: result.status === "sent" ? "Message sent." : "Message queued (provider keys not configured yet — logged only).",
+        [leadId]: result.status === "accepted" ? "Provider accepted the message. Delivery is not yet confirmed." : result.status === "not-configured" ? "Message not sent: provider configuration is missing." : "Message not sent: the provider rejected the request or could not be reached.",
       }));
     });
   }

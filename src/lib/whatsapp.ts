@@ -11,18 +11,19 @@
  */
 import { env } from "@/lib/env";
 
-export async function sendWhatsAppMessage(to: string, message: string): Promise<void> {
+export async function sendWhatsAppMessage(to: string, message: string): Promise<boolean> {
   const phoneNumberId = env.whatsappBusinessPhoneNumberId();
   const accessToken = env.whatsappAccessToken();
 
   if (!phoneNumberId || !accessToken) {
     console.log(`[whatsapp:not-configured] would send to ${to}: ${message}`);
-    return;
+    return false;
   }
 
   try {
-    await fetch(`https://graph.facebook.com/v20.0/${phoneNumberId}/messages`, {
+    const response = await fetch(`https://graph.facebook.com/v20.0/${phoneNumberId}/messages`, {
       method: "POST",
+      signal: AbortSignal.timeout(10000),
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
       body: JSON.stringify({
         messaging_product: "whatsapp",
@@ -31,10 +32,13 @@ export async function sendWhatsAppMessage(to: string, message: string): Promise<
         text: { body: message },
       }),
     });
+    const result = await response.json().catch(() => null);
+    return response.ok && typeof result?.messages?.[0]?.id === "string";
   } catch (err) {
     // Never let a failed WhatsApp send break the caller's transaction — this
     // is a best-effort notification, not a required step.
     console.error("[whatsapp] send failed:", err);
+    return false;
   }
 }
 
@@ -66,6 +70,7 @@ export async function sendWhatsAppTemplateMessage(
 
   try {
     const res = await fetch(`https://graph.facebook.com/v21.0/${phoneNumberId}/messages`, {
+      signal: AbortSignal.timeout(10000),
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
       body: JSON.stringify({

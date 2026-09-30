@@ -1,0 +1,230 @@
+{
+  "scope": "Static route and Designer coverage only; not a runtime readiness certificate.",
+  "modules": [
+    {
+      "id": "pos",
+      "module": "POS",
+      "pages": 9,
+      "entryRoute": true,
+      "missingImports": [],
+      "missingDefinitions": [],
+      "workflowStatus": "End-to-end validation required"
+    },
+    {
+      "id": "service-centre",
+      "module": "Manage SC",
+      "pages": 45,
+      "entryRoute": true,
+      "missingImports": [],
+      "missingDefinitions": [],
+      "workflowStatus": "Live data - regression testing required"
+    },
+    {
+      "id": "billing",
+      "module": "Billing",
+      "pages": 54,
+      "entryRoute": true,
+      "missingImports": [],
+      "missingDefinitions": [],
+      "workflowStatus": "End-to-end validation required"
+    },
+    {
+      "id": "brand",
+      "module": "Brand",
+      "pages": 8,
+      "entryRoute": true,
+      "missingImports": [],
+      "missingDefinitions": [],
+      "workflowStatus": "End-to-end validation required"
+    },
+    {
+      "id": "clinic",
+      "module": "Clinic",
+      "pages": 8,
+      "entryRoute": true,
+      "missingImports": [],
+      "missingDefinitions": [],
+      "workflowStatus": "End-to-end validation required"
+    },
+    {
+      "id": "amc-field-service",
+      "module": "AMC / Field Service",
+      "pages": 5,
+      "entryRoute": true,
+      "missingImports": [],
+      "missingDefinitions": [],
+      "workflowStatus": "End-to-end validation required"
+    },
+    {
+      "id": "restaurant-pos",
+      "module": "Restaurant POS",
+      "pages": 6,
+      "entryRoute": true,
+      "missingImports": [],
+      "missingDefinitions": [],
+      "workflowStatus": "End-to-end validation required"
+    },
+    {
+      "id": "subscriptions",
+      "module": "Subscriptions / Membership",
+      "pages": 7,
+      "entryRoute": true,
+      "missingImports": [],
+      "missingDefinitions": [],
+      "workflowStatus": "End-to-end validation required"
+    },
+    {
+      "id": "real-estate",
+      "module": "Real Estate",
+      "pages": 8,
+      "entryRoute": true,
+      "missingImports": [],
+      "missingDefinitions": [],
+      "workflowStatus": "End-to-end validation required"
+    },
+    {
+      "id": "rentals",
+      "module": "Rentals / Booking",
+      "pages": 7,
+      "entryRoute": true,
+      "missingImports": [],
+      "missingDefinitions": [],
+      "workflowStatus": "End-to-end validation required"
+    },
+    {
+      "id": "education",
+      "module": "Education / Coaching",
+      "pages": 13,
+      "entryRoute": true,
+      "missingImports": [],
+      "missingDefinitions": [],
+      "workflowStatus": "End-to-end validation required"
+    },
+    {
+      "id": "manufacturing",
+      "module": "Manufacturing / Production",
+      "pages": 10,
+      "entryRoute": true,
+      "missingImports": [],
+      "missingDefinitions": [],
+      "workflowStatus": "End-to-end validation required"
+    },
+    {
+      "id": "wholesale-b2b",
+      "module": "Wholesale / Distributor B2B",
+      "pages": 11,
+      "entryRoute": true,
+      "missingImports": [],
+      "missingDefinitions": [],
+      "workflowStatus": "End-to-end validation required"
+    },
+    {
+      "id": "logistics-fleet",
+      "module": "Logistics / Fleet",
+      "pages": 10,
+      "entryRoute": true,
+      "missingImports": [],
+      "missingDefinitions": [],
+      "workflowStatus": "End-to-end validation required"
+    },
+    {
+      "id": "legal",
+      "module": "Legal / Case Management",
+      "pages": 9,
+      "entryRoute": true,
+      "missingImports": [],
+      "missingDefinitions": [],
+      "workflowStatus": "End-to-end validation required"
+    },
+    {
+      "id": "event-booking",
+      "module": "Event / Venue Booking",
+      "pages": 11,
+      "entryRoute": true,
+      "missingImports": [],
+      "missingDefinitions": [],
+      "workflowStatus": "End-to-end validation required"
+    },
+    {
+      "id": "salon-spa",
+      "module": "Salon & Spa",
+      "pages": 7,
+      "entryRoute": true,
+      "missingImports": [],
+      "missingDefinitions": [],
+      "workflowStatus": "End-to-end validation required"
+    },
+    {
+      "id": "telecalling",
+      "module": "Telecalling",
+      "pages": 8,
+      "entryRoute": true,
+      "missingImports": [],
+      "missingDefinitions": [],
+      "workflowStatus": "End-to-end validation required"
+    },
+    {
+      "id": "inventory",
+      "module": "Inventory / Warehouse",
+      "pages": 34,
+      "entryRoute": true,
+      "missingImports": [],
+      "missingDefinitions": [],
+      "workflowStatus": "End-to-end validation required"
+    },
+    {
+      "id": "accounting-gst",
+      "module": "Accounting / GST Compliance",
+      "pages": 11,
+      "entryRoute": true,
+      "missingImports": [],
+      "missingDefinitions": [],
+      "workflowStatus": "End-to-end validation required"
+    },
+    {
+      "id": "accounting",
+      "module": "Accounting",
+      "pages": 13,
+      "entryRoute": true,
+      "missingImports": [],
+      "missingDefinitions": [],
+      "workflowStatus": "End-to-end validation required"
+    },
+    {
+      "id": "loyalty-rewards",
+      "module": "Loyalty & Rewards",
+      "pages": 4,
+      "entryRoute": true,
+      "missingImports": [],
+      "missingDefinitions": [],
+      "workflowStatus": "End-to-end validation required"
+    },
+    {
+      "id": "hrms",
+      "module": "HRMS / Payroll",
+      "pages": 13,
+      "entryRoute": true,
+      "missingImports": [],
+      "missingDefinitions": [],
+      "workflowStatus": "End-to-end validation required"
+    },
+    {
+      "id": "marketplace",
+      "module": "Marketplace / Partner Aggregator",
+      "pages": 8,
+      "entryRoute": true,
+      "missingImports": [],
+      "missingDefinitions": [],
+      "workflowStatus": "End-to-end validation required"
+    },
+    {
+      "id": "field-force",
+      "module": "Field Force",
+      "pages": 15,
+      "entryRoute": true,
+      "missingImports": [],
+      "missingDefinitions": [],
+      "workflowStatus": "End-to-end validation required"
+    }
+  ]
+}

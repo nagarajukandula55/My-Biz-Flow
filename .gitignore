@@ -17,3 +17,6 @@ next-env.d.ts
 .vercel
 .env*
 .playwright-mcp/
+
+# Disposable local database runtime and test data
+.local-test-db/

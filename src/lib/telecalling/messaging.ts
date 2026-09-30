@@ -14,7 +14,7 @@ import { env } from "@/lib/env";
 export async function sendTemplateToLead(
   partnerId: string,
   input: { leadId: string; templateId: string; sentById: string; linkOverride?: string }
-): Promise<{ status: "sent" | "not-configured"; body: string }> {
+): Promise<{ status: "accepted" | "not-configured" | "failed"; body: string }> {
   const [lead, template] = await Promise.all([
     prisma.lead.findUniqueOrThrow({ where: { id: input.leadId } }),
     prisma.messageTemplate.findUniqueOrThrow({ where: { id: input.templateId } }),
@@ -33,13 +33,12 @@ export async function sendTemplateToLead(
       ? Boolean(env.whatsappBusinessPhoneNumberId() && env.whatsappAccessToken())
       : Boolean(env.smsApiKey() && env.smsSenderId());
 
-  if (template.channel === "whatsapp") {
-    await sendWhatsAppMessage(lead.phone, body);
-  } else {
-    await sendSms(lead.phone, body);
-  }
-
-  const status = configured ? "sent" : "not-configured";
+  if (!["whatsapp", "sms"].includes(template.channel)) throw new Error("Unsupported message channel");
+  const agent = await prisma.partnerStaff.findFirst({ where: { id: input.sentById, partnerId, role: "Telecaller", status: "Active" }, select: { id: true } });
+  if (!agent) throw new Error("An active telecaller belonging to this partner is required");
+  const accepted = configured && (template.channel === "whatsapp"
+    ? await sendWhatsAppMessage(lead.phone, body) : await sendSms(lead.phone, body));
+  const status = !configured ? "not-configured" : accepted ? "accepted" : "failed";
   await prisma.messageLog.create({
     data: {
       leadId: lead.id,

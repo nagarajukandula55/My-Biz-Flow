@@ -15,9 +15,8 @@ import { sendPartnerTelegramAlert } from "@/lib/telegram";
 import { getPartner } from "@/lib/partnerData";
 import { eventBookingConfirmedMessage, eventPaymentReceivedMessage } from "@/lib/telegramTemplates";
 
-export type EventBookingStatus = "Requested" | "Confirmed" | "InProgress" | "Completed" | "Cancelled";
-export const EVENT_BOOKING_STATUSES: EventBookingStatus[] = ["Requested", "Confirmed", "InProgress", "Completed", "Cancelled"];
-export type EventBookingType = "OneTime" | "Recurring";
+import { type EventBookingStatus, type EventBookingType } from "@/lib/eventBookingTypes";
+export { EVENT_BOOKING_STATUSES, type EventBookingStatus, type EventBookingType } from "@/lib/eventBookingTypes";
 
 // --- Venues ---------------------------------------------------------------
 

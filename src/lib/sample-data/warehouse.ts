@@ -4,7 +4,7 @@ import type { StatusVariant } from "@/components/StatusChip";
 import type { FormFieldDef } from "@/components/RecordForm";
 import { listBusinessRecords } from "@/lib/businessRecords";
 import { getBomOptionsForPartner } from "./bom";
-import { getAvailabilityByMaterial } from "@/lib/inventoryStock";
+import { getAvailabilityByMaterial } from "@/lib/inventoryRead";
 
 /**
  * Builds a Material select's `options`/`optionLabels` pair with live

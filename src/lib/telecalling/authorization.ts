@@ -33,3 +33,12 @@ export async function requireTelecallingActor(partnerId: string, leadId: string,
   }
   return agent.id;
 }
+
+
+export async function requireTelecallingLeadRead(partnerId: string, leadId: string): Promise<"manager" | "staff"> {
+  if (await isManager(partnerId)) return "manager";
+  const session = await getStaffSession();
+  if (!session || session.partnerId !== partnerId) throw new PartnerAuthorizationError("Not signed in for this partner.");
+  await requireTelecallingActor(partnerId, leadId, session.staffId);
+  return "staff";
+}

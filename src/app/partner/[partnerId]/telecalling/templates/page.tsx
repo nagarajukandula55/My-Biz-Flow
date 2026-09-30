@@ -1,3 +1,4 @@
+import { requireTelecallingManager } from "@/lib/telecalling/authorization";
 import { AppShell } from "@/components/AppShell";
 import { registerPage } from "@/lib/designer/registry";
 import { listTemplates } from "@/lib/telecalling/templatesData";
@@ -19,6 +20,7 @@ registerPage({
 export const dynamic = "force-dynamic";
 
 export default async function TemplatesPage({ params }: { params: { partnerId: string } }) {
+  await requireTelecallingManager(params.partnerId);
   const templates = await listTemplates(params.partnerId);
 
   return (

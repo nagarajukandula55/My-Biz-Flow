@@ -81,6 +81,7 @@ export default async function NewBillingPage({ params }: { params: { partnerId: 
             }}
             partnerUpiId={partner?.upiId}
             partnerGstin={partner?.gstin}
+            showInventory
           />
         </div>
       </div>

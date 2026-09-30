@@ -1,7 +1,9 @@
 "use server";
 
+import { withInventoryAction } from "@/lib/inventoryAction";
+
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
+import { redirectAfterInventoryWrite as redirect } from "@/lib/inventoryAction";
 import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import { createBusinessRecord } from "@/lib/businessRecords";
 import { runBulkImport, type BulkImportResult } from "@/lib/bulkImportCsv";
@@ -94,6 +96,13 @@ export async function createPartOrderAction(
   partnerId: string,
   values: Record<string, unknown>
 ): Promise<void | { error?: string }> {
+  return withInventoryAction(partnerId, () => createPartOrderActionInner(partnerId, values));
+}
+
+async function createPartOrderActionInner(
+  partnerId: string,
+  values: Record<string, unknown>
+): Promise<void | { error?: string }> {
   partnerId = await requireSessionPartnerId(partnerId);
 
   const { error } = await createPartOrderCore(partnerId, values);
@@ -117,6 +126,14 @@ export async function createPartOrderAction(
  * failed.
  */
 export async function createPartOrdersMultiAction(
+  partnerId: string,
+  common: Record<string, unknown>,
+  lines: Array<Record<string, unknown>>
+): Promise<{ error?: string; createdIds?: string[] }> {
+  return withInventoryAction(partnerId, () => createPartOrdersMultiActionInner(partnerId, common, lines));
+}
+
+async function createPartOrdersMultiActionInner(
   partnerId: string,
   common: Record<string, unknown>,
   lines: Array<Record<string, unknown>>

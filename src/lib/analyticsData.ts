@@ -45,7 +45,7 @@ export async function computeModuleStat(
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-/** Last 7 days of Billing totalAmount, bucketed by the record's creation day. */
+/** Last seven days of collected Billing revenue, grouped by invoice creation day. */
 export async function getRevenueTrend(partnerId: string): Promise<LineSeriesPoint[]> {
   const since = new Date();
   since.setHours(0, 0, 0, 0);
@@ -66,7 +66,7 @@ export async function getRevenueTrend(partnerId: string): Promise<LineSeriesPoin
     const key = istDateKey(r.createdAt);
     if (!buckets.has(key)) continue;
     const data = r.data as Record<string, unknown>;
-    const amount = typeof data.totalAmount === "number" ? data.totalAmount : 0;
+    const amount = typeof data.amountPaid === "number" ? data.amountPaid : data.paymentStatus === "Paid" && typeof data.totalAmount === "number" ? data.totalAmount : 0;
     buckets.set(key, (buckets.get(key) ?? 0) + amount);
   }
 
@@ -651,13 +651,13 @@ export interface AnalyticsSummary {
   closedWorkorders: number;
 }
 
-export async function getAnalyticsSummary(partnerId: string): Promise<AnalyticsSummary> {
+export async function getAnalyticsSummary(partnerId: string, modules: readonly string[] = ["billing", "service-centre"]): Promise<AnalyticsSummary> {
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
   const [billingRows, workorderRows] = await Promise.all([
-    listBusinessRecords(partnerId, "billing"),
-    listBusinessRecords(partnerId, "service-centre"),
+    modules.includes("billing") ? listBusinessRecords(partnerId, "billing") : Promise.resolve([]),
+    modules.includes("service-centre") ? listBusinessRecords(partnerId, "service-centre") : Promise.resolve([]),
   ]);
 
   let totalRevenue = 0;

@@ -37,6 +37,10 @@ export type LineItem = {
   itemId?: string;
   /** HSN/SAC code for this line — printed on the tax invoice and used for the HSN summary table. */
   hsnCode?: string;
+  /** Sales Invoice create form only — "deduct this line's quantity from Inventory when the invoice is created". A request flag: the server consumes it (createBusinessRecordAction) and never persists it as true. */
+  consumeInventory?: boolean;
+  /** Stamped server-side on an invoice line whose quantity was actually deducted from Inventory at creation — the audit trail; never set by the form. */
+  inventoryConsumed?: boolean;
 };
 
 /** invoice id -> its line items — kept separate from billingRows so the

@@ -1,7 +1,9 @@
 "use server";
 
+import { withInventoryAction } from "@/lib/inventoryAction";
+
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
+import { redirectAfterInventoryWrite as redirect } from "@/lib/inventoryAction";
 import { createBusinessRecord, getBusinessRecord, updateBusinessRecord } from "@/lib/businessRecords";
 import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import { runBulkImport, type BulkImportResult } from "@/lib/bulkImportCsv";
@@ -67,6 +69,14 @@ type RawLine = {
  * a verified Telegram OTP, is allowed to apply it.
  */
 export async function createStockTakeMultiAction(
+  partnerId: string,
+  common: Record<string, unknown>,
+  lines: RawLine[]
+): Promise<void | { error?: string; createdId?: string }> {
+  return withInventoryAction(partnerId, () => createStockTakeMultiActionInner(partnerId, common, lines));
+}
+
+async function createStockTakeMultiActionInner(
   partnerId: string,
   common: Record<string, unknown>,
   lines: RawLine[]
@@ -165,6 +175,14 @@ export async function verifyAndReconcileStockTakeAction(
   recordId: string,
   code: string
 ): Promise<{ verified: boolean; reason?: string; error?: string }> {
+  return withInventoryAction(partnerId, () => verifyAndReconcileStockTakeActionInner(partnerId, recordId, code));
+}
+
+async function verifyAndReconcileStockTakeActionInner(
+  partnerId: string,
+  recordId: string,
+  code: string
+): Promise<{ verified: boolean; reason?: string; error?: string }> {
   partnerId = await requireSessionPartnerId(partnerId);
 
   const result = await verifyInventoryOtp(partnerId, "stock-take-close", recordId, code);
@@ -247,6 +265,13 @@ export async function verifyAndReconcileStockTakeAction(
  * verifyAndReconcileStockTakeAction (above) previously released it.
  */
 export async function cancelStockTakeAction(
+  partnerId: string,
+  recordId: string
+): Promise<{ error?: string }> {
+  return withInventoryAction(partnerId, () => cancelStockTakeActionInner(partnerId, recordId));
+}
+
+async function cancelStockTakeActionInner(
   partnerId: string,
   recordId: string
 ): Promise<{ error?: string }> {

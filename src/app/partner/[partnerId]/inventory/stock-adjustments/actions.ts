@@ -1,7 +1,9 @@
 "use server";
 
+import { withInventoryAction } from "@/lib/inventoryAction";
+
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
+import { redirectAfterInventoryWrite as redirect } from "@/lib/inventoryAction";
 import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import { createBusinessRecord, getBusinessRecord, updateBusinessRecord } from "@/lib/businessRecords";
 import { runBulkImport, type BulkImportResult } from "@/lib/bulkImportCsv";
@@ -165,6 +167,13 @@ export async function createStockAdjustmentAction(
   partnerId: string,
   values: Record<string, unknown>
 ): Promise<void | { error?: string }> {
+  return withInventoryAction(partnerId, () => createStockAdjustmentActionInner(partnerId, values));
+}
+
+async function createStockAdjustmentActionInner(
+  partnerId: string,
+  values: Record<string, unknown>
+): Promise<void | { error?: string }> {
   partnerId = await requireSessionPartnerId(partnerId);
 
   const { error } = await createStockAdjustmentCore(partnerId, values);
@@ -189,6 +198,14 @@ export async function createStockAdjustmentAction(
  * names which line/material failed.
  */
 export async function createStockAdjustmentsMultiAction(
+  partnerId: string,
+  common: Record<string, unknown>,
+  lines: Array<Record<string, unknown>>
+): Promise<{ error?: string; createdIds?: string[] }> {
+  return withInventoryAction(partnerId, () => createStockAdjustmentsMultiActionInner(partnerId, common, lines));
+}
+
+async function createStockAdjustmentsMultiActionInner(
   partnerId: string,
   common: Record<string, unknown>,
   lines: Array<Record<string, unknown>>
@@ -230,6 +247,14 @@ export async function createStockAdjustmentsMultiAction(
  * against what's on hand (after the reversal has already put stock back).
  */
 export async function updateStockAdjustmentAction(
+  partnerId: string,
+  recordId: string,
+  values: Record<string, unknown>
+): Promise<void | { error?: string }> {
+  return withInventoryAction(partnerId, () => updateStockAdjustmentActionInner(partnerId, recordId, values));
+}
+
+async function updateStockAdjustmentActionInner(
   partnerId: string,
   recordId: string,
   values: Record<string, unknown>

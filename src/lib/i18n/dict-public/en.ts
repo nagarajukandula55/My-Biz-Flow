@@ -36,14 +36,14 @@ export const en = {
 
   // Homepage hero
   heroTitleGenericLine1: "One platform.",
-  heroTitleGenericLine2: "Every business you run.",
+  heroTitleGenericLine2: "The modules your business needs.",
   heroBodyGeneric:
-    "Stop juggling a different app for checkout, billing, workorders, and stock. My Biz Flow puts them all on one account, with one login for your whole team — mix and match POS, Service Centre, Telecalling, Billing, Clinic, and more, and they all stay in sync automatically.",
+    "Manage workorders, billing, stock and customer workflows from one account. Choose a configured business package, then add the available modules your operations need. Features and connected workflows depend on your selected modules and plan.",
   heroTitleScLine1: "Run your",
   heroTitleScMark: "service centre",
   heroTitleScLine2: "from one screen.",
   heroBodyServiceCentre:
-    "My Biz Flow's Service Centre module takes a repair from intake to invoice without switching tools — log the fault, move the workorder through its lifecycle, and bill it out with GST-compliant invoicing that deducts the parts used straight from Inventory.",
+    "Manage repair intake, workorder stages, parts and invoices in one account. Configure your business details, inventory rules and enabled modules before using connected workflows.",
   stageCreated: "Created",
   stageInProgress: "In Progress",
   stageCompleted: "Completed",
@@ -56,7 +56,7 @@ export const en = {
   spotlightLabelSc: "The module",
   spotlightTitle: "Built around the real repair workflow",
   spotlightIntro:
-    "Not a generic ticketing tool bent into shape — these are the actual capabilities of the Service Centre module, ready the moment you sign up.",
+    "Track repair jobs, customer updates and parts through a connected workflow, with access and setup based on your business configuration.",
   featureLifecycleTitle: "Full workorder lifecycle",
   featureLifecycleDesc:
     "Created → In Progress → Completed → Closed, with fault/symptom/solution details and brand/model on every job.",
@@ -65,17 +65,17 @@ export const en = {
     "Every workorder gets a shareable tracking link — customers check status without an account or a phone call.",
   featureBillingTitle: "Inventory-linked billing",
   featureBillingDesc:
-    "Close a workorder and it can generate a GST-compliant invoice from the parts and labour used, deducting stock from Inventory automatically.",
+    "Create invoices from workorder parts and labour. Inventory deductions follow your configured workflow and stock rules; tax invoices require the appropriate business and tax details.",
   featureSetupTitle: "Set up your way, same as every module",
   featureSetupDesc:
-    "Fields, statuses, and catalogs are yours to tailor from an admin screen — set up Service Centre to match how your shop actually works, no waiting on a developer.",
+    "Use supported Admin controls for fields, labels and catalogs. Review changes against your repair workflow before making them available to staff.",
   signUpAsServiceCentre: "Sign up as Service Centre",
 
   // Every-business section
   everyBusinessLabel: "Every business, one platform",
-  everyBusinessTitle: "Pick the business you run — everything else is ready",
+  everyBusinessTitle: "Choose a starting package for your business",
   everyBusinessIntro:
-    "Each one is its own complete, standalone system on My Biz Flow — sign up and it's ready to run your business the same day, not a lesser add-on bundled onto something else.",
+    "Each configured package brings together a starting set of modules. Confirm the features, integrations and workflow setup your business needs before onboarding your team.",
   noBusinessTypesAvailable: "No business types are available for signup yet — check back soon.",
   joinOrRequestService: "Join or request a service — free",
   signUpAsPrefix: "Sign up as {label}",
@@ -89,16 +89,16 @@ export const en = {
   faqTitle: "Frequently asked questions",
   faq1Q: "What is My Biz Flow?",
   faq1A:
-    "My Biz Flow is one platform that runs a business end to end — checkout, workorders, billing, inventory, staff, and more — instead of stitching together a separate app for each job. The same platform can run a service centre, a POS-driven retail store, a clinic, or an HR operation, all under one login.",
+    "My Biz Flow brings business modules such as workorders, billing, inventory and staff management into one account. The workflows available to your business depend on its enabled modules, plan and configuration.",
   faq2Q: "Which kinds of businesses can use it?",
   faq2A:
     "Any business that fits one or more of the platform's modules — Point of Sale, Service Centre (repair/workorder shops), Billing, Clinic, Inventory/Warehouse, and other verticals such as real estate, education, and manufacturing. A business picks a business type at signup, which bundles a starting set of modules; modules can be mixed and matched afterward.",
   faq3Q: "Do I need developers to set this up?",
   faq3A:
-    "No — you set up fields, statuses, and page labels yourself from an admin screen, the same way you'd fill in a settings page, so a new module is ready to use the same day rather than waiting on a custom build.",
+    "Supported fields, labels, module access and other routine settings can be managed through Admin. New calculations, integrations and structural changes still require development and testing.",
   faq4Q: "Does My Biz Flow support GST billing?",
   faq4A:
-    "Yes. The Billing module handles invoicing, and the Accounting/GST Compliance module covers India-specific tax and e-invoicing needs for businesses that require it.",
+    "Billing includes tax-invoice fields and documents. Confirm your business tax details and the available reporting or provider integrations before relying on a particular compliance workflow.",
   faq5Q: "How does pricing work?",
   faq5A:
     "Plans are tiered by how many users, locations, and modules are included, with pricing shown on the pricing page. All tiers use the same no-code platform — higher tiers unlock more modules and seats, not a different product.",
@@ -110,7 +110,7 @@ export const en = {
     "Yes — each workorder gets a public tracking link (no account needed) that shows its current stage, so a customer can check repair status without calling in.",
   scFaq3Q: "Does closing a workorder handle billing and stock automatically?",
   scFaq3A:
-    "Closing a workorder can generate a GST-compliant invoice directly from its parts and labour line items, and parts used are deducted from Inventory automatically — so billing and stock stay in sync with what was actually repaired.",
+    "Create an invoice from workorder parts and labour using the available billing action. Parts consumption follows your configured stock workflow; review the invoice and tax details before issue.",
 
   // Closing CTA + footer
   readyTitle: "Ready to set up your business?",

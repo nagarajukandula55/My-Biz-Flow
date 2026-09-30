@@ -1,3 +1,4 @@
+import { withRecordLock } from "@/lib/withRecordLock";
 /**
  * Shared CSV bulk-import engine, extracted from the original one-off
  * implementations (BOM's bulkImportBomAction, Telecalling's
@@ -73,8 +74,12 @@ export async function runBulkImport(
       for (const key of allKeys) {
         if (row[key] !== undefined && row[key] !== "") values[key] = row[key];
       }
-      if (transform) values = await transform(values);
-      await createBusinessRecord(partnerId, moduleSlug, values);
+      const persistRow = async () => {
+        if (transform) values = await transform(values);
+        await createBusinessRecord(partnerId, moduleSlug, values);
+      };
+      if (moduleSlug.startsWith("inventory-")) await withRecordLock("inventory-partner", partnerId, persistRow);
+      else await persistRow();
       count++;
     } catch (e) {
       failed.push({ row: i + 2, error: e instanceof Error ? e.message : "Failed to create record" });

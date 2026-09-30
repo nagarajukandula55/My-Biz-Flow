@@ -19,7 +19,7 @@ export const revalidate = 60;
 export const metadata: Metadata = {
   title: "Run Every Part of Your Business From One Platform",
   description:
-    "My Biz Flow brings your checkout, workorders, billing, GST invoicing, inventory, and patient/client records onto one account — so your team stops juggling separate apps and everything stays in sync automatically.",
+    "My Biz Flow brings your checkout, workorders, billing, GST invoicing, inventory, and patient/client records onto one account — so your team stops juggling separate apps with module options configured for each business.",
   // Canonical stays the base "/" regardless of ?type= -- the Service Centre
   // variant is a content branch of the same page/URL, not a distinct page,
   // so a separate canonical would just create duplicate-content confusion.
@@ -89,36 +89,6 @@ const MODULE_ICON_NAMES: Record<string, string> = {
 // Modules with their own dedicated /solutions/<slug> marketing page.
 const MODULE_SOLUTIONS_SLUGS = new Set(["service-centre", "telecalling", "field-force", "pos"]);
 
-// Modules that are genuinely, fully complete per the site's listing bar:
-// (a) their own dedicated Prisma tables (not the generic BusinessRecord),
-// AND (b) verified against prisma/schema.prisma directly (2026-09-26 audit)
-// to actually have those tables. This is a static allowlist, cross-checked
-// against the LIVE `listActivePartnerTypes()` result below -- a slug only
-// ever renders a card when it is in BOTH this set AND that live query, so a
-// written-but-unrun seed script (e.g. a future clinic/amc-field-service/
-// restaurant-pos/salon-spa/brand PartnerType seed) can never surface a card
-// before its PartnerType row actually exists in the database. Billing,
-// Accounting, HRMS, Inventory, and Marketplace all have dedicated tables
-// too, but are bundled add-on modules, not their own signup-able business
-// type (no standalone PartnerType) -- "1 module = 1 business" excludes them
-// from this list on that basis, not a data-model one.
-const DEDICATED_TABLE_MODULE_SLUGS = new Set([
-  "pos",
-  "service-centre",
-  "telecalling",
-  "field-force",
-  "manufacturing",
-  "wholesale-b2b",
-  "event-booking",
-  "legal",
-  "education",
-  "clinic",
-  "amc-field-service",
-  "restaurant-pos",
-  "salon-spa",
-  "brand",
-]);
-
 registerPage({
   id: "platform.home",
   moduleSlug: "platform",
@@ -127,8 +97,7 @@ registerPage({
   kind: "other",
   superAdminOnly: false,
   customizableRegions: [],
-  explanation:
-    "Public marketing home page (no AppShell). Hero, then a single merged 'every business, one platform' section driven by the live Active PartnerType rows (listActivePartnerTypes()) intersected with a static allowlist of modules that actually have dedicated Prisma tables (DEDICATED_TABLE_MODULE_SLUGS) — a module only ever gets a card once it is genuinely complete: its own tables AND a real, live, Active PartnerType. No 'coming soon'/informational-only cards. Each card links to /signup/<id> or its /solutions/<slug> page, so the home page can never drift from what Super Admin has actually configured or advertise a signup that isn't live yet. Also a screenshots section with real screenshots of the running app (public/screenshots/*.png), captured from the standing DEMO0001 demo partner account (see scripts/create-demo-partner.ts / src/lib/demoPartnerSeed.ts) so they're always real product, never mockups. CTAs to /signup and /pricing.",
+  explanation: "Public homepage lists active business types configured in Admin, using their identifiers, descriptions and module bundles. A business type must include a recognized module to be listed. Activation is a publication decision, not proof that a workflow has passed end-to-end testing. Each business card links to its actual signup ID; module solution pages are separate informational links.",
   sourceFile: "src/app/page.tsx",
 });
 
@@ -151,25 +120,15 @@ export default async function RootPage({
 }) {
   const partnerTypes = await listActivePartnerTypes();
 
-  // The single live-driven list behind both the (now merged) module
-  // showcase and the business-type picker: only a PartnerType that is (a)
-  // Active in the real database right now, AND (b) backed by dedicated
-  // Prisma tables per DEDICATED_TABLE_MODULE_SLUGS above, is genuinely,
-  // fully complete enough to list -- per this site's "1 module = 1
-  // business" rule, nothing is ever shown as greyed-out/"coming soon".
-  const qualifyingPartnerTypes = partnerTypes.filter((t) => DEDICATED_TABLE_MODULE_SLUGS.has(t.id));
+  const knownModules = new Set(MODULES.map(module => module.slug));
+  const qualifyingPartnerTypes = partnerTypes.filter(type => type.defaultModules.some(slug => knownModules.has(slug)));
   const locale = getLocaleFromCookie();
   const tp = (key: Parameters<typeof tPublic>[1], vars?: Record<string, string | number>) => tPublic(locale, key, vars);
 
-  function moduleHref(slug: string): string {
-    return MODULE_SOLUTIONS_SLUGS.has(slug) ? `/solutions/${slug}` : `/signup/${encodeURIComponent(slug)}`;
-  }
-
-  function BusinessCard({ typeId, description }: { typeId: string; description: string }) {
-    const mod = MODULES.find((m) => m.slug === typeId);
-    const Icon = getIconComponent(MODULE_ICON_NAMES[typeId]);
-    const label = mod?.label ?? typeId;
-    const href = moduleHref(typeId);
+  function BusinessCard({ typeId, label, description, moduleSlug }: { typeId: string; label: string; description: string; moduleSlug: string }) {
+    const mod = MODULES.find(m => m.slug === moduleSlug);
+    const Icon = getIconComponent(MODULE_ICON_NAMES[moduleSlug]);
+    const href = `/signup/${encodeURIComponent(typeId)}`;
     return (
       <div className="mbf-glass-card flex h-full flex-col gap-3 p-5">
         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent-soft text-accent">
@@ -192,8 +151,8 @@ export default async function RootPage({
               <Link href={href} className="btn-accent mbf-cta-glow flex-1 text-center">
                 {tp("signUpAsPrefix", { label })}
               </Link>
-              {MODULE_SOLUTIONS_SLUGS.has(typeId) && typeId !== "field-force" && (
-                <Link href={`/solutions/${typeId}`} className="btn-outline shrink-0">
+              {MODULE_SOLUTIONS_SLUGS.has(moduleSlug) && moduleSlug !== "field-force" && (
+                <Link href={`/solutions/${moduleSlug}`} className="btn-outline shrink-0">
                   {tp("learnMore")}
                 </Link>
               )}
@@ -377,7 +336,7 @@ export default async function RootPage({
           ) : (
             <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {qualifyingPartnerTypes.map((t) => (
-                <BusinessCard key={t.id} typeId={t.id} description={t.description} />
+                <BusinessCard key={t.id} typeId={t.id} label={MODULES.find(module => module.slug === t.id)?.label ?? t.id} description={t.description} moduleSlug={t.defaultModules.find(slug => knownModules.has(slug)) ?? ""} />
               ))}
             </div>
           )}

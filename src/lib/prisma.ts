@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { transactionAwareClient } from "@/lib/databaseClientContext";
 
 /**
  * Singleton PrismaClient. Next.js dev mode hot-reloads server modules, so
@@ -10,8 +11,9 @@ import { PrismaClient } from "@prisma/client";
 
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
-export const prisma = globalForPrisma.prisma ?? new PrismaClient();
+const baseClient = globalForPrisma.prisma ?? new PrismaClient();
+export const prisma = transactionAwareClient(baseClient);
 
 if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma;
+  globalForPrisma.prisma = baseClient;
 }

@@ -6,6 +6,43 @@ import { createBusinessRecord, updateBusinessRecord, getBusinessRecord } from "@
 import { getPartner } from "@/lib/partnerData";
 import { notifyCentralApiBillingInvoice } from "@/lib/centralApi";
 import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
+import { withRecordLock } from "@/lib/withRecordLock";
+import { applyInvoiceConsumption, finalizeInvoiceItems, hasInventoryLines, planInvoiceConsumption } from "@/lib/invoiceInventory";
+
+/**
+ * Invoice-number assignment + origin stamp for a manually created Billing
+ * invoice. Runs at actual creation time, after any stock check has passed.
+ */
+async function withInvoiceDefaults(partnerId: string, values: Record<string, unknown>): Promise<Record<string, unknown>> {
+  // Assign the real invoice number ONCE, here, at actual creation time —
+  // via the same atomic, persisted NumberingCounter (getNextNumber) and
+  // the SAME "invoice.b2c"/"invoice.b2b" scope a Service-Centre-workorder-
+  // originated invoice uses (see service-centre/[recordId]/actions.ts,
+  // createInvoiceFromWorkorderAction), so both origins draw from one
+  // shared per-partner sequence and never hand out the same number twice.
+  // Previously nothing stored a number at all: the printed document page
+  // recomputed one live by counting "billing" rows on every render.
+  if (!values["invoiceNumber"]) {
+    const { getNextNumber } = await import("@/lib/designer/numbering");
+    const isB2B = Boolean(String(values["customerGstin"] ?? "").trim());
+    const numberingDocType = isB2B ? "invoice.b2b" : "invoice.b2c";
+    const numberingDefaults = isB2B ? { prefix: "INV" } : { prefix: "BILL" };
+    values = { ...values, invoiceNumber: await getNextNumber(numberingDocType, partnerId, numberingDefaults) };
+  }
+
+  // Stamp the invoice's origin for the Source filter on the Invoices list
+  // (billing/page.tsx). This generic action is bound to a Billing invoice
+  // only for a directly/manually created one — Service Centre's
+  // createInvoiceFromWorkorderAction and the POS checkout action each
+  // create their "billing" record via createBusinessRecord directly, with
+  // their own "Service Centre"/"POS Sale" invoiceSource, bypassing this
+  // function entirely — so "Direct" is correct whenever this path sets it.
+  if (!values["invoiceSource"]) {
+    values = { ...values, invoiceSource: "Direct" };
+  }
+
+  return values;
+}
 
 /**
  * Bind with .bind(null, partnerId, moduleSlug) before passing as a
@@ -27,7 +64,7 @@ export async function createBusinessRecordAction(
   moduleSlug: string,
   values: Record<string, unknown>,
   urlPath: string = moduleSlug
-) {
+): Promise<void | { error?: string }> {
   // Every module's create/edit/patch form binds this generic action with a
   // partnerId taken from the page's own URL — but a Server Action is its own
   // RPC endpoint, invoked directly rather than through PartnerLayout's
@@ -38,33 +75,6 @@ export async function createBusinessRecordAction(
   // module built directly on createBusinessRecord/updateBusinessRecord)
   // trusting the caller-supplied partnerId with nothing to enforce it.
   partnerId = await requireSessionPartnerId(partnerId);
-  // Assign the real invoice number ONCE, here, at actual creation time —
-  // via the same atomic, persisted NumberingCounter (getNextNumber) and
-  // the SAME "invoice.b2c"/"invoice.b2b" scope a Service-Centre-workorder-
-  // originated invoice uses (see service-centre/[recordId]/actions.ts,
-  // createInvoiceFromWorkorderAction), so both origins draw from one
-  // shared per-partner sequence and never hand out the same number twice.
-  // Previously nothing stored a number at all: the printed document page
-  // recomputed one live by counting "billing" rows on every render.
-  if (moduleSlug === "billing" && !values["invoiceNumber"]) {
-    const { getNextNumber } = await import("@/lib/designer/numbering");
-    const isB2B = Boolean(String(values["customerGstin"] ?? "").trim());
-    const numberingDocType = isB2B ? "invoice.b2b" : "invoice.b2c";
-    const numberingDefaults = isB2B ? { prefix: "INV" } : { prefix: "BILL" };
-    values = { ...values, invoiceNumber: await getNextNumber(numberingDocType, partnerId, numberingDefaults) };
-  }
-
-  // Stamp the invoice's origin for the Source filter on the Invoices list
-  // (billing/page.tsx). This generic action is bound to a Billing invoice
-  // only for a directly/manually created one — Service Centre's
-  // createInvoiceFromWorkorderAction and the POS checkout action each
-  // create their "billing" record via createBusinessRecord directly, with
-  // their own "Service Centre"/"POS Sale" invoiceSource, bypassing this
-  // function entirely — so "Direct" is correct whenever this path sets it.
-  if (moduleSlug === "billing" && !values["invoiceSource"]) {
-    values = { ...values, invoiceSource: "Direct" };
-  }
-
   // Fail-closed GST-invoice gate: a partner without their own GSTIN cannot
   // issue a GST-format tax invoice (buyer GSTIN/HSN/CGST-SGST-IGST split) —
   // only a plain/normal invoice. BillingInvoiceForm already hides the "GST
@@ -80,7 +90,43 @@ export async function createBusinessRecordAction(
     }
   }
 
-  const record = await createBusinessRecord(partnerId, moduleSlug, values);
+  // "Deduct from inventory" lines on a Sales Invoice — stock is checked and
+  // deducted under the inventory lock, before the invoice number is drawn, so
+  // a shortage creates no invoice and burns no invoice number. Invoices with no opted-in line take the plain
+  // path below, unchanged.
+  let record: Awaited<ReturnType<typeof createBusinessRecord>>;
+  if (moduleSlug === "billing" && hasInventoryLines(values["items"])) {
+    // Same "inventory-partner" lock every stock mutation takes, so a concurrent adjustment/sale can't slip between the check and the deduction.
+    const result = await withRecordLock("inventory-partner", partnerId, async () => {
+      const plan = await planInvoiceConsumption(partnerId, values["items"]);
+      if (plan.error) return { error: plan.error };
+      const prepared = await withInvoiceDefaults(partnerId, {
+        ...values,
+        items: finalizeInvoiceItems(values["items"], plan.consumedLineIndexes),
+      });
+      const created = await createBusinessRecord(partnerId, moduleSlug, prepared);
+      await applyInvoiceConsumption(
+        partnerId,
+        { id: String(created.id), number: String(created["invoiceNumber"] ?? ""), customer: String(created["customer"] ?? "") },
+        plan.allocations
+      );
+      return { record: created };
+    });
+    if ("error" in result && result.error) return { error: result.error };
+    record = (result as { record: typeof record }).record;
+  } else {
+    record = await createBusinessRecord(
+      partnerId,
+      moduleSlug,
+      moduleSlug === "billing"
+        ? await withInvoiceDefaults(
+            partnerId,
+            // No line opted in — strip the flags so a crafted request can't pre-stamp "inventoryConsumed".
+            Array.isArray(values["items"]) ? { ...values, items: finalizeInvoiceItems(values["items"], []) } : values
+          )
+        : values
+    );
+  }
 
   if (moduleSlug === "billing") {
     const partner = await getPartner(partnerId);
@@ -116,6 +162,10 @@ export async function createBusinessRecordAction(
   }
 
   revalidatePath(`/partner/${partnerId}/${urlPath}`);
+  if (moduleSlug === "billing") {
+    revalidatePath(`/partner/${partnerId}/inventory/stock`);
+    revalidatePath(`/partner/${partnerId}/inventory/consumption`);
+  }
   // ?created=1 is read by RecordDetail (via each detail page's own
   // searchParams prop) to render a real "<record> created" acknowledgment
   // on arrival, instead of a silent redirect to the new record.

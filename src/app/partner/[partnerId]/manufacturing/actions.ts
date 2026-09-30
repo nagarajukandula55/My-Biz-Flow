@@ -1,11 +1,13 @@
 "use server";
+import { withInventoryAction } from "@/lib/inventoryAction";
+import { afterDatabaseCommit } from "@/lib/databaseTransaction";
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import { findStockRecord, adjustStockQty } from "@/lib/inventoryStock";
 import { createBusinessRecord } from "@/lib/businessRecords";
-import { sendPartnerTelegramAlert } from "@/lib/telegram";
+import { sendPartnerTelegramAlert as deliverPartnerAlert } from "@/lib/telegram";
 import { getPartner } from "@/lib/partnerData";
 import {
   productionDelayedMessage,
@@ -227,6 +229,15 @@ export async function completeProductionAction(
   laborCost: number,
   quantityProduced: number
 ): Promise<{ error?: string }> {
+ return withInventoryAction(partnerId, () => completeProductionActionInner(partnerId, orderId, laborCost, quantityProduced));
+}
+
+async function completeProductionActionInner(
+  partnerId: string,
+  orderId: string,
+  laborCost: number,
+  quantityProduced: number
+): Promise<{ error?: string }> {
   await requireSessionPartnerId(partnerId);
   const order = await getProductionOrder(partnerId, orderId);
   if (!order) return { error: "Production order not found." };
@@ -303,4 +314,8 @@ export async function completeProductionAction(
   revalidatePath(`/partner/${partnerId}/inventory`);
   revalidatePath(`/partner/${partnerId}/inventory/stock`);
   return {};
+}
+
+async function sendPartnerTelegramAlert(...args: Parameters<typeof deliverPartnerAlert>): Promise<void> {
+ await afterDatabaseCommit(() => deliverPartnerAlert(...args));
 }

@@ -1,3 +1,4 @@
+import { inDatabaseTransaction } from "@/lib/databaseClientContext";
 /**
  * React's `cache()` only works inside an actual React render (Server
  * Components) — it's undefined (or throws) when the same module is
@@ -20,7 +21,10 @@ export function safeCache<Args extends unknown[], R>(fn: (...args: Args) => R): 
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { cache } = require("react") as { cache?: <F extends (...a: any[]) => any>(f: F) => F };
-    if (typeof cache === "function") return cache(fn);
+    if (typeof cache === "function") {
+      const cached = cache(fn);
+      return (...args: Args) => inDatabaseTransaction() ? fn(...args) : cached(...args);
+    }
   } catch {
     // "react" not resolvable at all in this context (shouldn't happen in
     // this app, but fall through to the unwrapped function regardless).

@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, "claude/**"]
+    branches: [main, "claude/**", "codex/**"]
   pull_request:
     branches: [main]
 
@@ -40,6 +40,9 @@ jobs:
 
       - run: npm ci
 
+      - name: Offline safety tests
+        run: npm run test:safety
+
       - name: Type check
         run: npx tsc --noEmit
 
@@ -56,6 +59,13 @@ jobs:
         # all a disposable CI build needs.
         run: npx prisma db push --skip-generate --accept-data-loss
         env:
+          DATABASE_URL: postgres://ci:ci@localhost:5432/ci
+          DATABASE_URL_UNPOOLED: postgres://ci:ci@localhost:5432/ci
+
+      - name: Isolated database transaction tests
+        run: npm run test:isolated-db
+        env:
+          MBF_ISOLATED_TEST: "1"
           DATABASE_URL: postgres://ci:ci@localhost:5432/ci
           DATABASE_URL_UNPOOLED: postgres://ci:ci@localhost:5432/ci
 

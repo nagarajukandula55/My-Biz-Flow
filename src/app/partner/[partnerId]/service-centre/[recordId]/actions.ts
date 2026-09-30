@@ -15,10 +15,18 @@ import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import { getPartner } from "@/lib/partnerData";
 import { notifyCentralApiBillingInvoice } from "@/lib/centralApi";
 import { buildServiceCentreLines } from "@/lib/serviceCentreLines";
-import { sendWorkorderTelegramAlert, sendPartnerTelegramAlert } from "@/lib/telegram";
+import { sendWorkorderTelegramAlert as deliverWorkorderAlert, sendPartnerTelegramAlert as deliverPartnerAlert } from "@/lib/telegram";
 import { workorderClosedMessage, workorderCancelledMessage, lowStockAlertMessage, pnaLoggedMessage } from "@/lib/telegramTemplates";
 import { findStockRecord, adjustStockQty } from "@/lib/inventoryStock";
 import { withRecordLock } from "@/lib/withRecordLock";
+import { afterDatabaseCommit } from "@/lib/databaseTransaction";
+async function sendWorkorderTelegramAlert(...args: Parameters<typeof deliverWorkorderAlert>): Promise<void> {
+  await afterDatabaseCommit(() => deliverWorkorderAlert(...args));
+}
+async function sendPartnerTelegramAlert(...args: Parameters<typeof deliverPartnerAlert>): Promise<void> {
+  await afterDatabaseCommit(() => deliverPartnerAlert(...args));
+}
+
 import { isWorkorderReopenUnlocked, consumeWorkorderReopenUnlock } from "@/lib/workorderReopenAccess";
 
 /**
@@ -31,8 +39,8 @@ import { isWorkorderReopenUnlocked, consumeWorkorderReopenUnlock } from "@/lib/w
  * overwrite each other's edit (each reads the record, merges its own
  * change, writes the whole thing back — no version check).
  */
-function withWorkorderLock<T>(workorderId: string, fn: () => Promise<T>): Promise<T> {
-  return withRecordLock("service-centre-workorder", workorderId, fn);
+function withWorkorderLock<T>(partnerId: string, workorderId: string, fn: () => Promise<T>): Promise<T> {
+  return withRecordLock("inventory-partner", partnerId, () => withRecordLock("service-centre-workorder", `${partnerId}:${workorderId}`, fn));
 }
 
 /**
@@ -172,7 +180,7 @@ export async function patchServiceCentreWorkorderAction(
   patch: Record<string, unknown>
 ): Promise<void> {
   await assertCanActOnServiceCentre(partnerId);
-  await withWorkorderLock(workorderId, async () => {
+  await withWorkorderLock(partnerId, workorderId, async () => {
     const existing = await requireWorkorder(partnerId, workorderId);
     const extra: Record<string, unknown> = {};
     if (typeof patch["stage"] === "string") {
@@ -258,7 +266,7 @@ export async function deductInventoryForWorkorderAction(partnerId: string, worko
   // absorb instead of reject. The lock also protects the final `{ ...record,
   // inventoryDeducted: true }` write from clobbering an unrelated field
   // edited by a second session while this ran.
-  await withWorkorderLock(workorderId, async () => {
+  await withWorkorderLock(partnerId, workorderId, async () => {
     const record = await requireWorkorder(partnerId, workorderId);
     const lifecycle = extractLifecycleFromRecord(record);
     if (lifecycle.inventoryDeducted) return; // already deducted — don't double-count
@@ -306,6 +314,13 @@ export async function deductInventoryForWorkorderAction(partnerId: string, worko
       const reorderLevel = Number(before?.["reorderLevel"] ?? 0);
       const currentQty = Number(before?.["qtyOnHand"] ?? 0);
       const warehouseName = String(before?.["warehouseName"] ?? "");
+      if (!Number.isFinite(needed) || needed <= 0) throw new Error("Part quantity must be positive");
+      if (strict && Number(before?.["availableQty"] ?? currentQty) < needed) throw new Error("Not enough available stock to complete this job");
+      if (strict && line.serialized && line.serial && Array.isArray(before?.["consumedSerials"]) &&
+          (before!["consumedSerials"] as { serial?: string }[]).some(item => item.serial === line.serial)) {
+        throw new Error("This serial number has already been consumed");
+      }
+
 
       // Every unit consumed by a workorder is a part that was actually
       // pulled and fitted — the old, worn/faulty part it replaced comes
@@ -317,9 +332,11 @@ export async function deductInventoryForWorkorderAction(partnerId: string, worko
       await adjustStockQty(partnerId, line.materialId, line.materialLabel, warehouseName, needed, "Defective");
 
       if (strict && line.serialized && line.serial && before) {
-        const consumedSerials = Array.isArray(before["consumedSerials"]) ? (before["consumedSerials"] as unknown[]) : [];
+        const current = await findStockRecord(partnerId, line.materialId, warehouseName);
+        if (!current) throw new Error("Stock record disappeared");
+        const consumedSerials = Array.isArray(current["consumedSerials"]) ? (current["consumedSerials"] as unknown[]) : [];
         await updateBusinessRecord(partnerId, "inventory-stock", String(before["id"]), {
-          ...before,
+          ...current,
           qtyOnHand: newQty,
           consumedSerials: [...consumedSerials, { serial: line.serial, workorderId, consumedAt: new Date().toISOString() }],
         });
@@ -396,7 +413,7 @@ export async function createInvoiceFromWorkorderAction(
   // before either write lands (e.g. a double-click on Close/"Retry Invoice
   // Creation" firing this twice). The lock serializes the whole
   // read-check-mint-number-create-invoice-write-back sequence per workorder.
-  await withWorkorderLock(workorderId, () => createInvoiceFromWorkorderInner(partnerId, workorderId, payment));
+  await withWorkorderLock(partnerId, workorderId, () => createInvoiceFromWorkorderInner(partnerId, workorderId, payment));
 }
 
 async function createInvoiceFromWorkorderInner(
@@ -677,7 +694,7 @@ export async function cancelWorkorderAction(
   if (!trimmedReason) {
     throw new Error("A cancellation reason is required.");
   }
-  await withWorkorderLock(workorderId, async () => {
+  await withWorkorderLock(partnerId, workorderId, async () => {
     const record = await requireWorkorder(partnerId, workorderId);
     if (record["cancelledAt"]) {
       throw new Error("This workorder has already been cancelled.");
@@ -761,7 +778,7 @@ export async function reopenWorkorderAction(partnerId: string, workorderId: stri
   if (!unlocked) {
     throw new Error("Enter the Telegram OTP sent to the Owner's chat before reopening this workorder.");
   }
-  await withWorkorderLock(workorderId, async () => {
+  await withWorkorderLock(partnerId, workorderId, async () => {
     const record = await requireWorkorder(partnerId, workorderId);
     if (record["cancelledAt"] || record["stage"] === "Closed") {
       throw new Error("This workorder can no longer be reopened.");
@@ -793,7 +810,7 @@ export async function setWorkorderHoldAction(
   reason?: string
 ): Promise<void> {
   await assertCanActOnServiceCentre(partnerId);
-  await withWorkorderLock(workorderId, async () => {
+  await withWorkorderLock(partnerId, workorderId, async () => {
     const record = await requireWorkorder(partnerId, workorderId);
     // The legacy `status` field (serviceCentreColumns / serviceCentreFormFields)
     // is a completely separate value from the real onHold lifecycle side-state

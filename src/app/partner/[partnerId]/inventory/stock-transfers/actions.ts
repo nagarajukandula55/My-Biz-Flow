@@ -1,7 +1,9 @@
 "use server";
 
+import { withInventoryAction } from "@/lib/inventoryAction";
+
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
+import { redirectAfterInventoryWrite as redirect } from "@/lib/inventoryAction";
 import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import { createBusinessRecord, getBusinessRecord, updateBusinessRecord } from "@/lib/businessRecords";
 import type { Row } from "@/components/DataTable";
@@ -101,6 +103,14 @@ export async function createStockTransferMultiAction(
   common: Record<string, unknown>,
   lines: RawLine[]
 ): Promise<void | { error?: string }> {
+  return withInventoryAction(partnerId, () => createStockTransferMultiActionInner(partnerId, common, lines));
+}
+
+async function createStockTransferMultiActionInner(
+  partnerId: string,
+  common: Record<string, unknown>,
+  lines: RawLine[]
+): Promise<void | { error?: string }> {
   partnerId = await requireSessionPartnerId(partnerId);
 
   const { error, record } = await createOwnWarehouseTransferCore(partnerId, common, lines);
@@ -128,6 +138,13 @@ export async function createStockTransferMultiAction(
  * (e.g. stock-transfers/new/page.tsx's plain RecordForm).
  */
 export async function createStockTransferAction(
+  partnerId: string,
+  values: Record<string, unknown>
+): Promise<void | { error?: string }> {
+  return withInventoryAction(partnerId, () => createStockTransferActionInner(partnerId, values));
+}
+
+async function createStockTransferActionInner(
   partnerId: string,
   values: Record<string, unknown>
 ): Promise<void | { error?: string }> {
@@ -211,6 +228,14 @@ export async function requestStockTransferCloseOtpAction(partnerId: string, reco
  * movement shows up in getInventoryStatement's audit trail.
  */
 export async function verifyAndCloseStockTransferAction(
+  partnerId: string,
+  recordId: string,
+  code: string
+): Promise<{ verified: boolean; reason?: string; error?: string }> {
+  return withInventoryAction(partnerId, () => verifyAndCloseStockTransferActionInner(partnerId, recordId, code));
+}
+
+async function verifyAndCloseStockTransferActionInner(
   partnerId: string,
   recordId: string,
   code: string

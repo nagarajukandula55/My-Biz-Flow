@@ -1,3 +1,4 @@
+import { requireTelecallingManager } from "@/lib/telecalling/authorization";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
@@ -21,6 +22,7 @@ registerPage({
 export const dynamic = "force-dynamic";
 
 export default async function EditLeadPage({ params }: { params: { partnerId: string; id: string } }) {
+  await requireTelecallingManager(params.partnerId);
   const lead = await getLead(params.id, params.partnerId);
   if (!lead) notFound();
 

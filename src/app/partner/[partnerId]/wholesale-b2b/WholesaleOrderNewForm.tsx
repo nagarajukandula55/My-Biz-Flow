@@ -130,7 +130,7 @@ export function WholesaleOrderNewForm({
         <p className="mb-2 text-xs text-text-muted">
           Add one row per item — type a description and Unit Price (₹, base/list price before any tier discount).
         </p>
-        <MaterialLineItemsTable items={items} onChange={setItems} materialOptions={materialOptions} showUnitPrice />
+        <MaterialLineItemsTable items={items} onChange={setItems} materialOptions={materialOptions} showUnitPrice restrictMaterialToBom={false} />
       </div>
 
       {items.length > 0 && (

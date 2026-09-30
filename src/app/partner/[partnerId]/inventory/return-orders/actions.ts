@@ -1,7 +1,9 @@
 "use server";
 
+import { withInventoryAction } from "@/lib/inventoryAction";
+
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
+import { redirectAfterInventoryWrite as redirect } from "@/lib/inventoryAction";
 import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import { createBusinessRecord, getBusinessRecord, updateBusinessRecord } from "@/lib/businessRecords";
 import { runBulkImport, type BulkImportResult } from "@/lib/bulkImportCsv";
@@ -173,6 +175,13 @@ export async function createReturnOrderAction(
   partnerId: string,
   values: Record<string, unknown>
 ): Promise<void | { error?: string }> {
+  return withInventoryAction(partnerId, () => createReturnOrderActionInner(partnerId, values));
+}
+
+async function createReturnOrderActionInner(
+  partnerId: string,
+  values: Record<string, unknown>
+): Promise<void | { error?: string }> {
   partnerId = await requireSessionPartnerId(partnerId);
 
   const { error, record } = await createReturnOrderCore(partnerId, values);
@@ -202,6 +211,14 @@ export async function createReturnOrderAction(
  * fix and resubmit just the remaining lines.
  */
 export async function createReturnOrdersMultiAction(
+  partnerId: string,
+  common: Record<string, unknown>,
+  lines: Array<Record<string, unknown>>
+): Promise<{ error?: string; createdIds?: string[] }> {
+  return withInventoryAction(partnerId, () => createReturnOrdersMultiActionInner(partnerId, common, lines));
+}
+
+async function createReturnOrdersMultiActionInner(
   partnerId: string,
   common: Record<string, unknown>,
   lines: Array<Record<string, unknown>>
@@ -249,6 +266,14 @@ export async function updateReturnOrderAction(
   recordId: string,
   values: Record<string, unknown>
 ): Promise<void | { error?: string }> {
+  return withInventoryAction(partnerId, () => updateReturnOrderActionInner(partnerId, recordId, values));
+}
+
+async function updateReturnOrderActionInner(
+  partnerId: string,
+  recordId: string,
+  values: Record<string, unknown>
+): Promise<void | { error?: string }> {
   partnerId = await requireSessionPartnerId(partnerId);
 
   const existing = await getBusinessRecord(partnerId, "inventory-return-orders", recordId);
@@ -287,6 +312,10 @@ export async function updateReturnOrderAction(
  * never had one yet.
  */
 export async function cancelReturnOrderAction(partnerId: string, recordId: string): Promise<void | { error?: string }> {
+  return withInventoryAction(partnerId, () => cancelReturnOrderActionInner(partnerId, recordId));
+}
+
+async function cancelReturnOrderActionInner(partnerId: string, recordId: string): Promise<void | { error?: string }> {
   partnerId = await requireSessionPartnerId(partnerId);
 
   const existing = await getBusinessRecord(partnerId, "inventory-return-orders", recordId);
@@ -313,6 +342,10 @@ export async function cancelReturnOrderAction(partnerId: string, recordId: strin
  * dispatchReturnOrderAction).
  */
 export async function markReturnOrderInTransitAction(partnerId: string, recordId: string): Promise<void | { error?: string }> {
+  return withInventoryAction(partnerId, () => markReturnOrderInTransitActionInner(partnerId, recordId));
+}
+
+async function markReturnOrderInTransitActionInner(partnerId: string, recordId: string): Promise<void | { error?: string }> {
   partnerId = await requireSessionPartnerId(partnerId);
 
   const existing = await getBusinessRecord(partnerId, "inventory-return-orders", recordId);
@@ -342,6 +375,10 @@ export async function markReturnOrderInTransitAction(partnerId: string, recordId
  * re-inwarded, or have this action run again.
  */
 export async function warehouseInwardReturnOrderAction(partnerId: string, recordId: string): Promise<void | { error?: string }> {
+  return withInventoryAction(partnerId, () => warehouseInwardReturnOrderActionInner(partnerId, recordId));
+}
+
+async function warehouseInwardReturnOrderActionInner(partnerId: string, recordId: string): Promise<void | { error?: string }> {
   partnerId = await requireSessionPartnerId(partnerId);
 
   const existing = await getBusinessRecord(partnerId, "inventory-return-orders", recordId);
@@ -374,6 +411,10 @@ export async function warehouseInwardReturnOrderAction(partnerId: string, record
  * record is final and can never be edited or dispatched again.
  */
 export async function dispatchReturnOrderAction(partnerId: string, recordId: string): Promise<void | { error?: string }> {
+  return withInventoryAction(partnerId, () => dispatchReturnOrderActionInner(partnerId, recordId));
+}
+
+async function dispatchReturnOrderActionInner(partnerId: string, recordId: string): Promise<void | { error?: string }> {
   partnerId = await requireSessionPartnerId(partnerId);
 
   const existing = await getBusinessRecord(partnerId, "inventory-return-orders", recordId);
@@ -404,6 +445,10 @@ export async function dispatchReturnOrderAction(partnerId: string, recordId: str
  * applyReturnOrderStockEffect — a straight status + stageHistory update.
  */
 export async function rejectReturnOrderAction(partnerId: string, recordId: string): Promise<void | { error?: string }> {
+  return withInventoryAction(partnerId, () => rejectReturnOrderActionInner(partnerId, recordId));
+}
+
+async function rejectReturnOrderActionInner(partnerId: string, recordId: string): Promise<void | { error?: string }> {
   partnerId = await requireSessionPartnerId(partnerId);
 
   const existing = await getBusinessRecord(partnerId, "inventory-return-orders", recordId);

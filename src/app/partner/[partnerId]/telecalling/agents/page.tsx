@@ -1,3 +1,4 @@
+import { requireTelecallingManager } from "@/lib/telecalling/authorization";
 import { AppShell } from "@/components/AppShell";
 import { registerPage } from "@/lib/designer/registry";
 import { listPartnerStaff } from "@/lib/partnerStaff";
@@ -20,6 +21,7 @@ registerPage({
 export const dynamic = "force-dynamic";
 
 export default async function AgentsPage({ params }: { params: { partnerId: string } }) {
+  await requireTelecallingManager(params.partnerId);
   const allStaff = await listPartnerStaff(params.partnerId);
   const agents = allStaff.filter((s) => s.role === "Telecaller");
   const indiaStates = await listIndiaStates();

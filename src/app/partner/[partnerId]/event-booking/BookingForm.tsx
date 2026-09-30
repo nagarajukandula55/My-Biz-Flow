@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { EVENT_BOOKING_STATUSES, type EventBookingStatus, type EventBookingType } from "@/lib/eventBooking";
+import { EVENT_BOOKING_STATUSES, type EventBookingStatus, type EventBookingType } from "@/lib/eventBookingTypes";
 import type { BookingFormInput, BookingActionResult } from "./[recordId]/actions";
 
 type VenueOption = { id: string; name: string };

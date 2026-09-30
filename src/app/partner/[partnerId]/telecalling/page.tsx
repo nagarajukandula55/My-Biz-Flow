@@ -1,3 +1,4 @@
+import { requireTelecallingManager } from "@/lib/telecalling/authorization";
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { registerPage } from "@/lib/designer/registry";
@@ -27,6 +28,7 @@ export default async function TelecallingPage({
   params: { partnerId: string };
   searchParams: { status?: string; state?: string; city?: string; assignedToId?: string; q?: string };
 }) {
+  await requireTelecallingManager(params.partnerId);
   const filter = {
     status: searchParams.status || undefined,
     state: searchParams.state || undefined,

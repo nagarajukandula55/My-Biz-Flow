@@ -1,3 +1,4 @@
+import { withRecordLock } from "@/lib/withRecordLock";
 /**
  * Per-unit/per-batch stock lot library — the substrate for FIFO draw
  * order, serialized exact-ageing, and (future) barcode/lot lookups. Backed
@@ -43,6 +44,10 @@ export type CreateStockLotInput = {
  * row for the whole quantity. Returns the created rows' ids.
  */
 export async function createStockLots(input: CreateStockLotInput): Promise<string[]> {
+  return withRecordLock("inventory-partner", input.partnerId, () => createStockLotsInner(input));
+}
+
+async function createStockLotsInner(input: CreateStockLotInput): Promise<string[]> {
   const receivedAt = input.receivedAt ?? new Date();
   const base = {
     partnerId: input.partnerId,
@@ -115,6 +120,16 @@ export type ConsumeFifoResult = {
  * on-hand quantity gate.
  */
 export async function consumeFifo(
+  partnerId: string,
+  materialId: string,
+  warehouseId: string,
+  condition: StockCondition,
+  quantity: number
+): Promise<ConsumeFifoResult> {
+  return withRecordLock("inventory-partner", partnerId, () => consumeFifoInner(partnerId, materialId, warehouseId, condition, quantity));
+}
+
+async function consumeFifoInner(
   partnerId: string,
   materialId: string,
   warehouseId: string,

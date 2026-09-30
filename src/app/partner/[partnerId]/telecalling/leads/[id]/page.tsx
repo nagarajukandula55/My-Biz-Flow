@@ -1,3 +1,4 @@
+import { requireTelecallingLeadRead } from "@/lib/telecalling/authorization";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
@@ -24,6 +25,7 @@ registerPage({
 export const dynamic = "force-dynamic";
 
 export default async function LeadDetailPage({ params }: { params: { partnerId: string; id: string } }) {
+  const viewer = await requireTelecallingLeadRead(params.partnerId, params.id);
   const lead = await getLead(params.id, params.partnerId);
   if (!lead) notFound();
 
@@ -37,12 +39,12 @@ export default async function LeadDetailPage({ params }: { params: { partnerId: 
       <div className="mbf-page">
         <div className="border-b border-border bg-bg-raised px-6 py-4">
           <div className="flex items-center justify-between">
-            <Link href={`/partner/${params.partnerId}/telecalling`} className="text-sm font-semibold text-accent hover:underline">
+            <Link href={viewer === "manager" ? `/partner/${params.partnerId}/telecalling` : `/partner/${params.partnerId}/telecalling/queue`} className="text-sm font-semibold text-accent hover:underline">
               ← Back to Leads
             </Link>
-            <Link href={`/partner/${params.partnerId}/telecalling/leads/${params.id}/edit`} className="btn-outline">
+            {viewer === "manager" && <Link href={`/partner/${params.partnerId}/telecalling/leads/${params.id}/edit`} className="btn-outline">
               Edit
-            </Link>
+            </Link>}
           </div>
           <div className="mt-2 flex flex-wrap items-center gap-3">
             <h1 className="font-display text-lg font-bold text-text">{lead.name}</h1>
@@ -98,7 +100,7 @@ export default async function LeadDetailPage({ params }: { params: { partnerId: 
                     <StatusChip
                       className="mt-1.5"
                       label={m.status}
-                      variant={m.status === "sent" ? "success" : m.status === "failed" ? "danger" : "neutral"}
+                      variant={m.status === "sent" ? "success" : m.status === "accepted" ? "warning" : m.status === "failed" ? "danger" : "neutral"}
                     />
                   </div>
                 ))}

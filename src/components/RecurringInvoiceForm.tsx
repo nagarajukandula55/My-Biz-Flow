@@ -34,7 +34,7 @@ export function RecurringInvoiceForm({
 }: {
   initialValues?: Partial<RecurringInvoiceValues>;
   submitLabel: string;
-  action?: (values: Record<string, unknown>) => Promise<void>;
+  action?: (values: Record<string, unknown>) => Promise<void | { error?: string }>;
   contactOptions?: ContactOption[];
   itemOptions?: ItemOption[];
 }) {
