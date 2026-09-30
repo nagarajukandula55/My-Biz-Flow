@@ -141,11 +141,12 @@ export function BillingInvoiceForm({
   partnerBankDetails,
   partnerUpiId,
   partnerGstin,
+  showInventory,
 }: {
   initialValues?: Partial<BillingInvoiceValues>;
   submitLabel: string;
   /** Real persistence path — a bound server action receiving the full record (including computed totals). Omit for the demo-stub path. */
-  action?: (values: Record<string, unknown>) => Promise<void>;
+  action?: (values: Record<string, unknown>) => Promise<void | { error?: string }>;
   /** Billing Contacts to pick a customer from (see billing-contacts.ts) — the field stays a free-text input with these as suggestions, so existing invoices with a plain name keep working. */
   contactOptions?: ContactOption[];
   /** This partner's own Customers (service-centre-customers module) — browsed via the "Browse Customers" modal, a second explicit source of customer prefill alongside the Billing Contacts datalist above. */
@@ -174,6 +175,8 @@ export function BillingInvoiceForm({
    * updateBusinessRecordAction) since hiding the UI control alone doesn't
    * stop a direct/crafted form submission. */
   partnerGstin?: string | null;
+  /** New-invoice page only: shows each catalog line's live stock and a "Deduct from inventory" toggle (see LineItemsEditor). Left off on edit — editing an invoice never moves stock. */
+  showInventory?: boolean;
 }) {
   const partnerHasGstin = Boolean(partnerGstin?.trim());
   const [customer, setCustomer] = useState(initialValues?.customer ?? "");
@@ -213,6 +216,7 @@ export function BillingInvoiceForm({
   const [paymentMode, setPaymentMode] = useState(initialValues?.paymentMode ?? "Bank Transfer");
   const [items, setItems] = useState<LineItem[]>(initialValues?.items ?? [{ ...DEFAULT_ITEM }]);
   const [saved, setSaved] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   // Same top-right sticky submit trigger as RecordForm (see RecordForm.tsx)
   // — a button outside the <form> DOM subtree still submits it via the
@@ -331,8 +335,10 @@ export function BillingInvoiceForm({
       showNotes,
     };
     if (action) {
+      setSubmitError(null);
       startTransition(async () => {
-        await action({
+        // A successful create redirects and never returns; only a rejected one (e.g. not enough stock) comes back here.
+        const result = await action({
           ...values,
           lineItemsSummary: items.map((it) => it.description).filter(Boolean).join("; "),
           subtotal: totals.subtotal,
@@ -343,6 +349,7 @@ export function BillingInvoiceForm({
           igstAmount: igstTotal,
           totalAmount: grandTotal,
         });
+        if (result && result.error) setSubmitError(result.error);
       });
       return;
     }
@@ -594,6 +601,7 @@ export function BillingInvoiceForm({
           showHsn={showGstFields}
           itemOptions={itemOptions}
           interState={interState}
+          showInventory={showInventory}
         />
       </div>
 
@@ -735,6 +743,11 @@ export function BillingInvoiceForm({
         </div>
       </div>
 
+      {submitError && (
+        <p role="alert" className="rounded-md border border-danger bg-bg-raised px-3 py-2 text-sm text-danger">
+          {submitError}
+        </p>
+      )}
       <div className="flex items-center gap-3">
         <button type="submit" className="btn-accent" disabled={pending}>
           {pending ? "Saving…" : submitLabel}

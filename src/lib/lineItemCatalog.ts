@@ -1,5 +1,7 @@
 import { listBusinessRecords } from "@/lib/businessRecords";
 import type { ItemOption } from "@/components/LineItemsEditor";
+import { isActiveMaterial } from "@/lib/materialStatus";
+import { getAvailabilityDetailByMaterial } from "@/lib/inventoryStock";
 
 /**
  * The shared line-item "pick from catalog" source for every Billing
@@ -26,9 +28,12 @@ import type { ItemOption } from "@/components/LineItemsEditor";
  * that follow-up note.
  */
 export async function getLineItemCatalogOptions(partnerId: string): Promise<ItemOption[]> {
-  const materials = await listBusinessRecords(partnerId, "inventory-bom");
+  const [materials, availability] = await Promise.all([
+    listBusinessRecords(partnerId, "inventory-bom"),
+    getAvailabilityDetailByMaterial(partnerId),
+  ]);
   return materials
-    .filter((m) => (m["status"] ?? "Active") === "Active")
+    .filter((m) => isActiveMaterial(m))
     .map((m) => ({
       id: String(m["id"]),
       label: String(m["description"] ?? m["id"]),
@@ -36,5 +41,11 @@ export async function getLineItemCatalogOptions(partnerId: string): Promise<Item
       unitPrice: Number(m["rate"] ?? 0),
       taxRate: Number(m["taxPercent"] ?? 0),
       hsnCode: m["hsnCode"] ? String(m["hsnCode"]) : undefined,
+      // Good-condition available qty summed across warehouses (same number
+      // Stock Transfers/Return Orders show) — 0 when the material has no
+      // stock row at all. Shown per invoice line so a seller sees what is
+      // actually on the shelf before consuming it.
+      availableQty: availability.get(String(m["id"]))?.total ?? 0,
+      serialized: Boolean(m["serialized"]),
     }));
 }

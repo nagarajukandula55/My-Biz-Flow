@@ -7,6 +7,7 @@ import { BomBulkUploadButton } from "./BomBulkUploadButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { bomColumns } from "@/lib/sample-data/bom";
 import { listBusinessRecords } from "@/lib/businessRecords";
+import { isActiveMaterial } from "@/lib/materialStatus";
 
 registerPage({
   id: "inventory.bom.list",
@@ -31,8 +32,8 @@ export default async function BomPage({ params }: { params: { partnerId: string 
   // Same shape as getBomOptionsForPartner — derived from the already-fetched
   // `rows` instead of a second query, since this page needs them anyway.
   const bomOptions = rows
-    .filter((r) => (r["status"] ?? "Active") === "Active")
-    .map((r) => ({ value: String(r["id"]), label: `${r["id"]} — ${r["description"]}` }));
+    .filter((r) => isActiveMaterial(r))
+    .map((r) => ({ value: String(r["id"]), label: `${r["id"]} — ${r["description"] ?? r["id"]}` }));
 
   return (
     <AppShell

@@ -3,6 +3,7 @@ import type { RecordField, TimelineEntry, RelatedRecord } from "@/components/Rec
 import type { StatusVariant } from "@/components/StatusChip";
 import type { FormFieldDef } from "@/components/RecordForm";
 import { listBusinessRecords } from "@/lib/businessRecords";
+import { isActiveMaterial } from "@/lib/materialStatus";
 
 /**
  * BOM (Bill of Materials) — the flat material/item master catalog shared
@@ -301,29 +302,45 @@ export function getBomOptions(): { value: string; label: string }[] {
 }
 
 /**
- * The real, partner-scoped material list — every Active row in THIS
- * partner's own "inventory-bom" catalog, nothing more (no dummy rows) and
- * nothing less (every real BOM item they've added). Label format matches
- * what part-line/stock-lookup code elsewhere normalizes against
- * (materialCode() in inventoryStock.ts splits on " — ", so this "CODE —
- * Description" shape is load-bearing, not cosmetic).
+ * The real, partner-scoped material list for every stock-moving picker
+ * (Stock Adjustment/Take/Transfer, Return & Part Orders, Manufacturing BOM,
+ * Wholesale) — EVERY material this partner has in their BOM catalog, plus any
+ * material that only exists as a stock row. Inactive materials are included
+ * on purpose: stock can still sit on the shelf for a material retired from
+ * sale, and a picker that hides it makes that stock impossible to adjust,
+ * count, transfer or return. (Selling/invoicing is stricter — see
+ * getLineItemCatalogOptions, which excludes explicit-Inactive materials.)
+ * Label format matches what part-line/stock-lookup code elsewhere normalizes
+ * against (materialCode() in inventoryStock.ts splits on " — ", so this
+ * "CODE — Description" shape is load-bearing, not cosmetic).
  */
 export async function getBomOptionsForPartner(
   partnerId: string
-): Promise<{ value: string; label: string; serialized: boolean; rate?: number }[]> {
-  const rows = await listBusinessRecords(partnerId, "inventory-bom");
-  return rows
-    .filter((r) => (r["status"] ?? "Active") === "Active")
-    .map((r) => ({
-      value: String(r["id"]),
-      label: `${r["id"]} — ${r["description"]}`,
-      serialized: Boolean(r["serialized"]),
-      // The BOM catalog's own selling/costing rate — carried through so a
-      // document line that picks a material (Stock Adjustment, Return
-      // Order, Stock Take, Stock Transfer, Part Order) can default its
-      // Unit Price from the catalog instead of always starting at ₹0 (see
-      // MaterialLineItemsTable's addRow/updateRow, which stamp this onto a
-      // newly-added or re-picked line).
-      rate: typeof r["rate"] === "number" ? r["rate"] : Number(r["rate"]) || undefined,
-    }));
+): Promise<{ value: string; label: string; serialized: boolean; rate?: number; inactive?: boolean }[]> {
+  const [rows, stockRows] = await Promise.all([
+    listBusinessRecords(partnerId, "inventory-bom"),
+    listBusinessRecords(partnerId, "inventory-stock"),
+  ]);
+  const options: { value: string; label: string; serialized: boolean; rate?: number; inactive?: boolean }[] = rows.map((r) => ({
+    value: String(r["id"]),
+    label: `${r["id"]} — ${r["description"] ?? r["id"]}`,
+    serialized: Boolean(r["serialized"]),
+    inactive: !isActiveMaterial(r),
+    // The BOM catalog's own selling/costing rate — carried through so a
+    // document line that picks a material can default its Unit Price from
+    // the catalog instead of always starting at ₹0 (see
+    // MaterialLineItemsTable's addRow/updateRow).
+    rate: typeof r["rate"] === "number" ? r["rate"] : Number(r["rate"]) || undefined,
+  }));
+  // Stock rows whose material isn't (or is no longer) in the BOM catalog —
+  // keep them selectable so their stock can still be adjusted/counted.
+  const known = new Set(options.map((o) => o.value));
+  for (const r of stockRows) {
+    const label = String(r["materialId"] ?? "").trim();
+    const code = label.split(" — ")[0].trim();
+    if (!code || known.has(code)) continue;
+    known.add(code);
+    options.push({ value: code, label, serialized: false });
+  }
+  return options;
 }

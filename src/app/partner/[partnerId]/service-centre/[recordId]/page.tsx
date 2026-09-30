@@ -24,6 +24,7 @@ import {
 } from "@/lib/serviceCentreCatalogActions";
 import { getAvailabilityByMaterial } from "@/lib/inventoryStock";
 import { createPnaEntryAction } from "./actions";
+import { isActiveMaterial } from "@/lib/materialStatus";
 
 registerPage({
   id: "service-centre.detail",
@@ -57,7 +58,7 @@ export default async function ServiceCentreDetailPage({
   const lifecycle = extractLifecycleFromRecord(record);
   const bomRecords = await listBusinessRecords(params.partnerId, "inventory-bom");
   const bomMaterials = bomRecords
-    .filter((r) => r["status"] === "Active")
+    .filter((r) => isActiveMaterial(r))
     .map((r) => ({
       id: String(r["id"]),
       label: `${r["id"]} — ${r["description"] ?? ""}`,

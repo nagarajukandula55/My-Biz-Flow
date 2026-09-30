@@ -56,6 +56,10 @@ export type ItemOption = {
   taxRate: number;
   /** HSN/SAC code from the catalog record — stamped onto the line alongside rate/tax when picked. */
   hsnCode?: string;
+  /** Good, unreserved quantity on hand across warehouses (see lib/lineItemCatalog.ts). Shown per line when `showInventory` is on. */
+  availableQty?: number;
+  /** Serialized materials can't be consumed from an invoice line — their serial numbers must be tracked elsewhere. */
+  serialized?: boolean;
 };
 
 export function LineItemsEditor({
@@ -65,6 +69,7 @@ export function LineItemsEditor({
   showHsn = false,
   itemOptions,
   interState,
+  showInventory = false,
 }: {
   items: LineItem[];
   onChange: (items: LineItem[]) => void;
@@ -96,6 +101,8 @@ export function LineItemsEditor({
    * is provided — every other caller of this editor is unaffected.
    */
   interState?: boolean;
+  /** Sales Invoice create form only — under each catalog-picked line, shows how many units Inventory has available and a "Deduct from inventory" toggle (LineItem.consumeInventory). Off by default; a line with the toggle off is just invoiced without touching stock. Needs `itemOptions`. */
+  showInventory?: boolean;
 }) {
   function updateItem(idx: number, patch: Partial<LineItem>) {
     onChange(items.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
@@ -124,6 +131,8 @@ export function LineItemsEditor({
       priceMode: "excl",
       taxRate: showTax ? option.taxRate : 0,
       hsnCode: option.hsnCode ?? "",
+      // A different catalog item is a different stock pool — never carry the previous pick's toggle over.
+      consumeInventory: false,
     });
   }
 
@@ -161,6 +170,8 @@ export function LineItemsEditor({
               const lineCgst = showGstSplit && !interState ? lineGst / 2 : 0;
               const lineSgst = showGstSplit && !interState ? lineGst / 2 : 0;
               const lineIgst = showGstSplit && interState ? lineGst : 0;
+              const option = item.itemId ? itemOptions?.find((o) => o.id === item.itemId) : undefined;
+              const stock = option ? { available: option.availableQty ?? 0, serialized: Boolean(option.serialized) } : undefined;
               return (
                 <tr key={i} className="border-b border-border last:border-b-0">
                   {itemOptions && (
@@ -186,6 +197,32 @@ export function LineItemsEditor({
                       placeholder="Item or service description"
                       className="w-full rounded-md border border-border bg-bg px-2.5 py-1.5 text-sm text-text outline-none focus:border-accent"
                     />
+                    {showInventory && stock && (
+                      <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
+                        <span className={stock.available <= 0 ? "font-semibold text-danger" : "text-text-muted"}>
+                          In stock: <span className="font-mono tabular-nums">{stock.available}</span> {item.unit}
+                        </span>
+                        {stock.serialized ? (
+                          <span className="text-text-muted">Serialized — consume via Stock Adjustment</span>
+                        ) : (
+                          <label className="flex cursor-pointer items-center gap-1.5 text-text">
+                            <input
+                              type="checkbox"
+                              role="switch"
+                              checked={Boolean(item.consumeInventory)}
+                              onChange={(e) => updateItem(i, { consumeInventory: e.target.checked })}
+                              disabled={stock.available <= 0}
+                            />
+                            <span>Deduct from inventory</span>
+                          </label>
+                        )}
+                        {item.consumeInventory && item.quantity > stock.available && (
+                          <span className="font-semibold text-danger">
+                            Only {stock.available} available — reduce Qty or turn off
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </td>
                   {showHsn && (
                     <td className="px-3 py-2">
