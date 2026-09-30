@@ -42,6 +42,7 @@ export async function createOrder(amountInPaise: number, receipt: string, notes:
       Authorization: `Basic ${Buffer.from(`${keyId}:${keySecret}`).toString("base64")}`,
     },
     body: JSON.stringify({ amount: amountInPaise, currency: "INR", receipt, notes }),
+    signal: AbortSignal.timeout(15000),
   });
   if (!res.ok) {
     const body = await res.text();
@@ -49,6 +50,35 @@ export async function createOrder(amountInPaise: number, receipt: string, notes:
   }
   const data = await res.json();
   return { id: data.id, amount: data.amount, currency: data.currency };
+}
+
+export type CapturedPayment = {
+  id: string; order_id: string; amount: number; currency: string;
+  status: string; captured: boolean; amount_refunded: number;
+};
+export type PaidOrder = RazorpayOrder & {
+  status: string; amount_paid: number; amount_due: number;
+  notes: Record<string, string>;
+};
+
+async function fetchEntity<T>(path: string): Promise<T> {
+  const { keyId, keySecret } = requireCredentials();
+  const response = await fetch(`${RAZORPAY_API_BASE}/${path}`, {
+    headers: { Authorization: `Basic ${Buffer.from(`${keyId}:${keySecret}`).toString("base64")}` },
+    cache: "no-store", signal: AbortSignal.timeout(15000), redirect: "error",
+  });
+  if (!response.ok) throw new Error(`Payment provider lookup failed (${response.status}).`);
+  return response.json() as Promise<T>;
+}
+
+export async function fetchPaymentAndOrder(paymentId: string, orderId?: string) {
+  if (!/^pay_[A-Za-z0-9]+$/.test(paymentId)) throw new Error("Invalid payment identifier.");
+  const payment = await fetchEntity<CapturedPayment>(`payments/${paymentId}`);
+  if (payment.id !== paymentId || !/^order_[A-Za-z0-9]+$/.test(payment.order_id) || (orderId && payment.order_id !== orderId)) {
+    throw new Error("Payment and order do not match.");
+  }
+  const order = await fetchEntity<PaidOrder>(`orders/${payment.order_id}`);
+  return { payment, order };
 }
 
 function hmacHex(secret: string, payload: string): string {

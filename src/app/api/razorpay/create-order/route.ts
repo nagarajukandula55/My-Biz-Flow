@@ -27,6 +27,8 @@ export async function POST() {
       partnerId: partner.id,
       planId: partner.planId ?? "",
       billingCycle: partner.billingCycle ?? "",
+      offerId: partner.offerId ?? "",
+      planName: due.planName,
     });
     return NextResponse.json({ orderId: order.id, amount: order.amount, currency: order.currency, planName: due.planName });
   } catch (err) {

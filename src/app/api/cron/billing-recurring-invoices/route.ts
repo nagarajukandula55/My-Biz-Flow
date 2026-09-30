@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
+import { isAuthorizedCronRequest } from "@/lib/cronAuthorization";
 import { env } from "@/lib/env";
 import { listPartners } from "@/lib/partnerData";
 import { listBusinessRecords, getBusinessRecord, createBusinessRecord, updateBusinessRecord } from "@/lib/businessRecords";
@@ -17,12 +18,8 @@ import { getOpsChatId } from "@/lib/platformSettings";
  * snapshot, and advances the template's nextRunDate.
  */
 export async function GET(request: Request) {
-  const secret = env.cronSecret();
-  if (secret) {
-    const authHeader = request.headers.get("authorization");
-    if (authHeader !== `Bearer ${secret}`) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  if (!isAuthorizedCronRequest(request.headers.get("authorization"), env.cronSecret())) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const today = new Date().toISOString().slice(0, 10);

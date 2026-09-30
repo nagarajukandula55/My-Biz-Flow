@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
+import { isAuthorizedCronRequest } from "@/lib/cronAuthorization";
 import { env } from "@/lib/env";
 import { listPartners } from "@/lib/partnerData";
 import { sendPartnerTelegramAlert } from "@/lib/telegram";
@@ -25,12 +26,8 @@ function daysUntil(date: Date, now: Date): number {
  * the daily/weekly/monthly report cron does.
  */
 export async function GET(request: Request) {
-  const secret = env.cronSecret();
-  if (secret) {
-    const authHeader = request.headers.get("authorization");
-    if (authHeader !== `Bearer ${secret}`) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  if (!isAuthorizedCronRequest(request.headers.get("authorization"), env.cronSecret())) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const now = new Date();

@@ -1,110 +1,31 @@
 import { NextResponse } from "next/server";
-import { getPartner, updatePartnerSubscription } from "@/lib/partnerData";
 import { verifyWebhookSignature } from "@/lib/razorpay";
-import { computePartnerDueAmount, cycleLabel } from "@/lib/subscriptionData";
-import { prisma } from "@/lib/prisma";
-import { notifyCentralApiSale } from "@/lib/centralApi";
-import { sendPlatformSubscriptionPaymentEmail } from "@/lib/email";
-import { sendPartnerTelegramAlert } from "@/lib/telegram";
-import { paymentReceivedMessage } from "@/lib/telegramTemplates";
-import { logError } from "@/lib/errorLog";
+import { acceptSubscriptionPayment } from "@/lib/acceptSubscriptionPayment";
+import { PaymentValidationError } from "@/lib/subscriptionPaymentPolicy";
+import { deliverSubscriptionPaymentReceipt } from "@/lib/subscriptionPaymentReceipt";
 
-/**
- * Optional: only fires if a webhook is registered in the Razorpay
- * dashboard pointing here. The primary activation path is
- * /api/razorpay/verify (Checkout success signature) — this is a backup
- * for payments confirmed asynchronously (e.g. UPI collect requests).
- */
 export async function POST(request: Request) {
   const rawBody = await request.text();
   const signature = request.headers.get("x-razorpay-signature");
   if (!signature) return NextResponse.json({ error: "Missing signature" }, { status: 400 });
-
-  let valid: boolean;
   try {
-    valid = verifyWebhookSignature(rawBody, signature);
-  } catch (err) {
-    return NextResponse.json({ error: err instanceof Error ? err.message : "Webhook not configured" }, { status: 502 });
+    if (!verifyWebhookSignature(rawBody, signature)) return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
+  } catch { return NextResponse.json({ error: "Webhook verification unavailable" }, { status: 502 }); }
+  let payload;
+  try { payload = JSON.parse(rawBody); }
+  catch { return NextResponse.json({ error: "Invalid payload" }, { status: 400 }); }
+  if (payload?.event !== "payment.captured" && payload?.event !== "order.paid") return NextResponse.json({ ok: true });
+  const paymentId = payload?.payload?.payment?.entity?.id;
+  if (typeof paymentId !== "string" || !/^pay_[A-Za-z0-9]+$/.test(paymentId)) {
+    return NextResponse.json({ error: "Missing payment identifier" }, { status: 400 });
   }
-  if (!valid) return NextResponse.json({ error: "Invalid webhook signature" }, { status: 400 });
-
-  const payload = JSON.parse(rawBody);
-  if (payload.event === "payment.captured" || payload.event === "order.paid") {
-    const paymentEntity = payload.payload?.payment?.entity;
-    const partnerId = paymentEntity?.notes?.partnerId as string | undefined;
-    if (partnerId) {
-      const partner = await getPartner(partnerId);
-      if (partner) {
-        if (partner.subscriptionStatus !== "Active") {
-          await updatePartnerSubscription(partner.id, {
-            subscriptionStatus: "Active",
-            trialStartAt: partner.trialStartAt,
-            trialEndAt: partner.trialEndAt,
-            billingCycle: partner.billingCycle,
-            planId: partner.planId,
-            offerId: partner.offerId,
-          });
-        }
-
-        // Same idempotent persist+notify as /api/razorpay/verify — whichever
-        // of the two fires first for a given payment id wins; the other
-        // no-ops on the unique constraint.
-        const due = await computePartnerDueAmount(partner);
-        if (due && paymentEntity?.id) {
-          const capturedAt = paymentEntity.created_at ? new Date(paymentEntity.created_at * 1000) : new Date();
-          try {
-            await prisma.subscriptionPayment.create({
-              data: {
-                partnerId: partner.id,
-                razorpayPaymentId: paymentEntity.id,
-                amount: due.amount,
-                capturedAt,
-              },
-            });
-            await notifyCentralApiSale(partner, due.planName, {
-              razorpayPaymentId: paymentEntity.id,
-              amount: due.amount,
-              capturedAt,
-            });
-
-            // Same receipt as /api/razorpay/verify — only reached when THIS
-            // call wins the insert race, so no duplicate receipts.
-            const receiptVars = {
-              to: partner.businessEmail,
-              businessName: partner.businessName,
-              planName: due.planName,
-              amount: `₹${due.amount.toLocaleString("en-IN")}`,
-              billingCycle: cycleLabel(partner.billingCycle ?? ""),
-              invoiceNumber: `PLT-${paymentEntity.id}`,
-            };
-            sendPlatformSubscriptionPaymentEmail(receiptVars).catch((err) =>
-              console.error(`[razorpay/webhook] Failed to send payment receipt email for partner ${partner.id}:`, err)
-            );
-            sendPartnerTelegramAlert(
-              partner.id,
-              "paymentReceived",
-              await paymentReceivedMessage({ partnerBusinessName: partner.businessName, amount: receiptVars.amount, planName: due.planName })
-            ).catch((err) =>
-              console.error(`[razorpay/webhook] Failed to send payment Telegram alert for partner ${partner.id}:`, err)
-            );
-          } catch (err) {
-            const alreadyRecorded =
-              err instanceof Error && "code" in err && (err as { code?: string }).code === "P2002";
-            if (!alreadyRecorded) {
-              console.error("[razorpay/webhook] Failed to persist/notify subscription payment:", err);
-              logError({
-                message: `Failed to persist subscription payment for partner ${partner.id} (razorpay_payment_id=${paymentEntity.id}): ${
-                  err instanceof Error ? err.message : String(err)
-                }`,
-                source: "api/razorpay/webhook",
-                severity: "error",
-              }).catch((logErr) => console.error("[razorpay/webhook] Failed to persist error log entry:", logErr));
-            }
-          }
-        }
-      }
-    }
+  try {
+    // Resolve ownership from the server-created order, never webhook payment notes.
+    const result = await acceptSubscriptionPayment(paymentId);
+    await deliverSubscriptionPaymentReceipt(result);
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof PaymentValidationError ? error.message : "Payment verification unavailable" },
+      { status: error instanceof PaymentValidationError ? 409 : 502 });
   }
-
-  return NextResponse.json({ ok: true });
 }

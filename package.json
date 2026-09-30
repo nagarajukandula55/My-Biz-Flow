@@ -4,9 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "DATABASE_URL=\"${DATABASE_URL_UNPOOLED:-$DATABASE_URL}\" prisma migrate deploy && next build",
+    "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "test:safety": "node --test tests/security.test.cjs tests/payments.test.cjs",
     "postinstall": "prisma generate",
     "sync:pincodes": "tsx scripts/syncPincodes.ts"
   },

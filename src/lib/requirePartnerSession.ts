@@ -40,7 +40,11 @@ export async function getSessionPartnerId(): Promise<string | undefined> {
 /** Reads the signed-in PartnerStaff session (see src/lib/telecalling/agentAuth.ts, the first
  * feature to actually issue this cookie), or undefined if not signed in as staff. */
 export async function getStaffSession(): Promise<StaffSessionClaims | undefined> {
-  return verifyStaffSessionToken(cookies().get(STAFF_SESSION_COOKIE)?.value);
+  const session = await verifyStaffSessionToken(cookies().get(STAFF_SESSION_COOKIE)?.value);
+  if (!session) return undefined;
+  const { getPartnerStaff } = await import("@/lib/partnerStaff");
+  const staff = await getPartnerStaff(session.partnerId, session.staffId);
+  return staff?.status === "Active" ? session : undefined;
 }
 
 /**
