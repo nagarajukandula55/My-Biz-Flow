@@ -20,6 +20,7 @@
  */
 
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 import { DEFAULT_SCHEME, formatNumber, type NumberingScheme } from "./numberingFormat";
 
 export {
@@ -85,13 +86,14 @@ export async function clearPartnerScheme(partnerId: string, documentType: string
 export async function getEffectiveScheme(
   documentType: string,
   partnerId?: string,
-  defaults?: Partial<NumberingScheme>
+  defaults?: Partial<NumberingScheme>,
+  client: Prisma.TransactionClient = prisma
 ): Promise<NumberingScheme> {
   if (partnerId) {
-    const override = await getPartnerScheme(partnerId, documentType);
-    if (override) return override;
+    const override = await client.numberingPartnerScheme.findUnique({ where: { partnerId_documentType: { partnerId, documentType } } });
+    if (override?.scheme) return override.scheme as unknown as NumberingScheme;
   }
-  const row = await prisma.numberingMainScheme.findUnique({ where: { documentType } });
+  const row = await client.numberingMainScheme.findUnique({ where: { documentType } });
   if (row?.scheme) return row.scheme as unknown as NumberingScheme;
   return defaults ? { ...DEFAULT_SCHEME, ...defaults } : DEFAULT_SCHEME;
 }
@@ -114,12 +116,13 @@ export async function previewNextNumber(documentType: string, partnerId?: string
 export async function getNextNumber(
   documentType: string,
   partnerId?: string,
-  defaults?: Partial<NumberingScheme>
+  defaults?: Partial<NumberingScheme>,
+  client: Prisma.TransactionClient = prisma
 ): Promise<string> {
-  const scheme = await getEffectiveScheme(documentType, partnerId, defaults);
+  const scheme = await getEffectiveScheme(documentType, partnerId, defaults, client);
   const key = scopeKey(documentType, partnerId);
 
-  const row = await prisma.numberingCounter.upsert({
+  const row = await client.numberingCounter.upsert({
     where: { scopeKey: key },
     create: { scopeKey: key, value: scheme.sequenceStart },
     update: { value: { increment: 1 } },

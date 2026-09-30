@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test:safety": "node --test tests/security.test.cjs tests/payments.test.cjs",
+    "test:safety": "node --test tests/security.test.cjs tests/payments.test.cjs tests/recurring.test.cjs",
     "postinstall": "prisma generate",
     "sync:pincodes": "tsx scripts/syncPincodes.ts"
   },

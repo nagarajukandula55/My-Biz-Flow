@@ -20,7 +20,7 @@ for (const name of ['billing-recurring-invoices', 'subscription-expiry-check', '
       '@/lib/env': { env: { cronSecret: () => undefined } },
       '@/lib/cronAuthorization': policy,
     };
-    for (const name of ['partnerData','businessRecords','sample-data/billing-recurring','centralApi','telegram','platformSettings','telegramTemplates','telegramReportData','telegramReportRunner']) {
+    for (const name of ['partnerData','businessRecords','sample-data/billing-recurring','centralApi','telegram','platformSettings','telegramTemplates','telegramReportData','telegramReportRunner','recurringInvoiceRunner']) {
       mocks[`@/lib/${name}`] = new Proxy({}, { get: () => denied });
     }
     const route = load(`src/app/api/cron/${name}/route.ts`, mocks);
