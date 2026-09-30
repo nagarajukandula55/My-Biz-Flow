@@ -3,11 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createLead, updateLead, bulkCreateLeads, assignLead, autoAssignBatch, autoAssignByTerritory, type LeadStatus } from "@/lib/telecalling/leadsData";
-import { logCall, type CallOutcome } from "@/lib/telecalling/callsData";
+import { logCall, CALL_OUTCOMES, type CallOutcome } from "@/lib/telecalling/callsData";
 import { createTemplate, updateTemplate, deleteTemplate, type MessageChannel } from "@/lib/telecalling/templatesData";
 import { sendTemplateToLead } from "@/lib/telecalling/messaging";
 import { createPartnerStaff, updatePartnerStaff, resetPartnerStaffPassword, nextAgentLoginId, setAgentTerritory } from "@/lib/partnerStaff";
-import { requireSessionOrStaffPartnerId, requireSessionPartnerId } from "@/lib/requirePartnerSession";
+import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
+
+import { requireTelecallingManager, requireTelecallingActor } from "@/lib/telecalling/authorization";
 
 /** Minimal CSV parser: first row is the header, columns matched case-insensitively
  * against name/phone/email/source. No quoted-comma support — good enough for a
@@ -41,7 +43,7 @@ function parseLeadsCsv(
 }
 
 export async function createLeadAction(partnerId: string, formData: FormData) {
-  partnerId = await requireSessionOrStaffPartnerId(partnerId);
+  partnerId = await requireTelecallingManager(partnerId);
   const name = String(formData.get("name") ?? "").trim();
   const phone = String(formData.get("phone") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim();
@@ -57,7 +59,7 @@ export async function createLeadAction(partnerId: string, formData: FormData) {
 }
 
 export async function updateLeadAction(partnerId: string, formData: FormData) {
-  partnerId = await requireSessionOrStaffPartnerId(partnerId);
+  partnerId = await requireTelecallingManager(partnerId);
   const id = String(formData.get("id") ?? "");
   const name = String(formData.get("name") ?? "").trim();
   const phone = String(formData.get("phone") ?? "").trim();
@@ -75,7 +77,7 @@ export async function updateLeadAction(partnerId: string, formData: FormData) {
 }
 
 export async function importLeadsAction(partnerId: string, formData: FormData) {
-  partnerId = await requireSessionOrStaffPartnerId(partnerId);
+  partnerId = await requireTelecallingManager(partnerId);
   const file = formData.get("file");
   const batchLabel = String(formData.get("batchLabel") ?? "").trim();
   const agentIds = formData.getAll("agentIds").map(String).filter(Boolean);
@@ -102,7 +104,7 @@ export async function importLeadsAction(partnerId: string, formData: FormData) {
 }
 
 export async function assignLeadAction(partnerId: string, formData: FormData) {
-  partnerId = await requireSessionOrStaffPartnerId(partnerId);
+  partnerId = await requireTelecallingManager(partnerId);
   const leadId = String(formData.get("leadId") ?? "");
   const assignedToId = String(formData.get("assignedToId") ?? "") || null;
   if (!leadId) throw new Error("Lead is required");
@@ -111,13 +113,15 @@ export async function assignLeadAction(partnerId: string, formData: FormData) {
 }
 
 export async function logCallAction(partnerId: string, formData: FormData): Promise<{ whatsappWelcomeSent: boolean }> {
-  partnerId = await requireSessionOrStaffPartnerId(partnerId);
   const leadId = String(formData.get("leadId") ?? "");
   const agentId = String(formData.get("agentId") ?? "");
   const outcome = String(formData.get("outcome") ?? "") as CallOutcome;
   const notes = String(formData.get("notes") ?? "").trim();
   const callbackAtRaw = String(formData.get("callbackAt") ?? "");
   if (!leadId || !agentId || !outcome) throw new Error("Lead, agent and outcome are required");
+  await requireTelecallingActor(partnerId, leadId, agentId);
+  if (!CALL_OUTCOMES.includes(outcome)) throw new Error("Invalid call outcome");
+  if (callbackAtRaw && !Number.isFinite(new Date(callbackAtRaw).getTime())) throw new Error("Invalid callback date");
   const call = await logCall(partnerId, {
     leadId,
     agentId,
@@ -130,42 +134,44 @@ export async function logCallAction(partnerId: string, formData: FormData): Prom
 }
 
 export async function sendTemplateAction(partnerId: string, formData: FormData) {
-  partnerId = await requireSessionOrStaffPartnerId(partnerId);
   const leadId = String(formData.get("leadId") ?? "");
   const templateId = String(formData.get("templateId") ?? "");
   const sentById = String(formData.get("sentById") ?? "");
   const linkOverride = String(formData.get("linkOverride") ?? "").trim();
   if (!leadId || !templateId || !sentById) throw new Error("Lead, template and sender are required");
+  await requireTelecallingActor(partnerId, leadId, sentById);
   const result = await sendTemplateToLead(partnerId, { leadId, templateId, sentById, linkOverride });
   revalidatePath(`/partner/${partnerId}/telecalling/queue`);
   return result;
 }
 
 export async function createTemplateAction(partnerId: string, formData: FormData) {
-  partnerId = await requireSessionOrStaffPartnerId(partnerId);
+  partnerId = await requireTelecallingManager(partnerId);
   const name = String(formData.get("name") ?? "").trim();
   const channel = String(formData.get("channel") ?? "sms") as MessageChannel;
   const category = String(formData.get("category") ?? "General").trim();
   const body = String(formData.get("body") ?? "").trim();
+  if (!["sms", "whatsapp"].includes(channel)) throw new Error("Invalid message channel");
   if (!name || !body) throw new Error("Name and body are required");
   await createTemplate(partnerId, { name, channel, category, body });
   revalidatePath(`/partner/${partnerId}/telecalling/templates`);
 }
 
 export async function updateTemplateAction(partnerId: string, formData: FormData) {
-  partnerId = await requireSessionOrStaffPartnerId(partnerId);
+  partnerId = await requireTelecallingManager(partnerId);
   const id = String(formData.get("id") ?? "");
   const name = String(formData.get("name") ?? "").trim();
   const channel = String(formData.get("channel") ?? "sms") as MessageChannel;
   const category = String(formData.get("category") ?? "General").trim();
   const body = String(formData.get("body") ?? "").trim();
+  if (!["sms", "whatsapp"].includes(channel)) throw new Error("Invalid message channel");
   if (!id || !name || !body) throw new Error("Name and body are required");
   await updateTemplate(id, partnerId, { name, channel, category, body });
   revalidatePath(`/partner/${partnerId}/telecalling/templates`);
 }
 
 export async function deleteTemplateAction(partnerId: string, formData: FormData) {
-  partnerId = await requireSessionOrStaffPartnerId(partnerId);
+  partnerId = await requireTelecallingManager(partnerId);
   const id = String(formData.get("id") ?? "");
   if (!id) throw new Error("Template id is required");
   await deleteTemplate(id, partnerId);

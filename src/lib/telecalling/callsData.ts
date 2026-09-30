@@ -6,7 +6,7 @@
  */
 import { prisma } from "@/lib/prisma";
 import { assertPartnerScope } from "@/lib/tenant";
-import { updateLeadStatus, type LeadStatus } from "@/lib/telecalling/leadsData";
+import { type LeadStatus } from "@/lib/telecalling/leadsData";
 import { sendWhatsAppTemplateMessage } from "@/lib/whatsapp";
 import { isWhatsappTriggerEnabled } from "@/lib/whatsappTriggers";
 import { SITE_URL } from "@/lib/seo";
@@ -94,21 +94,21 @@ export async function logCall(
   partnerId: string,
   input: { leadId: string; agentId: string; outcome: CallOutcome; notes?: string; callbackAt?: Date }
 ): Promise<CallRecord> {
-  const lead = await prisma.lead.findUniqueOrThrow({ where: { id: input.leadId } });
-  assertPartnerScope(partnerId, lead.partnerId);
-
-  const row = await prisma.call.create({
-    data: {
-      leadId: input.leadId,
-      partnerId,
-      agentId: input.agentId,
-      outcome: input.outcome,
-      notes: input.notes || null,
-      callbackAt: input.callbackAt || null,
-    },
-    include: { agent: true },
+  if (!CALL_OUTCOMES.includes(input.outcome)) throw new Error("Invalid call outcome");
+  if (input.callbackAt && !Number.isFinite(input.callbackAt.getTime())) throw new Error("Invalid callback date");
+  const { lead, row } = await prisma.$transaction(async tx => {
+    const lead = await tx.lead.findUniqueOrThrow({ where: { id: input.leadId } });
+    assertPartnerScope(partnerId, lead.partnerId);
+    const agent = await tx.partnerStaff.findFirst({ where: { id: input.agentId, partnerId, role: "Telecaller", status: "Active" }, select: { id: true } });
+    if (!agent) throw new Error("An active telecaller belonging to this partner is required.");
+    const row = await tx.call.create({
+      data: { leadId: lead.id, partnerId, agentId: agent.id, outcome: input.outcome,
+        notes: input.notes || null, callbackAt: input.callbackAt || null },
+      include: { agent: true },
+    });
+    await tx.lead.update({ where: { id: lead.id, partnerId }, data: { status: OUTCOME_TO_LEAD_STATUS[input.outcome] } });
+    return { lead, row };
   });
-  await updateLeadStatus(input.leadId, partnerId, OUTCOME_TO_LEAD_STATUS[input.outcome]);
 
   // Automated WhatsApp trigger — off by default, turned on per
   // PlatformSettings.enabledWhatsappTriggers (see whatsappTriggers.ts). Uses

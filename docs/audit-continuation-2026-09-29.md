@@ -38,3 +38,12 @@ The security and payment tests use mocked services and database transactions. Th
 Payment provider references: https://razorpay.com/docs/api/orders/fetch-with-id/ and https://razorpay.com/security/checklist
 
 Still open: Admin client compatibility; telecalling actor/lead binding; stock concurrency; recurring invoice idempotency and numbering; analytics identity/scoping; module readiness/settings; marketing; durable integration retries; full recovery and end-to-end tests. Service Centre's current records and storage paths are preserved.
+
+
+## Local continuation — 30 September 2026
+
+- Telecalling forms bind call/message staff identity to the signed-in active Telecaller and enforce assigned/territory queue visibility. Owner/Admin manage leads, assignments and templates.
+- Assignment destinations must be active Telecallers from the same partner. Automatic assignment uses conditional updates so concurrent manual assignments are not overwritten, and returns actual affected counts.
+- Call log creation and lead-status update use one transaction; outcome and callback dates are validated. Provider notification still follows commit.
+- Added isolated authorization and transaction-boundary tests. These mocks do not constitute a PostgreSQL concurrency/integration test.
+- No production changes, migration, push or deployment. Broader inventory transactions, analytics, module readiness, provider delivery and restore rehearsal remain outstanding.

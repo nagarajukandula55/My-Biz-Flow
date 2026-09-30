@@ -259,7 +259,13 @@ export async function updateLead(
   });
 }
 
+async function assertAssignableAgent(partnerId: string, agentId: string): Promise<void> {
+  const agent = await getPartnerStaff(partnerId, agentId);
+  if (!agent || agent.status !== "Active" || agent.role !== "Telecaller") throw new Error("Choose an active telecaller belonging to this partner.");
+}
+
 export async function assignLead(id: string, partnerId: string, assignedToId: string | null): Promise<void> {
+  if (assignedToId) await assertAssignableAgent(partnerId, assignedToId);
   const existing = await prisma.lead.findUniqueOrThrow({ where: { id } });
   assertPartnerScope(partnerId, existing.partnerId);
   await prisma.lead.update({ where: { id }, data: { assignedToId } });
@@ -268,17 +274,18 @@ export async function assignLead(id: string, partnerId: string, assignedToId: st
 /** Bulk auto-assign: round-robins every unassigned lead in a batch across the given agent ids, ignoring territory (an explicit manual agent pick always wins). */
 export async function autoAssignBatch(partnerId: string, importBatch: string, agentIds: string[]): Promise<number> {
   if (agentIds.length === 0) return 0;
+  for (const agentId of new Set(agentIds)) await assertAssignableAgent(partnerId, agentId);
   const unassigned = await prisma.lead.findMany({
     where: { partnerId, importBatch, assignedToId: null },
     select: { id: true },
     orderBy: { createdAt: "asc" },
   });
-  await prisma.$transaction(
+  const results = await prisma.$transaction(
     unassigned.map((lead, i) =>
-      prisma.lead.update({ where: { id: lead.id }, data: { assignedToId: agentIds[i % agentIds.length] } })
+      prisma.lead.updateMany({ where: { id: lead.id, partnerId, assignedToId: null }, data: { assignedToId: agentIds[i % agentIds.length] } })
     )
   );
-  return unassigned.length;
+  return results.reduce((total, result) => total + result.count, 0);
 }
 
 /**
@@ -332,10 +339,10 @@ export async function autoAssignByTerritory(partnerId: string, importBatch?: str
   }
 
   if (updates.length === 0) return 0;
-  await prisma.$transaction(
-    updates.map((u) => prisma.lead.update({ where: { id: u.id }, data: { assignedToId: u.assignedToId } }))
+  const results = await prisma.$transaction(
+    updates.map((u) => prisma.lead.updateMany({ where: { id: u.id, partnerId, assignedToId: null }, data: { assignedToId: u.assignedToId } }))
   );
-  return updates.length;
+  return results.reduce((total, result) => total + result.count, 0);
 }
 
 export async function updateLeadStatus(id: string, partnerId: string, status: LeadStatus): Promise<void> {

@@ -48,3 +48,61 @@ test('staff mutations reject suspended, missing and cross-partner staff', async 
   assert.equal(await gate.requireSessionOrStaffPartnerId('SC0001'), 'SC0001');
   await assert.rejects(gate.requireSessionOrStaffPartnerId('SC0002'));
 });
+
+
+test('telecalling binds staff identity and queue access, with owner-only management', async () => {
+  let owner, admin = false;
+  let session = { partnerId: 'p1', staffId: 'a1' };
+  let agent = { id: 'a1', status: 'Active', role: 'Telecaller', assignedStates: ['KA'], assignedCities: [] };
+  let lead = { assignedToId: 'a1', state: 'KA', city: null };
+  const auth = load('src/lib/telecalling/authorization.ts', {
+    'next/headers': { cookies: () => ({ get: () => undefined }) },
+    '@/lib/adminAuth': { ADMIN_COOKIE_NAME: 'admin', isValidAdminCookie: async () => admin },
+    '@/lib/requirePartnerSession': { getSessionPartnerId: async () => owner, getStaffSession: async () => session, PartnerAuthorizationError: Error },
+    '@/lib/partnerStaff': { getPartnerStaff: async () => agent },
+    '@/lib/telecalling/leadsData': { getLead: async () => lead },
+  });
+  await assert.rejects(auth.requireTelecallingManager('p1'), /Only the partner owner/);
+  await assert.rejects(auth.requireTelecallingActor('p1', 'lead', 'a2'), /identity/);
+  await assert.rejects(auth.requireTelecallingActor('p2', 'lead', 'a1'), /identity/);
+  assert.equal(await auth.requireTelecallingActor('p1', 'lead', 'a1'), 'a1');
+  lead.assignedToId = 'a2';
+  await assert.rejects(auth.requireTelecallingActor('p1', 'lead', 'a1'), /outside/);
+  lead.assignedToId = null;
+  assert.equal(await auth.requireTelecallingActor('p1', 'lead', 'a1'), 'a1');
+  lead.state = 'TN';
+  await assert.rejects(auth.requireTelecallingActor('p1', 'lead', 'a1'), /outside/);
+  agent.status = 'Suspended';
+  await assert.rejects(auth.requireTelecallingActor('p1', 'lead', 'a1'), /active telecaller/);
+  agent.status = 'Active'; agent.role = 'Technician';
+  await assert.rejects(auth.requireTelecallingActor('p1', 'lead', 'a1'), /active telecaller/);
+  owner = 'p1'; agent.role = 'Telecaller';
+  assert.equal(await auth.requireTelecallingManager('p1'), 'p1');
+  assert.equal(await auth.requireTelecallingActor('p1', 'lead', 'a1'), 'a1');
+});
+
+
+test('call logging validates the actor and keeps call/status writes in one transaction', async () => {
+  let active = false, failUpdate = false, committed = [], staged = [];
+  const lead = { id: 'l1', partnerId: 'p1', phone: '123', name: 'Lead' };
+  const tx = {
+    lead: { findUniqueOrThrow: async () => lead, update: async () => { if (failUpdate) throw new Error('update failed'); staged.push('status'); } },
+    partnerStaff: { findFirst: async ({ where }) => { assert.equal(where.partnerId, 'p1'); assert.equal(where.status, 'Active'); return active ? { id: 'a1' } : null; } },
+    call: { create: async ({ data }) => { staged.push('call'); return { ...data, agent: { name: 'Agent' } }; } },
+  };
+  const calls = load('src/lib/telecalling/callsData.ts', {
+    '@/lib/prisma': { prisma: { $transaction: async fn => { staged = []; const result = await fn(tx); committed.push(...staged); return result; } } },
+    '@/lib/tenant': { assertPartnerScope: (a, b) => assert.equal(a, b) },
+    '@/lib/whatsapp': {}, '@/lib/whatsappTriggers': { isWhatsappTriggerEnabled: async () => false }, '@/lib/seo': { SITE_URL: 'https://example.invalid' },
+  });
+  const input = { leadId: 'l1', agentId: 'a1', outcome: 'Interested' };
+  await assert.rejects(calls.logCall('p1', { ...input, outcome: 'invalid' }), /Invalid call/);
+  await assert.rejects(calls.logCall('p1', input), /active telecaller/);
+  assert.deepEqual(committed, []);
+  active = true; failUpdate = true;
+  await assert.rejects(calls.logCall('p1', input), /update failed/);
+  assert.deepEqual(committed, []);
+  failUpdate = false;
+  await calls.logCall('p1', input);
+  assert.deepEqual(committed, ['call', 'status']);
+});
