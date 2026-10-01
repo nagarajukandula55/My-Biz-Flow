@@ -1,6 +1,8 @@
 # Joint local checkpoint — 1 October 2026
 
-No push or deployment is authorized. No live database/schema changes, production repairs, customer deletions or live provider messages were performed. Service Centre data remains untouched. This checkpoint supersedes the pending implementation and recovery items in the 30 September report where explicitly addressed below.
+> Release gate update: the owner later authorized a push after a fresh backup, with direct Service Centre folder edits excluded. See `docs/release-gate-2026-10-01.md` for the current pre-push state. The checks below describe the earlier full local checkpoint; the restricted release must finish its own build/database verification before it is pushed.
+
+At the time this checkpoint was written, no push or deployment was authorized. No live database/schema changes, production repairs, customer deletions or live provider messages were performed. Service Centre data remains untouched. This checkpoint supersedes the pending implementation and recovery items in the 30 September report where explicitly addressed below.
 
 ## Completed in this continuation
 
@@ -24,11 +26,15 @@ No push or deployment is authorized. No live database/schema changes, production
 
 ## Still required before calling the entire platform complete
 
-1. Named Admin identities, role separation, per-person session revocation and attributable audit coverage. Eight-hour shared sessions do not replace these controls.
-2. Approved provider configuration and sandbox acceptance for payment, email, SMS, WhatsApp and Telegram. No provider acceptance is inferred from mocked responses. Other module notifications still have process-local delivery paths.
-3. Business acceptance for each package offered: module combinations, permissions, documents, imports/accounting, manufacturing per-unit versus per-order quantities, and repeated-SKU return allocation. A catalog of 25 modules / 341 pages does not certify all workflows.
-4. Typed editors, validation, preview and change history for settings not yet supported by Admin. Routine supported configuration can be UI-controlled; new logic and structural database changes still require reviewed development.
+1. Approved provider configuration and sandbox acceptance for payment, email, SMS, WhatsApp and Telegram. No provider acceptance is inferred from mocked responses. Other module notifications still have process-local delivery paths.
+2. Business acceptance for each package offered: module combinations, permissions, documents, imports/accounting, manufacturing per-unit versus per-order quantities, and repeated-SKU return allocation. A catalog of 25 modules / 341 pages does not certify all workflows.
+3. Typed editors, validation, preview and change history for settings not yet supported by Admin. Routine supported configuration can be UI-controlled; new logic and structural database changes still require reviewed development.
+4. Module-specific dashboard and analytics acceptance for every business type. Admin now lists expected KPIs and workflow checks for every module, but each module still needs user/business sign-off before being offered broadly.
 5. External uploaded-file recovery and full operational recovery rehearsal; reviewed handling of any historical integrity findings. Never automatically renumber or repair live records.
 6. Other-language and solution-page capability claims need the same review as the English homepage.
 
+Named Admin accounts, per-person roles and per-person revocation are intentionally out of scope while the Admin remains single-owner-only.
+
 The Admin should provide task-specific, validated maintenance controls rather than unrestricted SQL or a bulk-delete console. Any later deployment must be joint and explicitly authorized; no migration is included in this continuation.
+
+Database maintenance is now represented in Admin as a typed control map: read-only health/integrity/search actions, typed maintenance writes, restore-only backup handling and explicitly disabled raw SQL/bulk deletion.

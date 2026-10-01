@@ -9,11 +9,9 @@ import { MODULE_TIER_FEATURES } from "@/lib/designer/moduleTiers";
 import { MODULE_TIER_INTRO, GENERIC_TIER_INTRO } from "@/lib/designer/moduleTierIntro";
 import { listActivePartnerTypes } from "@/lib/designer/partnerTypesData";
 
-// Reads live DB-backed PartnerType rows for the "See pricing" link below —
-// same live-data caveat as pricing/page.tsx: must not be baked into a
-// static build, and Super-Admin changes to partner types should show up
-// within a short window rather than only at next deploy.
-export const revalidate = 60;
+// Reads live DB-backed PartnerType rows for the "See pricing" link below, so
+// deployment builds must not prerender it with a live database connection.
+export const dynamic = "force-dynamic";
 
 registerPage({
   id: "platform.guide.module-detail",

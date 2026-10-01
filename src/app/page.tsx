@@ -11,10 +11,9 @@ import { getIconComponent } from "@/lib/designer/icons";
 import { getLocaleFromCookie } from "@/lib/i18n/cookie";
 import { tPublic } from "@/lib/i18n/publicLocales";
 
-// Public marketing homepage — reads Super-Admin-configured partner type
-// list, which changes rarely. ISR keeps it fresh within a minute without a
-// DB hit on every visitor/crawler request.
-export const revalidate = 60;
+// Public marketing homepage reads Super-Admin-configured partner types, so it
+// must render on request instead of querying the database during deployment.
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Run Every Part of Your Business From One Platform",
