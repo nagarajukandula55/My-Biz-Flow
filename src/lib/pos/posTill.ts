@@ -1,3 +1,4 @@
+import { withRecordLock } from "@/lib/withRecordLock";
 /**
  * Till/cash-drawer sessions — open with a counted starting float, close
  * with a physical cash count reconciled against what the system expects.
@@ -28,11 +29,16 @@ export async function requireOpenTillSession(posAccountId: string, locationId: s
 }
 
 export async function openTillSession(input: {
+  partnerId: string;
   posAccountId: string;
   locationId: string;
   openedByStaffId: string;
   openingFloat: number;
 }) {
+  return withRecordLock("inventory-partner", input.partnerId, async () => {
+  if (!Number.isFinite(input.openingFloat) || input.openingFloat < 0) throw new Error("Invalid opening cash float.");
+  const account = await prisma.posAccount.findUnique({ where: { id: input.posAccountId } });
+  if (account?.partnerId !== input.partnerId) throw new Error("Till does not belong to this partner.");
   const existing = await getOpenTillSession(input.posAccountId, input.locationId);
   if (existing) {
     throw new Error(`A till is already open at this outlet (opened ${existing.openedAt.toISOString()}) — close it before opening another.`);
@@ -44,6 +50,7 @@ export async function openTillSession(input: {
       openedByStaffId: input.openedByStaffId,
       openingFloat: Math.round(input.openingFloat),
     },
+  });
   });
 }
 
@@ -70,9 +77,10 @@ export async function computeExpectedCash(partnerId: string, session: { id: stri
     const cashInSale = tenders.filter((t) => t.method === "Cash").reduce((sum, t) => sum + Number(t.amount || 0), 0);
     if (sale["status"] === "Voided") {
       // A Voided Cash sale gives its cash back out of the drawer.
-      cashTotal -= cashInSale;
+      // The sale and its full reversal net to zero in this session.
+      continue;
     } else {
-      cashTotal += cashInSale;
+      if (sale["status"] === "Completed") cashTotal += cashInSale - Math.max(0, Number(sale["changeDue"] ?? 0));
     }
   }
   for (const ret of returns) {
@@ -89,7 +97,10 @@ export async function closeTillSession(input: {
   countedCash: number;
   notes?: string;
 }) {
-  const session = await prisma.posTillSession.findUnique({ where: { id: input.sessionId } });
+  return withRecordLock("inventory-partner", input.partnerId, async () => {
+  const session = await prisma.posTillSession.findUnique({ where: { id: input.sessionId }, include: { posAccount: true } });
+  if (session?.posAccount.partnerId !== input.partnerId) throw new Error("Till does not belong to this partner.");
+  if (!Number.isFinite(input.countedCash) || input.countedCash < 0) throw new Error("Invalid cash count.");
   if (!session) throw new Error("Till session not found.");
   if (session.status !== "Open") throw new Error("This till session is already closed.");
 
@@ -108,5 +119,6 @@ export async function closeTillSession(input: {
       closedAt: new Date(),
       notes: input.notes || null,
     },
+  });
   });
 }

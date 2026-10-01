@@ -66,7 +66,8 @@ export async function dispatchBookingRequest(bookingId: string): Promise<{ offer
           }),
           sendSms(
             provider.phone,
-            `New job available: ${booking.service.name} (${booking.address.pincode}), ${booking.slotLabel}. Open your dashboard to accept.`
+            `New job available: ${booking.service.name} (${booking.address.pincode}), ${booking.slotLabel}. Open your dashboard to accept.`,
+            { purpose: "field-force.job-offer", values: { service: booking.service.name, pincode: booking.address.pincode, slot: booking.slotLabel } }
           ),
         ])
       )

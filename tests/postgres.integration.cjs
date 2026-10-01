@@ -72,7 +72,56 @@ test('real inventory helpers serialize first receipts and roll back bucket trans
 });
 
 test.after(async () => {
+ await base.businessRecord.deleteMany({ where: { partnerId: '__platform_payment_delivery__', recordKey: { startsWith: partnerId } } });
  await base.businessRecord.deleteMany({ where: { partnerId } });
  await base.numberingCounter.deleteMany({ where: { scopeKey: { startsWith: `partner:${partnerId}:` } } });
  await base.$disconnect();
+});
+
+test('durable delivery jobs roll back with payment work and concurrent workers claim each channel once', async () => {
+ const payment = { partnerId, razorpayPaymentId: partnerId, amount: 100, planName: 'Test', billingCycle: 'Monthly', capturedAt: new Date().toISOString() };
+ const queueClient = new Proxy(base, { get(target, key) {
+  if (key === '$transaction') return fn => target.$transaction(async tx => { await tx.$executeRawUnsafe("SET LOCAL TIME ZONE 'Asia/Calcutta'"); return fn(tx); });
+  if (key === 'subscriptionPayment') return {findUnique:async()=>({partnerId,amount:100})};
+  const value=target[key]; return typeof value==='function'?value.bind(target):value;
+ }});
+ const queue = load('src/lib/paymentDeliveryQueue.ts', {'@/lib/prisma':{prisma:queueClient},'node:crypto':crypto});
+ await assert.rejects(base.$transaction(async tx => { await queue.enqueuePaymentDelivery(tx,payment); throw new Error('rollback'); }));
+ assert.equal(await base.businessRecord.count({where:{partnerId:queue.DELIVERY_OWNER,recordKey:{startsWith:partnerId}}}),0);
+ await base.$transaction(tx=>queue.enqueuePaymentDelivery(tx,payment));
+ await base.$transaction(tx=>queue.enqueuePaymentDelivery(tx,payment));
+ const channels=[];
+ const send=async job=>{channels.push(job.channel);await new Promise(resolve=>setTimeout(resolve,25));return true;};
+ await Promise.all(Array.from({length:6},()=>queue.processPaymentDelivery(send,partnerId)));
+ assert.equal(channels.length,3);assert.equal(new Set(channels).size,3);
+ assert.equal(await queue.processPaymentDelivery(send,partnerId),false);
+ const rows=await base.businessRecord.findMany({where:{partnerId:queue.DELIVERY_OWNER,recordKey:{startsWith:partnerId}}});
+ assert.ok(rows.every(row=>row.data.status==='Accepted'&&row.data.attempts===1), JSON.stringify(rows.map(row=>({status:row.data.status,attempts:row.data.attempts,updatedAt:row.updatedAt}))));
+ await base.businessRecord.update({where:{id:rows[0].id},data:{data:{...rows[0].data,status:'Processing'},updatedAt:new Date(Date.now()-11*60*1000)}});
+ await queue.processPaymentDelivery(send,partnerId);
+ assert.equal(channels.length,3);
+ assert.equal((await base.businessRecord.findUnique({where:{id:rows[0].id}})).data.status,'Review');
+});
+
+test('POS invoice failure rolls back stock; concurrent sales cannot oversell', async () => {
+ const records=load('src/lib/businessRecords.ts',{'@/lib/prisma':{prisma},'@/lib/safeCache':{safeCache:fn=>fn},'@/lib/tenant':{assertPartnerCanWrite:async id=>assert.equal(id,partnerId)}});
+ const stock=await records.createBusinessRecord(partnerId,'inventory-stock',{qtyOnHand:5,reservedQty:0,availableQty:5});
+ let failInvoice=true;
+ const actions=load('src/app/partner/[partnerId]/pos/checkout/actions.ts',{
+  'next/navigation':{redirect:url=>{throw new Error('REDIRECT '+url);}},'next/cache':{revalidatePath:()=>{}},
+  '@/lib/businessRecords':{...records,createBusinessRecord:async(p,slug,data)=>{if(failInvoice&&slug==='billing')throw new Error('invoice failure');return records.createBusinessRecord(p,slug,data);}},
+  '@/lib/sample-data/pos':load('src/lib/sample-data/pos.ts'),
+  '@/lib/pos/posAuth':{requirePosStaffAction:async()=>({id:'staff',name:'Test',staffCode:'TEST',posAccountId:'account'})},
+  '@/lib/pos/posTill':{getOpenTillSession:async()=>({id:'till'})},'@/lib/withRecordLock':lock,
+  '@/lib/designer/numbering':{getNextNumber:async()=> 'TEST-INVOICE'},'@/lib/pos/stockPolicy':load('src/lib/pos/stockPolicy.ts'),
+ });
+ const input={lines:[{id:'line',sku:String(stock.id),productName:'Test',qty:4,unitPrice:10,taxRate:0,discount:0}],tenders:[{method:'Cash',amount:40}],locationId:'outlet',tillSessionId:'till'};
+ await assert.rejects(actions.completeSaleAction(partnerId,input),/invoice failure/);
+ assert.equal((await records.getBusinessRecord(partnerId,'inventory-stock',String(stock.id))).qtyOnHand,5);
+ assert.equal((await records.listBusinessRecords(partnerId,'pos')).length,0);
+ failInvoice=false;
+ const result=await Promise.allSettled([actions.completeSaleAction(partnerId,input),actions.completeSaleAction(partnerId,input)]);
+ assert.equal(result.filter(r=>r.status==='rejected'&&r.reason.message.startsWith('REDIRECT')).length,1);
+ assert.equal((await records.getBusinessRecord(partnerId,'inventory-stock',String(stock.id))).qtyOnHand,1);
+ assert.equal((await records.listBusinessRecords(partnerId,'pos')).length,1);
 });

@@ -1,4 +1,5 @@
 "use server";
+import { aggregateMaterialRequirements } from "@/lib/manufacturingStockPolicy";
 import { withInventoryAction } from "@/lib/inventoryAction";
 import { afterDatabaseCommit } from "@/lib/databaseTransaction";
 
@@ -246,16 +247,24 @@ async function completeProductionActionInner(
     return { error: "This production order has no linked Bill of Materials with lines — link a BOM before completing production." };
   }
 
-  const safeLaborCost = Number.isFinite(laborCost) && laborCost >= 0 ? laborCost : 0;
-  const safeQuantityProduced = Number.isFinite(quantityProduced) && quantityProduced >= 0 ? quantityProduced : 0;
+  if (!Number.isFinite(laborCost) || laborCost < 0 || !Number.isFinite(quantityProduced) || quantityProduced <= 0) {
+    return { error: "Enter a nonnegative labor cost and a positive quantity produced." };
+  }
+  const safeLaborCost = laborCost;
+  const safeQuantityProduced = quantityProduced;
+  let requirements: ReturnType<typeof aggregateMaterialRequirements>;
+  try { requirements = aggregateMaterialRequirements(order.bom.lines); }
+  catch { return { error: "The bill of materials contains an invalid material quantity." }; }
 
   // Raw-material stock check — fail closed, no partial deduction. Uses
   // inventoryStock.ts exactly as before; only the source of `lines` changed
   // (real BomLine rows instead of a JSON bomLines blob).
-  for (const line of order.bom.lines) {
+  for (const line of requirements) {
     const stock = await findStockRecord(partnerId, line.materialId);
-    const available = Number(stock?.["qtyOnHand"] ?? 0);
-    if (!stock || available < line.quantity) {
+    const onHand = Number(stock?.["qtyOnHand"] ?? 0);
+    const reserved = Number(stock?.["reservedQty"] ?? 0);
+    const available = Math.min(onHand - reserved, Number(stock?.["availableQty"] ?? onHand - reserved));
+    if (!stock || !Number.isFinite(available) || !Number.isFinite(reserved) || reserved < 0 || available < line.quantity) {
       const partner = await getPartner(partnerId);
       if (partner) {
         const message = await productionStockShortfallMessage({
@@ -273,7 +282,7 @@ async function completeProductionActionInner(
       };
     }
   }
-  for (const line of order.bom.lines) {
+  for (const line of requirements) {
     await adjustStockQty(partnerId, line.materialId, line.materialLabel, "", -line.quantity);
   }
 

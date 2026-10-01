@@ -1,3 +1,4 @@
+import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import Link from "next/link";
 import { registerPage } from "@/lib/designer/registry";
 import { prisma } from "@/lib/prisma";
@@ -11,14 +12,14 @@ registerPage({
   kind: "form",
   superAdminOnly: false,
   customizableRegions: [],
-  explanation:
-    "Creates a POS staff login. The FIRST signup for a partner also creates that partner's PosAccount (its accountNumber, e.g. \"POS0001\") and makes that first person a Manager automatically — every signup after that joins the same account and is assigned the next staff code (\"POS0001-02\", ...), with the role picked on the form. Open self-signup, no approval step (same posture Field Force's provider signup uses).",
+  explanation: "Owner/Admin-only POS staff provisioning. The first provisioned staff member is a Manager; subsequent roles are selected by the authorized owner or administrator.",
   sourceFile: "src/app/partner/[partnerId]/pos/staff/signup/page.tsx",
 });
 
 export const dynamic = "force-dynamic";
 
 export default async function PosStaffSignupPage({ params }: { params: { partnerId: string } }) {
+  await requireSessionPartnerId(params.partnerId);
   const action = signupPosStaffAction.bind(null, params.partnerId);
   const account = await prisma.posAccount.findUnique({ where: { partnerId: params.partnerId } });
 

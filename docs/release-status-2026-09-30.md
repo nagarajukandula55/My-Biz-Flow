@@ -1,5 +1,7 @@
 # Joint release status — 30 September 2026
 
+Superseded for newer work by [1 October checkpoint](release-status-2026-10-01.md).
+
 This is a local implementation checkpoint, not approval to push or deploy. It supersedes earlier pending-test notes in the continuation logs. The live Service Centre database, schema, migration history and storage were not changed.
 
 ## Verified

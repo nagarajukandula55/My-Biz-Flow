@@ -362,6 +362,7 @@ async function sendTelegramAlertInternal(
     try {
       const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
         method: "POST",
+        signal: AbortSignal.timeout(10000),
         headers: { "Content-Type": "application/json" },
         // "HTML" (not "Markdown") -- every message template in
         // telegramTemplates.ts uses Telegram's HTML subset (<b>, <pre>), so
@@ -563,6 +564,7 @@ export async function sendRawTelegramMessage(chatId: string, text: string, reply
   try {
     const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
       method: "POST",
+        signal: AbortSignal.timeout(10000),
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         chat_id: chatId,

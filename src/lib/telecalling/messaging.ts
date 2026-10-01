@@ -6,6 +6,7 @@
  */
 import { prisma } from "@/lib/prisma";
 import { assertPartnerScope } from "@/lib/tenant";
+import { getSmsFlowMapping } from "@/lib/smsFlowMapping";
 import { sendSms } from "@/lib/sms";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { fillTemplate } from "@/lib/telecalling/templatesData";
@@ -31,13 +32,13 @@ export async function sendTemplateToLead(
   const configured =
     template.channel === "whatsapp"
       ? Boolean(env.whatsappBusinessPhoneNumberId() && env.whatsappAccessToken())
-      : Boolean(env.smsApiKey() && env.smsSenderId());
+      : Boolean(env.smsApiKey() && await getSmsFlowMapping(`telecalling:${partnerId}:${template.id}`));
 
   if (!["whatsapp", "sms"].includes(template.channel)) throw new Error("Unsupported message channel");
   const agent = await prisma.partnerStaff.findFirst({ where: { id: input.sentById, partnerId, role: "Telecaller", status: "Active" }, select: { id: true } });
   if (!agent) throw new Error("An active telecaller belonging to this partner is required");
   const accepted = configured && (template.channel === "whatsapp"
-    ? await sendWhatsAppMessage(lead.phone, body) : await sendSms(lead.phone, body));
+    ? await sendWhatsAppMessage(lead.phone, body) : await sendSms(lead.phone, body, { purpose: `telecalling:${partnerId}:${template.id}`, values: { name: lead.name, link: input.linkOverride || "" } }));
   const status = !configured ? "not-configured" : accepted ? "accepted" : "failed";
   await prisma.messageLog.create({
     data: {

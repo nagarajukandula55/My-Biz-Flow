@@ -6,6 +6,9 @@ import { createBusinessRecord, getBusinessRecord, updateBusinessRecord, listBusi
 import { computeSaleTotals, extractSaleFromRecord, type SaleLine, type Tender } from "@/lib/sample-data/pos";
 import type { LineItem } from "@/lib/sample-data/billing";
 import { requirePosStaffAction } from "@/lib/pos/posAuth";
+import { withRecordLock } from "@/lib/withRecordLock";
+import { getNextNumber } from "@/lib/designer/numbering";
+import { validatePosInput, planPosStock } from "@/lib/pos/stockPolicy";
 import { getOpenTillSession } from "@/lib/pos/posTill";
 
 export type CompleteSaleInput = {
@@ -22,10 +25,8 @@ export type CompleteSaleInput = {
  * sale, and creates a real Billing invoice. POS is its own standalone
  * module — not connected to Service Centre or any other vertical, only to
  * the cross-cutting Inventory and Billing infrastructure every module
- * shares (see src/lib/inventoryStock.ts). Read-then-write against
- * BusinessRecord's JSON blob (not a DB-level atomic decrement) — a
- * documented limitation until per-SKU stock becomes a real relational
- * column. Gated by requirePosStaffAction (POS's own staff session), not
+ * shares (see src/lib/inventoryStock.ts). Stock validation, deduction, sale and numbered invoice commit together
+ * under the shared partner stock lock. Gated by requirePosStaffAction (POS's own staff session), not
  * requireSessionPartnerId — a POS staff member has no main partner
  * session at all (see PartnerLayout's STAFF_ONLY_MODULE_PREFIXES). The
  * cashier name is taken from the verified session, never trusted from the
@@ -33,7 +34,8 @@ export type CompleteSaleInput = {
  */
 export async function completeSaleAction(partnerId: string, input: CompleteSaleInput) {
   const staff = await requirePosStaffAction(partnerId);
-  if (input.lines.length === 0) throw new Error("Cart is empty");
+  validatePosInput(input);
+  const saleId = await withRecordLock("inventory-partner", partnerId, async () => {
 
   // Re-verify the till session server-side rather than trusting the
   // client-supplied id — a sale can only ring up against the outlet's
@@ -48,27 +50,18 @@ export async function completeSaleAction(partnerId: string, input: CompleteSaleI
 
   const totals = computeSaleTotals(input.lines);
   const amountTendered = input.tenders.reduce((sum, t) => sum + t.amount, 0);
+  if (!Number.isFinite(amountTendered) || !Number.isFinite(totals.totalAmount)) throw new Error("Invalid sale total.");
   if (amountTendered < totals.totalAmount) {
     throw new Error(`Amount tendered (₹${amountTendered}) is less than the total due (₹${totals.totalAmount})`);
   }
   const changeDue = Math.round((amountTendered - totals.totalAmount) * 100) / 100;
+  const cashTendered = input.tenders.filter(t => t.method === "Cash").reduce((sum, t) => sum + t.amount, 0);
+  if (changeDue > cashTendered) throw new Error("Change cannot exceed the cash tendered; correct the non-cash payment amount.");
 
   // Stock check — fail closed, no partial deduction.
   const stockRecords = await listBusinessRecords(partnerId, "inventory-stock");
-  const stockBySku = new Map(stockRecords.map((r) => [String(r["id"]), r]));
-  for (const line of input.lines) {
-    const stock = stockBySku.get(line.sku);
-    const available = Number(stock?.["qtyOnHand"] ?? 0);
-    if (!stock || available < line.qty) {
-      throw new Error(
-        `Insufficient stock for ${line.productName} (${line.sku}): ${available} available, ${line.qty} requested.`
-      );
-    }
-  }
-  for (const line of input.lines) {
-    const stock = stockBySku.get(line.sku)!;
-    const newQty = Number(stock["qtyOnHand"] ?? 0) - line.qty;
-    await updateBusinessRecord(partnerId, "inventory-stock", line.sku, { ...stock, qtyOnHand: newQty });
+  for (const update of planPosStock(stockRecords, input.lines)) {
+    await updateBusinessRecord(partnerId, "inventory-stock", update.id, update.data);
   }
 
   const paymentSummary = Array.from(new Set(input.tenders.map((t) => t.method))).join(" + ");
@@ -118,15 +111,18 @@ export async function completeSaleAction(partnerId: string, input: CompleteSaleI
     totalAmount: totals.totalAmount,
     paymentStatus: "Paid",
     paymentMode: input.tenders[0]?.method,
+    invoiceNumber: await getNextNumber("invoice.b2c", partnerId, { prefix: "BILL" }),
     sourcePosSaleId: sale.id,
     invoiceSource: "POS Sale",
   });
 
   await updateBusinessRecord(partnerId, "pos", String(sale.id), { ...sale, invoiceId: invoice.id });
 
+  return String(sale.id);
+  });
   revalidatePath(`/partner/${partnerId}/pos`);
   revalidatePath(`/partner/${partnerId}/inventory/stock`);
-  redirect(`/partner/${partnerId}/pos/${sale.id}`);
+  redirect(`/partner/${partnerId}/pos/${saleId}`);
 }
 
 /**
@@ -138,18 +134,24 @@ export async function completeSaleAction(partnerId: string, input: CompleteSaleI
  * wanted, same posture requirePosManager already exists for elsewhere.
  */
 export async function voidSaleAction(partnerId: string, saleId: string, reason: string): Promise<void> {
-  await requirePosStaffAction(partnerId);
+  const staff = await requirePosStaffAction(partnerId);
+  await withRecordLock("inventory-partner", partnerId, async () => {
   const record = await getBusinessRecord(partnerId, "pos", saleId);
   if (!record) return;
   const sale = extractSaleFromRecord(record);
   if (sale.status !== "Completed") return;
+  const till = await getOpenTillSession(staff.posAccountId, String(record["locationId"] ?? ""));
+  if (!till || till.id !== record["posTillSessionId"]) throw new Error("This sale belongs to a closed till; use the reviewed return workflow.");
+  if (record["hasReturn"]) throw new Error("A returned sale cannot also be voided; review its refund history.");
 
   if (sale.stockDeducted) {
     for (const line of sale.lines) {
       const stock = await getBusinessRecord(partnerId, "inventory-stock", line.sku);
+      if (!stock) throw new Error("Original stock record is missing; review the sale before voiding.");
+      if (!Number.isFinite(line.qty) || line.qty <= 0) throw new Error("Invalid stored sale quantity.");
       if (stock) {
         const restoredQty = Number(stock["qtyOnHand"] ?? 0) + line.qty;
-        await updateBusinessRecord(partnerId, "inventory-stock", line.sku, { ...stock, qtyOnHand: restoredQty });
+        await updateBusinessRecord(partnerId, "inventory-stock", line.sku, { ...stock, qtyOnHand: restoredQty, availableQty: Math.max(0, restoredQty - Number(stock["reservedQty"] ?? 0)) });
       }
     }
   }
@@ -159,6 +161,7 @@ export async function voidSaleAction(partnerId: string, saleId: string, reason: 
     status: "Voided",
     voidedAt: new Date().toISOString(),
     voidReason: reason || "Voided by cashier",
+  });
   });
 
   revalidatePath(`/partner/${partnerId}/pos`);

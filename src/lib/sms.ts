@@ -1,28 +1,18 @@
-/**
- * SMS "ping" integration — optional, cost-free by default. If
- * SMS_API_KEY/SMS_SENDER_ID (src/lib/env.ts) aren't set, this no-ops with a
- * console log instead of throwing, same graceful-degradation posture as
- * this repo's Razorpay integration when its keys are unset. Swap the
- * fetch() body below for a real vendor call (MSG91/Twilio/etc.) once keys
- * are added — every call site here stays unchanged.
- */
 import { env } from "@/lib/env";
+import { buildSmsFlowPayload, getSmsFlowMapping } from "@/lib/smsFlowMapping";
 
-export async function sendSms(to: string, message: string): Promise<boolean> {
+export async function sendSms(to: string, message: string, context: { purpose: string; values?: Record<string, string> } = { purpose: "general" }): Promise<boolean> {
   const apiKey = env.smsApiKey();
-  const senderId = env.smsSenderId();
-
-  if (!apiKey || !senderId) {
-    console.log(`[sms:not-configured] would send to ${to}: ${message}`);
-    return false;
-  }
-
+  if (!apiKey) return false;
   try {
+    const mapping = await getSmsFlowMapping(context.purpose);
+    if (!mapping) return false;
+    const payload = buildSmsFlowPayload(mapping, to, { message, phone: to, ...context.values });
     const response = await fetch("https://api.msg91.com/api/v5/flow/", {
       method: "POST",
       signal: AbortSignal.timeout(10000),
       headers: { "Content-Type": "application/json", authkey: apiKey },
-      body: JSON.stringify({ sender: senderId, mobiles: to, message }),
+      body: JSON.stringify(payload),
     });
     const result = await response.json().catch(() => null);
     return response.ok && result?.type === "success" && typeof result.message === "string";

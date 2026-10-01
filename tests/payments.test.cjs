@@ -35,9 +35,10 @@ test('payment acceptance persists before activation, does not reactivate replay,
     '@/lib/prisma': { prisma: { $transaction: async fn => fn(tx) } },
     '@/lib/razorpay': { fetchPaymentAndOrder: async () => ({ payment, order }) },
     '@/lib/subscriptionPaymentPolicy': policy,
+    '@/lib/paymentDeliveryQueue': { enqueuePaymentDelivery: async () => events.push('enqueue') },
   });
   assert.equal((await service.acceptSubscriptionPayment('pay_123', 'order_123', 'SC0001')).newlyRecorded, true);
-  assert.deepEqual(events, ['lock', 'insert', 'activate']);
+  assert.deepEqual(events, ['lock', 'insert', 'enqueue', 'activate']);
   events.length = 0;
   planId = 'changed-plan';
   assert.equal((await service.acceptSubscriptionPayment('pay_123')).newlyRecorded, false);

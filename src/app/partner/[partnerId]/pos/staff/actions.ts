@@ -1,20 +1,17 @@
 "use server";
+import { createPosSessionToken, POS_SESSION_MAX_AGE } from "@/lib/pos/posSession";
 
+import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
+import { withRecordLock } from "@/lib/withRecordLock";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getOrCreatePosAccount, createPosStaff } from "@/lib/pos/posAccount";
 import { verifyPosStaffLogin, POS_STAFF_SESSION_COOKIE } from "@/lib/pos/posAuth";
 
-/**
- * First-ever signup for a partner creates the PosAccount too (its
- * accountNumber, e.g. "POS0001") and makes that first staff member a
- * Manager — they're the one setting the outlet up. Every signup after
- * that joins the same existing account and gets the role picked on the
- * form (default Cashier). Open self-signup, same posture as Field Force's
- * provider self-signup — no approval step in this pass.
- */
+/** Owner/Admin provisions staff; public self-registration is not permitted. */
 export async function signupPosStaffAction(partnerId: string, formData: FormData) {
+  await requireSessionPartnerId(partnerId);
   const name = String(formData.get("name") ?? "").trim();
   const phone = String(formData.get("phone") ?? "").trim();
   const password = String(formData.get("password") ?? "");
@@ -24,12 +21,13 @@ export async function signupPosStaffAction(partnerId: string, formData: FormData
   if (!name || !password) throw new Error("Name and password are required");
   if (password.length < 6) throw new Error("Password must be at least 6 characters");
 
+  const staff = await withRecordLock("inventory-partner", partnerId, async () => {
   const account = await getOrCreatePosAccount(partnerId, outletName || undefined);
   const isFirstStaff = (await prisma.posStaff.count({ where: { posAccountId: account.id } })) === 0;
   if (isFirstStaff) role = "Manager";
   if (role !== "Cashier" && role !== "Manager") role = "Cashier";
 
-  const staff = await createPosStaff({
+  return createPosStaff({
     posAccountId: account.id,
     accountNumber: account.accountNumber,
     name,
@@ -37,8 +35,9 @@ export async function signupPosStaffAction(partnerId: string, formData: FormData
     password,
     role: role as "Cashier" | "Manager",
   });
+  });
 
-  cookies().set(POS_STAFF_SESSION_COOKIE, staff.id, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 30 });
+  cookies().set(POS_STAFF_SESSION_COOKIE, await createPosSessionToken(partnerId, staff.id), { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: POS_SESSION_MAX_AGE });
   redirect(`/partner/${partnerId}/pos`);
 }
 
@@ -50,7 +49,7 @@ export async function loginPosStaffAction(partnerId: string, formData: FormData)
   if (!staff) redirect(`/partner/${partnerId}/pos/staff/login?error=1`);
 
   await prisma.posStaff.update({ where: { id: staff.id }, data: { lastLoginAt: new Date() } });
-  cookies().set(POS_STAFF_SESSION_COOKIE, staff.id, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 30 });
+  cookies().set(POS_STAFF_SESSION_COOKIE, await createPosSessionToken(partnerId, staff.id), { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: POS_SESSION_MAX_AGE });
   redirect(`/partner/${partnerId}/pos`);
 }
 

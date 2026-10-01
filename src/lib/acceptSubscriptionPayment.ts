@@ -1,3 +1,4 @@
+import { enqueuePaymentDelivery } from "@/lib/paymentDeliveryQueue";
 import { prisma } from "@/lib/prisma";
 import { fetchPaymentAndOrder } from "@/lib/razorpay";
 import { PaymentValidationError, validateCapturedSubscriptionPayment } from "@/lib/subscriptionPaymentPolicy";
@@ -27,6 +28,7 @@ export async function acceptSubscriptionPayment(paymentId: string, orderId?: str
     await tx.subscriptionPayment.create({ data: {
       partnerId: accepted.partnerId, razorpayPaymentId: paymentId, amount: accepted.amount, currency: "INR", capturedAt,
     } });
+    await enqueuePaymentDelivery(tx, { partnerId: accepted.partnerId, razorpayPaymentId: paymentId, amount: accepted.amount, planName: accepted.planName, billingCycle: accepted.billingCycle, capturedAt: capturedAt.toISOString() });
     await tx.partner.update({ where: { id: accepted.partnerId }, data: { subscriptionStatus: "Active" } });
     return { ...result, newlyRecorded: true };
   }, { maxWait: 5000, timeout: 10000 });

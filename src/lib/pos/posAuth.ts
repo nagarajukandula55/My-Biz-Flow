@@ -1,3 +1,4 @@
+import { verifyPosSessionToken } from "@/lib/pos/posSession";
 /**
  * POS staff signup/login — POS is its own standalone module with its own
  * login identity, entirely separate from the main partner session every
@@ -28,8 +29,9 @@ export async function verifyPosStaffLogin(partnerId: string, staffCode: string, 
 }
 
 export async function getCurrentPosStaff(partnerId: string) {
-  const id = cookies().get(POS_STAFF_SESSION_COOKIE)?.value;
-  if (!id) return null;
+  const claims = await verifyPosSessionToken(cookies().get(POS_STAFF_SESSION_COOKIE)?.value);
+  if (!claims || claims.partnerId !== partnerId) return null;
+  const id = claims.staffId;
   const staff = await prisma.posStaff.findUnique({ where: { id }, include: { posAccount: true } });
   if (!staff || staff.posAccount.partnerId !== partnerId || staff.status !== "Active") return null;
   return staff;

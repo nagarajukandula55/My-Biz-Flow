@@ -1,3 +1,4 @@
+import { withRecordLock } from "@/lib/withRecordLock";
 /**
  * Partial returns/refunds against a Completed POS sale — restocks the
  * exact Good units returned and records a refund. Kept as its own
@@ -32,6 +33,7 @@ export async function createPosReturn(params: {
   staffName: string;
   tillSessionId: string | null;
 }) {
+  return withRecordLock("inventory-partner", params.partnerId, async () => {
   const record = await getBusinessRecord(params.partnerId, "pos", params.saleId);
   if (!record) throw new Error("Sale not found.");
   const sale = extractSaleFromRecord(record);
@@ -45,8 +47,13 @@ export async function createPosReturn(params: {
   let refundAmount = 0;
   const returnLines: { sku: string; productName: string; qty: number; unitPrice: number; taxRate: number; lineRefund: number }[] = [];
 
+  const seen = new Set<string>();
   for (const input of params.lines) {
-    if (!input.qty || input.qty <= 0) continue;
+    if (!Number.isFinite(input.qty) || input.qty < 0) throw new Error("Invalid return quantity.");
+    if (input.qty === 0) continue;
+    if (seen.has(input.sku)) throw new Error("Combine repeated return lines before submitting.");
+    seen.add(input.sku);
+    if (sale.lines.filter(line => line.sku === input.sku).length !== 1) throw new Error("This sale has repeated SKU lines; review its refund allocation before returning it.");
     const line = linesBySku.get(input.sku);
     if (!line) throw new Error(`Line "${input.sku}" isn't on this sale.`);
     if (input.qty > line.qty) {
@@ -68,9 +75,10 @@ export async function createPosReturn(params: {
   // lookup, since the sku here already pins the exact row).
   for (const line of returnLines) {
     const stock = await getBusinessRecord(params.partnerId, "inventory-stock", line.sku);
+    if (!stock) throw new Error("Original stock record is missing; review before restocking.");
     if (stock) {
       const restoredQty = Number(stock["qtyOnHand"] ?? 0) + line.qty;
-      await updateBusinessRecord(params.partnerId, "inventory-stock", line.sku, { ...stock, qtyOnHand: restoredQty });
+      await updateBusinessRecord(params.partnerId, "inventory-stock", line.sku, { ...stock, qtyOnHand: restoredQty, availableQty: Math.max(0, restoredQty - Number(stock["reservedQty"] ?? 0)) });
     }
   }
 
@@ -94,4 +102,5 @@ export async function createPosReturn(params: {
   });
 
   return ret;
+  });
 }

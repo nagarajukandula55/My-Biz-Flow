@@ -78,8 +78,8 @@ export async function sendEmail({ to, subject, html, text }: SendEmailInput): Pr
 
   try {
     const resend = new Resend(apiKey);
-    await resend.emails.send({ from, to, subject, html, text });
-    return { sent: true };
+    const result = await resend.emails.send({ from, to, subject, html, text });
+    return { sent: !result.error && Boolean(result.data?.id) };
   } catch (err) {
     // Best-effort: an email provider outage should never surface as a
     // 500 on a password-reset request or a signup.

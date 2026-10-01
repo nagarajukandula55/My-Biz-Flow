@@ -16,7 +16,7 @@ export async function openTillSessionAction(
   if (!Number.isFinite(openingFloat) || openingFloat < 0) return { error: "Enter a valid opening cash float." };
 
   try {
-    await openTillSession({ posAccountId: staff.posAccountId, locationId, openedByStaffId: staff.id, openingFloat });
+    await openTillSession({ partnerId, posAccountId: staff.posAccountId, locationId, openedByStaffId: staff.id, openingFloat });
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Could not open till." };
   }
