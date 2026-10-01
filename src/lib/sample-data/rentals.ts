@@ -2,6 +2,7 @@ import type { Column, Row } from "@/components/DataTable";
 import type { RecordField, TimelineEntry, RelatedRecord } from "@/components/RecordDetail";
 import type { StatusVariant } from "@/components/StatusChip";
 import type { FormFieldDef } from "@/components/RecordForm";
+import { istStartOfDay } from "@/lib/format";
 
 // Booking sample data for the rentals module — realistic field modeling,
 // no backend wired up in this pass (see CLAUDE.md).
@@ -151,12 +152,12 @@ export function extractRentalsLifecycle(record: Row): RentalsLifecycle {
   };
 }
 
-/** Days overdue (0 if not overdue / already returned), computed off bookingEnd vs. now. */
+/** Days overdue (0 if not overdue / already returned), computed off bookingEnd vs. now, by IST calendar day. */
 export function computeOverdueDays(bookingEnd: unknown, returned: boolean, now: Date = new Date()): number {
   if (returned || !bookingEnd) return 0;
   const end = new Date(String(bookingEnd));
   if (Number.isNaN(end.getTime())) return 0;
-  const diffMs = now.setHours(0, 0, 0, 0) - end.setHours(0, 0, 0, 0);
+  const diffMs = istStartOfDay(now).getTime() - istStartOfDay(end).getTime();
   const days = Math.floor(diffMs / 86400000);
   return days > 0 ? days : 0;
 }

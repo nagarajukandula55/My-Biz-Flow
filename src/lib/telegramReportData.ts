@@ -14,7 +14,7 @@ import { getPartner, listPartners } from "@/lib/partnerData";
 import { listPartnersWithReportsEnabled, sendPartnerTelegramAlert, sendPartnerTelegramReport, sendRawTelegramMessage } from "@/lib/telegram";
 import { getOpsChatId } from "@/lib/platformSettings";
 import { logReportRun } from "@/lib/reportRunLog";
-import { istDateKey } from "@/lib/format";
+import { istDateKey, istStartOfDay } from "@/lib/format";
 
 /** True when `now` falls on the last calendar day of its month. */
 function isLastDayOfMonth(now: Date): boolean {
@@ -80,31 +80,36 @@ export function alreadySentToday(lastReportSentAt: Date | null | undefined, now:
  * making a partner wait until tomorrow morning to hear about today.
  */
 export function reportPeriodRange(frequency: ReportFrequency, now: Date): { start: Date; end: Date; priorStart: Date; priorEnd: Date } {
-  const todayMidnight = new Date(now);
-  todayMidnight.setHours(0, 0, 0, 0);
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  // IST midnight's UTC instant — NOT `new Date(now).setHours(0,0,0,0)`,
+  // which zeroes the runner's local (UTC) day and can be off by a whole
+  // calendar day from the IST day a partner actually experiences, skewing
+  // which transactions land in "today" vs "the prior period" by ~5.5h.
+  // Same reasoning `alreadySentToday` below already applies via istDateKey.
+  const todayMidnight = istStartOfDay(now);
 
   if (frequency === "DAILY") {
-    // Today (00:00 -> now, i.e. through the 9 PM send) vs. the full prior day.
+    // Today (00:00 IST -> now, i.e. through the 9 PM send) vs. the full prior day.
     const start = todayMidnight;
     const priorEnd = start;
-    const priorStart = new Date(priorEnd);
-    priorStart.setDate(priorStart.getDate() - 1);
+    const priorStart = new Date(priorEnd.getTime() - DAY_MS);
     return { start, end: now, priorStart, priorEnd };
   }
   if (frequency === "WEEKLY") {
-    // Runs Saturday evening -- the trailing 7 days through now (Sun-Sat) vs. the 7 days before that.
-    const start = new Date(todayMidnight);
-    start.setDate(start.getDate() - 6);
+    // Runs Saturday evening -- the trailing 7 IST days through now (Sun-Sat) vs. the 7 before that.
+    const start = new Date(todayMidnight.getTime() - 6 * DAY_MS);
     const priorEnd = start;
-    const priorStart = new Date(priorEnd);
-    priorStart.setDate(priorStart.getDate() - 7);
+    const priorStart = new Date(priorEnd.getTime() - 7 * DAY_MS);
     return { start, end: now, priorStart, priorEnd };
   }
   // MONTHLY -- runs on the last day of the month, evening, so the period
-  // that just "completed" is the current calendar month itself (1st ->
-  // now), vs. the full prior calendar month.
-  const start = new Date(todayMidnight.getFullYear(), todayMidnight.getMonth(), 1);
-  const priorStart = new Date(todayMidnight.getFullYear(), todayMidnight.getMonth() - 1, 1);
+  // that just "completed" is the current IST calendar month itself (1st ->
+  // now), vs. the full prior IST calendar month.
+  const [year, month] = istDateKey(now).split("-").map(Number);
+  const istFirstOfMonth = (y: number, m: number) =>
+    new Date(`${y}-${String(m).padStart(2, "0")}-01T00:00:00+05:30`);
+  const start = istFirstOfMonth(year, month);
+  const priorStart = month === 1 ? istFirstOfMonth(year - 1, 12) : istFirstOfMonth(year, month - 1);
   const priorEnd = start;
   return { start, end: now, priorStart, priorEnd };
 }

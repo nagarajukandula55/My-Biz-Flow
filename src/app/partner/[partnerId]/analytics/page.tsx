@@ -79,7 +79,13 @@ export default async function AnalyticsPage({ params }: { params: { partnerId: s
     showServiceCentreReports ? getAverageTat(params.partnerId) : Promise.resolve({ closedCount: 0, avgHours: undefined }),
   ]);
 
-  const thisMonthLabel = new Date().toLocaleDateString("en-IN", { month: "long", year: "numeric" });
+  // IST, not server-local time (UTC in production) — matters right at
+  // month-boundary midnight IST, where UTC is still the previous day.
+  const thisMonthLabel = new Date().toLocaleDateString("en-IN", {
+    month: "long",
+    year: "numeric",
+    timeZone: "Asia/Kolkata",
+  });
 
   return (
     <AppShell topbarTitle="Analytics">

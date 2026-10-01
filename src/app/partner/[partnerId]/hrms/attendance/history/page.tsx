@@ -5,6 +5,7 @@ import type { Column, Row } from "@/components/DataTable";
 import { DataTable } from "@/components/DataTable";
 import { requirePartnerSessionForPage } from "@/lib/requirePartnerSession";
 import { listAttendanceHistory, listEmployees } from "@/lib/hrms";
+import { formatDateTime } from "@/lib/format";
 
 registerPage({
   id: "hrms.attendance.history",
@@ -46,8 +47,8 @@ export default async function AttendanceHistoryPage({
   const rows: Row[] = history.map((h) => ({
     id: h.id,
     employeeName: h.employee.name,
-    checkInAt: new Date(h.checkInAt).toLocaleString(),
-    checkOutAt: h.checkOutAt ? new Date(h.checkOutAt).toLocaleString() : "—",
+    checkInAt: formatDateTime(String(h.checkInAt)),
+    checkOutAt: h.checkOutAt ? formatDateTime(String(h.checkOutAt)) : "—",
     status: h.status,
   }));
 

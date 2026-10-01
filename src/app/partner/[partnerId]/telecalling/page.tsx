@@ -5,6 +5,7 @@ import { registerPage } from "@/lib/designer/registry";
 import { listLeadsForPartner, listLeadLocationFilters, getLeadStats } from "@/lib/telecalling/leadsData";
 import { listActivePartnerStaff } from "@/lib/partnerStaff";
 import { LeadsClient } from "./LeadsClient";
+import { PaginationControls, buildPageQueryString } from "@/components/PaginationControls";
 
 registerPage({
   id: "telecalling.leads",
@@ -26,7 +27,7 @@ export default async function TelecallingPage({
   searchParams,
 }: {
   params: { partnerId: string };
-  searchParams: { status?: string; state?: string; city?: string; assignedToId?: string; q?: string };
+  searchParams: { status?: string; state?: string; city?: string; assignedToId?: string; q?: string; page?: string };
 }) {
   await requireTelecallingManager(params.partnerId);
   const filter = {
@@ -36,9 +37,10 @@ export default async function TelecallingPage({
     assignedToId: searchParams.assignedToId || undefined,
     search: searchParams.q || undefined,
   };
+  const page = Math.max(1, Number(searchParams.page) || 1);
 
-  const [leads, agents, locationFilters, stats] = await Promise.all([
-    listLeadsForPartner(params.partnerId, filter),
+  const [{ rows: leads, total, totalPages, pageSize }, agents, locationFilters, stats] = await Promise.all([
+    listLeadsForPartner(params.partnerId, filter, { page }),
     listActivePartnerStaff(params.partnerId, "Telecaller"),
     listLeadLocationFilters(params.partnerId),
     getLeadStats(params.partnerId, filter),
@@ -94,6 +96,13 @@ export default async function TelecallingPage({
               assignedToId: filter.assignedToId ?? "",
               q: filter.search ?? "",
             }}
+          />
+          <PaginationControls
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            pageSize={pageSize}
+            buildHref={(p) => buildPageQueryString(searchParams, { page: String(p) })}
           />
         </div>
       </div>

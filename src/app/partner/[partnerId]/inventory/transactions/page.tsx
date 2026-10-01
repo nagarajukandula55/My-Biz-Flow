@@ -5,6 +5,7 @@ import { renderTierGate } from "@/lib/pageTierGate";
 import { getPartner } from "@/lib/partnerData";
 import { getInventoryStatement, type InventorySourceType } from "@/lib/inventoryLedger";
 import { formatCurrencyINR, formatDate } from "@/lib/format";
+import { PaginationControls, buildPageQueryString } from "@/components/PaginationControls";
 
 registerPage({
   id: "inventory.transactions.list",
@@ -54,7 +55,7 @@ export default async function InventoryTransactionsPage({
   searchParams,
 }: {
   params: { partnerId: string };
-  searchParams?: { from?: string; to?: string; sourceType?: string };
+  searchParams?: { from?: string; to?: string; sourceType?: string; page?: string };
 }) {
   const tierGate = await renderTierGate(params.partnerId, "inventory.transactions.list", "Inventory Transactions / Statement");
   if (tierGate) return <AppShell topbarTitle="Inventory Transactions">{tierGate}</AppShell>;
@@ -64,14 +65,19 @@ export default async function InventoryTransactionsPage({
     sourceType && SOURCE_TYPE_OPTIONS.includes(sourceType as InventorySourceType)
       ? (sourceType as InventorySourceType)
       : undefined;
+  const page = Math.max(1, Number(searchParams?.page) || 1);
 
   const [partner, statement] = await Promise.all([
     getPartner(params.partnerId),
-    getInventoryStatement(params.partnerId, {
-      from: from ? new Date(`${from}T00:00:00`) : undefined,
-      to: to ? new Date(`${to}T23:59:59`) : undefined,
-      sourceType: validSourceType,
-    }),
+    getInventoryStatement(
+      params.partnerId,
+      {
+        from: from ? new Date(`${from}T00:00:00`) : undefined,
+        to: to ? new Date(`${to}T23:59:59`) : undefined,
+        sourceType: validSourceType,
+      },
+      { page }
+    ),
   ]);
 
   const clearHref = `/partner/${params.partnerId}/inventory/transactions`;
@@ -230,6 +236,14 @@ export default async function InventoryTransactionsPage({
             </tbody>
           </table>
         </div>
+
+        <PaginationControls
+          page={statement.page}
+          totalPages={statement.totalPages}
+          total={statement.total}
+          pageSize={statement.pageSize}
+          buildHref={(p) => buildPageQueryString(searchParams ?? {}, { page: String(p) })}
+        />
       </div>
     </AppShell>
   );

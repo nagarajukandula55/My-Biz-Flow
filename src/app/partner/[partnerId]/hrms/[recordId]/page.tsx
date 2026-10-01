@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { StatusChip } from "@/components/StatusChip";
 import { requirePartnerSessionForPage } from "@/lib/requirePartnerSession";
 import { getEmployee, listLeaveBalances, listLeaveRequests, listPayslips, listAttendanceHistory } from "@/lib/hrms";
+import { formatDate } from "@/lib/format";
 
 registerPage({
   id: "hrms.detail",
@@ -58,7 +59,7 @@ export default async function HrmsDetailPage({ params }: { params: { partnerId: 
           <Field label="Contact" value={employee.contact} />
           <Field label="Email" value={employee.email} />
           <Field label="Reporting Manager" value={employee.reportingManager?.name} />
-          <Field label="Joining Date" value={employee.joiningDate ? new Date(employee.joiningDate).toDateString() : undefined} />
+          <Field label="Joining Date" value={employee.joiningDate ? formatDate(String(employee.joiningDate)) : undefined} />
         </div>
         <div className="mt-2">
           <StatusChip label={employee.status} variant={employee.status === "Active" ? "success" : employee.status === "OnLeave" ? "warning" : "danger"} />
@@ -72,7 +73,7 @@ export default async function HrmsDetailPage({ params }: { params: { partnerId: 
               {attendance.slice(0, 10).map((a) => (
                 <StatusChip
                   key={a.id}
-                  label={`${new Date(a.checkInAt).toLocaleDateString()} — ${a.status}${a.checkOutAt ? "" : " (open)"}`}
+                  label={`${formatDate(String(a.checkInAt))} — ${a.status}${a.checkOutAt ? "" : " (open)"}`}
                   variant={a.status === "Present" ? "success" : a.status === "Late" ? "warning" : "amber"}
                 />
               ))}
@@ -97,7 +98,7 @@ export default async function HrmsDetailPage({ params }: { params: { partnerId: 
             <div className="mt-4 space-y-2">
               {leaveRequests.slice(0, 5).map((l) => (
                 <div key={l.id} className="flex items-center justify-between rounded-md border border-border bg-bg px-3 py-2 text-sm">
-                  <span className="text-text">{l.leaveType}: {new Date(l.startDate).toDateString()} → {new Date(l.endDate).toDateString()}</span>
+                  <span className="text-text">{l.leaveType}: {formatDate(String(l.startDate))} → {formatDate(String(l.endDate))}</span>
                   <StatusChip label={l.status} variant={l.status === "Approved" ? "success" : l.status === "Rejected" ? "danger" : "warning"} />
                 </div>
               ))}

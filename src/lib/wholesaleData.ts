@@ -200,11 +200,20 @@ function toOrderRow(row: {
   };
 }
 
+// TODO: wholesale-b2b/page.tsx renders this full list directly with no
+// pagination UI yet. Capped with a safety ceiling (well above realistic
+// per-partner order counts today) rather than left fully unbounded, so the
+// page can't blow up as a partner's order history grows — follow up with
+// real page/pageSize pagination (mirroring listBusinessRecordsPaginated +
+// PaginationControls, see billing/page.tsx) before this ceiling is hit.
+const WHOLESALE_ORDERS_SAFETY_LIMIT = 500;
+
 export async function listWholesaleOrders(partnerId: string): Promise<WholesaleOrderRow[]> {
   const rows = await prisma.wholesaleOrder.findMany({
     where: { partnerId },
     include: ORDER_INCLUDE,
     orderBy: { createdAt: "desc" },
+    take: WHOLESALE_ORDERS_SAFETY_LIMIT,
   });
   return rows.map(toOrderRow);
 }
@@ -239,6 +248,11 @@ export function computeOrderTotal(lines: WholesaleOrderLineInput[], discountPerc
  * total (e.g. re-checking on Confirm shouldn't double-count the order
  * being confirmed).
  */
+// Intentionally unbounded (no `take`): this sums EVERY one of a customer's
+// still-open orders to gate the credit-limit check in checkCreditLimit().
+// Truncating it with a page/take limit would silently understate a
+// customer's outstanding balance and could let them exceed their credit
+// limit — correctness here requires the full set, not a capped page.
 export async function customerOutstandingBalance(partnerId: string, customerId: string, excludeOrderId?: string): Promise<number> {
   const orders = await prisma.wholesaleOrder.findMany({
     where: {

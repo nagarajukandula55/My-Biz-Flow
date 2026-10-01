@@ -19,6 +19,7 @@
  * rupees (forms) convert at the boundary.
  */
 import { prisma } from "@/lib/prisma";
+import { istStartOfDay } from "@/lib/format";
 
 export type RentalAgreementStatus = "Requested" | "Confirmed" | "Ongoing" | "Completed" | "Cancelled";
 export const RENTAL_AGREEMENT_STATUSES: RentalAgreementStatus[] = [
@@ -232,11 +233,11 @@ export async function returnAsset(
   return { ok: true, refundableAmount };
 }
 
-/** Days overdue (0 if not overdue / already returned), computed off bookingEnd vs. now. */
+/** Days overdue (0 if not overdue / already returned), computed off bookingEnd vs. now, by IST calendar day (late-fee/refund-affecting — see refundableAmount above). */
 export function computeOverdueDays(bookingEnd: Date | undefined, returned: boolean, now: Date = new Date()): number {
   if (returned || !bookingEnd) return 0;
   if (Number.isNaN(bookingEnd.getTime())) return 0;
-  const diffMs = now.setHours(0, 0, 0, 0) - new Date(bookingEnd).setHours(0, 0, 0, 0);
+  const diffMs = istStartOfDay(now).getTime() - istStartOfDay(bookingEnd).getTime();
   const days = Math.floor(diffMs / 86400000);
   return days > 0 ? days : 0;
 }

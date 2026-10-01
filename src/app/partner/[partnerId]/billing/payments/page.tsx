@@ -7,6 +7,7 @@ import { applyCustomizations } from "@/lib/designer/customizations";
 import { billingPaymentColumns } from "@/lib/sample-data/billing-payments";
 import { listBusinessRecords, listBusinessRecordsPaginated } from "@/lib/businessRecords";
 import { formatCurrencyINR } from "@/lib/format";
+import { PaginationControls, buildPageQueryString } from "@/components/PaginationControls";
 
 registerPage({
   id: "billing.payments.list",
@@ -34,16 +35,6 @@ type SearchParams = {
 };
 
 const SEARCH_FIELDS = ["id", "contact", "invoiceId", "reference"];
-
-function buildQueryString(params: SearchParams, overrides: Record<string, string | undefined>) {
-  const merged: Record<string, string | undefined> = { ...params, ...overrides };
-  const usp = new URLSearchParams();
-  for (const [key, value] of Object.entries(merged)) {
-    if (value) usp.set(key, value);
-  }
-  const qs = usp.toString();
-  return qs ? `?${qs}` : "";
-}
 
 export default async function BillingPaymentsPage({
   params,
@@ -107,8 +98,6 @@ export default async function BillingPaymentsPage({
   const thisMonthRows = filteredRows.filter((r) => String(r["date"] ?? "") >= startOfMonth);
   const thisMonthCollected = thisMonthRows.reduce((sum, r) => sum + (Number(r["amount"]) || 0), 0);
 
-  const rangeStart = total === 0 ? 0 : (page - 1) * pageSize + 1;
-  const rangeEnd = Math.min(total, page * pageSize);
   const hasActiveFilters = Boolean(q || mode || from || to);
 
   return (
@@ -173,36 +162,13 @@ export default async function BillingPaymentsPage({
           <PaymentsClientTable partnerId={params.partnerId} columns={columns} rows={displayRows} />
         </div>
 
-        <div className="mt-4 flex items-center justify-between text-sm text-text-muted">
-          <span>
-            {total === 0
-              ? "No payments match these filters."
-              : `Showing ${rangeStart}–${rangeEnd} of ${total}`}
-          </span>
-          <div className="flex items-center gap-2">
-            <Link
-              href={buildQueryString(searchParams, { page: String(Math.max(1, page - 1)) })}
-              aria-disabled={page <= 1}
-              className={`rounded-md border border-border px-3 py-1.5 ${
-                page <= 1 ? "pointer-events-none opacity-40" : "hover:bg-bg-sunken"
-              }`}
-            >
-              Previous
-            </Link>
-            <span>
-              Page {page} of {totalPages}
-            </span>
-            <Link
-              href={buildQueryString(searchParams, { page: String(Math.min(totalPages, page + 1)) })}
-              aria-disabled={page >= totalPages}
-              className={`rounded-md border border-border px-3 py-1.5 ${
-                page >= totalPages ? "pointer-events-none opacity-40" : "hover:bg-bg-sunken"
-              }`}
-            >
-              Next
-            </Link>
-          </div>
-        </div>
+        <PaginationControls
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          pageSize={pageSize}
+          buildHref={(p) => buildPageQueryString(searchParams, { page: String(p) })}
+        />
       </div>
     </AppShell>
   );

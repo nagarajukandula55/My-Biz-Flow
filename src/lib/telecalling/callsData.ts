@@ -85,6 +85,11 @@ export async function listCallsForLead(leadId: string, partnerId: string): Promi
     where: { leadId, partnerId },
     include: { agent: true },
     orderBy: { createdAt: "desc" },
+    // Scoped to a single lead's own call-attempt history (lead detail page's
+    // "Call History" panel) — naturally bounded by how many times one lead
+    // is realistically ever called, nothing like a whole-partner table. 1000
+    // is a defensive ceiling, not expected to ever bind.
+    take: 1000,
   });
   return rows.map((r) => toRecord(r));
 }

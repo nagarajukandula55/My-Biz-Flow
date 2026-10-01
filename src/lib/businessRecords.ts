@@ -8,7 +8,7 @@
  */
 import { safeCache as cache } from "@/lib/safeCache";
 import { prisma } from "@/lib/prisma";
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import type { Row } from "@/components/DataTable";
 import { assertPartnerCanWrite } from "@/lib/tenant";
 
@@ -92,6 +92,20 @@ export type PaginatedBusinessRecords = {
 };
 
 /**
+ * Mirrors one `and` entry built below (exact-match / date-range `data` JSON
+ * path filters) as a raw SQL fragment, for the search path which has to
+ * drop to `$queryRaw` (see listBusinessRecordsPaginated) since Prisma's JSON
+ * filtering can't combine with the ILIKE search condition in one query.
+ */
+function filterToSql(clause: Prisma.BusinessRecordWhereInput): Prisma.Sql {
+  const data = (clause as any).data as { path: string[]; equals?: string; gte?: string; lte?: string };
+  const field = data.path[0];
+  if (data.equals !== undefined) return Prisma.sql`"data"->>${field} = ${data.equals}`;
+  if (data.gte !== undefined) return Prisma.sql`"data"->>${field} >= ${data.gte}`;
+  return Prisma.sql`"data"->>${field} <= ${data.lte}`;
+}
+
+/**
  * Paginated + filtered variant of `listBusinessRecords`, for module list
  * pages backed by DataTable. Filters/search/date-range are applied to the
  * SAME query as the pagination (via Prisma JSON filtering on the `data`
@@ -129,29 +143,39 @@ export async function listBusinessRecordsPaginated(
 
   // `mode: "insensitive"` combined with a JSON `path` filter is rejected at
   // runtime by this Prisma/Postgres combo ("Unknown argument mode") even
-  // though it type-checks (the old code cast it `as any`) — every search on
-  // every module list page using this path threw a 500 on ANY query, not
-  // just numeric/phone ones. Case-insensitive substring search across JSON
-  // fields is therefore done in-memory here instead of pushed down to the
-  // DB, after the other (DB-safe) filters/date-range have narrowed the set.
+  // though it type-checks (the old code cast it `as any`). Pushed down to
+  // the DB instead via a raw `ILIKE` against each field — `recordKey` for
+  // the synthetic "id" field, `data->>'field'` (JSON text extraction) for
+  // everything else — OR'd together, so search stays bounded by LIMIT/OFFSET
+  // like every other filter instead of pulling the whole table into memory.
   if (options.search?.query) {
-    const query = options.search.query.toLowerCase();
+    const query = options.search.query;
     const fields = options.search.fields;
-    const matching = await prisma.businessRecord.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-    });
-    const filtered = matching.filter((row) => {
-      const data = row.data as Record<string, unknown>;
-      return fields.some((field) => {
-        const value = field === "id" ? row.recordKey : data[field];
-        return value != null && String(value).toLowerCase().includes(query);
-      });
-    });
-    const total = filtered.length;
-    const pageRows = filtered.slice((page - 1) * pageSize, page * pageSize);
+    const andConditions: Prisma.Sql[] = and.map((clause) => filterToSql(clause));
+    const searchConditions = fields.map((field) =>
+      field === "id"
+        ? Prisma.sql`"recordKey" ILIKE ${"%" + query + "%"}`
+        : Prisma.sql`"data"->>${field} ILIKE ${"%" + query + "%"}`
+    );
+    const whereSql = Prisma.sql`
+      "partnerId" = ${partnerId} AND "moduleSlug" = ${moduleSlug}
+      ${andConditions.length > 0 ? Prisma.sql`AND ${Prisma.join(andConditions, " AND ")}` : Prisma.empty}
+      AND (${Prisma.join(searchConditions, " OR ")})
+    `;
+    const [rows, countRows] = await Promise.all([
+      prisma.$queryRaw<{ recordKey: string; data: unknown; createdAt: Date }[]>(Prisma.sql`
+        SELECT "recordKey", "data", "createdAt" FROM "business_records"
+        WHERE ${whereSql}
+        ORDER BY "createdAt" DESC
+        LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}
+      `),
+      prisma.$queryRaw<{ count: bigint }[]>(Prisma.sql`
+        SELECT COUNT(*)::bigint AS count FROM "business_records" WHERE ${whereSql}
+      `),
+    ]);
+    const total = Number(countRows[0]?.count ?? 0);
     return {
-      rows: pageRows.map(toRow),
+      rows: rows.map(toRow),
       total,
       page,
       pageSize,

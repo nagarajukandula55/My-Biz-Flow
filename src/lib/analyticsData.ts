@@ -51,10 +51,13 @@ export async function getRevenueTrend(partnerId: string): Promise<LineSeriesPoin
   since.setHours(0, 0, 0, 0);
   since.setDate(since.getDate() - 6);
 
-  const rows = await prisma.businessRecord.findMany({
-    where: { partnerId, moduleSlug: "billing", createdAt: { gte: since } },
-    select: { data: true, createdAt: true },
-  });
+  // Reads via the cached listBusinessRecords (full, unfiltered "billing"
+  // table) and filters to the last 7 days in memory, rather than its own
+  // date-scoped prisma.businessRecord.findMany — so this shares the same
+  // cached fetch as getRevenueBySource/getInvoiceStatusBreakdown/
+  // getAnalyticsSummary on the same Analytics page render instead of
+  // issuing its own separate query.
+  const rows = await listBusinessRecords(partnerId, "billing");
 
   const buckets = new Map<string, number>();
   for (let i = 0; i < 7; i++) {
@@ -63,10 +66,11 @@ export async function getRevenueTrend(partnerId: string): Promise<LineSeriesPoin
     buckets.set(istDateKey(d), 0);
   }
   for (const r of rows) {
-    const key = istDateKey(r.createdAt);
+    const createdAt = new Date(r["recordCreatedAt"] as string);
+    if (createdAt < since) continue;
+    const key = istDateKey(createdAt);
     if (!buckets.has(key)) continue;
-    const data = r.data as Record<string, unknown>;
-    const amount = typeof data.amountPaid === "number" ? data.amountPaid : data.paymentStatus === "Paid" && typeof data.totalAmount === "number" ? data.totalAmount : 0;
+    const amount = typeof r["amountPaid"] === "number" ? (r["amountPaid"] as number) : r["paymentStatus"] === "Paid" && typeof r["totalAmount"] === "number" ? (r["totalAmount"] as number) : 0;
     buckets.set(key, (buckets.get(key) ?? 0) + amount);
   }
 
@@ -523,31 +527,37 @@ async function fetchPeriodSeries(
   rangeStart: Date,
   rangeEnd: Date
 ): Promise<{ revenueByKey: Map<string, number>; workordersByKey: Map<string, number> }> {
+  // Routed through the cached listBusinessRecords (full, unfiltered
+  // "billing"/"service-centre" tables) and filtered to [rangeStart,
+  // rangeEnd] in memory, instead of each of getPeriodComparison's 8 calls
+  // into this function (DAY/WEEK/MONTH/YEAR x current/prior) issuing its
+  // own date-scoped prisma.businessRecord.findMany — those 8 differing
+  // date ranges would never dedupe against each other at the Prisma layer,
+  // but they all collapse into the one cached per-moduleSlug fetch here
+  // (and share it with every other Analytics function reading the same
+  // moduleSlug on this render).
   const [billingRows, workorderRows] = await Promise.all([
-    prisma.businessRecord.findMany({
-      where: { partnerId, moduleSlug: "billing", createdAt: { gte: rangeStart, lte: rangeEnd } },
-      select: { data: true, createdAt: true },
-    }),
-    prisma.businessRecord.findMany({
-      where: { partnerId, moduleSlug: "service-centre", createdAt: { gte: rangeStart, lte: rangeEnd } },
-      select: { createdAt: true },
-    }),
+    listBusinessRecords(partnerId, "billing"),
+    listBusinessRecords(partnerId, "service-centre"),
   ]);
 
   const revenueByKey = new Map<string, number>();
   for (const r of billingRows) {
-    const data = r.data as Record<string, unknown>;
+    const createdAt = new Date(r["recordCreatedAt"] as string);
+    if (createdAt < rangeStart || createdAt > rangeEnd) continue;
     let amount = 0;
-    if (typeof data.amountPaid === "number") amount = data.amountPaid;
-    else if (data.paymentStatus === "Paid" && typeof data.totalAmount === "number") amount = data.totalAmount;
+    if (typeof r["amountPaid"] === "number") amount = r["amountPaid"] as number;
+    else if (r["paymentStatus"] === "Paid" && typeof r["totalAmount"] === "number") amount = r["totalAmount"] as number;
     if (amount === 0) continue;
-    const key = bucketKey(granularity, alignToBucketStart(granularity, r.createdAt));
+    const key = bucketKey(granularity, alignToBucketStart(granularity, createdAt));
     revenueByKey.set(key, (revenueByKey.get(key) ?? 0) + amount);
   }
 
   const workordersByKey = new Map<string, number>();
   for (const r of workorderRows) {
-    const key = bucketKey(granularity, alignToBucketStart(granularity, r.createdAt));
+    const createdAt = new Date(r["recordCreatedAt"] as string);
+    if (createdAt < rangeStart || createdAt > rangeEnd) continue;
+    const key = bucketKey(granularity, alignToBucketStart(granularity, createdAt));
     workordersByKey.set(key, (workordersByKey.get(key) ?? 0) + 1);
   }
 
@@ -706,15 +716,13 @@ export async function getSixMonthTrend(partnerId: string): Promise<ComboTrendPoi
   const now = new Date();
   const rangeStart = new Date(now.getFullYear(), now.getMonth() - 5, 1);
 
+  // Shares the cached listBusinessRecords(partnerId, "billing"/
+  // "service-centre") calls with the rest of this file instead of its own
+  // date-scoped prisma.businessRecord.findMany, filtering to the trailing
+  // 6-month window in memory.
   const [billingRows, workorderRows] = await Promise.all([
-    prisma.businessRecord.findMany({
-      where: { partnerId, moduleSlug: "billing", createdAt: { gte: rangeStart } },
-      select: { data: true, createdAt: true },
-    }),
-    prisma.businessRecord.findMany({
-      where: { partnerId, moduleSlug: "service-centre", createdAt: { gte: rangeStart } },
-      select: { createdAt: true },
-    }),
+    listBusinessRecords(partnerId, "billing"),
+    listBusinessRecords(partnerId, "service-centre"),
   ]);
 
   const months: { key: string; label: string; revenue: number; workorders: number }[] = [];
@@ -725,17 +733,20 @@ export async function getSixMonthTrend(partnerId: string): Promise<ComboTrendPoi
   const byKey = new Map(months.map((m) => [m.key, m]));
 
   for (const r of billingRows) {
-    const key = `${r.createdAt.getFullYear()}-${r.createdAt.getMonth()}`;
+    const createdAt = new Date(r["recordCreatedAt"] as string);
+    if (createdAt < rangeStart) continue;
+    const key = `${createdAt.getFullYear()}-${createdAt.getMonth()}`;
     const bucket = byKey.get(key);
     if (!bucket) continue;
-    const data = r.data as Record<string, unknown>;
     let amount = 0;
-    if (typeof data.amountPaid === "number") amount = data.amountPaid;
-    else if (data.paymentStatus === "Paid" && typeof data.totalAmount === "number") amount = data.totalAmount;
+    if (typeof r["amountPaid"] === "number") amount = r["amountPaid"] as number;
+    else if (r["paymentStatus"] === "Paid" && typeof r["totalAmount"] === "number") amount = r["totalAmount"] as number;
     bucket.revenue += amount;
   }
   for (const r of workorderRows) {
-    const key = `${r.createdAt.getFullYear()}-${r.createdAt.getMonth()}`;
+    const createdAt = new Date(r["recordCreatedAt"] as string);
+    if (createdAt < rangeStart) continue;
+    const key = `${createdAt.getFullYear()}-${createdAt.getMonth()}`;
     const bucket = byKey.get(key);
     if (bucket) bucket.workorders++;
   }

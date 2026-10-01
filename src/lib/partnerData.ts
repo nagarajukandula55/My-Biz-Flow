@@ -417,15 +417,22 @@ async function nextPartnerId(tx: Prisma.TransactionClient, partnerTypeId: string
   return `${prefix}${String(count + 1).padStart(4, "0")}`;
 }
 
-// 15 days for every new signup, uniformly — matches AN-CRM's real, currently
-// live free-trial length (see AN-CRM's src/core/pricing/plans.ts,
-// freeTrialDays: 15 on every SC plan).
-const TRIAL_DAYS = 15;
+// 15 days for every new signup through the launch-pricing window, dropping
+// to 7 days from 1 March 2027 onward — explicit product decision, not
+// per-partner-grandfathered (the shorter trial lands on the same calendar
+// date for every signup after the cutover, same as LAUNCH_PRICING_CUTOVER
+// in src/lib/subscriptionData.ts, which uses the identical date for the
+// same reason: no admin action needed, no special-casing by partner type).
+const TRIAL_LENGTH_CUTOVER = new Date("2027-03-01T00:00:00+05:30");
+
+function currentTrialDays(now: Date = new Date()): number {
+  return now.getTime() < TRIAL_LENGTH_CUTOVER.getTime() ? 15 : 7;
+}
 
 function trialDates(): { trialStartAt: Date; trialEndAt: Date } {
   const trialStartAt = new Date();
   const trialEndAt = new Date(trialStartAt);
-  trialEndAt.setDate(trialEndAt.getDate() + TRIAL_DAYS);
+  trialEndAt.setDate(trialEndAt.getDate() + currentTrialDays(trialStartAt));
   return { trialStartAt, trialEndAt };
 }
 

@@ -6,13 +6,17 @@ import { env } from "@/lib/env";
 import { listPartners } from "@/lib/partnerData";
 import { sendPartnerTelegramAlert } from "@/lib/telegram";
 import { subscriptionExpiringMessage } from "@/lib/telegramTemplates";
+import { istStartOfDay } from "@/lib/format";
 
 const WARNING_DAYS_BEFORE = 3;
 
+// IST calendar-day boundaries, not the cron runner's local (UTC) day — the
+// old `new Date(d.getFullYear(), d.getMonth(), d.getDate())` zeroed out the
+// runner's own UTC day, which can be off by a day from the IST day a
+// partner actually experiences, firing this alert on the wrong date.
 function daysUntil(date: Date, now: Date): number {
   const msPerDay = 24 * 60 * 60 * 1000;
-  const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  return Math.round((startOfDay(date).getTime() - startOfDay(now).getTime()) / msPerDay);
+  return Math.round((istStartOfDay(date).getTime() - istStartOfDay(now).getTime()) / msPerDay);
 }
 
 /**

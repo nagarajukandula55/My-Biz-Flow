@@ -114,13 +114,42 @@ function buildWhere(partnerId: string, filter?: LeadFilter) {
   };
 }
 
-export async function listLeadsForPartner(partnerId: string, filter?: LeadFilter): Promise<LeadRecord[]> {
-  const rows = await prisma.lead.findMany({
-    where: buildWhere(partnerId, filter),
-    include: INCLUDE,
-    orderBy: { createdAt: "desc" },
-  });
-  return rows.map(toRecord);
+/** Matches DEFAULT_BUSINESS_RECORD_PAGE_SIZE's convention (src/lib/businessRecords.ts). */
+export const DEFAULT_LEAD_PAGE_SIZE = 25;
+
+export type PaginatedLeads = {
+  rows: LeadRecord[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+};
+
+/**
+ * Paginated — this partner's lead table has no natural ceiling (every CSV
+ * import adds rows indefinitely), and its only caller
+ * (telecalling/page.tsx, the manager's leads list) renders it as a table,
+ * same shape as listBusinessRecordsPaginated/billing's page.
+ */
+export async function listLeadsForPartner(
+  partnerId: string,
+  filter?: LeadFilter,
+  pagination?: { page?: number; pageSize?: number }
+): Promise<PaginatedLeads> {
+  const page = Math.max(1, pagination?.page ?? 1);
+  const pageSize = pagination?.pageSize ?? DEFAULT_LEAD_PAGE_SIZE;
+  const where = buildWhere(partnerId, filter);
+  const [rows, total] = await Promise.all([
+    prisma.lead.findMany({
+      where,
+      include: INCLUDE,
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+    prisma.lead.count({ where }),
+  ]);
+  return { rows: rows.map(toRecord), total, page, pageSize, totalPages: Math.max(1, Math.ceil(total / pageSize)) };
 }
 
 /** A Telecaller's own queue — leads assigned to them, PLUS any still-
@@ -171,6 +200,15 @@ export async function listLeadsForAgent(
     },
     include: INCLUDE,
     orderBy: { createdAt: view === "closed" ? "desc" : "asc" },
+    // Safety ceiling, not real pagination: this is one agent's own queue
+    // (active leads assigned/territory-visible to them, or their closed
+    // history), which stays naturally small in practice — unlike
+    // listLeadsForPartner's whole-partner table. 500 guards against a
+    // pathological case (e.g. a huge unfiltered territory) without forcing
+    // UI pagination onto QueueClient's click-to-call workflow.
+    // TODO: if agents start reporting truncated queues, add real
+    // page/pageSize params here the same way listLeadsForPartner does.
+    take: 500,
   });
   return rows.map(toRecord);
 }

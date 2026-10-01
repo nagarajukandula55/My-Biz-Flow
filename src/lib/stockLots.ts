@@ -141,6 +141,14 @@ async function consumeFifoInner(
   const lots = await prisma.stockLot.findMany({
     where: { partnerId, materialId, warehouseId, condition, quantityRemaining: { gt: 0 } },
     orderBy: { receivedAt: "asc" },
+    // Internal FIFO draw logic, not a page-rendered list — genuinely needs
+    // the remaining-lot set in received-oldest-first order so the loop
+    // below can draw from the correct lots. The loop already breaks as
+    // soon as `remaining` hits 0, so this cap is a defensive ceiling (one
+    // draw needing more than 2000 distinct open lots for one material/
+    // warehouse/condition bucket would be extraordinary) rather than
+    // something expected to bind and truncate a real FIFO draw.
+    take: 2000,
   });
 
   let remaining = quantity;
@@ -216,6 +224,14 @@ export async function getAgeingReport(
   const lots = await prisma.stockLot.findMany({
     where: { partnerId, materialId, warehouseId, condition, quantityRemaining: { gt: 0 } },
     orderBy: { receivedAt: "asc" },
+    // Not wired to any page yet (foundations-only, per the file header) —
+    // genuinely needs every remaining lot for this bucket to compute a
+    // correct average/oldest age, so this isn't paginated. 2000 is a
+    // defensive ceiling matching consumeFifo's, not expected to bind;
+    // TODO revisit once this is actually surfaced in a UI (it may then
+    // want real pagination for the per-lot `lots` detail list instead of a
+    // flat cap).
+    take: 2000,
   });
 
   const now = new Date();

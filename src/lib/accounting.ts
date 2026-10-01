@@ -237,11 +237,22 @@ function toJournalEntryRecord(row: {
 
 const JOURNAL_ENTRY_INCLUDE = { lines: { include: { account: { select: { accountName: true, accountCode: true } } } } } as const;
 
+// TODO: accounting/journal-entries/page.tsx renders this full list directly
+// with no pagination UI yet. Capped with a safety ceiling rather than left
+// fully unbounded so the page can't blow up as entries accumulate — follow
+// up with real page/pageSize pagination (mirroring
+// listBusinessRecordsPaginated + PaginationControls, see billing/page.tsx).
+// Note this is NOT used by the trial-balance/P&L/balance-sheet calculations
+// (those aggregate prisma.journalLine directly), so capping this list has no
+// effect on any correctness-critical summation.
+const JOURNAL_ENTRIES_SAFETY_LIMIT = 500;
+
 export async function listJournalEntries(partnerId: string): Promise<JournalEntryRecord[]> {
   const rows = await prisma.journalEntry.findMany({
     where: { partnerId },
     include: JOURNAL_ENTRY_INCLUDE,
     orderBy: { entryDate: "desc" },
+    take: JOURNAL_ENTRIES_SAFETY_LIMIT,
   });
   return rows.map(toJournalEntryRecord);
 }

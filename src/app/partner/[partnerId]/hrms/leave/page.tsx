@@ -6,6 +6,7 @@ import { StatusChip } from "@/components/StatusChip";
 import { requirePartnerSessionForPage } from "@/lib/requirePartnerSession";
 import { listLeaveRequests } from "@/lib/hrms";
 import { LeaveDecisionButtons } from "./LeaveDecisionButtons";
+import { formatDate } from "@/lib/format";
 
 registerPage({
   id: "hrms.leave.list",
@@ -43,7 +44,7 @@ export default async function LeavePage({ params }: { params: { partnerId: strin
               <div>
                 <span className="font-semibold text-text">{l.employee.name}</span>
                 <span className="ml-2 text-text-muted">
-                  {l.leaveType}: {new Date(l.startDate).toDateString()} → {new Date(l.endDate).toDateString()}
+                  {l.leaveType}: {formatDate(String(l.startDate))} → {formatDate(String(l.endDate))}
                   {l.reason ? ` — ${l.reason}` : ""}
                 </span>
               </div>

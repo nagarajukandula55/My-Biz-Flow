@@ -1,23 +1,30 @@
 import type { Row } from "@/components/DataTable";
 import type { LineItem } from "@/lib/sample-data/billing";
+import { istDateKey } from "@/lib/format";
 
 /** "2026-08-15" -> "2026-08" */
 export function periodKeyOf(dateStr: string): string {
   return dateStr.slice(0, 7);
 }
 
+/**
+ * The current GST filing period (YYYY-MM), by IST calendar month — NOT the
+ * server's UTC month. Between 00:00-05:29 IST on the 1st of a month, a raw
+ * `new Date().toISOString()` is still in the previous UTC month and would
+ * pick the wrong filing period.
+ */
 export function currentPeriodKey(): string {
-  return new Date().toISOString().slice(0, 7);
+  return istDateKey(new Date()).slice(0, 7);
 }
 
-/** Last N period keys (including the current one), newest first — for a period picker. */
+/** Last N period keys (including the current one), newest first — for a period picker. By IST calendar month, same reasoning as currentPeriodKey(). */
 export function recentPeriodKeys(count = 12): string[] {
   const out: string[] = [];
-  const d = new Date();
-  d.setDate(1);
+  const [y, m] = currentPeriodKey().split("-").map(Number);
+  const d = new Date(Date.UTC(y, m - 1, 1));
   for (let i = 0; i < count; i++) {
     out.push(d.toISOString().slice(0, 7));
-    d.setMonth(d.getMonth() - 1);
+    d.setUTCMonth(d.getUTCMonth() - 1);
   }
   return out;
 }

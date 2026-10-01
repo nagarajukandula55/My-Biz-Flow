@@ -6,6 +6,7 @@ import { env } from "@/lib/env";
 import { listPartners } from "@/lib/partnerData";
 import { listBusinessRecords } from "@/lib/businessRecords";
 import { createDueRecurringInvoice } from "@/lib/recurringInvoiceRunner";
+import { istDateKey } from "@/lib/format";
 
 /**
  * Vercel Cron entry point (schedule it in vercel.json, e.g. daily) — for
@@ -19,7 +20,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const today = new Date().toISOString().slice(0, 10);
+  // IST calendar date, not the cron runner's UTC date — Vercel Cron runs in
+  // UTC, so a raw toISOString() slice would match "today" up to 5.5h late
+  // (or on the wrong day near midnight IST) against nextRunDate.
+  const today = istDateKey(new Date());
   const partners = await listPartners();
   let createdCount = 0;
   const failures: { partnerId: string; templateId: string }[] = [];

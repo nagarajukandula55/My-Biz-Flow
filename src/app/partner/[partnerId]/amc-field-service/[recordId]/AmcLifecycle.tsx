@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { StatusChip } from "@/components/StatusChip";
 import { Modal } from "@/components/Modal";
 import { SearchSelectModal, type SearchSelectOption } from "@/components/SearchSelectModal";
+import { formatDateTime } from "@/lib/format";
 import type { ContractStatus } from "@/lib/sample-data/amc-field-service";
 import {
   dispatchTechnicianAction,
@@ -191,7 +192,7 @@ export function AmcLifecycle({
             <tbody>
               {serviceVisits.map((v) => (
                 <tr key={v.id} className="border-t border-border">
-                  <td className="px-3 py-2 text-text">{new Date(v.visitDate).toLocaleString()}</td>
+                  <td className="px-3 py-2 text-text">{formatDateTime(v.visitDate)}</td>
                   <td className="px-3 py-2 text-text">{v.technicianName ?? "Unassigned"}</td>
                   <td className="px-3 py-2">
                     <StatusChip label={v.status} variant={STATUS_VARIANT[v.status] ?? "neutral"} />

@@ -11,6 +11,7 @@
  * so explicitly; everything else is paise.
  */
 import { prisma } from "@/lib/prisma";
+import { formatDate, istStartOfDay } from "@/lib/format";
 import { sendPartnerTelegramAlert } from "@/lib/telegram";
 import { getPartner } from "@/lib/partnerData";
 import {
@@ -232,8 +233,10 @@ export async function checkIn(
 
 /** Finds today's open (checkOutAt null) AttendanceCheckIn row for this employee, if any. */
 export async function getOpenCheckInToday(employeeId: string) {
-  const startOfDay = new Date();
-  startOfDay.setHours(0, 0, 0, 0);
+  // IST calendar day, not the server's local (UTC) day — a check-in near
+  // midnight IST needs to match "today" by the day the employee actually
+  // experienced, since attendance feeds payroll (listPayslips/netPay).
+  const startOfDay = istStartOfDay();
   return prisma.attendanceCheckIn.findFirst({
     where: { employeeId, checkOutAt: null, checkInAt: { gte: startOfDay } },
     orderBy: { checkInAt: "desc" },
@@ -257,6 +260,8 @@ export async function checkOut(
   return { ok: true };
 }
 
+const ATTENDANCE_HISTORY_SAFETY_LIMIT = 500;
+
 export async function listAttendanceHistory(
   partnerId: string,
   filters: { employeeId?: string; from?: string; to?: string }
@@ -279,23 +284,41 @@ export async function listAttendanceHistory(
     where.checkInAt = checkInAt;
   }
 
+  // TODO: hrms/attendance/history/page.tsx renders this full list directly
+  // (already has employeeId/from/to filter scaffolding, no page param yet).
+  // The hrms/[recordId]/page.tsx detail-page caller only wants one
+  // employee's recent history anyway. Capped with a safety ceiling rather
+  // than left fully unbounded — follow up with real page/pageSize
+  // pagination on the history report page (mirroring
+  // listBusinessRecordsPaginated + PaginationControls, see billing/page.tsx).
   return prisma.attendanceCheckIn.findMany({
     where,
     include: { employee: true },
     orderBy: { checkInAt: "desc" },
+    take: ATTENDANCE_HISTORY_SAFETY_LIMIT,
   });
 }
 
 // --- Leave -----------------------------------------------------------------
 
+const LEAVE_REQUESTS_SAFETY_LIMIT = 500;
+
 export async function listLeaveRequests(partnerId: string, employeeId?: string) {
   const employees = await listEmployees(partnerId);
   const employeeIds = employeeId ? [employeeId] : employees.map((e) => e.id);
   if (employeeIds.length === 0) return [];
+  // TODO: hrms/leave/page.tsx (no employeeId → whole-partner) renders this
+  // full list directly with no pagination UI yet; the hrms/[recordId]/
+  // page.tsx detail-page caller passes employeeId for one employee's
+  // naturally-bounded history. Capped with a safety ceiling rather than left
+  // fully unbounded — follow up with real page/pageSize pagination on the
+  // whole-partner leave page (mirroring listBusinessRecordsPaginated +
+  // PaginationControls, see billing/page.tsx).
   return prisma.leaveRequest.findMany({
     where: { employeeId: { in: employeeIds } },
     include: { employee: true },
     orderBy: { appliedAt: "desc" },
+    take: LEAVE_REQUESTS_SAFETY_LIMIT,
   });
 }
 
@@ -320,8 +343,8 @@ export async function createLeaveRequest(
       partnerBusinessName: partner.businessName,
       employeeName: employee.name,
       leaveType: data.leaveType,
-      startDate: data.startDate.toDateString(),
-      endDate: data.endDate.toDateString(),
+      startDate: formatDate(data.startDate.toISOString()),
+      endDate: formatDate(data.endDate.toISOString()),
     });
     await sendPartnerTelegramAlert(partnerId, "hrmsLeaveRequestSubmitted", message);
   }
@@ -369,8 +392,8 @@ export async function decideLeaveRequest(
       partnerBusinessName: partner.businessName,
       employeeName: request.employee.name,
       leaveType: request.leaveType,
-      startDate: request.startDate.toDateString(),
-      endDate: request.endDate.toDateString(),
+      startDate: formatDate(request.startDate.toISOString()),
+      endDate: formatDate(request.endDate.toISOString()),
       decision,
     });
     await sendPartnerTelegramAlert(partnerId, "hrmsLeaveDecided", message);
@@ -381,8 +404,8 @@ export async function decideLeaveRequest(
         partnerBusinessName: partner.businessName,
         employeeName: request.employee.name,
         leaveType: request.leaveType,
-        startDate: request.startDate.toDateString(),
-        endDate: request.endDate.toDateString(),
+        startDate: formatDate(request.startDate.toISOString()),
+        endDate: formatDate(request.endDate.toISOString()),
         decision,
       });
     }
@@ -396,14 +419,24 @@ export async function listLeaveBalances(employeeId: string) {
 
 // --- Payroll -----------------------------------------------------------------
 
+const PAYSLIPS_SAFETY_LIMIT = 500;
+
 export async function listPayslips(partnerId: string, employeeId?: string) {
   const employees = await listEmployees(partnerId);
   const employeeIds = employeeId ? [employeeId] : employees.map((e) => e.id);
   if (employeeIds.length === 0) return [];
+  // TODO: hrms/payroll/page.tsx (no employeeId → whole-partner, all months)
+  // renders this full list directly with no pagination UI yet; the
+  // hrms/[recordId]/page.tsx detail-page caller passes employeeId for one
+  // employee's naturally-small payslip history. Capped with a safety
+  // ceiling rather than left fully unbounded — follow up with real
+  // page/pageSize pagination on the whole-partner payroll page (mirroring
+  // listBusinessRecordsPaginated + PaginationControls, see billing/page.tsx).
   return prisma.payslip.findMany({
     where: { employeeId: { in: employeeIds } },
     include: { employee: true },
     orderBy: [{ year: "desc" }, { month: "desc" }],
+    take: PAYSLIPS_SAFETY_LIMIT,
   });
 }
 

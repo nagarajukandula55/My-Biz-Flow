@@ -3,6 +3,19 @@ export function istDateKey(value: Date): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(value); // en-CA formats as YYYY-MM-DD
 }
 
+/**
+ * The UTC instant of IST midnight (00:00 Asia/Kolkata) for the given
+ * moment's IST calendar day — use for "start of today"/overdue/day-boundary
+ * business logic (attendance check-in matching, overdue-days math,
+ * subscription-expiry day comparisons, report period ranges) instead of
+ * `Date#setHours(0,0,0,0)`, which zeroes out the server/runner's LOCAL zone
+ * (UTC in production) and is off by 5:30h from the actual IST day boundary
+ * — a transaction near midnight IST can land in the wrong "day" bucket.
+ */
+export function istStartOfDay(value: Date = new Date()): Date {
+  return new Date(`${istDateKey(value)}T00:00:00+05:30`);
+}
+
 export function formatCurrencyINR(value: number): string {
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
