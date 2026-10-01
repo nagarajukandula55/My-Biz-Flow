@@ -106,8 +106,7 @@ export const env = {
   cloudinaryCloudName: () => process.env.CLOUDINARY_CLOUD_NAME,
   cloudinaryApiKey: () => process.env.CLOUDINARY_API_KEY,
   cloudinaryApiSecret: () => process.env.CLOUDINARY_API_SECRET,
-  /** Resend — transactional email (partner welcome emails, password resets), ported from
-   * AN-CRM. No mailer module exists in this app yet; placeholder ahead of that follow-up. */
+  /** Resend — transactional email for platform-to-partner messages, password resets, OTPs and module events. The sender is implemented in src/lib/email.ts and src/lib/email/*.ts; unset credentials log instead of sending so local development remains safe. */
   resendApiKey: () => process.env.RESEND_API_KEY,
   resendFrom: () => process.env.RESEND_FROM,
   /** Web push (VAPID) — job/workorder notifications, ported from AN-CRM. No web-push SDK
@@ -201,3 +200,4 @@ export function googleOAuthConfigured(): boolean {
 export function telegramLoginConfigured(): boolean {
   return Boolean(process.env.TELEGRAM_BOT_TOKEN);
 }
+

@@ -26,7 +26,7 @@ At the time this checkpoint was written, no push or deployment was authorized. N
 
 ## Still required before calling the entire platform complete
 
-1. Approved provider configuration and sandbox acceptance for payment, email, SMS, WhatsApp and Telegram. No provider acceptance is inferred from mocked responses. Other module notifications still have process-local delivery paths.
+1. Provider readiness is split by channel: Razorpay, Resend and Telegram are wired/configured and need post-deploy acceptance checks; WhatsApp outbound code is ready and needs Meta credentials/templates added in Vercel; SMS remains provider-pending until the provider account and approved flow IDs are acquired. No provider acceptance is inferred from mocked responses. Other module notifications still have process-local delivery paths.
 2. Business acceptance for each package offered: module combinations, permissions, documents, imports/accounting, manufacturing per-unit versus per-order quantities, and repeated-SKU return allocation. A catalog of 25 modules / 341 pages does not certify all workflows.
 3. Typed editors, validation, preview and change history for settings not yet supported by Admin. Routine supported configuration can be UI-controlled; new logic and structural database changes still require reviewed development.
 4. Module-specific dashboard and analytics acceptance for every business type. Admin now lists expected KPIs and workflow checks for every module, but each module still needs user/business sign-off before being offered broadly.
@@ -38,3 +38,4 @@ Named Admin accounts, per-person roles and per-person revocation are intentional
 The Admin should provide task-specific, validated maintenance controls rather than unrestricted SQL or a bulk-delete console. Any later deployment must be joint and explicitly authorized; no migration is included in this continuation.
 
 Database maintenance is now represented in Admin as a typed control map: read-only health/integrity/search actions, typed maintenance writes, restore-only backup handling and explicitly disabled raw SQL/bulk deletion.
+

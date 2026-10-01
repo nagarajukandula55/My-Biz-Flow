@@ -29,7 +29,8 @@ but set before the corresponding feature is advertised to users.
 - **Sync into AN-Accounting** (subscription payments, Billing invoices, and
   Service Centre invoices created on workorder close): `CENTRAL_API_URL`,
   `CENTRAL_API_KEY` (from AN-Accounting's Settings > Sales API page).
-- **Field Force SMS job-offer pings:** `SMS_API_KEY`, `SMS_SENDER_ID`.
+- **Field Force SMS job-offer pings:** `SMS_API_KEY`, `SMS_SENDER_ID`. Leave unset until the SMS provider account and approved flows are acquired.
+- **WhatsApp Cloud API:** `WHATSAPP_BUSINESS_PHONE_NUMBER_ID`, `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_VERIFY_TOKEN`; add after the Meta app and approved templates are ready.
 - **Vercel Cron route auth:** `CRON_SECRET` (set alongside the cron
   schedule in `vercel.json`).
 - **Service Centre photo/document uploads (Cloudinary):**
@@ -38,8 +39,7 @@ but set before the corresponding feature is advertised to users.
   yet in this app (see `.env.example` comment). Setting these now only
   future-proofs the Vercel config; the upload feature itself is a separate
   follow-up build.
-- **Transactional email (Resend):** `RESEND_API_KEY`, `RESEND_FROM`. Same
-  caveat as Cloudinary above — no mailer module exists yet.
+- **Transactional email (Resend):** `RESEND_API_KEY`, `RESEND_FROM`. The app sends partner-facing transactional email through `src/lib/email.ts` and `src/lib/email/*`; verify the sender/domain in Resend before production use.
 - **Web push notifications (VAPID):** `VAPID_PUBLIC_KEY`,
   `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, `NEXT_PUBLIC_VAPID_PUBLIC_KEY`. Same
   caveat — no web-push SDK installed yet.
@@ -103,3 +103,5 @@ left out — do not add them to Vercel for this project:
   pair. Do not reuse AN-CRM's key here.
 - **Razorpay.** Same provider, same var names, independent Razorpay account
   keys — do not reuse AN-CRM's Razorpay credentials for this project.
+
+
