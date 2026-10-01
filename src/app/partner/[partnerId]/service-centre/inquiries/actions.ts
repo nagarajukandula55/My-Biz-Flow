@@ -9,14 +9,9 @@ import { SERVICE_CENTRE_REQUIRED_FIELDS } from "@/lib/serviceCentreRequiredField
 import { getNextNumber } from "@/lib/designer/numbering";
 import { getPartner } from "@/lib/partnerData";
 import { prisma } from "@/lib/prisma";
-import { sendWorkorderTelegramAlert as deliverWorkorderAlert } from "@/lib/telegram";
+import { sendWorkorderTelegramAlert } from "@/lib/telegram";
 import { newWorkorderCreatedMessage } from "@/lib/telegramTemplates";
 import { withRecordLock } from "@/lib/withRecordLock";
-import { afterDatabaseCommit } from "@/lib/databaseTransaction";
-async function sendWorkorderTelegramAlert(...args: Parameters<typeof deliverWorkorderAlert>): Promise<void> {
-  await afterDatabaseCommit(() => deliverWorkorderAlert(...args));
-}
-
 
 /** Staff-side "log a call-in inquiry" — bound to InquiryNewButton's modal form. */
 export async function createInquiryAction(
@@ -118,7 +113,7 @@ export async function convertInquiryToWorkorderAction(
   // click on "Convert to Workorder" before the button disables) — without
   // it, two overlapping calls could both pass the `status !== "Open"`
   // guard below and both mint a jobId / create a workorder.
-  const jobId = await withRecordLock("service-centre-inquiry-convert", `${partnerId}:${inquiryId}`, () =>
+  const jobId = await withRecordLock("service-centre-inquiry-convert", inquiryId, () =>
     convertInquiryToWorkorderInner(partnerId, inquiryId, overrides)
   );
   if (typeof jobId !== "string") return jobId; // { error, missing? } — validation/not-found failure
