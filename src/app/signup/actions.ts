@@ -3,14 +3,9 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createPartner } from "@/lib/partnerData";
-import { createSignupRequest } from "@/lib/partnerSignupRequestsData";
 import { getPartnerType } from "@/lib/designer/partnerTypesData";
-import { partnerIdFromReferralCode } from "@/lib/referrals";
+import { resolveReferrer } from "@/lib/referrals";
 import { sendPartnerWelcomeEmail } from "@/lib/email";
-import { sendPartnerApplicationReceivedEmail } from "@/lib/email/partnerEmails";
-import { sendRawTelegramMessage } from "@/lib/telegram";
-import { newPartnerApplicationMessage } from "@/lib/telegramTemplates";
-import { getOpsChatId } from "@/lib/platformSettings";
 import {
   PARTNER_SESSION_COOKIE,
   PARTNER_SESSION_MAX_AGE_SECONDS,
@@ -21,9 +16,16 @@ import {
  * Real "register your business" action. No password is collected here — one
  * is generated internally and never shown; the new partner is signed
  * straight into a real session and redirected to /change-password to set
- * their own, so there's no generated password to copy/type anywhere. If the
- * chosen Partner Type has requiresApproval on, this creates a
- * PartnerSignupRequest (no partner id yet, held for admin approval) instead.
+ * their own, so there's no generated password to copy/type anywhere.
+ *
+ * Every Partner Type signs up directly now — the PartnerSignupRequest
+ * admin-approval gate (src/lib/partnerSignupRequestsData.ts) is
+ * deliberately bypassed here for the time being, regardless of a given
+ * PartnerType's own `requiresApproval` flag, so no signup (including
+ * referral-driven ones) gets stuck in a pending queue. The approval code
+ * path itself is left in place, unused, in case a specific partner type
+ * needs it reinstated later — re-add the `if (partnerType?.requiresApproval)`
+ * branch to bring it back for that type.
  */
 export async function registerBusiness(formData: FormData) {
   const partnerTypeId = String(formData.get("partnerTypeId") ?? "").trim();
@@ -63,8 +65,10 @@ export async function registerBusiness(formData: FormData) {
   }
 
   // No self-referral, no fabricated match — an unknown/malformed code
-  // simply resolves to undefined and the signup proceeds as organic.
-  const referredByPartnerId = referralCode ? await partnerIdFromReferralCode(referralCode) : undefined;
+  // simply resolves to undefined and the signup proceeds as organic. The
+  // code may name either a referring Partner (REF-<id>) or a telecalling
+  // agent (their loginId, e.g. "AGT001") — see resolveReferrer.
+  const referrer = referralCode ? await resolveReferrer(referralCode) : undefined;
   const input = {
     partnerTypeId,
     businessName,
@@ -78,31 +82,9 @@ export async function registerBusiness(formData: FormData) {
     loginContact,
     productDomains,
     customFieldValues,
-    referredByPartnerId,
+    referredByPartnerId: referrer?.type === "PARTNER" ? referrer.id : undefined,
+    referredByStaffId: referrer?.type === "STAFF" ? referrer.id : undefined,
   };
-
-  if (partnerType?.requiresApproval) {
-    let password: string;
-    try {
-      ({ password } = await createSignupRequest(input));
-    } catch {
-      redirect(`/signup/${encodeURIComponent(partnerTypeId)}?error=contact_taken`);
-    }
-    // Best-effort, awaited for the same reason as sendPartnerWelcomeEmail
-    // below — redirect() throws to navigate, so a fire-and-forget promise
-    // could be dropped before it resolves.
-    await sendPartnerApplicationReceivedEmail({ to: businessEmail, businessName });
-
-    const opsChatId = await getOpsChatId();
-    if (opsChatId) {
-      await sendRawTelegramMessage(
-        opsChatId,
-        await newPartnerApplicationMessage({ businessName, partnerTypeName: partnerType?.id ?? partnerTypeId })
-      );
-    }
-
-    redirect(`/signup/pending?businessName=${encodeURIComponent(businessName)}`);
-  }
 
   let partnerId: string;
   try {

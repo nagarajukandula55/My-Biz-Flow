@@ -26,6 +26,7 @@ export async function buildPartnerAdminNavGroups(partnerId: string): Promise<Par
     items: [
       { key: "dashboard", label: "Dashboard", dot: "neutral", href: "dashboard" },
       { key: "analytics", label: "Analytics", dot: "neutral", href: "analytics" },
+      { key: "wallet", label: "Wallet", dot: "neutral", href: "wallet" },
     ],
   };
   // Numbering folded into Settings as a tab (Business Profile / Bank

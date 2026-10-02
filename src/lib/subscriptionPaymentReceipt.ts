@@ -1,6 +1,7 @@
 import { processPaymentDelivery, type DeliveryJob } from "@/lib/paymentDeliveryQueue";
 import { getPartner } from "@/lib/partnerData";
 import { notifyCentralApiSale } from "@/lib/centralApi";
+import { creditReferralCommission } from "@/lib/walletClient";
 import { sendPlatformSubscriptionPaymentEmail } from "@/lib/email";
 import { sendPartnerTelegramAlert } from "@/lib/telegram";
 import { paymentReceivedMessage } from "@/lib/telegramTemplates";
@@ -14,6 +15,16 @@ export async function sendPaymentDelivery(job: DeliveryJob): Promise<boolean> {
   if (!partner) return false;
   const amount = `₹${payment.amount.toLocaleString("en-IN")}`;
   if (job.channel === "accounting") return notifyCentralApiSale({ ...partner, billingCycle: payment.billingCycle }, payment.planName, payment);
+  if (job.channel === "wallet_commission") {
+    if (!payment.referrer) return true; // Shouldn't be queued without one; nothing to do.
+    return creditReferralCommission({
+      referrer: payment.referrer,
+      referredPartnerId: payment.partnerId,
+      razorpayPaymentId: payment.razorpayPaymentId,
+      amount: payment.amount,
+      planName: payment.planName,
+    });
+  }
   if (job.channel === "email") return (await sendPlatformSubscriptionPaymentEmail({ to: partner.businessEmail,
     businessName: partner.businessName, planName: payment.planName, amount, billingCycle: cycleLabel(payment.billingCycle),
     invoiceNumber: `PLT-${payment.razorpayPaymentId}` })).sent;

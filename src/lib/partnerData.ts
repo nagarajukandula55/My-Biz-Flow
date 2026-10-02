@@ -452,6 +452,7 @@ export type PartnerSignupInput = {
   /** Values for the PartnerType's own customSignupFields, keyed by field `key`. */
   customFieldValues?: Record<string, string>;
   referredByPartnerId?: string;
+  referredByStaffId?: string;
 };
 
 /**
@@ -487,6 +488,7 @@ export async function createPartner(input: PartnerSignupInput): Promise<{ partne
         productDomains: parseProductDomains(input.productDomains),
         customFieldValues: input.customFieldValues ?? {},
         referredByPartnerId: input.referredByPartnerId || null,
+        referredByStaffId: input.referredByStaffId || null,
         passwordHash,
         ...trialDates(),
       },

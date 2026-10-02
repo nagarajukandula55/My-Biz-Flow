@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { registerPage } from "@/lib/designer/registry";
 import { listLeadsForAgent } from "@/lib/telecalling/leadsData";
@@ -53,11 +54,16 @@ export default async function QueuePage({
     <AppShell
       topbarTitle="Telecalling — My Call Queue"
       topbarActions={
-        <form action={boundLogout}>
-          <button type="submit" className="text-sm font-semibold text-text-muted hover:text-text">
-            Sign out ({staff?.name})
-          </button>
-        </form>
+        <div className="flex items-center gap-4">
+          <Link href={`/partner/${params.partnerId}/telecalling/wallet`} className="text-sm font-semibold text-text-muted hover:text-text">
+            Wallet
+          </Link>
+          <form action={boundLogout}>
+            <button type="submit" className="text-sm font-semibold text-text-muted hover:text-text">
+              Sign out ({staff?.name})
+            </button>
+          </form>
+        </div>
       }
     >
       <div className="mbf-page">

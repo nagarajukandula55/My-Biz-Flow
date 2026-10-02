@@ -55,7 +55,7 @@ type PushContext = {
  * while callers that don't check the return value keep their existing
  * fire-and-forget behavior.
  */
-async function postWithRetry(url: string, key: string, body: unknown, ctx: PushContext): Promise<boolean> {
+export async function postWithRetry(url: string, key: string, body: unknown, ctx: PushContext): Promise<boolean> {
   let lastError: unknown;
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {

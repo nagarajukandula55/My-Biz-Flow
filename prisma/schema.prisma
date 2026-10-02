@@ -380,10 +380,18 @@ model Partner {
   /// src/lib/referrals.ts), so there is nothing to generate or keep unique.
   referredByPartnerId String?
 
+  /// Same idea as referredByPartnerId but for a telecalling agent referral:
+  /// the PartnerStaff.id (role "Telecaller") whose loginId (e.g. "AGT001")
+  /// was entered as the referral code at /signup. Mutually exclusive with
+  /// referredByPartnerId in practice (a signup is referred by one or the
+  /// other), both nullable so neither is required. See src/lib/referrals.ts.
+  referredByStaffId String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([referredByPartnerId])
+  @@index([referredByStaffId])
   @@map("partners")
 }
 

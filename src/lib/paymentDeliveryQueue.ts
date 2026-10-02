@@ -5,12 +5,26 @@ import { randomUUID } from "node:crypto";
 // Platform-owned records, outside every real partner's writable namespace.
 export const DELIVERY_OWNER = "__platform_payment_delivery__";
 export const DELIVERY_MODULE = "platform-payment-delivery";
-export type DeliveryChannel = "accounting" | "email" | "telegram";
-export type PaymentDelivery = { partnerId: string; razorpayPaymentId: string; amount: number; planName: string; billingCycle: string; capturedAt: string };
+export type DeliveryChannel = "accounting" | "email" | "telegram" | "wallet_commission";
+export type PaymentDelivery = {
+  partnerId: string;
+  razorpayPaymentId: string;
+  amount: number;
+  planName: string;
+  billingCycle: string;
+  capturedAt: string;
+  /** Set only when this was the referred partner's first-ever captured payment AND they were referred. */
+  referrer?: { type: "PARTNER" | "STAFF"; id: string };
+};
 export type DeliveryJob = { payment: PaymentDelivery; channel: DeliveryChannel; status: string; attempts: number; lease?: string; startedAt?: string; completedAt?: string };
 
 export async function enqueuePaymentDelivery(tx: Prisma.TransactionClient, payment: PaymentDelivery) {
-  for (const channel of ["accounting", "email", "telegram"] as const) {
+  const channels: DeliveryChannel[] = ["accounting", "email", "telegram"];
+  // Only queued when there's an actual commission to pay — avoids a
+  // permanently-"Review" job for every organic (non-referred) or renewal
+  // payment, which would otherwise need manual triage for no reason.
+  if (payment.referrer) channels.push("wallet_commission");
+  for (const channel of channels) {
     const key = { partnerId: DELIVERY_OWNER, moduleSlug: DELIVERY_MODULE, recordKey: `${payment.razorpayPaymentId}:${channel}` };
     await tx.businessRecord.upsert({ where: { partnerId_moduleSlug_recordKey: key }, update: {},
       create: { ...key, data: { payment, channel, status: "Pending", attempts: 0 } } });

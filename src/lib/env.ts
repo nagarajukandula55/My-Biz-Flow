@@ -50,6 +50,30 @@ export const env = {
   databaseUrl: () => requireEnv("DATABASE_URL"),
   centralApiUrl: () => requireEnv("CENTRAL_API_URL"),
   centralApiKey: () => requireEnv("CENTRAL_API_KEY"),
+  /** AN-Accounting's wallet (ANy Pay) credit endpoint — full URL, e.g.
+   * https://your-an-accounting-app.vercel.app/api/external/wallet/credit.
+   * Same Bearer key as CENTRAL_API_KEY (Settings -> Sales API in that app
+   * authorizes both the sales and wallet APIs for a business). Optional:
+   * referral commission crediting just no-ops (logged, reviewable) until
+   * this is set, same posture as Razorpay above. */
+  centralApiWalletCreditUrl: () => process.env.CENTRAL_API_WALLET_CREDIT_URL,
+  /** Same AN-Accounting business, read/withdraw side of the wallet API —
+   * e.g. .../api/external/wallet/statement and .../wallet/withdrawal.
+   * Used by the partner/telecalling "My Wallet" pages. */
+  centralApiWalletStatementUrl: () => process.env.CENTRAL_API_WALLET_STATEMENT_URL,
+  centralApiWalletWithdrawalUrl: () => process.env.CENTRAL_API_WALLET_WITHDRAWAL_URL,
+  /** ANy Pay phase toggles — the wallet code is always present and the
+   * wallet page always renders (an empty/zero wallet is harmless to
+   * show), but these two gate the money-moving actions so the whole
+   * rollout can go live in phases without a code change:
+   *   - walletCommissionEnabled: whether a referred partner's first
+   *     payment actually queues a referral-commission credit at all.
+   *   - walletWithdrawalEnabled: whether a partner/agent can submit a
+   *     withdrawal request (crediting can be live while withdrawals
+   *     stay off, so balances accrue before cash-out opens up).
+   * Both default OFF — explicit opt-in once you're ready for that phase. */
+  walletCommissionEnabled: () => process.env.FEATURE_WALLET_COMMISSION === "true",
+  walletWithdrawalEnabled: () => process.env.FEATURE_WALLET_WITHDRAWAL === "true",
   /** Payment gateway — optional until a Super Admin/the business owner adds real Razorpay keys
    * (Vercel env vars). Unset returns undefined rather than throwing, so the rest of the app keeps
    * working before the gateway is configured; only the actual checkout/verify calls need it. */
