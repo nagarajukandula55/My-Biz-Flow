@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/AppShell";
+import { renderTierGate } from "@/lib/pageTierGate";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { PriceTiersClientTable } from "./PriceTiersClientTable";
@@ -23,6 +24,8 @@ registerPage({
 export const dynamic = "force-dynamic";
 
 export default async function PriceTiersPage({ params }: { params: { partnerId: string } }) {
+  const tierGate = await renderTierGate(params.partnerId, "wholesale-b2b.price-tiers.list", "Price Tiers");
+  if (tierGate) return <AppShell topbarTitle="Price Tiers — Wholesale B2B">{tierGate}</AppShell>;
   const columns = await applyCustomizations("wholesale-b2b.price-tiers.list", priceTierColumns);
   const tiers = await listPriceTiers(params.partnerId);
   const rows = tiers.map(priceTierToRow);

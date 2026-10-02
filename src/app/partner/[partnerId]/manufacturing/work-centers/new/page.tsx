@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/AppShell";
+import { renderTierGate } from "@/lib/pageTierGate";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm, type FormFieldDef } from "@/components/RecordForm";
 import { createWorkCenterAction } from "../../actions";
@@ -22,6 +23,8 @@ const fields: FormFieldDef[] = [
 ];
 
 export default async function NewWorkCenterPage({ params }: { params: { partnerId: string } }) {
+  const tierGate = await renderTierGate(params.partnerId, "manufacturing.work-centers.create", "Work Centers");
+  if (tierGate) return <AppShell topbarTitle="New Work Center">{tierGate}</AppShell>;
   return (
     <AppShell topbarTitle="New Work Center">
       <div>

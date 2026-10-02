@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/AppShell";
+import { renderTierGate } from "@/lib/pageTierGate";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
@@ -23,6 +24,8 @@ export const dynamic = "force-dynamic";
 
 export default async function PayrollPage({ params }: { params: { partnerId: string } }) {
   await requirePartnerSessionForPage(params.partnerId);
+  const tierGate = await renderTierGate(params.partnerId, "hrms.payroll.list", "Payroll");
+  if (tierGate) return <AppShell topbarTitle="Payroll — HRMS / Payroll">{tierGate}</AppShell>;
   const mod = await getModule("hrms");
   const payslips = await listPayslips(params.partnerId);
 

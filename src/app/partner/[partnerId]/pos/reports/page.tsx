@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/AppShell";
+import { renderTierGate } from "@/lib/pageTierGate";
 import { registerPage } from "@/lib/designer/registry";
 import { DashboardWidget } from "@/components/DashboardWidget";
 import { listBusinessRecords } from "@/lib/businessRecords";
@@ -36,6 +37,8 @@ export default async function PosReportsPage({
   searchParams?: { from?: string; to?: string };
 }) {
   await requirePosStaff(params.partnerId);
+  const tierGate = await renderTierGate(params.partnerId, "pos.reports", "Reports");
+  if (tierGate) return <AppShell topbarTitle="POS — Reports">{tierGate}</AppShell>;
   const { from, to } = searchParams ?? {};
 
   const [allSales, allReturns] = await Promise.all([

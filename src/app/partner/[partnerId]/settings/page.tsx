@@ -70,7 +70,7 @@ export default async function SettingsPage({ params }: { params: { partnerId: st
         // hook requires a Suspense boundary in the App Router.
         <Suspense fallback={null}>
           <SettingsTabs showServiceCentre={showServiceCentre}>
-            <BusinessProfileForm partnerId={params.partnerId} partner={partner} />
+            <BusinessProfileForm partnerId={params.partnerId} partner={partner} showProductDomains={showServiceCentre} />
             <ConfigForm partnerId={params.partnerId} partner={partner} />
             <NumberingPanel partnerId={params.partnerId} />
             {showServiceCentre && <ServiceCentrePanel partnerId={params.partnerId} partner={partner} />}

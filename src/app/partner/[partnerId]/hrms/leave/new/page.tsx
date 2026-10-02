@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/AppShell";
+import { renderTierGate } from "@/lib/pageTierGate";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm, type FormFieldDef } from "@/components/RecordForm";
@@ -22,6 +23,8 @@ const LEAVE_TYPES = ["Casual", "Sick", "Earned", "Unpaid"];
 
 export default async function NewLeaveRequestPage({ params }: { params: { partnerId: string } }) {
   await requirePartnerSessionForPage(params.partnerId);
+  const tierGate = await renderTierGate(params.partnerId, "hrms.leave.create", "Leave");
+  if (tierGate) return <AppShell topbarTitle="Request Leave — HRMS / Payroll">{tierGate}</AppShell>;
   const mod = await getModule("hrms");
   const employees = await listEmployees(params.partnerId);
 

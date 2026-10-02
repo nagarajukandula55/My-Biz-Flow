@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/AppShell";
 import Link from "next/link";
+import { renderTierGate } from "@/lib/pageTierGate";
 import { registerPage } from "@/lib/designer/registry";
 import { WorkCentersClientTable } from "./WorkCentersClientTable";
 import { listWorkCenters } from "@/lib/manufacturing";
@@ -19,6 +20,8 @@ registerPage({
 export const dynamic = "force-dynamic";
 
 export default async function WorkCentersListPage({ params }: { params: { partnerId: string } }) {
+  const tierGate = await renderTierGate(params.partnerId, "manufacturing.work-centers.list", "Work Centers");
+  if (tierGate) return <AppShell topbarTitle="Work Centers">{tierGate}</AppShell>;
   const workCenters = await listWorkCenters(params.partnerId);
   const rows = workCenters.map((w) => ({
     id: w.id,

@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { StatusChip } from "@/components/StatusChip";
-import { createLeadAction, importLeadsAction, assignLeadAction } from "@/lib/telecalling/actions";
+import { createLeadAction, importLeadsAction, assignLeadAction, bulkAssignLeadsAction, listTerritoryCitiesAction } from "@/lib/telecalling/actions";
 import { LEAD_STATUSES } from "@/lib/telecalling/leadsData";
 import { downloadCsvTemplate } from "@/lib/downloadCsvTemplate";
 
@@ -42,13 +42,17 @@ export function LeadsClient({
   agents,
   states,
   cities,
+  indiaStates,
   activeFilters,
 }: {
   partnerId: string;
   leads: Lead[];
   agents: Agent[];
+  /** Distinct state/city values already present among this partner's leads — backs the filter dropdowns (only ever offers values that actually exist to filter on). */
   states: string[];
   cities: string[];
+  /** The full India states list (src/lib/geo/pincodeClient.ts) — backs the Add Lead form's State dropdown, which isn't limited to states already on file. */
+  indiaStates: string[];
   activeFilters: { status: string; state: string; city: string; assignedToId: string; q: string };
 }) {
   const router = useRouter();
@@ -58,10 +62,57 @@ export function LeadsClient({
   const [importResult, setImportResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkAssignTo, setBulkAssignTo] = useState("");
+  const [newLeadState, setNewLeadState] = useState("");
+  const [newLeadCityOptions, setNewLeadCityOptions] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!newLeadState) {
+      setNewLeadCityOptions([]);
+      return;
+    }
+    let cancelled = false;
+    listTerritoryCitiesAction([newLeadState]).then((cities) => {
+      if (!cancelled) setNewLeadCityOptions(cities);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [newLeadState]);
 
   const boundImport = importLeadsAction.bind(null, partnerId);
   const boundCreate = createLeadAction.bind(null, partnerId);
   const boundAssign = assignLeadAction.bind(null, partnerId);
+  const boundBulkAssign = bulkAssignLeadsAction.bind(null, partnerId);
+
+  const allSelected = leads.length > 0 && leads.every((l) => selected.has(l.id));
+
+  function toggleAll() {
+    setSelected(allSelected ? new Set() : new Set(leads.map((l) => l.id)));
+  }
+
+  function toggleOne(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function handleBulkAssign() {
+    if (selected.size === 0) return;
+    const formData = new FormData();
+    selected.forEach((id) => formData.append("leadIds", id));
+    formData.set("assignedToId", bulkAssignTo);
+    startTransition(async () => {
+      const result = await boundBulkAssign(formData);
+      setImportResult(`Assigned ${result.count} lead(s).`);
+      setSelected(new Set());
+      setBulkAssignTo("");
+    });
+  }
 
   function setFilter(key: string, value: string) {
     const params = new URLSearchParams(searchParams.toString());
@@ -136,8 +187,32 @@ export function LeadsClient({
           />
           <input name="email" placeholder="Email" className="rounded-md border border-border bg-bg px-3 py-2 text-sm text-text" />
           <input name="source" placeholder="Source" className="rounded-md border border-border bg-bg px-3 py-2 text-sm text-text" />
-          <input name="state" placeholder="State" className="rounded-md border border-border bg-bg px-3 py-2 text-sm text-text" />
-          <input name="city" placeholder="City" className="rounded-md border border-border bg-bg px-3 py-2 text-sm text-text" />
+          <select
+            name="state"
+            value={newLeadState}
+            onChange={(e) => setNewLeadState(e.target.value)}
+            className="rounded-md border border-border bg-bg px-3 py-2 text-sm text-text"
+          >
+            <option value="">State</option>
+            {indiaStates.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+          <select
+            name="city"
+            defaultValue=""
+            disabled={!newLeadState}
+            className="rounded-md border border-border bg-bg px-3 py-2 text-sm text-text disabled:opacity-50"
+          >
+            <option value="">{newLeadState ? "City" : "Pick a state first"}</option>
+            {newLeadCityOptions.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
           <button type="submit" disabled={isPending} className="btn-accent sm:col-span-3 lg:col-span-6 lg:w-fit">
             Save Lead
           </button>
@@ -258,10 +333,37 @@ export function LeadsClient({
         )}
       </div>
 
+      {selected.size > 0 && (
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-accent bg-accent/10 px-3 py-2">
+          <span className="text-sm font-semibold text-text">{selected.size} selected</span>
+          <select
+            value={bulkAssignTo}
+            onChange={(e) => setBulkAssignTo(e.target.value)}
+            className="rounded-md border border-border bg-bg px-2 py-1.5 text-sm text-text"
+          >
+            <option value="">Unassign</option>
+            {agents.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name}
+              </option>
+            ))}
+          </select>
+          <button type="button" onClick={handleBulkAssign} disabled={isPending} className="btn-accent px-3 py-1.5 text-xs disabled:opacity-50">
+            Bulk Assign
+          </button>
+          <button type="button" onClick={() => setSelected(new Set())} className="text-xs text-text-muted hover:underline">
+            Clear selection
+          </button>
+        </div>
+      )}
+
       <div className="overflow-x-auto rounded-lg border border-border">
         <table className="w-full text-sm">
           <thead className="bg-bg-raised text-xs font-semibold uppercase tracking-wide text-text-muted">
             <tr>
+              <th className="w-8 px-3 py-2">
+                <input type="checkbox" checked={allSelected} onChange={toggleAll} aria-label="Select all leads" />
+              </th>
               <th className="px-3 py-2 text-left">Name</th>
               <th className="px-3 py-2 text-left">Phone</th>
               <th className="px-3 py-2 text-left">State / City</th>
@@ -274,13 +376,21 @@ export function LeadsClient({
           <tbody>
             {leads.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-3 py-6 text-center text-text-muted">
+                <td colSpan={8} className="px-3 py-6 text-center text-text-muted">
                   No leads match these filters.
                 </td>
               </tr>
             )}
             {leads.map((lead) => (
               <tr key={lead.id} className="border-t border-border">
+                <td className="px-3 py-2">
+                  <input
+                    type="checkbox"
+                    checked={selected.has(lead.id)}
+                    onChange={() => toggleOne(lead.id)}
+                    aria-label={`Select ${lead.name}`}
+                  />
+                </td>
                 <td className="px-3 py-2">
                   <Link href={`/partner/${partnerId}/telecalling/leads/${lead.id}`} className="font-semibold text-accent hover:underline">
                     {lead.name}

@@ -337,7 +337,12 @@ export const MODULE_SUB_NAV: Record<string, PartnerNavSubItem[]> = {
   telecalling: [
     { key: "telecalling.leads", label: "Leads", href: "telecalling" },
     { key: "telecalling.agents", label: "Agents", href: "telecalling/agents" },
-    { key: "telecalling.queue", label: "Queue", href: "telecalling/queue" },
+    // "Queue" (telecalling/queue) deliberately NOT listed here — it's the
+    // telecaller AGENT's own call workspace, reachable only via their
+    // separate Agent-ID login (see queue/page.tsx's own doc comment). The
+    // partner owner's session can never pass that page's staff-session
+    // check, so showing it in the owner's own nav just bounced them into
+    // the agent-login screen for nothing.
     { key: "telecalling.templates", label: "Message Templates", href: "telecalling/templates" },
   ],
   legal: [

@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/AppShell";
+import { renderTierGate } from "@/lib/pageTierGate";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { notFound } from "next/navigation";
@@ -22,6 +23,8 @@ registerPage({
 });
 
 export default async function EditPriceTierPage({ params }: { params: { partnerId: string; recordId: string } }) {
+  const tierGate = await renderTierGate(params.partnerId, "wholesale-b2b.price-tiers.edit", "Price Tiers");
+  if (tierGate) return <AppShell topbarTitle="Edit Price Tier — Wholesale B2B">{tierGate}</AppShell>;
   const tier = await getPriceTier(params.partnerId, params.recordId);
   if (!tier) notFound();
   const fields = await applyCustomizations("wholesale-b2b.price-tiers.edit", priceTierFormFields);

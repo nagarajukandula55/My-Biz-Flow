@@ -2,18 +2,36 @@
  * The real Basic/Pro/Ultimate feature breakdown for every module in
  * MODULES (src/lib/designer/modules.ts) — content, not just a naming
  * convention. This is what /admin/modules (Super Admin overview) and
- * /help/modules (the partner-facing guide) both render from, and what a
- * Super Admin should use as the starting point when actually assigning
- * PartnerType.planTierByPage entries per page
- * (src/lib/designer/partnerTypesData.ts) for a given Partner Type —
- * that assignment stays config-only and per-type (a type can deviate from
- * this default), this file is the documented DEFAULT intent per module,
- * not a runtime enforcement layer (nothing in the app enforces tiers at
- * request time yet, same gap noted throughout this codebase).
+ * /help/modules (the partner-facing guide) both render from.
  *
- * Each tier's feature list is additive — Pro includes everything in
- * Basic, Ultimate includes everything in Pro — same mental model as any
- * real SaaS pricing page.
+ * Rewritten 2026-10-02 after an audit found this file had drifted badly
+ * from reality: most bullets described features that are actually
+ * available on every tier today ("always on" — no gate exists), and a
+ * meaningful chunk described features that don't exist in the codebase at
+ * all. Every module below (except service-centre, deliberately left
+ * untouched, and field-force, which has no subscription ladder at all —
+ * see its own note) now follows one consistent, honest 3-tier shape:
+ *
+ *   - Basic/Starter: the FULL core workflow the module exists for — never
+ *     a crippled trial tier. A partner on Starter can actually run their
+ *     business day to day.
+ *   - Pro: Starter's features plus whatever is genuinely gated pro+ in
+ *     DEFAULT_PAGE_TIERS (pageTiers.ts) for this module, if anything, PLUS
+ *     the real account-level upgrades every Plan row actually carries —
+ *     more seats/locations (Plan.maxUsers/maxLocations) and priority
+ *     support. Deliberately positioned as the headline/best-value tier —
+ *     this is where most of the real jump in value sits.
+ *   - Ultimate: everything in Pro, unlimited seats/locations, and
+ *     dedicated onboarding/SLA support — a real tier, but priced as the
+ *     top anchor rather than where most partners are expected to land.
+ *
+ * "Priority support"/"Dedicated onboarding" are support-contract
+ * commitments, not app features — same convention this file and
+ * pageTiers.ts's TIER_FEATURES already used for Service Centre, not new
+ * here. Seat/location caps are real Plan columns (maxUsers/maxLocations)
+ * not yet enforced at request time (same documented-not-enforced status
+ * as everything else in this file before a page actually checks it) —
+ * listed because the data genuinely differs per Plan row, not invented.
  */
 
 export type ModuleTierFeatures = {
@@ -24,131 +42,155 @@ export type ModuleTierFeatures = {
 
 export const MODULE_TIER_FEATURES: Record<string, ModuleTierFeatures> = {
   pos: {
-    basic: ["Multi-item cart checkout", "Cash/UPI/Card tender capture", "Thermal/A4/A5 receipt printing"],
-    pro: ["Split-tender payments across two methods", "Real-time stock deduction from Inventory", "Void sale with automatic stock restore"],
-    ultimate: ["Real GST Billing invoice on every sale", "Multi-branch sales reporting", "Loyalty & Rewards points on checkout"],
+    basic: [
+      "Multi-item cart checkout",
+      "Cash/UPI/Card tender capture",
+      "Thermal/A4/A5 receipt printing",
+      "Real-time stock deduction from Inventory",
+      "Void sale with automatic stock restore",
+      "Real GST Billing invoice on every sale",
+      "1 outlet, up to 3 users",
+    ],
+    pro: [
+      "Sales reports — revenue/count by outlet, cashier, payment mode, top products",
+      "Up to 10 users across 3 outlets",
+      "Priority support",
+    ],
+    ultimate: ["Unlimited users & outlets", "Dedicated onboarding & SLA-backed priority support"],
   },
-  // Real per-tier gating adapted from AN-CRM's live Service Centre plans
-  // (src/core/pricing/plans.ts) — its actual production feature ladder for
-  // this vertical (Starter/Pro/Ultimate), not invented copy. Starter is
-  // deliberately workorder + invoicing only, no catalog/inventory of its
-  // own; Pro adds the full catalog, inventory and document set; Ultimate
-  // adds multi-center hierarchy and financial reporting.
+  // Deliberately left untouched in this pass — Service Centre is the one
+  // module with real partner usage today; its ladder stays exactly as
+  // already enforced via DEFAULT_PAGE_TIERS.
   "service-centre": {
     basic: ["Single-login workorder flow: job card, device & fault intake to close", "GST & non-GST invoicing (no inventory or catalog storage)", "Customer-facing repair status tracking page"],
     pro: ["Customer database, fault/symptom/solution library, staff-name roster", "Quotations, Credit/Debit Notes, Delivery Challans, UPI payment QR", "Inventory, Brands/Models, Custom Report Builder & Analytics"],
     ultimate: ["Ledger Book, Profit & Loss reports and expense tracking", "Unlimited multi-center hierarchy under one login, centralized reporting", "Automated business reports (daily/weekly/monthly) and priority support"],
   },
   billing: {
-    basic: ["GST invoice creation", "Customers, Items, Payments", "Credit/Debit notes"],
-    pro: ["Recurring invoices", "Outstanding & tax-summary reports", "Contact statements"],
-    ultimate: ["Full accounting suite (ledgers, GST Assistant)", "Central-api accounting sync"],
+    basic: ["GST invoice creation", "Customers, Items, Payments", "Outstanding & tax-summary reports", "Contact statements", "1 user"],
+    pro: ["Quotations & Proforma Invoices", "Credit/Debit notes", "Delivery Challans", "Recurring invoices", "Up to 5 users", "Priority support"],
+    ultimate: ["Expense tracking", "Profit & Loss report", "Unlimited users & locations", "Dedicated onboarding & SLA-backed priority support"],
   },
   telecalling: {
-    basic: ["Bulk lead upload & call queue", "Click-to-call from the app", "Agent logins with generated Agent IDs"],
-    pro: ["Territory-based auto-assignment (state/city)", "SMS/WhatsApp template messages", "Call disposition logging"],
-    ultimate: ["Unlimited agents", "Priority support", "Custom Report Builder & Analytics"],
+    basic: [
+      "Bulk lead upload & call queue",
+      "Click-to-call from the app",
+      "Agent logins with generated Agent IDs",
+      "Territory-based auto-assignment (state/city)",
+      "Call disposition logging",
+      "Up to 2 agents",
+    ],
+    pro: ["SMS/WhatsApp template messages to leads", "Up to 10 agents", "Priority support"],
+    ultimate: ["Unlimited agents", "Dedicated onboarding & SLA-backed priority support"],
   },
   brand: {
-    basic: ["Brand -> Partner -> Location hierarchy", "Partner directory"],
-    pro: ["Location-level performance rollups", "Cross-location role assignment"],
-    ultimate: ["Brand-wide analytics dashboard", "Multi-brand marketplace aggregation"],
+    basic: ["Brand -> Partner -> Location hierarchy", "Partner directory", "Up to 5 users, 3 locations"],
+    pro: ["Up to 20 users, 10 locations", "Priority support"],
+    ultimate: ["Unlimited users & locations", "Dedicated onboarding & SLA-backed priority support"],
   },
   clinic: {
-    basic: ["Patient records", "Appointment scheduling"],
-    pro: ["Consultation billing", "Doctor/staff scheduling conflicts"],
-    ultimate: ["Treatment history & recall reminders", "Insurance/TPA billing integration"],
+    basic: ["Patient records", "Appointment scheduling", "Up to 2 users, 1 location"],
+    pro: ["Up to 10 users, 3 locations", "Priority support"],
+    ultimate: ["Unlimited users & locations", "Dedicated onboarding & SLA-backed priority support"],
   },
   "amc-field-service": {
-    basic: ["AMC contract records", "Service scheduling"],
-    pro: ["Technician dispatch and route assignment", "Contract renewal reminders"],
-    ultimate: ["SLA breach tracking & escalation", "Field Force integration for overflow technicians"],
+    basic: ["AMC contract records", "Service scheduling", "Up to 2 users, 1 location"],
+    pro: ["Up to 10 users, 3 locations", "Priority support"],
+    ultimate: ["Unlimited users & locations", "Dedicated onboarding & SLA-backed priority support"],
   },
   "restaurant-pos": {
-    basic: ["Table/KOT management", "Menu & modifiers"],
-    pro: ["Split-bill and merge-table", "Kitchen display routing by station"],
-    ultimate: ["Multi-outlet menu sync", "Aggregator (Swiggy/Zomato-style) order ingestion"],
+    basic: ["Table/KOT management", "Menu & modifiers", "1 outlet, up to 3 users"],
+    pro: ["Up to 10 users across 3 outlets", "Priority support"],
+    ultimate: ["Unlimited users & outlets", "Dedicated onboarding & SLA-backed priority support"],
   },
   subscriptions: {
-    basic: ["Membership plans", "Check-in tracking"],
-    pro: ["Recurring billing cycles", "Freeze/pause membership"],
-    ultimate: ["Usage-based add-on billing", "Multi-location membership portability"],
+    basic: ["Membership plans", "Recurring billing cycles", "Freeze/pause membership", "Up to 2 users, 1 location"],
+    pro: ["Up to 10 users, 3 locations", "Priority support"],
+    ultimate: ["Unlimited users & locations", "Dedicated onboarding & SLA-backed priority support"],
   },
   "real-estate": {
-    basic: ["Listings", "Lead capture"],
-    pro: ["Site visit scheduling", "Agreement/document tracking"],
-    ultimate: ["Commission/payout tracking", "Multi-agent pipeline reporting"],
+    basic: ["Listings", "Lead capture", "Up to 3 users"],
+    pro: ["Up to 15 agents", "Priority support"],
+    ultimate: ["Unlimited agents & locations", "Dedicated onboarding & SLA-backed priority support"],
   },
   rentals: {
-    basic: ["Asset/booking calendar", "Availability check"],
-    pro: ["Deposit & damage-charge handling", "Overdue return alerts"],
-    ultimate: ["Dynamic/seasonal pricing", "Multi-location asset transfer"],
+    basic: ["Asset/booking calendar", "Availability check", "Up to 2 users, 1 location"],
+    pro: ["Up to 10 users, 3 locations", "Priority support"],
+    ultimate: ["Unlimited users & locations", "Dedicated onboarding & SLA-backed priority support"],
   },
   education: {
-    basic: ["Student enrollment", "Batch/class scheduling"],
-    pro: ["Fee collection & due tracking", "Attendance tracking"],
-    ultimate: ["Report cards / progress tracking", "Parent portal notifications"],
+    basic: ["Student enrollment", "Batch/class scheduling", "Attendance tracking", "Up to 3 staff, 1 location"],
+    pro: ["Up to 15 staff, 3 locations", "Priority support"],
+    ultimate: ["Unlimited staff & locations", "Dedicated onboarding & SLA-backed priority support"],
   },
   manufacturing: {
-    basic: ["Bill of Materials (BOM)", "Production work orders"],
-    pro: ["Raw material consumption tracking", "Work-in-progress stage tracking"],
-    ultimate: ["Multi-stage production costing", "Yield/wastage analytics"],
+    basic: ["Bill of Materials (BOM)", "Production work orders", "Work-in-progress stage tracking", "Up to 3 users, 1 location"],
+    pro: ["Work Centers — named production lines/stations", "Up to 15 users, 3 locations", "Priority support"],
+    ultimate: ["Unlimited users & locations", "Dedicated onboarding & SLA-backed priority support"],
   },
   "wholesale-b2b": {
-    basic: ["Dealer/distributor accounts", "Bulk order entry"],
-    pro: ["Tiered/bulk pricing rules", "Credit terms & credit limit tracking"],
-    ultimate: ["Multi-tier distributor hierarchy", "Automated reorder suggestions"],
+    basic: ["Dealer/distributor accounts", "Bulk order entry", "Up to 3 users, 1 location"],
+    pro: ["Tiered/bulk pricing rules", "Up to 15 users, 3 locations", "Priority support"],
+    ultimate: ["Unlimited users & locations", "Dedicated onboarding & SLA-backed priority support"],
   },
   "logistics-fleet": {
-    basic: ["Delivery records", "Vehicle/driver directory"],
-    pro: ["Live delivery status tracking", "Route assignment"],
-    ultimate: ["Fuel & maintenance cost tracking", "GPS-based delivery proof (photo/signature)"],
+    basic: ["Delivery records", "Vehicle/driver directory", "Live delivery status tracking", "Up to 3 users, 1 location"],
+    pro: ["Up to 15 users, 5 locations", "Priority support"],
+    ultimate: ["Unlimited users & locations", "Dedicated onboarding & SLA-backed priority support"],
   },
   legal: {
-    basic: ["Client matter records", "Document tracking"],
-    pro: ["Billable hours logging", "Case timeline/milestones"],
-    ultimate: ["Trust accounting (client funds)", "Court-date reminders & escalation"],
+    basic: ["Client matter records", "Document tracking", "Case timeline/milestones", "Up to 3 users, 1 location"],
+    pro: ["Up to 15 users, 3 locations", "Priority support"],
+    ultimate: ["Unlimited users & locations", "Dedicated onboarding & SLA-backed priority support"],
   },
   "salon-spa": {
-    basic: ["Booking calendar", "Service menu"],
-    pro: ["Stylist assignment & schedule conflicts", "No-show tracking"],
-    ultimate: ["Stylist commission tracking", "Loyalty & Rewards integration for repeat clients"],
+    basic: ["Booking calendar", "Service menu", "Up to 2 users, 1 location"],
+    pro: ["Up to 10 users, 3 locations", "Priority support"],
+    ultimate: ["Unlimited users & locations", "Dedicated onboarding & SLA-backed priority support"],
   },
   "event-booking": {
-    basic: ["Event/venue calendar", "Booking capture"],
-    pro: ["Catering & vendor coordination", "Deposit & payment schedule"],
-    ultimate: ["Multi-venue availability sync", "Guest list & seating management"],
+    basic: ["Event/venue calendar", "Booking capture", "Up to 2 users, 1 location"],
+    pro: ["Up to 10 users, 3 locations", "Priority support"],
+    ultimate: ["Unlimited users & locations", "Dedicated onboarding & SLA-backed priority support"],
   },
   inventory: {
-    basic: ["Stock levels", "Purchase orders", "Suppliers"],
-    pro: ["Stock adjustments & return orders", "Low-stock reorder alerts"],
-    ultimate: ["Multi-warehouse stock transfer", "Serialized/batch/expiry tracking"],
+    basic: ["Stock levels", "Part Orders", "Warehouses", "Stock Adjustments & Return Orders", "Multi-warehouse Stock Transfer"],
+    pro: ["Material/BOM catalog authoring", "Inventory money ledger (Transactions)", "Priority support"],
+    ultimate: ["Dedicated onboarding & SLA-backed priority support"],
+  },
+  // Standalone general ledger — distinct from accounting-gst below. Had
+  // REAL enforced gating (DEFAULT_PAGE_TIERS) with no entry here at all
+  // until now — the inverse problem from every other module in this file.
+  accounting: {
+    basic: ["Chart of Accounts", "Journal Entries", "Fiscal Periods"],
+    pro: ["Trial Balance, Profit & Loss and Balance Sheet reports", "Priority support"],
+    ultimate: ["Dedicated onboarding & SLA-backed priority support"],
   },
   "accounting-gst": {
     basic: ["GST return generation", "HSN-wise summary"],
-    pro: ["ITC register", "e-Invoicing"],
-    ultimate: ["Multi-GSTIN consolidated filing", "Auditor/CA collaboration access"],
+    pro: ["ITC register", "Priority support"],
+    ultimate: ["Dedicated onboarding & SLA-backed priority support"],
   },
   "loyalty-rewards": {
-    basic: ["Points on purchase", "Points redemption"],
-    pro: ["Tiered membership (Silver/Gold/Platinum)", "Expiry & reminder campaigns"],
-    ultimate: ["Cross-module points (POS + Restaurant + Clinic)", "Referral rewards"],
+    basic: ["Points on purchase", "Points redemption", "Up to 1 location"],
+    pro: ["Up to 5 locations", "Priority support"],
+    ultimate: ["Unlimited locations", "Dedicated onboarding & SLA-backed priority support"],
   },
   hrms: {
-    basic: ["Staff directory", "Attendance tracking"],
-    pro: ["Payroll processing", "Leave management"],
-    ultimate: ["Multi-branch payroll compliance", "Performance review cycles"],
+    basic: ["Staff directory", "Attendance tracking", "Up to 10 employees, 1 location"],
+    pro: ["Payroll processing", "Leave management", "Up to 50 employees, 3 locations", "Priority support"],
+    ultimate: ["Unlimited employees & locations", "Dedicated onboarding & SLA-backed priority support"],
   },
   marketplace: {
-    basic: ["Multi-vendor directory", "Vendor onboarding"],
-    pro: ["Commission/payout rules per vendor", "Vendor performance dashboard"],
-    ultimate: ["Central-api cross-tenant vendor sync", "Marketplace-wide analytics"],
+    basic: ["Multi-vendor directory", "Vendor onboarding", "Vendor orders", "Up to 3 users"],
+    pro: ["Up to 10 users, 3 locations", "Priority support"],
+    ultimate: ["Unlimited users & locations", "Dedicated onboarding & SLA-backed priority support"],
   },
-  "field-force": {
-    basic: ["Engineer onboarding (services + serviceable areas)", "Engineer directory"],
-    pro: ["Job matching by service + pincode", "Manual job allocation"],
-    ultimate: ["Automated allocation rules", "Engineer performance/rating tracking", "Commission/fee model (backend-ready, not yet billed)"],
-  },
+  // Free to join, commission-based (see scripts/activateFieldForce.ts) —
+  // not a Basic/Pro/Ultimate subscription ladder at all. Left out of this
+  // map on purpose; getModuleTierFeatures(slug) returning undefined for
+  // "field-force" is the correct, honest result until this module's own
+  // pricing redesign happens (tracked separately, not a drive-by here).
 };
 
 export function getModuleTierFeatures(slug: string): ModuleTierFeatures | undefined {

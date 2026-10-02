@@ -1,6 +1,7 @@
 import { AppShell } from "@/components/AppShell";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { renderTierGate } from "@/lib/pageTierGate";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm, type FormFieldDef } from "@/components/RecordForm";
 import { getWorkCenter } from "@/lib/manufacturing";
@@ -27,6 +28,8 @@ const fields: FormFieldDef[] = [
 export const dynamic = "force-dynamic";
 
 export default async function EditWorkCenterPage({ params }: { params: { partnerId: string; recordId: string } }) {
+  const tierGate = await renderTierGate(params.partnerId, "manufacturing.work-centers.detail", "Work Centers");
+  if (tierGate) return <AppShell topbarTitle="Edit Work Center">{tierGate}</AppShell>;
   const workCenter = await getWorkCenter(params.partnerId, params.recordId);
   if (!workCenter) notFound();
 

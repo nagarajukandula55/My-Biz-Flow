@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/AppShell";
+import { renderTierGate } from "@/lib/pageTierGate";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm, type FormFieldDef } from "@/components/RecordForm";
@@ -22,6 +23,8 @@ const now = new Date();
 
 export default async function NewPayslipPage({ params }: { params: { partnerId: string } }) {
   await requirePartnerSessionForPage(params.partnerId);
+  const tierGate = await renderTierGate(params.partnerId, "hrms.payroll.create", "Payroll");
+  if (tierGate) return <AppShell topbarTitle="New Payslip — HRMS / Payroll">{tierGate}</AppShell>;
   const mod = await getModule("hrms");
   const employees = await listEmployees(params.partnerId);
 

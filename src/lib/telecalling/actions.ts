@@ -10,6 +10,12 @@ import { createPartnerStaff, updatePartnerStaff, resetPartnerStaffPassword, next
 import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 
 import { requireTelecallingManager, requireTelecallingActor } from "@/lib/telecalling/authorization";
+import { listCitiesForStates } from "@/lib/geo/pincodeClient";
+
+/** Backs the Agent Territory editor's dependent city multi-select — refetched whenever the picked state(s) change. */
+export async function listTerritoryCitiesAction(states: string[]): Promise<string[]> {
+  return listCitiesForStates(states);
+}
 
 /** Minimal CSV parser: first row is the header, columns matched case-insensitively
  * against name/phone/email/source. No quoted-comma support — good enough for a
@@ -112,6 +118,19 @@ export async function assignLeadAction(partnerId: string, formData: FormData) {
   revalidatePath(`/partner/${partnerId}/telecalling`);
 }
 
+/** Same single-lead assignLead, looped over a manager-picked set of leads — the "select rows, then Bulk Assign" action on the Leads list (LeadsClient.tsx), as opposed to importLeadsAction's own round-robin auto-assign at CSV-import time. */
+export async function bulkAssignLeadsAction(partnerId: string, formData: FormData): Promise<{ count: number }> {
+  partnerId = await requireTelecallingManager(partnerId);
+  const leadIds = formData.getAll("leadIds").map(String).filter(Boolean);
+  const assignedToId = String(formData.get("assignedToId") ?? "") || null;
+  if (leadIds.length === 0) throw new Error("Select at least one lead");
+  for (const leadId of leadIds) {
+    await assignLead(leadId, partnerId, assignedToId);
+  }
+  revalidatePath(`/partner/${partnerId}/telecalling`);
+  return { count: leadIds.length };
+}
+
 export async function logCallAction(partnerId: string, formData: FormData): Promise<{ whatsappWelcomeSent: boolean }> {
   const leadId = String(formData.get("leadId") ?? "");
   const agentId = String(formData.get("agentId") ?? "");
@@ -185,8 +204,10 @@ export async function deleteTemplateAction(partnerId: string, formData: FormData
  * convention as every other generated-password flow in this app (shown
  * once, never retrievable again). */
 /** Splits a comma-separated textbox value into trimmed, deduped, non-empty entries. */
-function parseTerritoryList(raw: string): string[] {
-  return Array.from(new Set(raw.split(",").map((s) => s.trim()).filter(Boolean)));
+/** Accepts either formData.getAll() (the real multi-select the Agents UI now submits — one entry per picked state/city) or a single comma-separated string (the old free-text inputs, kept for any other caller). */
+function parseTerritoryList(raw: string[] | string): string[] {
+  const parts = Array.isArray(raw) ? raw : raw.split(",");
+  return Array.from(new Set(parts.map((s) => s.trim()).filter(Boolean)));
 }
 
 export async function createAgentAction(partnerId: string, formData: FormData) {
@@ -194,8 +215,8 @@ export async function createAgentAction(partnerId: string, formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const phone = String(formData.get("phone") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim();
-  const assignedStates = parseTerritoryList(String(formData.get("assignedStates") ?? ""));
-  const assignedCities = parseTerritoryList(String(formData.get("assignedCities") ?? ""));
+  const assignedStates = parseTerritoryList(formData.getAll("assignedStates").map(String));
+  const assignedCities = parseTerritoryList(formData.getAll("assignedCities").map(String));
   if (!name) throw new Error("Name is required");
   const loginId = await nextAgentLoginId(partnerId, "Telecaller");
   const result = await createPartnerStaff({
@@ -217,8 +238,8 @@ export async function setAgentTerritoryAction(partnerId: string, formData: FormD
   partnerId = await requireSessionPartnerId(partnerId);
   const id = String(formData.get("id") ?? "");
   if (!id) throw new Error("Agent id is required");
-  const assignedStates = parseTerritoryList(String(formData.get("assignedStates") ?? ""));
-  const assignedCities = parseTerritoryList(String(formData.get("assignedCities") ?? ""));
+  const assignedStates = parseTerritoryList(formData.getAll("assignedStates").map(String));
+  const assignedCities = parseTerritoryList(formData.getAll("assignedCities").map(String));
   await setAgentTerritory(partnerId, id, { assignedStates, assignedCities });
   // Territory changes can newly qualify previously-unassigned leads for
   // this agent — sweep the whole partner (no importBatch scope) so those

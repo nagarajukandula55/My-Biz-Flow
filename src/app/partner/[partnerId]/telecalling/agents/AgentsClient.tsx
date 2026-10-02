@@ -1,8 +1,14 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { StatusChip } from "@/components/StatusChip";
-import { createAgentAction, setAgentStatusAction, resetAgentPasswordAction, setAgentTerritoryAction } from "@/lib/telecalling/actions";
+import {
+  createAgentAction,
+  setAgentStatusAction,
+  resetAgentPasswordAction,
+  setAgentTerritoryAction,
+  listTerritoryCitiesAction,
+} from "@/lib/telecalling/actions";
 
 type Agent = {
   id: string;
@@ -14,6 +20,100 @@ type Agent = {
   assignedStates: string[];
   assignedCities: string[];
 };
+
+/**
+ * Real multi-select territory picker — states first (checkbox-style
+ * multi-select), then a dependent city/district multi-select scoped to
+ * whichever states are currently picked (refetched via
+ * listTerritoryCitiesAction on every state change, see src/lib/geo/
+ * pincodeClient.ts's listCitiesForStates — the postal_pincodes table has no
+ * separate "city" column, so this is really district-level). Replaces the
+ * old single comma-separated free-text inputs. Both selects submit as
+ * native multi-value form fields (multiple `<option>`s with the same
+ * `name`), so the existing server actions just switch from
+ * formData.get() to formData.getAll() — no new wire format.
+ */
+function TerritoryMultiSelect({
+  initialStates,
+  initialCities,
+  indiaStates,
+}: {
+  initialStates: string[];
+  initialCities: string[];
+  indiaStates: string[];
+}) {
+  const [selectedStates, setSelectedStates] = useState<string[]>(initialStates);
+  const [cityOptions, setCityOptions] = useState<string[]>(initialCities);
+  const [selectedCities, setSelectedCities] = useState<string[]>(initialCities);
+  const [loadingCities, setLoadingCities] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoadingCities(true);
+    listTerritoryCitiesAction(selectedStates)
+      .then((cities) => {
+        if (cancelled) return;
+        // Keep any already-picked city even if it falls outside the fresh
+        // list (e.g. a state was just removed) — never silently drop a
+        // saved selection the user didn't touch.
+        const merged = Array.from(new Set([...cities, ...selectedCities])).sort();
+        setCityOptions(merged);
+        setSelectedCities((prev) => prev.filter((c) => merged.includes(c)));
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingCities(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedStates.join("|")]);
+
+  return (
+    <div className="flex gap-2">
+      <div>
+        <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-text-muted">
+          States (Ctrl/Cmd-click for multiple)
+        </label>
+        <select
+          multiple
+          name="assignedStates"
+          value={selectedStates}
+          onChange={(e) => setSelectedStates(Array.from(e.target.selectedOptions, (o) => o.value))}
+          size={Math.min(6, Math.max(3, indiaStates.length))}
+          className="w-44 rounded-md border border-border bg-bg px-2 py-1 text-xs text-text"
+        >
+          {indiaStates.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-text-muted">
+          Cities {loadingCities && "(loading…)"}
+        </label>
+        <select
+          multiple
+          name="assignedCities"
+          value={selectedCities}
+          onChange={(e) => setSelectedCities(Array.from(e.target.selectedOptions, (o) => o.value))}
+          size={Math.min(6, Math.max(3, cityOptions.length || 1))}
+          disabled={selectedStates.length === 0}
+          className="w-44 rounded-md border border-border bg-bg px-2 py-1 text-xs text-text disabled:opacity-50"
+        >
+          {cityOptions.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </select>
+        {selectedStates.length === 0 && <p className="mt-1 text-[11px] text-text-muted">Pick a state first.</p>}
+      </div>
+    </div>
+  );
+}
 
 export function AgentsClient({
   partnerId,
@@ -37,12 +137,6 @@ export function AgentsClient({
 
   return (
     <div className="space-y-4">
-      <datalist id="mbf-india-states">
-        {indiaStates.map((s) => (
-          <option key={s} value={s} />
-        ))}
-      </datalist>
-
       <button onClick={() => setShowAdd((v) => !v)} className="btn-accent">
         + Add Agent
       </button>
@@ -79,17 +173,9 @@ export function AgentsClient({
           <input name="name" required placeholder="Full name *" className="rounded-md border border-border bg-bg px-3 py-2 text-sm text-text" />
           <input name="phone" placeholder="Phone" className="rounded-md border border-border bg-bg px-3 py-2 text-sm text-text" />
           <input name="email" type="email" placeholder="Email (optional)" className="rounded-md border border-border bg-bg px-3 py-2 text-sm text-text" />
-          <input
-            name="assignedStates"
-            list="mbf-india-states"
-            placeholder="Territory states (comma-separated, optional)"
-            className="rounded-md border border-border bg-bg px-3 py-2 text-sm text-text sm:col-span-2"
-          />
-          <input
-            name="assignedCities"
-            placeholder="Territory cities (comma-separated, optional)"
-            className="rounded-md border border-border bg-bg px-3 py-2 text-sm text-text"
-          />
+          <div className="sm:col-span-3">
+            <TerritoryMultiSelect initialStates={[]} initialCities={[]} indiaStates={indiaStates} />
+          </div>
           <p className="text-xs text-text-muted sm:col-span-3">
             An Agent ID (e.g. AGT001) is generated automatically — the agent signs in with that, not an email.
             Leaving territory blank means this agent sees and can be auto-assigned every lead, unrestricted; setting
@@ -131,7 +217,7 @@ export function AgentsClient({
                   <StatusChip label={agent.status} variant={agent.status === "Active" ? "success" : "neutral"} />
                 </td>
                 <td className="px-3 py-2">
-                  <TerritoryCell agent={agent} onSave={boundSetTerritory} />
+                  <TerritoryCell agent={agent} onSave={boundSetTerritory} indiaStates={indiaStates} />
                 </td>
                 <td className="px-3 py-2">
                   <div className="flex flex-wrap gap-2">
@@ -176,15 +262,17 @@ export function AgentsClient({
   );
 }
 
-/** Shows an agent's territory as chips, click to edit as comma-separated
- * text (same input convention as the create form above), then submits via
+/** Shows an agent's territory as chips, click to edit via the same
+ * TerritoryMultiSelect the create form uses, then submits via
  * setAgentTerritoryAction. Empty on both = unrestricted (sees every lead). */
 function TerritoryCell({
   agent,
   onSave,
+  indiaStates,
 }: {
   agent: Agent;
   onSave: (formData: FormData) => Promise<void>;
+  indiaStates: string[];
 }) {
   const [editing, setEditing] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -221,19 +309,7 @@ function TerritoryCell({
       }}
       className="flex flex-col gap-1"
     >
-      <input
-        name="assignedStates"
-        list="mbf-india-states"
-        defaultValue={agent.assignedStates.join(", ")}
-        placeholder="States, comma-separated"
-        className="w-40 rounded-md border border-border bg-bg px-2 py-1 text-xs text-text"
-      />
-      <input
-        name="assignedCities"
-        defaultValue={agent.assignedCities.join(", ")}
-        placeholder="Cities, comma-separated"
-        className="w-40 rounded-md border border-border bg-bg px-2 py-1 text-xs text-text"
-      />
+      <TerritoryMultiSelect initialStates={agent.assignedStates} initialCities={agent.assignedCities} indiaStates={indiaStates} />
       <div className="flex gap-2">
         <button type="submit" disabled={isPending} className="text-xs font-semibold text-accent hover:underline disabled:opacity-50">
           Save

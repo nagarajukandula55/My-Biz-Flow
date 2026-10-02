@@ -16,6 +16,7 @@ import {
   getAverageTat,
 } from "@/lib/analyticsData";
 import { formatTatHours } from "@/lib/sample-data/service-centre";
+import { getTelecallingAnalyticsSummary } from "@/lib/telecalling/analyticsData";
 import { requirePartnerSessionForPage } from "@/lib/requirePartnerSession";
 import { redirect } from "next/navigation";
 import { registerPage } from "@/lib/designer/registry";
@@ -38,8 +39,9 @@ registerPage({
     { key: "six-month-trend-chart", label: "Revenue & Workorders trend (last 6 months, combo line chart)" },
     { key: "top-brands-chart", label: "Top brands by workorder count (bar chart, Service Centre)" },
     { key: "average-tat-card", label: "Average turnaround time — closed workorders (Service Centre)" },
+    { key: "telecalling-section", label: "Leads/Calls summary, status breakdown, agent leaderboard (Telecalling)" },
   ],
-  explanation: "Partner analytics uses the authenticated owner or administrator and active module entitlements. Queries and charts are limited to enabled modules. Combined reports require both Billing and Service Centre.",
+  explanation: "Partner analytics uses the authenticated owner or administrator and active module entitlements. Queries and charts are limited to enabled modules. Combined reports require both Billing and Service Centre. A partner with Telecalling enabled also gets a Leads/Calls summary section (src/lib/telecalling/analyticsData.ts) — previously this page only ever queried Billing/Service Centre data, so a Telecalling-only partner saw a blank page.",
   sourceFile: "src/app/partner/[partnerId]/analytics/page.tsx",
 });
 
@@ -56,6 +58,7 @@ export default async function AnalyticsPage({ params }: { params: { partnerId: s
   const showRevenueBySource = showBilling;
   const showInvoiceStatus = showBilling;
   const showPeriodComparison = showBilling && showServiceCentreReports;
+  const showTelecalling = visibleModules.includes("telecalling");
   const [
     revenueTrend,
     workorderStatusBreakdown,
@@ -74,9 +77,10 @@ export default async function AnalyticsPage({ params }: { params: { partnerId: s
     showPeriodComparison ? getSixMonthTrend(params.partnerId) : Promise.resolve([]),
   ]);
 
-  const [topBrands, averageTat] = await Promise.all([
+  const [topBrands, averageTat, telecalling] = await Promise.all([
     showServiceCentreReports ? getTopBrandsByWorkorderCount(params.partnerId) : Promise.resolve([]),
     showServiceCentreReports ? getAverageTat(params.partnerId) : Promise.resolve({ closedCount: 0, avgHours: undefined }),
+    showTelecalling ? getTelecallingAnalyticsSummary(params.partnerId) : Promise.resolve(null),
   ]);
 
   // IST, not server-local time (UTC in production) — matters right at
@@ -95,7 +99,60 @@ export default async function AnalyticsPage({ params }: { params: { partnerId: s
           Reports for the modules enabled for your business.
         </p>
 
-        {!showBilling && !showServiceCentreReports && <p className="mt-6 text-sm text-text-muted">Analytics reports are available for Billing and Service Centre. Your other modules remain available from the menu.</p>}
+        {!showBilling && !showServiceCentreReports && !showTelecalling && <p className="mt-6 text-sm text-text-muted">Analytics reports are available for Billing, Service Centre and Telecalling. Your other modules remain available from the menu.</p>}
+
+        {telecalling && (
+          <div className="mt-6">
+            <h2 className="font-display text-lg font-bold text-text">Telecalling</h2>
+            <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+              <DashboardWidget label="Total Leads" value={String(telecalling.totalLeads)} />
+              <DashboardWidget label="Unassigned" value={String(telecalling.unassignedLeads)} neon={telecalling.unassignedLeads > 0} />
+              <DashboardWidget label="Converted (Accepted)" value={String(telecalling.convertedLeads)} />
+              <DashboardWidget label="Conversion Rate" value={`${telecalling.conversionRatePct}%`} trend={{ direction: "up", label: "of closed-out leads" }} />
+              <DashboardWidget label="Calls Today" value={String(telecalling.callsToday)} />
+              <DashboardWidget label="Calls (7 days)" value={String(telecalling.callsLast7Days)} />
+            </div>
+
+            <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+              <div className="card p-4">
+                <h3 className="font-display text-sm font-bold text-text">Leads by Status</h3>
+                <ul className="mt-3 space-y-2 text-sm">
+                  {Object.entries(telecalling.byStatus).map(([status, count]) => (
+                    <li key={status} className="flex items-center justify-between border-b border-border pb-1.5 last:border-b-0">
+                      <span className="text-text-muted">{status}</span>
+                      <span className="font-semibold text-text tabular-nums">{count}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="card p-4">
+                <h3 className="font-display text-sm font-bold text-text">Agent Leaderboard (calls, last 7 days)</h3>
+                {telecalling.agentLeaderboard.length === 0 ? (
+                  <p className="mt-3 text-sm text-text-muted">No telecaller agents yet.</p>
+                ) : (
+                  <table className="mt-3 w-full text-sm">
+                    <thead className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+                      <tr>
+                        <th className="pb-1.5 text-left">Agent</th>
+                        <th className="pb-1.5 text-right">Calls</th>
+                        <th className="pb-1.5 text-right">Leads Assigned</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {telecalling.agentLeaderboard.map((a) => (
+                        <tr key={a.agentId} className="border-t border-border">
+                          <td className="py-1.5 text-text">{a.agentName}</td>
+                          <td className="py-1.5 text-right tabular-nums text-text">{a.callCount}</td>
+                          <td className="py-1.5 text-right tabular-nums text-text-muted">{a.leadCount}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
         <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           {showBilling && <>
           <DashboardWidget

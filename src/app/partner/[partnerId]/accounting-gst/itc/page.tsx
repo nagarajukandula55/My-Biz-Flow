@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/AppShell";
+import { renderTierGate } from "@/lib/pageTierGate";
 import { registerPage } from "@/lib/designer/registry";
 import { GstItcClientTable } from "./GstItcClientTable";
 import { GstItcNewButton } from "./GstItcNewButton";
@@ -24,6 +25,8 @@ registerPage({
 export const dynamic = "force-dynamic";
 
 export default async function GstItcPage({ params }: { params: { partnerId: string } }) {
+  const tierGate = await renderTierGate(params.partnerId, "accounting-gst.itc.list", "ITC Register");
+  if (tierGate) return <AppShell topbarTitle="ITC Register">{tierGate}</AppShell>;
   const columns = await applyCustomizations("accounting-gst.itc.list", gstItcColumns);
   const rows = await listBusinessRecords(params.partnerId, "accounting-gst-itc");
 

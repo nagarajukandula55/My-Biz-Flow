@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/AppShell";
+import { renderTierGate } from "@/lib/pageTierGate";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { gstItcFormFields } from "@/lib/sample-data/accounting-gst-itc";
@@ -22,6 +23,8 @@ registerPage({
 });
 
 export default async function NewGstItcPage({ params }: { params: { partnerId: string } }) {
+  const tierGate = await renderTierGate(params.partnerId, "accounting-gst.itc.create", "ITC Register");
+  if (tierGate) return <AppShell topbarTitle="ITC Register">{tierGate}</AppShell>;
   const fields = await applyCustomizations("accounting-gst.itc.create", gstItcFormFields);
 
   return (

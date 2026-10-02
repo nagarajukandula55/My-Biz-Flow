@@ -194,6 +194,69 @@ export const DEFAULT_PAGE_TIERS: Record<string, PlanTier> = {
   "accounting.reports.trial-balance": "pro",
   "accounting.reports.profit-loss": "pro",
   "accounting.reports.balance-sheet": "pro",
+
+  // --- Everything below added 2026-10-02, extending the SAME mechanism to
+  // every other module that has a real, built secondary feature worth
+  // gating. Deliberately narrow: only a page that is (a) actually built and
+  // (b) a genuine value-add beyond the module's core single-record flow
+  // gets an entry here — the core create/list/detail/edit loop for every
+  // module's primary record stays ungated ("basic" via the fallback),
+  // same posture as Service Centre's workorder core above. A handful of
+  // MODULE_TIER_FEATURES (moduleTiers.ts) Pro/Ultimate bullets describe
+  // features that don't exist in the code at all yet — those are NOT
+  // listed here (nothing to gate), see moduleTiers.ts's own note on this.
+
+  // POS — reporting is the one built feature beyond the core checkout loop.
+  "pos.reports": "pro",
+
+  // Manufacturing — Work Centers is setup/catalog data (a named production
+  // resource), same tier as Service Centre's Brands/Models precedent; BOM
+  // and the core work-order flow stay basic (both explicit Basic bullets).
+  "manufacturing.work-centers.list": "pro",
+  "manufacturing.work-centers.create": "pro",
+  "manufacturing.work-centers.detail": "pro",
+
+  // Wholesale B2B — "Tiered/bulk pricing rules" (MODULE_TIER_FEATURES pro
+  // bullet). Dealer/distributor accounts (customers.*) stay basic — that's
+  // the explicit Basic bullet.
+  "wholesale-b2b.price-tiers.list": "pro",
+  "wholesale-b2b.price-tiers.create": "pro",
+  "wholesale-b2b.price-tiers.detail": "pro",
+  "wholesale-b2b.price-tiers.edit": "pro",
+
+  // Field Force deliberately has NO page here — scripts/activateFieldForce.ts
+  // replaced its paid Basic/Pro/Ultimate ladder with a single Free plan (a
+  // commission-marketplace model, not a subscription: the platform already
+  // takes a per-booking cut). A PartnerType with only one plan in its
+  // ladder always resolves to "basic" tier (tierForPlanIndex, total<=1) and
+  // can never reach "pro" — so gating anything pro+ here would silently and
+  // permanently lock every Field Force partner out of it. (An earlier pass
+  // in this file briefly gated "field-force.allocations" at pro and missed
+  // this — reverted.) Revisit only alongside an actual Field Force pricing
+  // redesign, not as a drive-by addition here.
+
+  // HRMS — "Payroll processing" and "Leave management" (both explicit
+  // MODULE_TIER_FEATURES pro bullets). Staff directory + Attendance stay
+  // basic (explicit Basic bullets).
+  "hrms.payroll.list": "pro",
+  "hrms.payroll.create": "pro",
+  "hrms.leave.list": "pro",
+  "hrms.leave.create": "pro",
+
+  // Accounting-GST — "ITC register" (explicit MODULE_TIER_FEATURES pro
+  // bullet). GST return generation + HSN summary stay basic (explicit
+  // Basic bullets).
+  "accounting-gst.itc.list": "pro",
+  "accounting-gst.itc.create": "pro",
+  "accounting-gst.itc.detail": "pro",
+  "accounting-gst.itc.edit": "pro",
+
+  // Telecalling — "SMS/WhatsApp template messages" (explicit
+  // MODULE_TIER_FEATURES pro bullet). Leads/Agents/Queue (the agent's own
+  // login workspace) and the agent's personal wallet stay ungated — gating
+  // a staff member's own login/workspace/wallet behind the OWNER's plan
+  // tier would be gating the product's own login, not a pricing tier.
+  "telecalling.templates": "pro",
 };
 
 /**

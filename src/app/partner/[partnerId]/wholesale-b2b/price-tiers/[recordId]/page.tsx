@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/AppShell";
+import { renderTierGate } from "@/lib/pageTierGate";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -29,6 +30,8 @@ export default async function PriceTierDetailPage({
   params: { partnerId: string; recordId: string };
   searchParams?: { created?: string; updated?: string };
 }) {
+  const tierGate = await renderTierGate(params.partnerId, "wholesale-b2b.price-tiers.detail", "Price Tiers");
+  if (tierGate) return <AppShell topbarTitle="Price Tier — Wholesale B2B">{tierGate}</AppShell>;
   const tier = await getPriceTier(params.partnerId, params.recordId);
   if (!tier) notFound();
   const row = priceTierToRow(tier);

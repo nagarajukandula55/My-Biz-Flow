@@ -15,7 +15,16 @@ import {
  * support number, and bank details for settlement record-keeping (display
  * only — nothing debits/credits against these).
  */
-export function BusinessProfileForm({ partnerId, partner }: { partnerId: string; partner: PartnerRecord }) {
+export function BusinessProfileForm({
+  partnerId,
+  partner,
+  showProductDomains,
+}: {
+  partnerId: string;
+  partner: PartnerRecord;
+  /** Only meaningful for a partner with Service Centre enabled — productDomains drives that module's Device Type/Brand/Model catalog (src/lib/catalog/productDomains.ts) and nothing else, so a Telecalling-only (or any non-Service-Centre) partner was being asked "what do you deal in" for a form intake screen they'll never see. */
+  showProductDomains: boolean;
+}) {
   return (
     // Both the Business Profile and Bank Details tabs render this same
     // panel/form — see SettingsTabs.tsx's header for why they can't be
@@ -87,6 +96,7 @@ export function BusinessProfileForm({ partnerId, partner }: { partnerId: string;
             className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm normal-case text-text outline-none focus:border-accent"
           />
         </label>
+        {showProductDomains && (
         <div className="sm:col-span-2">
           <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">What you deal in</div>
           <p className="mt-1 text-xs normal-case text-text-muted">
@@ -118,6 +128,7 @@ export function BusinessProfileForm({ partnerId, partner }: { partnerId: string;
             ))}
           </div>
         </div>
+        )}
 
         {/* Terms & Conditions moved to the Config section below — that's
             where the general terms and the per-document-type overrides live
