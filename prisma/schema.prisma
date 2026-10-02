@@ -1051,6 +1051,20 @@ model Booking {
   ratingValue   Int?
   ratingComment String? @db.Text
 
+  /// Real job-closure evidence, captured by the engineer at the moment
+  /// they mark a job completed — not just a status flip. closurePhotoUrl
+  /// is a base64 data URL (same storage pattern as Partner.logoDataUrl —
+  /// no object storage is wired up in this app yet); closureLatitude/
+  /// Longitude come from the device's own Geolocation API at submit time
+  /// (independent of the photo's EXIF, which is unreliable/often
+  /// stripped). All nullable — only set once a job is actually closed
+  /// through closeBookingAsProvider (src/lib/fieldForce/bookingsData.ts).
+  closureNotes     String?   @db.Text
+  closurePhotoUrl  String?   @db.Text
+  closureLatitude  Float?
+  closureLongitude Float?
+  closedAt         DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

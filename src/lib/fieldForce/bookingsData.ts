@@ -50,6 +50,11 @@ export type BookingRecord = {
   providerPayout: number | null;
   ratingValue: number | null;
   ratingComment: string | null;
+  closureNotes: string | null;
+  closurePhotoUrl: string | null;
+  closureLatitude: number | null;
+  closureLongitude: number | null;
+  closedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -81,6 +86,11 @@ function toRecord(row: {
   providerPayout: number | null;
   ratingValue: number | null;
   ratingComment: string | null;
+  closureNotes: string | null;
+  closurePhotoUrl: string | null;
+  closureLatitude: number | null;
+  closureLongitude: number | null;
+  closedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
   customer: { name: string; phone: string };
@@ -116,6 +126,11 @@ function toRecord(row: {
     providerPayout: row.providerPayout,
     ratingValue: row.ratingValue,
     ratingComment: row.ratingComment,
+    closureNotes: row.closureNotes,
+    closurePhotoUrl: row.closurePhotoUrl,
+    closureLatitude: row.closureLatitude,
+    closureLongitude: row.closureLongitude,
+    closedAt: row.closedAt,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -237,13 +252,55 @@ export async function updateBookingStatus(id: string, partnerId: string, status:
 }
 
 /** Same as updateBookingStatus, but also verifies the calling Provider actually owns this booking — the
- * standalone Provider dashboard's own status-advance control (en-route/in-progress/completed/cancelled). */
+ * standalone Provider dashboard's own status-advance control (en-route/in-progress/cancelled). "completed" is
+ * NOT allowed through here any more — see closeBookingAsProvider, which requires real closure evidence
+ * (solution notes, a photo, and device location) instead of a bare status flip. */
 export async function updateBookingStatusAsProvider(id: string, providerId: string, partnerId: string, status: BookingStatus): Promise<void> {
+  if (status === "completed") {
+    throw new Error("Use closeBookingAsProvider to complete a job — it requires closure notes, a photo, and location.");
+  }
   const existing = await prisma.booking.findUniqueOrThrow({ where: { id } });
   assertPartnerScope(partnerId, existing.partnerId);
   if (existing.providerId !== providerId) throw new Error("This booking is not assigned to you.");
   await prisma.$transaction([
     prisma.booking.update({ where: { id }, data: { status } }),
+    prisma.jobAllocation.updateMany({ where: { bookingId: id }, data: { status } }),
+  ]);
+}
+
+/**
+ * Closes a job with real evidence — a Service Centre-style "fix it and
+ * prove it" record: solution notes (what was actually done), a photo taken
+ * at closure time, and the device's own GPS location at that moment
+ * (independent of the photo's EXIF, which many phones strip). This is the
+ * ONLY path that can set status "completed" on a Provider-owned booking —
+ * see updateBookingStatusAsProvider's guard above.
+ */
+export async function closeBookingAsProvider(
+  id: string,
+  providerId: string,
+  partnerId: string,
+  input: { notes: string; photoDataUrl: string; latitude: number; longitude: number }
+): Promise<void> {
+  const existing = await prisma.booking.findUniqueOrThrow({ where: { id } });
+  assertPartnerScope(partnerId, existing.partnerId);
+  if (existing.providerId !== providerId) throw new Error("This booking is not assigned to you.");
+  if (!input.notes.trim()) throw new Error("Solution notes are required to close a job.");
+  if (!input.photoDataUrl) throw new Error("A photo is required to close a job.");
+
+  const status: BookingStatus = "completed";
+  await prisma.$transaction([
+    prisma.booking.update({
+      where: { id },
+      data: {
+        status,
+        closureNotes: input.notes.trim(),
+        closurePhotoUrl: input.photoDataUrl,
+        closureLatitude: input.latitude,
+        closureLongitude: input.longitude,
+        closedAt: new Date(),
+      },
+    }),
     prisma.jobAllocation.updateMany({ where: { bookingId: id }, data: { status } }),
   ]);
 }

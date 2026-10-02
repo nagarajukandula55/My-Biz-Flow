@@ -59,6 +59,11 @@ export default async function BookingDetailPage({ params }: { params: { partnerI
           customerPayable: booking.customerPayable,
           ratingValue: booking.ratingValue,
           ratingComment: booking.ratingComment,
+          closureNotes: booking.closureNotes,
+          closurePhotoUrl: booking.closurePhotoUrl,
+          closureLatitude: booking.closureLatitude,
+          closureLongitude: booking.closureLongitude,
+          closedAt: booking.closedAt ? booking.closedAt.toISOString() : null,
         }}
         providers={providers}
         publicKeyId={env.razorpayPublicKeyId()}

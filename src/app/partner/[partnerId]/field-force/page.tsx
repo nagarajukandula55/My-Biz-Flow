@@ -4,6 +4,9 @@ import { DataTable, type Column } from "@/components/DataTable";
 import { StatusChip } from "@/components/StatusChip";
 import { registerPage } from "@/lib/designer/registry";
 import { listProviders } from "@/lib/fieldForce/providersData";
+import { generateProviderInviteQrDataUrl } from "@/lib/fieldForce/providerInviteQr";
+import { SITE_URL } from "@/lib/seo";
+import { ProviderInviteCard } from "./ProviderInviteCard";
 
 registerPage({
   id: "field-force.list",
@@ -42,6 +45,8 @@ const columns: Column[] = [
 
 export default async function FieldForcePage({ params }: { params: { partnerId: string } }) {
   const providers = await listProviders(params.partnerId);
+  const signupLink = `${SITE_URL}/partner/${params.partnerId}/field-force/provider/signup`;
+  const qrDataUrl = await generateProviderInviteQrDataUrl(signupLink);
   const rows = providers.map((p) => ({
     id: p.id,
     name: p.name,
@@ -68,6 +73,9 @@ export default async function FieldForcePage({ params }: { params: { partnerId: 
           </Link>
         </div>
         <div className="p-6">
+          <div className="mb-6">
+            <ProviderInviteCard signupLink={signupLink} qrDataUrl={qrDataUrl} />
+          </div>
           {rows.length === 0 ? (
             <p className="rounded-md border border-dashed border-border bg-bg-raised p-6 text-center text-sm text-text-muted">
               No providers onboarded yet.{" "}

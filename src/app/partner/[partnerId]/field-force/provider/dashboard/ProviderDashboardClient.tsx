@@ -29,7 +29,7 @@ type TeamMemberRow = { id: string; name: string; phone: string; skillLevel: stri
 type ServiceOption = { id: string; name: string; category: string };
 type NotificationRow = { id: string; title: string; body: string; createdAt: string; isRead: boolean };
 
-const STATUS_OPTIONS = ["en-route", "in-progress", "completed", "cancelled"] as const;
+const STATUS_OPTIONS = ["en-route", "in-progress", "cancelled"] as const;
 
 export function ProviderDashboardClient({
   offers,
@@ -41,6 +41,7 @@ export function ProviderDashboardClient({
   respondAction,
   advanceStatusAction,
   addTeamMemberAction,
+  closeBookingAction,
 }: {
   offers: OfferRow[];
   activeJobs: ActiveJobRow[];
@@ -51,9 +52,11 @@ export function ProviderDashboardClient({
   respondAction: (formData: FormData) => void;
   advanceStatusAction: (formData: FormData) => void;
   addTeamMemberAction: (formData: FormData) => void;
+  closeBookingAction: (input: { bookingId: string; notes: string; photoDataUrl: string; latitude: number; longitude: number }) => Promise<{ ok: boolean; error?: string }>;
 }) {
   const [showAddMember, setShowAddMember] = useState(false);
   const [selectedServiceIds, setSelectedServiceIds] = useState<Set<string>>(new Set());
+  const [closingJobId, setClosingJobId] = useState<string | null>(null);
 
   function toggleService(id: string) {
     setSelectedServiceIds((prev) => {
@@ -136,19 +139,24 @@ export function ProviderDashboardClient({
                   />
                 </div>
                 {j.status !== "completed" && j.status !== "cancelled" && (
-                  <form action={advanceStatusAction} className="mt-2 flex items-center gap-2">
-                    <input type="hidden" name="bookingId" value={j.id} />
-                    <select name="status" defaultValue={j.status === "assigned" ? "en-route" : j.status} className="rounded-md border border-border bg-bg px-2 py-1.5 text-xs text-text">
-                      {STATUS_OPTIONS.map((s) => (
-                        <option key={s} value={s}>
-                          {t(locale, s === "en-route" ? "statusEnRoute" : s === "in-progress" ? "statusInProgress" : s === "completed" ? "statusCompleted" : "statusCancelled")}
-                        </option>
-                      ))}
-                    </select>
-                    <button type="submit" className="btn-accent text-xs">
-                      {t(locale, "updateStatus")}
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <form action={advanceStatusAction} className="flex items-center gap-2">
+                      <input type="hidden" name="bookingId" value={j.id} />
+                      <select name="status" defaultValue={j.status === "assigned" ? "en-route" : j.status} className="rounded-md border border-border bg-bg px-2 py-1.5 text-xs text-text">
+                        {STATUS_OPTIONS.map((s) => (
+                          <option key={s} value={s}>
+                            {t(locale, s === "en-route" ? "statusEnRoute" : s === "in-progress" ? "statusInProgress" : "statusCancelled")}
+                          </option>
+                        ))}
+                      </select>
+                      <button type="submit" className="btn-accent text-xs">
+                        {t(locale, "updateStatus")}
+                      </button>
+                    </form>
+                    <button type="button" onClick={() => setClosingJobId(j.id)} className="btn-accent text-xs">
+                      Close Job
                     </button>
-                  </form>
+                  </div>
                 )}
               </div>
             ))}
@@ -216,6 +224,148 @@ export function ProviderDashboardClient({
           </div>
         )}
       </section>
+
+      {closingJobId && (
+        <CloseJobModal
+          bookingId={closingJobId}
+          onClose={() => setClosingJobId(null)}
+          closeBookingAction={closeBookingAction}
+        />
+      )}
+    </div>
+  );
+}
+
+/**
+ * Real job-closure flow — not a bare status flip. Requires solution notes,
+ * a photo taken right now (the file input's `capture="environment"`
+ * attribute opens the device camera directly on mobile rather than a
+ * gallery picker), and the device's own GPS location captured at submit
+ * time via the Geolocation API (independent of the photo's EXIF, which
+ * many phones strip). All three are required before "Close Job" can
+ * submit — see closeBookingAsProvider's own validation as the real,
+ * server-side backstop.
+ */
+function CloseJobModal({
+  bookingId,
+  onClose,
+  closeBookingAction,
+}: {
+  bookingId: string;
+  onClose: () => void;
+  closeBookingAction: (input: { bookingId: string; notes: string; photoDataUrl: string; latitude: number; longitude: number }) => Promise<{ ok: boolean; error?: string }>;
+}) {
+  const [notes, setNotes] = useState("");
+  const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
+  const [location, setLocation] = useState<{ lat: number; lon: number } | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [locating, setLocating] = useState(false);
+
+  function capturePhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setPhotoDataUrl(String(reader.result));
+    reader.readAsDataURL(file);
+  }
+
+  function captureLocation() {
+    setLocationError(null);
+    if (!navigator.geolocation) {
+      setLocationError("Location isn't available on this device/browser.");
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLocation({ lat: pos.coords.latitude, lon: pos.coords.longitude });
+        setLocating(false);
+      },
+      (err) => {
+        setLocationError(err.message || "Couldn't get your location — check location permission.");
+        setLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 15000 }
+    );
+  }
+
+  const canSubmit = notes.trim().length > 0 && Boolean(photoDataUrl) && Boolean(location) && !isSubmitting;
+
+  function handleSubmit() {
+    if (!photoDataUrl || !location) return;
+    setSubmitError(null);
+    setIsSubmitting(true);
+    closeBookingAction({ bookingId, notes: notes.trim(), photoDataUrl, latitude: location.lat, longitude: location.lon }).then((result) => {
+      setIsSubmitting(false);
+      if (!result.ok) {
+        setSubmitError(result.error ?? "Failed to close job.");
+        return;
+      }
+      onClose();
+    });
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4" onClick={onClose}>
+      <div className="w-full max-w-md rounded-t-lg bg-bg p-4 sm:rounded-lg" onClick={(e) => e.stopPropagation()}>
+        <h3 className="font-display text-base font-bold text-text">Close Job</h3>
+        <p className="mt-1 text-xs text-text-muted">Solution notes, a photo, and your current location are all required.</p>
+
+        <div className="mt-3 space-y-3">
+          <div>
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-text-muted">Solution / what was done</label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={3}
+              placeholder="e.g. Replaced the compressor capacitor, tested cooling, customer confirmed working."
+              className="w-full rounded-md border border-border bg-bg-raised px-3 py-2 text-sm text-text"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-text-muted">Photo of completed work</label>
+            {photoDataUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={photoDataUrl} alt="Job closure" className="h-32 w-full rounded-md border border-border object-cover" />
+            ) : (
+              <input type="file" accept="image/*" capture="environment" onChange={capturePhoto} className="w-full text-xs text-text" />
+            )}
+            {photoDataUrl && (
+              <button type="button" onClick={() => setPhotoDataUrl(null)} className="mt-1 text-xs text-text-muted hover:underline">
+                Retake
+              </button>
+            )}
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-text-muted">Your location</label>
+            {location ? (
+              <p className="text-xs text-success">
+                Captured: {location.lat.toFixed(5)}, {location.lon.toFixed(5)}
+              </p>
+            ) : (
+              <button type="button" onClick={captureLocation} disabled={locating} className="btn-outline text-xs disabled:opacity-50">
+                {locating ? "Getting location…" : "Capture my location"}
+              </button>
+            )}
+            {locationError && <p className="mt-1 text-xs text-danger">{locationError}</p>}
+          </div>
+
+          {submitError && <p className="text-xs text-danger">{submitError}</p>}
+
+          <div className="flex gap-2">
+            <button type="button" onClick={onClose} className="btn-outline flex-1 text-xs">
+              Cancel
+            </button>
+            <button type="button" onClick={handleSubmit} disabled={!canSubmit} className="btn-accent flex-1 text-xs disabled:opacity-50">
+              {isSubmitting ? "Closing…" : "Close Job"}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

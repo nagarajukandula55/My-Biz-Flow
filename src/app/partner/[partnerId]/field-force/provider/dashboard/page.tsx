@@ -6,7 +6,7 @@ import { listTeamMembers } from "@/lib/fieldForce/providersData";
 import { listActiveBookingsForProvider } from "@/lib/fieldForce/bookingsData";
 import { listServices } from "@/lib/fieldForce/servicesData";
 import { listNotifications } from "@/lib/fieldForce/notifications";
-import { respondToOfferAction, addTeamMemberAction, updateBookingStatusAsProviderAction } from "@/lib/fieldForce/actions";
+import { respondToOfferAction, addTeamMemberAction, updateBookingStatusAsProviderAction, closeBookingAction } from "@/lib/fieldForce/actions";
 import { getLocaleFromCookie } from "@/lib/i18n/cookie";
 import { t, isRtl } from "@/lib/i18n/locales";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
@@ -83,6 +83,7 @@ export default async function ProviderDashboardPage({ params }: { params: { part
         respondAction={respondToOfferAction.bind(null, params.partnerId, provider.id)}
         advanceStatusAction={updateBookingStatusAsProviderAction.bind(null, params.partnerId, provider.id)}
         addTeamMemberAction={addTeamMemberAction.bind(null, params.partnerId, provider.id)}
+        closeBookingAction={closeBookingAction.bind(null, params.partnerId, provider.id)}
       />
     </div>
   );

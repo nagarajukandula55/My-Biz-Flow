@@ -389,10 +389,10 @@ export async function logoutProviderAction(partnerId: string) {
   redirect(`/partner/${partnerId}/field-force/provider/login`);
 }
 
-/** The Provider's own status-advance control (en-route/in-progress/completed/cancelled) —
- * verifies the booking is actually assigned to this provider. No ops involvement required.
- * providerId (client-bound) is re-verified against the session cookie first, same reasoning
- * as the Customer actions above. */
+/** The Provider's own status-advance control (en-route/in-progress/cancelled) — "completed" is
+ * no longer settable here, see closeBookingAction below. Verifies the booking is actually
+ * assigned to this provider. providerId (client-bound) is re-verified against the session
+ * cookie first, same reasoning as the Customer actions above. */
 export async function updateBookingStatusAsProviderAction(partnerId: string, providerId: string, formData: FormData) {
   const sessionProvider = await getCurrentProvider(partnerId);
   if (!sessionProvider || sessionProvider.id !== providerId) {
@@ -402,23 +402,54 @@ export async function updateBookingStatusAsProviderAction(partnerId: string, pro
   const status = String(formData.get("status") ?? "") as BookingStatus;
   await updateBookingStatusAsProvider(bookingId, providerId, partnerId, status);
 
-  if (status === "completed") {
-    const booking = await getBooking(bookingId, partnerId);
-    if (booking) {
-      await notify({
-        partnerId,
-        audience: "customer",
-        recipientId: booking.customerId,
-        type: "booking-completed",
-        title: `Booking ${booking.bookingNumber} completed`,
-        body: "Your provider marked this job as completed. You can rate it from your booking page.",
-        relatedBookingId: bookingId,
-      });
-    }
+  revalidatePath(`/partner/${partnerId}/field-force/provider/dashboard`);
+  revalidatePath(`/partner/${partnerId}/field-force/customer/bookings/${bookingId}`);
+}
+
+/**
+ * Real job closure: solution notes + a photo + the device's own GPS
+ * location at the moment of closing — not a bare status flip (see
+ * closeBookingAsProvider's doc comment). providerId re-verified against
+ * the session cookie first, same as every other provider-facing action.
+ */
+export async function closeBookingAction(
+  partnerId: string,
+  providerId: string,
+  input: { bookingId: string; notes: string; photoDataUrl: string; latitude: number; longitude: number }
+): Promise<{ ok: boolean; error?: string }> {
+  const sessionProvider = await getCurrentProvider(partnerId);
+  if (!sessionProvider || sessionProvider.id !== providerId) {
+    return { ok: false, error: "Not signed in as this provider." };
+  }
+  const { closeBookingAsProvider } = await import("@/lib/fieldForce/bookingsData");
+  try {
+    await closeBookingAsProvider(input.bookingId, providerId, partnerId, {
+      notes: input.notes,
+      photoDataUrl: input.photoDataUrl,
+      latitude: input.latitude,
+      longitude: input.longitude,
+    });
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Failed to close job." };
+  }
+
+  const booking = await getBooking(input.bookingId, partnerId);
+  if (booking) {
+    await notify({
+      partnerId,
+      audience: "customer",
+      recipientId: booking.customerId,
+      type: "booking-completed",
+      title: `Booking ${booking.bookingNumber} completed`,
+      body: "Your provider marked this job as completed. You can rate it from your booking page.",
+      relatedBookingId: input.bookingId,
+    });
   }
 
   revalidatePath(`/partner/${partnerId}/field-force/provider/dashboard`);
-  revalidatePath(`/partner/${partnerId}/field-force/customer/bookings/${bookingId}`);
+  revalidatePath(`/partner/${partnerId}/field-force/customer/bookings/${input.bookingId}`);
+  revalidatePath(`/partner/${partnerId}/field-force/bookings/${input.bookingId}`);
+  return { ok: true };
 }
 
 /** The Customer's own rating submission — verifies the booking belongs to this customer, AND that

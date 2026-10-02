@@ -47,6 +47,11 @@ export function BookingDetailClient({
     customerPayable: number | null;
     ratingValue: number | null;
     ratingComment: string | null;
+    closureNotes: string | null;
+    closurePhotoUrl: string | null;
+    closureLatitude: number | null;
+    closureLongitude: number | null;
+    closedAt: string | null;
   };
   providers: ProviderRecord[];
   publicKeyId?: string;
@@ -211,6 +216,34 @@ export function BookingDetailClient({
             />
           )}
         </div>
+
+        {booking.status === "completed" && booking.closedAt && (
+          <div className="rounded-lg border border-border bg-bg-raised p-5 lg:col-span-2">
+            <h3 className="mb-3 font-display text-base font-bold text-text">Job Closure</h3>
+            <p className="text-xs text-text-muted">
+              Closed {new Date(booking.closedAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}
+            </p>
+            <p className="mt-2 text-sm text-text">{booking.closureNotes}</p>
+            {booking.closurePhotoUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={booking.closurePhotoUrl}
+                alt="Job closure evidence"
+                className="mt-3 max-h-80 rounded-md border border-border object-contain"
+              />
+            )}
+            {booking.closureLatitude != null && booking.closureLongitude != null && (
+              <a
+                href={`https://www.google.com/maps?q=${booking.closureLatitude},${booking.closureLongitude}`}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-2 inline-block text-xs text-teal hover:underline"
+              >
+                View closure location on map ({booking.closureLatitude.toFixed(5)}, {booking.closureLongitude.toFixed(5)})
+              </a>
+            )}
+          </div>
+        )}
 
         {booking.status === "completed" && !booking.ratingValue && (
           <div className="rounded-lg border border-border bg-bg-raised p-5 lg:col-span-2">
