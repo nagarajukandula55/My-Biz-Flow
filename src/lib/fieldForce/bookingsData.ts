@@ -180,6 +180,36 @@ export async function createBooking(
   return toRecord(row);
 }
 
+/**
+ * Same creation path as createBooking, for a job that came from a
+ * bulk-uploaded company/OEM job file instead of an end customer booking
+ * through the app — tags the resulting Booking with companyId. See
+ * src/lib/fieldForce/companyImport.ts, the only caller.
+ */
+export async function createCompanyBooking(
+  partnerId: string,
+  input: { customerId: string; addressId: string; serviceId: string; companyId: string; scheduledAt: Date; slotLabel: string; notes?: string }
+): Promise<BookingRecord> {
+  const service = await prisma.service.findUniqueOrThrow({ where: { id: input.serviceId } });
+  const bookingNumber = await getNextNumber("field-force.booking", partnerId);
+  const row = await prisma.booking.create({
+    data: {
+      partnerId,
+      bookingNumber,
+      customerId: input.customerId,
+      addressId: input.addressId,
+      serviceId: input.serviceId,
+      companyId: input.companyId,
+      priceAmount: service.basePrice,
+      scheduledAt: input.scheduledAt,
+      slotLabel: input.slotLabel,
+      notes: input.notes || null,
+    },
+    include: INCLUDE,
+  });
+  return toRecord(row);
+}
+
 export async function updateBookingDetails(
   id: string,
   partnerId: string,

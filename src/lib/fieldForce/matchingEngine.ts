@@ -7,6 +7,7 @@
  */
 import { prisma } from "@/lib/prisma";
 import { findEligibleProviders } from "@/lib/fieldForce/matching";
+import { rankProvidersByDistance } from "@/lib/fieldForce/geo";
 import { listProviders } from "@/lib/fieldForce/providersData";
 import { notify } from "@/lib/fieldForce/notifications";
 import { sendSms } from "@/lib/sms";
@@ -21,11 +22,17 @@ export async function dispatchBookingRequest(bookingId: string): Promise<{ offer
   });
 
   const providers = await listProviders(booking.partnerId);
-  const candidates = findEligibleProviders(providers, {
+  const eligible = findEligibleProviders(providers, {
     pincode: booking.address.pincode,
     state: booking.address.state,
     requiredServiceIds: [booking.serviceId],
-  }).slice(0, MAX_OFFERS_PER_BOOKING);
+  });
+  // Nearest-first when coordinates are known (see geo.ts) — a provider with
+  // unknown distance still gets offered, just after every ranked one, so
+  // the MAX_OFFERS_PER_BOOKING cap favors the closest known candidates
+  // without excluding anyone coordinate data hasn't reached yet.
+  const ranked = await rankProvidersByDistance(booking.address.pincode, eligible);
+  const candidates = ranked.map((r) => r.provider).slice(0, MAX_OFFERS_PER_BOOKING);
 
   await notify({
     partnerId: booking.partnerId,

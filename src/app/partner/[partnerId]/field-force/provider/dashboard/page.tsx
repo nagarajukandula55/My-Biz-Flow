@@ -47,6 +47,9 @@ export default async function ProviderDashboardPage({ params }: { params: { part
         <h1 className="font-display text-xl font-bold text-text">{t(locale, "dashboardTitleProvider")}</h1>
         <div className="flex items-center gap-3">
           <LanguageSwitcher current={locale} />
+          <a href={`/partner/${params.partnerId}/field-force/provider/wallet`} className="text-sm text-text-muted hover:underline">
+            Wallet
+          </a>
           <a href={`/partner/${params.partnerId}/field-force/provider/logout`} className="text-sm text-text-muted hover:underline">
             {t(locale, "navLogout")}
           </a>

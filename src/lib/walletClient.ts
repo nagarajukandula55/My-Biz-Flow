@@ -3,7 +3,7 @@ import { postWithRetry } from "@/lib/centralApi";
 
 const COMMISSION_PERCENT = 10;
 
-export type WalletOwnerType = "PARTNER" | "TELECALLING_AGENT";
+export type WalletOwnerType = "PARTNER" | "TELECALLING_AGENT" | "FIELD_FORCE_PROVIDER";
 
 export type WalletBalance = { available: string; pending: string; held: string; total: string };
 export type WalletTransaction = {
@@ -133,5 +133,49 @@ export async function creditReferralCommission(params: {
       memo: `Referral commission: ${params.referredPartnerId} first payment via ${params.referrer.type === "PARTNER" ? "partner" : "telecalling agent"} referral`,
     },
     { kind: "wallet referral commission", externalOrderId: params.razorpayPaymentId },
+  );
+}
+
+/**
+ * Credits a Field Force engineer's completed-job payout into their wallet —
+ * SCAFFOLDING ONLY, not called from anywhere yet. Per explicit product
+ * decision, engineer settlement stays manual for now (a Super Admin reads
+ * Booking.providerPayout — see src/lib/fieldForce/commission.ts — and pays
+ * the engineer outside the app); this function exists so wiring up
+ * automatic crediting later is a one-line call at the booking-completion
+ * site, not a new integration. Mirrors creditReferralCommission's
+ * idempotency-key + postWithRetry/queue pattern exactly.
+ */
+export async function creditProviderPayout(params: {
+  providerId: string;
+  bookingId: string;
+  amount: number;
+  serviceName: string;
+}): Promise<boolean> {
+  let url: string | undefined;
+  let key: string;
+  try {
+    url = env.centralApiWalletCreditUrl();
+    key = env.centralApiKey();
+  } catch {
+    return false; // CENTRAL_API_KEY not set yet — expected pre-launch.
+  }
+  if (!url) return false; // Wallet credit URL not configured yet — expected pre-launch.
+
+  return postWithRetry(
+    url,
+    key,
+    {
+      ownerType: "FIELD_FORCE_PROVIDER",
+      ownerId: params.providerId,
+      type: "FIELD_FORCE_PAYOUT",
+      amount: params.amount,
+      idempotencyKey: `my-biz-flow:field-force-payout:${params.bookingId}`,
+      reason: `Job payout — ${params.serviceName} (Booking ${params.bookingId})`,
+      referenceType: "field_force_booking",
+      referenceId: params.bookingId,
+      memo: `Field Force engineer payout for completed booking ${params.bookingId}`,
+    },
+    { kind: "wallet field-force payout", externalOrderId: params.bookingId },
   );
 }

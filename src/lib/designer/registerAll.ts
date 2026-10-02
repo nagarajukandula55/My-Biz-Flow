@@ -328,6 +328,7 @@ import "@/app/partner/[partnerId]/profile/page";
 import "@/app/partner/[partnerId]/field-force/page";
 import "@/app/partner/[partnerId]/field-force/onboard/page";
 import "@/app/partner/[partnerId]/field-force/allocations/page";
+import "@/app/partner/[partnerId]/field-force/companies/page";
 import "@/app/partner/[partnerId]/field-force/bookings/page";
 import "@/app/partner/[partnerId]/field-force/bookings/new/page";
 import "@/app/partner/[partnerId]/field-force/bookings/[bookingId]/page";
@@ -340,6 +341,7 @@ import "@/app/partner/[partnerId]/field-force/customer/bookings/[bookingId]/page
 import "@/app/partner/[partnerId]/field-force/provider/signup/page";
 import "@/app/partner/[partnerId]/field-force/provider/login/page";
 import "@/app/partner/[partnerId]/field-force/provider/dashboard/page";
+import "@/app/partner/[partnerId]/field-force/provider/wallet/page";
 import "@/app/field-force-app/page";
 
 // Telecalling — these were never wired into this file, so registerPage()'s

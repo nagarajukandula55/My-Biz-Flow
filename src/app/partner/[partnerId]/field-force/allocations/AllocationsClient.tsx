@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { StatusChip } from "@/components/StatusChip";
 import type { ProviderRecord } from "@/lib/fieldForce/providersData";
 import { findEligibleProviders } from "@/lib/fieldForce/matching";
+import { getCandidateDistancesAction } from "@/lib/fieldForce/actions";
 
 type BookingOption = {
   id: string;
@@ -42,10 +43,11 @@ export function AllocationsClient({
   updateStatusAction: (formData: FormData) => void;
 }) {
   const [bookingId, setBookingId] = useState("");
+  const [distances, setDistances] = useState<Record<string, number | undefined>>({});
 
   const selectedBooking = unassignedBookings.find((b) => b.id === bookingId);
 
-  const candidates = useMemo(() => {
+  const eligible = useMemo(() => {
     if (!selectedBooking) return [];
     return findEligibleProviders(providers, {
       pincode: selectedBooking.pincode,
@@ -53,6 +55,41 @@ export function AllocationsClient({
       requiredServiceIds: [selectedBooking.serviceId],
     });
   }, [providers, selectedBooking]);
+
+  // Distance lookup needs a DB round trip (pincode -> lat/long), so it's
+  // fetched separately from the pure, sync eligibility filter above rather
+  // than blocking it — candidates render immediately, distances fill in
+  // once the fetch resolves (or stay "distance unknown" if coordinates
+  // aren't synced for these pincodes yet, see src/lib/fieldForce/geo.ts).
+  useEffect(() => {
+    if (!selectedBooking || eligible.length === 0) {
+      setDistances({});
+      return;
+    }
+    let cancelled = false;
+    getCandidateDistancesAction(
+      partnerId,
+      selectedBooking.pincode,
+      eligible.map((p) => p.pincode)
+    ).then((result) => {
+      if (!cancelled) setDistances(result);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [partnerId, selectedBooking?.pincode, eligible.map((p) => p.pincode).join(",")]);
+
+  const candidates = useMemo(() => {
+    return [...eligible].sort((a, b) => {
+      const da = distances[a.pincode];
+      const db = distances[b.pincode];
+      if (da === undefined && db === undefined) return 0;
+      if (da === undefined) return 1;
+      if (db === undefined) return -1;
+      return da - db;
+    });
+  }, [eligible, distances]);
 
   return (
     <div>
@@ -101,7 +138,12 @@ export function AllocationsClient({
                   <input type="hidden" name="bookingId" value={bookingId} />
                   <input type="hidden" name="providerId" value={c.id} />
                   <div className="text-sm text-text">
-                    {c.name} <span className="text-text-muted">({c.phone} · {c.skillLevel})</span>
+                    {c.name} <span className="text-text-muted">({c.phone} · {c.skillLevel} · {c.pincode})</span>
+                    {distances[c.pincode] !== undefined ? (
+                      <span className="ml-2 text-xs font-semibold text-teal">{distances[c.pincode]!.toFixed(1)} km away</span>
+                    ) : (
+                      <span className="ml-2 text-xs text-text-muted">distance unknown</span>
+                    )}
                   </div>
                   <button type="submit" className="btn-accent text-xs">
                     Assign

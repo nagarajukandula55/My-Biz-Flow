@@ -312,6 +312,7 @@ export const MODULE_SUB_NAV: Record<string, PartnerNavSubItem[]> = {
     { key: "field-force.list", label: "Engineers", href: "field-force" },
     { key: "field-force.onboard", label: "Onboard Engineer", href: "field-force/onboard" },
     { key: "field-force.allocations", label: "Job Allocation", href: "field-force/allocations" },
+    { key: "field-force.companies", label: "Companies", href: "field-force/companies" },
   ],
   "event-booking": [
     { key: "event-booking.list", label: "Bookings", href: "event-booking" },

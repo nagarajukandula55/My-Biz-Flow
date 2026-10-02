@@ -6,6 +6,7 @@ import type { WalletBalance, WalletTransaction } from "@/lib/walletClient";
 const TYPE_LABEL: Record<string, string> = {
   REFERRAL_COMMISSION: "Referral commission",
   VENDOR_SETTLEMENT: "Order settlement",
+  FIELD_FORCE_PAYOUT: "Job payout",
   MANUAL_ADJUSTMENT: "Adjustment",
   WITHDRAWAL: "Withdrawal",
   PARTNER_REDEMPTION: "Redemption",

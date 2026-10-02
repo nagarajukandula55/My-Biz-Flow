@@ -108,6 +108,77 @@ export async function updateFieldForceSettingsAction(partnerId: string, formData
   revalidatePath(`/partner/${partnerId}/field-force/admin`);
 }
 
+/** Distance in km from the job's pincode to each candidate provider's own pincode, for the Allocations page's "see all the distances" display — undefined per-provider where coordinates aren't known yet (see src/lib/fieldForce/geo.ts). */
+export async function getCandidateDistancesAction(
+  partnerId: string,
+  jobPincode: string,
+  candidatePincodes: string[]
+): Promise<Record<string, number | undefined>> {
+  await requireSessionPartnerId(partnerId);
+  const { distancesFromPincode } = await import("@/lib/fieldForce/geo");
+  const distances = await distancesFromPincode(jobPincode, candidatePincodes);
+  return Object.fromEntries(distances);
+}
+
+export async function createCompanyAction(partnerId: string, formData: FormData) {
+  partnerId = await requireSessionPartnerId(partnerId);
+  const name = String(formData.get("name") ?? "").trim();
+  if (!name) throw new Error("Company name is required");
+  const { createCompany } = await import("@/lib/fieldForce/companiesData");
+  await createCompany(partnerId, name);
+  revalidatePath(`/partner/${partnerId}/field-force/companies`);
+}
+
+export async function setCompanyColumnMappingAction(partnerId: string, formData: FormData) {
+  partnerId = await requireSessionPartnerId(partnerId);
+  const id = String(formData.get("id") ?? "");
+  const { COMPANY_UPLOAD_FIELDS, setCompanyColumnMapping } = await import("@/lib/fieldForce/companiesData");
+  const headers = formData.getAll("header").map(String);
+  const fields = formData.getAll("field").map(String);
+  const mapping: Record<string, (typeof COMPANY_UPLOAD_FIELDS)[number]> = {};
+  headers.forEach((header, i) => {
+    const field = fields[i];
+    if (header.trim() && (COMPANY_UPLOAD_FIELDS as readonly string[]).includes(field)) {
+      mapping[header.trim()] = field as (typeof COMPANY_UPLOAD_FIELDS)[number];
+    }
+  });
+  await setCompanyColumnMapping(id, partnerId, mapping);
+  revalidatePath(`/partner/${partnerId}/field-force/companies`);
+}
+
+export async function setCompanyActiveAction(partnerId: string, formData: FormData) {
+  partnerId = await requireSessionPartnerId(partnerId);
+  const id = String(formData.get("id") ?? "");
+  const isActive = formData.get("isActive") === "true";
+  const { setCompanyActive } = await import("@/lib/fieldForce/companiesData");
+  await setCompanyActive(id, partnerId, isActive);
+  revalidatePath(`/partner/${partnerId}/field-force/companies`);
+}
+
+export async function importCompanyBookingsAction(
+  partnerId: string,
+  formData: FormData
+): Promise<{ createdCount: number; failed: { row: number; error: string }[] }> {
+  partnerId = await requireSessionPartnerId(partnerId);
+  const companyId = String(formData.get("companyId") ?? "");
+  const file = formData.get("file");
+  if (!companyId) throw new Error("Choose a company first");
+  if (!(file instanceof File) || file.size === 0) throw new Error("Choose a CSV file to upload");
+
+  const { getCompany } = await import("@/lib/fieldForce/companiesData");
+  const company = await getCompany(companyId, partnerId);
+  if (!company) throw new Error("Company not found");
+  if (Object.keys(company.columnMapping).length === 0) {
+    throw new Error("Set up this company's column mapping first (see the Companies page).");
+  }
+
+  const { importCompanyBookingsCsv } = await import("@/lib/fieldForce/companyImport");
+  const result = await importCompanyBookingsCsv(partnerId, companyId, company.columnMapping, file);
+  revalidatePath(`/partner/${partnerId}/field-force/bookings`);
+  revalidatePath(`/partner/${partnerId}/field-force/allocations`);
+  return result;
+}
+
 export async function allocateProviderAction(partnerId: string, formData: FormData) {
   partnerId = await requireSessionPartnerId(partnerId);
   const bookingId = String(formData.get("bookingId") ?? "");

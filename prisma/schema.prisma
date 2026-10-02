@@ -1024,6 +1024,12 @@ model Booking {
   providerId String?
   provider   Provider? @relation(fields: [providerId], references: [id])
 
+  /// Set only for a job that came from a bulk-uploaded company/OEM job file
+  /// (see FieldForceCompany) rather than an end customer booking through
+  /// the app — null for every ordinary customer-initiated booking.
+  companyId String?
+  company   FieldForceCompany? @relation(fields: [companyId], references: [id])
+
   /// requested | confirmed | assigned | en-route | in-progress | completed | cancelled
   status        String   @default("requested")
   scheduledAt   DateTime
@@ -1055,7 +1061,33 @@ model Booking {
   @@index([partnerId])
   @@index([providerId])
   @@index([status])
+  @@index([companyId])
   @@map("bookings")
+}
+
+/// An upstream OEM/brand/client whose job data this partner works on behalf
+/// of (e.g. a partner doing warranty repairs for a device brand) — distinct
+/// from the end Customer on a Booking, which is whoever the job is actually
+/// performed for. Each company can have its own CSV column layout, stored
+/// once in `columnMapping` (CSV header text -> this app's internal field
+/// name: customerName/phone/addressLine1/city/state/pincode/serviceName/
+/// scheduledAt/notes) so re-uploading that company's next job-data export
+/// auto-maps without reconfiguring every time. Scoped per partner since two
+/// different partners could both work for the same-named brand.
+model FieldForceCompany {
+  id            String   @id @default(cuid())
+  partnerId     String
+  name          String
+  isActive      Boolean  @default(true)
+  columnMapping Json     @default("{}")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  bookings Booking[]
+
+  @@unique([partnerId, name])
+  @@index([partnerId])
+  @@map("field_force_companies")
 }
 
 /// A captured Razorpay payment for one Booking — mirrors SubscriptionPayment's
@@ -1358,6 +1390,14 @@ model PostalPincode {
   officeName String
   district   String
   state      String
+  /// Nullable — populated by a future lat/long sync (the official pincode
+  /// directory alone doesn't carry coordinates; see scripts/syncPincodes.ts's
+  /// own sourcing notes). Field Force's distance-based matching
+  /// (src/lib/fieldForce/geo.ts) degrades gracefully to its existing
+  /// pincode/state/district matching when these are unset, so this can be
+  /// backfilled incrementally without breaking anything.
+  latitude   Float?
+  longitude  Float?
   updatedAt  DateTime @updatedAt
 
   @@unique([pincode, officeName])
