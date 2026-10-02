@@ -6,6 +6,7 @@ import { RecordCsvExportButton } from "@/components/RecordCsvExportButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { stockColumns } from "@/lib/sample-data/warehouse";
 import { listBusinessRecords } from "@/lib/businessRecords";
+import { splitMaterialLabel } from "@/lib/materialLabel";
 
 registerPage({
   id: "inventory.stock.list",
@@ -40,8 +41,22 @@ export default async function StockPage({ params }: { params: { partnerId: strin
       topbarActions={
         <div className="flex items-center gap-3">
           <RecordCsvExportButton
-            columns={columns.map((c) => ({ key: c.key, type: c.type === "date" ? "date" : c.type === "datetime" ? "datetime" : undefined }))}
-            rows={rows}
+            columns={[
+              "materialCode",
+              "materialName",
+              ...columns
+                .filter((c) => c.key !== "materialId")
+                .map(
+                  (c): { key: string; type?: "date" | "datetime" } => ({
+                    key: c.key,
+                    type: c.type === "date" ? "date" : c.type === "datetime" ? "datetime" : undefined,
+                  })
+                ),
+            ]}
+            rows={rows.map((r) => {
+              const { code, name } = splitMaterialLabel(r["materialId"]);
+              return { ...r, materialCode: code, materialName: name };
+            })}
             filename={`stock-${params.partnerId}-${new Date().toISOString().slice(0, 10)}.csv`}
           />
         </div>

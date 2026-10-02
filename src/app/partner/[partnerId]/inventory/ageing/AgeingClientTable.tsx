@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { StatusChip, type StatusVariant } from "@/components/StatusChip";
 import type { AgeingRow } from "@/lib/inventoryAgeing";
+import { RecordCsvExportButton } from "@/components/RecordCsvExportButton";
 
 const STATUS_VARIANT: Record<string, StatusVariant> = {
   Fresh: "success",
@@ -28,13 +29,27 @@ export function AgeingClientTable({ rows }: { rows: AgeingRow[] }) {
 
   return (
     <div>
-      <div className="mt-6">
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
         <input
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search material, warehouse…"
           className="w-full max-w-xs rounded-md border border-border bg-bg px-3 py-1.5 text-sm text-text outline-none focus:border-accent sm:w-72"
+        />
+        <RecordCsvExportButton
+          filename="material-ageing.csv"
+          columns={["materialId", "warehouseName", "condition", "qtyOnHand", "lastReceivedAt", "ageDays", "status", "serialNumbers"]}
+          rows={visibleRows.map((r) => ({
+            materialId: r.materialId,
+            warehouseName: r.warehouseName,
+            condition: r.condition,
+            qtyOnHand: r.qtyOnHand,
+            lastReceivedAt: r.lastReceivedAt,
+            ageDays: r.ageDays,
+            status: r.status,
+            serialNumbers: r.serialNumbers ? r.serialNumbers.join("; ") : "",
+          }))}
         />
       </div>
 
@@ -51,6 +66,7 @@ export function AgeingClientTable({ rows }: { rows: AgeingRow[] }) {
                 <th className="px-3 py-2.5">Warehouse</th>
                 <th className="px-3 py-2.5">Material Type</th>
                 <th className="px-3 py-2.5 text-right">Qty</th>
+                <th className="px-3 py-2.5">Serial / Barcode Numbers</th>
                 <th className="px-3 py-2.5">Last Received</th>
                 <th className="px-3 py-2.5 text-right">Age (days)</th>
                 <th className="px-3 py-2.5">Status</th>
@@ -63,6 +79,9 @@ export function AgeingClientTable({ rows }: { rows: AgeingRow[] }) {
                   <td className="px-3 py-2">{r.warehouseName}</td>
                   <td className="px-3 py-2">{r.condition}</td>
                   <td className="px-3 py-2 text-right tabular-nums">{r.qtyOnHand}</td>
+                  <td className="px-3 py-2 text-xs text-text-muted">
+                    {r.serialNumbers ? (r.serialNumbers.length > 0 ? r.serialNumbers.join(", ") : "—") : ""}
+                  </td>
                   <td className="px-3 py-2">{new Date(r.lastReceivedAt).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}</td>
                   <td className="px-3 py-2 text-right tabular-nums">{r.ageDays}</td>
                   <td className="px-3 py-2">

@@ -53,7 +53,9 @@ export function RecordCsvExportButton({ columns, rows, filename }: { columns: Ex
     for (const row of rows) {
       lines.push(columns.map((c) => toCsvValue(formatExportCell(c, row))).join(","));
     }
-    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+    // Leading BOM so Excel on Windows reads this as UTF-8 instead of
+    // defaulting to the system ANSI codepage (which turns "—" into "â€”").
+    const blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;

@@ -248,6 +248,44 @@ const NUMBERED_MODULE_SLUGS: Record<string, string> = {
   "service-centre-models": "service-centre.model",
   "service-centre-inquiry": "service-centre.inquiry",
   "inventory-bom": "inventory.bom-material",
+  "inventory-stock-adjustments": "inventory.stock-adjustment",
+  "inventory-stock-transfers": "inventory.stock-transfer",
+  "inventory-stock-take": "inventory.stock-take",
+  "inventory-return-orders": "inventory.return-order",
+  "inventory-part-orders": "inventory.part-order",
+};
+
+/** Default prefix for each NUMBERED_MODULE_SLUGS entry's real per-partner sequence — a partner can still override it via the Numbering settings page (see numbering.ts's partner-scheme precedence), this is only the seed before any override exists. */
+const DEFAULT_SEQUENCE_PREFIX: Record<string, string> = {
+  "inventory-bom": "MAT",
+  "service-centre-brands": "BRD",
+  "service-centre-inquiry": "INQ",
+  "service-centre-models": "MDL",
+  "inventory-stock-adjustments": "ADJ",
+  "inventory-stock-transfers": "TRF",
+  "inventory-stock-take": "TAKE",
+  "inventory-return-orders": "RTN",
+  "inventory-part-orders": "PRT",
+};
+
+/**
+ * Explicit prefix for the random-suffix fallback branch below, for any
+ * moduleSlug whose generic `slug.toUpperCase().slice(0, 3)` prefix would
+ * read as (or actually collide-looking with) a real Invoice number — every
+ * "inventory-*" slug reduces to "INV" that way, the same prefix
+ * invoice.b2b's own real sequence uses (see getNextNumber callers using
+ * `prefix: "INV"`). Stock Adjustment/Transfer/Take/Return Order/Part Order
+ * now get a real configurable sequence instead (see NUMBERED_MODULE_SLUGS
+ * above) — this map only still covers modules with no partner-facing
+ * numbering scheme of their own (a raw Stock ledger row isn't a document a
+ * partner would configure numbering for). Added 2026-10-02 — every ID must
+ * be unmistakably its own document type, not just technically unique in a
+ * different DB column.
+ */
+const RANDOM_ID_PREFIX_OVERRIDES: Record<string, string> = {
+  "inventory-stock": "STK",
+  "inventory-consumption": "CNS",
+  "inventory-settings": "SET",
 };
 
 /** Creates a record. If values.id is unset, generates one — a real per-partner sequence for catalog modules (see NUMBERED_MODULE_SLUGS), a short random suffix for everything else. */
@@ -262,21 +300,15 @@ export async function createBusinessRecord(
     const documentType = NUMBERED_MODULE_SLUGS[moduleSlug];
     if (documentType) {
       const { getNextNumber } = await import("@/lib/designer/numbering");
-      const prefix =
-        moduleSlug === "inventory-bom"
-          ? "MAT"
-          : moduleSlug === "service-centre-brands"
-            ? "BRD"
-            : moduleSlug === "service-centre-inquiry"
-              ? "INQ"
-              : "MDL";
+      const prefix = DEFAULT_SEQUENCE_PREFIX[moduleSlug] ?? "MDL";
       recordKey = await getNextNumber(documentType, partnerId, {
         prefix,
         sequenceDigits: 4,
         financialYearFormat: "none",
       });
     } else {
-      recordKey = `${moduleSlug.toUpperCase().slice(0, 3)}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+      const prefix = RANDOM_ID_PREFIX_OVERRIDES[moduleSlug] ?? moduleSlug.toUpperCase().slice(0, 3);
+      recordKey = `${prefix}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
     }
   }
   const data = { ...values, id: recordKey };

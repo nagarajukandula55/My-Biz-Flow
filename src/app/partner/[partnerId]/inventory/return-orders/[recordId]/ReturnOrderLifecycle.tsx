@@ -11,6 +11,7 @@ import {
 } from "../actions";
 import { RETURN_STATUS_VARIANT } from "@/lib/sample-data/warehouse";
 import type { TimelineEntry } from "@/components/RecordDetail";
+import { ReturnOrderOtpGate } from "./ReturnOrderOtpGate";
 
 /**
  * Explicit stage-lifecycle block for a Return Order, mirroring
@@ -87,24 +88,26 @@ export function ReturnOrderLifecycle({
             </button>
           )}
           {canInward && (
-            <button
-              type="button"
-              className="btn-accent"
-              disabled={isPending}
-              onClick={() => run(() => warehouseInwardReturnOrderAction(partnerId, recordId), "Received")}
-            >
-              Warehouse Inward (Receive)
-            </button>
+            <ReturnOrderOtpGate
+              partnerId={partnerId}
+              recordId={recordId}
+              recordLabel={`Return Order ${recordId}`}
+              buttonLabel="Warehouse Inward (Receive)"
+              modalTitle="Confirm Warehouse Inward"
+              onVerify={(code) => warehouseInwardReturnOrderAction(partnerId, recordId, code)}
+              onSuccess={() => setCurrentStatus("Received")}
+            />
           )}
           {canDispatch && (
-            <button
-              type="button"
-              className="btn-accent"
-              disabled={isPending}
-              onClick={() => run(() => dispatchReturnOrderAction(partnerId, recordId), "Dispatched")}
-            >
-              Dispatch
-            </button>
+            <ReturnOrderOtpGate
+              partnerId={partnerId}
+              recordId={recordId}
+              recordLabel={`Return Order ${recordId}`}
+              buttonLabel="Dispatch"
+              modalTitle="Confirm Dispatch"
+              onVerify={(code) => dispatchReturnOrderAction(partnerId, recordId, code)}
+              onSuccess={() => setCurrentStatus("Dispatched")}
+            />
           )}
           {canReject && (
             <button type="button" className="text-xs text-danger hover:underline" disabled={isPending} onClick={() => setRejectOpen(true)}>

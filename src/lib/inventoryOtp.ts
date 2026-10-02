@@ -16,7 +16,7 @@ import { sendPartnerTelegramAlert } from "@/lib/telegram";
 
 const OTP_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
-export type InventoryOtpPurpose = "stock-take-close" | "stock-transfer-close";
+export type InventoryOtpPurpose = "stock-take-close" | "stock-transfer-close" | "return-order-close";
 
 function generateSixDigitCode(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();

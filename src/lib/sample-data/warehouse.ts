@@ -111,8 +111,16 @@ export const warehouseFormFields: FormFieldDef[] = [
   { key: "pincode", label: "Pincode", type: "text", required: false },
   { key: "state", label: "State", type: "text", required: false },
   { key: "city", label: "City", type: "text", required: true },
-  { key: "contactPerson", label: "Contact Person", type: "text", required: false },
+  {
+    key: "gstin",
+    label: "GSTIN (if a separate registered place of business)",
+    type: "text",
+    required: false,
+    help: "Only if this warehouse is its own GST-registered location (common for an inter-state warehouse) — needed on e-way bills/transfer documents involving this warehouse. Leave blank if it operates under the business's main GSTIN.",
+  },
+  { key: "contactPerson", label: "Warehouse Manager / Contact Person", type: "text", required: false },
   { key: "contactPhone", label: "Contact Phone", type: "phone", required: false },
+  { key: "contactEmail", label: "Contact Email", type: "text", required: false },
   { key: "status", label: "Status", type: "select", required: true, options: ["Active", "Inactive"] },
 ];
 
@@ -130,8 +138,10 @@ export function getWarehouseDetailFields(record: Row): RecordField[] {
     { label: "Pincode", value: r["pincode"], type: "text" },
     { label: "State", value: r["state"], type: "text" },
     { label: "City", value: r["city"], type: "text" },
-    { label: "Contact Person", value: r["contactPerson"], type: "text" },
+    { label: "GSTIN", value: r["gstin"] || "—", type: "text" },
+    { label: "Warehouse Manager / Contact Person", value: r["contactPerson"], type: "text" },
     { label: "Contact Phone", value: r["contactPhone"], type: "phone" },
+    { label: "Contact Email", value: r["contactEmail"] || "—", type: "text" },
     { label: "Status", value: r["status"], type: "select", chipVariant: WAREHOUSE_STATUS_VARIANT[String(r["status"])] ?? "neutral" },
   ];
 }
@@ -175,7 +185,6 @@ const STOCK_STATUS_VARIANT: Record<string, StatusVariant> = {
 };
 
 export const stockColumns: Column[] = [
-  { key: "id", label: "Stock ID", type: "text" },
   { key: "materialId", label: "Material", type: "text" },
   { key: "warehouseName", label: "Warehouse", type: "text" },
   // Rows with no `condition` value predate this field and are Good stock —
@@ -252,7 +261,6 @@ export function getStockRecord(recordId: string): Row {
 export function getStockDetailFields(record: Row): RecordField[] {
   const r = record;
   return [
-    { label: "Stock ID", value: r["id"], type: "text" },
     { label: "Material", value: r["materialId"], type: "text" },
     { label: "Warehouse", value: r["warehouseName"], type: "text" },
     { label: "Material Type", value: r["condition"] || "Good", type: "text" },
@@ -262,6 +270,9 @@ export function getStockDetailFields(record: Row): RecordField[] {
     { label: "Reorder Level", value: r["reorderLevel"], type: "text" },
     { label: "Serialized", value: r["serialized"], type: "boolean" },
     { label: "Last Updated", value: r["lastUpdated"], type: "date" },
+    // Internal row id only — the Material Code is the real lead identifier
+    // everywhere else on this record, kept last here just for support lookups.
+    { label: "Stock ID (internal)", value: r["id"], type: "text" },
   ];
 }
 
@@ -597,6 +608,11 @@ const PART_ORDER_STATUS_VARIANT: Record<string, StatusVariant> = {
   Delivered: "success",
 };
 
+/** "Pending" is shown as "Waiting for Parts" everywhere in the UI — the stored value never changes, only the display label (same pattern Return Orders uses for "Pending" -> "Created"). */
+export function partOrderStatusLabel(status: unknown): string {
+  return status === "Pending" ? "Waiting for Parts" : String(status ?? "");
+}
+
 export const partOrderColumns: Column[] = [
   { key: "id", label: "Part Order ID", type: "text" },
   { key: "linkedReturnOrderId", label: "Linked Return Order", type: "relation-link" },
@@ -636,6 +652,15 @@ export const partOrderRows: Row[] = [
 ];
 
 /** Partner-scoped — see getBomOptionsForPartner/getWarehouseOptionsForPartner's doc comments for why this can't be a plain array. */
+/**
+ * A Part Order is never created at Dispatched/Delivered any more — it
+ * always starts "Pending" ("Waiting for Parts"), regardless of what this
+ * form submits (see createPartOrderCore). Status, serial capture and the
+ * dispatched date all move to the explicit lifecycle actions instead
+ * (dispatchPartOrderAction / receivePartOrderAction, see this record's
+ * detail page) — same "no status field on create, only explicit
+ * transitions" pattern Return Orders already uses.
+ */
 export async function getPartOrderFormFields(partnerId: string): Promise<FormFieldDef[]> {
   const [bomOptions, warehouseOptions, availability] = await Promise.all([
     getBomOptionsForPartner(partnerId),
@@ -647,18 +672,9 @@ export async function getPartOrderFormFields(partnerId: string): Promise<FormFie
     { key: "linkedReturnOrderId", label: "Linked Return Order (optional)", type: "text", required: false },
     { key: "materialId", label: "Material — [warehouse: available qty]", type: "select", required: true, options: materialAvailability.options, optionLabels: materialAvailability.optionLabels },
     { key: "quantity", label: "Quantity", type: "number", required: true },
-    { key: "unitPrice", label: "Unit Price (₹)", type: "number", required: false, help: "Used for the Inventory ledger once this Part Order reaches Delivered — posts a debit (money spent on parts received)." },
+    { key: "unitPrice", label: "Unit Price (₹)", type: "number", required: false, help: "Used for the Inventory ledger once this Part Order is marked Delivered — posts a debit (money spent on parts received)." },
     { key: "sourceWarehouseName", label: "Source Warehouse", type: "select", required: true, options: warehouseOptions.map((o) => o.label) },
     { key: "destinationLocation", label: "Destination Location", type: "text", required: true },
-    { key: "status", label: "Status", type: "select", required: true, options: ["Pending", "Dispatched", "Delivered"] },
-    {
-      key: "serialNumbers",
-      label: "Serial / Barcode Numbers",
-      type: "textarea",
-      required: false,
-      placeholder: "One serial/barcode per line. Only required once Status is Dispatched/Delivered AND the selected Material is Serialized in BOM — count must match Quantity exactly. Leave blank for non-serialized materials.",
-    },
-    { key: "dispatchedDate", label: "Dispatched Date", type: "date", required: false },
   ];
 }
 
@@ -676,7 +692,7 @@ export function getPartOrderDetailFields(record: Row): RecordField[] {
     { label: "Unit Price (₹)", value: r["unitPrice"] || 0, type: "text" },
     { label: "Source Warehouse", value: r["sourceWarehouseName"], type: "text" },
     { label: "Destination Location", value: r["destinationLocation"], type: "text" },
-    { label: "Status", value: r["status"], type: "select", chipVariant: PART_ORDER_STATUS_VARIANT[String(r["status"])] ?? "neutral" },
+    { label: "Status", value: partOrderStatusLabel(r["status"]), type: "select", chipVariant: PART_ORDER_STATUS_VARIANT[String(r["status"])] ?? "neutral" },
     { label: "Dispatched Date", value: r["dispatchedDate"], type: "date" },
     { label: "Delivered Date", value: r["deliveredDate"], type: "date" },
   ];

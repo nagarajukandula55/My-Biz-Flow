@@ -4,6 +4,7 @@ import { BomClientTable } from "./BomClientTable";
 import { BomNewButton } from "./BomNewButton";
 import { BomSearchButton } from "./BomSearchButton";
 import { BomBulkUploadButton } from "./BomBulkUploadButton";
+import { RecordCsvExportButton } from "@/components/RecordCsvExportButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { bomColumns } from "@/lib/sample-data/bom";
 import { listBusinessRecords } from "@/lib/businessRecords";
@@ -43,6 +44,11 @@ export default async function BomPage({ params }: { params: { partnerId: string 
           <BomSearchButton options={bomOptions} />
           <BomBulkUploadButton partnerId={params.partnerId} />
           <BomNewButton partnerId={params.partnerId} />
+          <RecordCsvExportButton
+            columns={columns.map((c) => ({ key: c.key, type: c.type === "date" ? "date" : c.type === "datetime" ? "datetime" : undefined }))}
+            rows={rows}
+            filename={`bom-${params.partnerId}-${new Date().toISOString().slice(0, 10)}.csv`}
+          />
         </div>
       }
     >

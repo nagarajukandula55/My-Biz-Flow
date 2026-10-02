@@ -16,6 +16,7 @@ import {
 } from "@/lib/sample-data/warehouse";
 import { adjustStockQty, getQtyOnHand, type StockCondition } from "@/lib/inventoryStock";
 import { recordInventoryTransaction } from "@/lib/inventoryLedger";
+import { requestInventoryOtp, verifyInventoryOtp } from "@/lib/inventoryOtp";
 
 /**
  * Posts the money ledger entry for a Return Order once it reaches its
@@ -23,9 +24,7 @@ import { recordInventoryTransaction } from "@/lib/inventoryLedger";
  * back into the business), Dispatched (Outbound) is a "debit" (value
  * leaving as a write-off dispatch, the only path that reduces Defective
  * stock). unitPrice × quantity, same paise convention every other
- * InventoryTransaction uses. No OTP gate here — the locked state machine
- * (Vendor + Challan Number required for Dispatched) is this module's own
- * guard, per the user's explicit OTP scope (Stock Take/Stock Transfer only).
+ * InventoryTransaction uses.
  */
 async function postReturnOrderLedger(partnerId: string, record: Record<string, unknown>): Promise<void> {
   const materialId = String(record["materialId"] ?? "").trim();
@@ -365,6 +364,12 @@ async function markReturnOrderInTransitActionInner(partnerId: string, recordId: 
   revalidatePath(`/partner/${partnerId}/inventory/return-orders/${recordId}`);
 }
 
+/** Sends a fresh Telegram OTP for closing (moving stock for) this Return Order — purpose "return-order-close" (src/lib/inventoryOtp.ts). Shared by both the Inward and Dispatch terminal transitions. */
+export async function requestReturnOrderCloseOtpAction(partnerId: string, recordId: string, label: string) {
+  partnerId = await requireSessionPartnerId(partnerId);
+  return requestInventoryOtp(partnerId, "return-order-close", recordId, label);
+}
+
 /**
  * Inbound only, terminal — Pending or In Transit -> Received. This is the
  * Warehouse's explicit "check and inward" action: the ONLY place stock is
@@ -372,14 +377,19 @@ async function markReturnOrderInTransitActionInner(partnerId: string, recordId: 
  * applyReturnOrderStockEffect — same stock math as before, just triggered
  * here instead of an arbitrary form submission). Once this succeeds the
  * record is final (RETURN_ORDER_FINAL_STATUSES) and can never be edited,
- * re-inwarded, or have this action run again.
+ * re-inwarded, or have this action run again. Gated behind a Telegram OTP
+ * (purpose "return-order-close") — same mandatory confirm-before-moving-
+ * stock pattern as Stock Take/Stock Transfer, since this adds real stock.
  */
-export async function warehouseInwardReturnOrderAction(partnerId: string, recordId: string): Promise<void | { error?: string }> {
-  return withInventoryAction(partnerId, () => warehouseInwardReturnOrderActionInner(partnerId, recordId));
+export async function warehouseInwardReturnOrderAction(partnerId: string, recordId: string, code: string): Promise<void | { error?: string }> {
+  return withInventoryAction(partnerId, () => warehouseInwardReturnOrderActionInner(partnerId, recordId, code));
 }
 
-async function warehouseInwardReturnOrderActionInner(partnerId: string, recordId: string): Promise<void | { error?: string }> {
+async function warehouseInwardReturnOrderActionInner(partnerId: string, recordId: string, code: string): Promise<void | { error?: string }> {
   partnerId = await requireSessionPartnerId(partnerId);
+
+  const otp = await verifyInventoryOtp(partnerId, "return-order-close", recordId, code);
+  if (!otp.verified) return { error: `otp:${otp.reason ?? "incorrect"}` };
 
   const existing = await getBusinessRecord(partnerId, "inventory-return-orders", recordId);
   if (!existing) return { error: "Return Order not found." };
@@ -408,14 +418,20 @@ async function warehouseInwardReturnOrderActionInner(partnerId: string, recordId
  * reduce Defective stock (via the existing, reused applyReturnOrderStockEffect
  * — same validation/deduction as before: source Warehouse name, Vendor/OEM
  * name, and Challan Number are all still required). Once this succeeds the
- * record is final and can never be edited or dispatched again.
+ * record is final and can never be edited or dispatched again. Gated behind
+ * a Telegram OTP (purpose "return-order-close") — same mandatory confirm-
+ * before-moving-stock pattern as Stock Take/Stock Transfer, since this
+ * deducts real stock.
  */
-export async function dispatchReturnOrderAction(partnerId: string, recordId: string): Promise<void | { error?: string }> {
-  return withInventoryAction(partnerId, () => dispatchReturnOrderActionInner(partnerId, recordId));
+export async function dispatchReturnOrderAction(partnerId: string, recordId: string, code: string): Promise<void | { error?: string }> {
+  return withInventoryAction(partnerId, () => dispatchReturnOrderActionInner(partnerId, recordId, code));
 }
 
-async function dispatchReturnOrderActionInner(partnerId: string, recordId: string): Promise<void | { error?: string }> {
+async function dispatchReturnOrderActionInner(partnerId: string, recordId: string, code: string): Promise<void | { error?: string }> {
   partnerId = await requireSessionPartnerId(partnerId);
+
+  const otp = await verifyInventoryOtp(partnerId, "return-order-close", recordId, code);
+  if (!otp.verified) return { error: `otp:${otp.reason ?? "incorrect"}` };
 
   const existing = await getBusinessRecord(partnerId, "inventory-return-orders", recordId);
   if (!existing) return { error: "Return Order not found." };

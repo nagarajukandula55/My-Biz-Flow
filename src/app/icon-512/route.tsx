@@ -1,24 +1,13 @@
-import { ImageResponse } from "next/og";
+import { NextResponse } from "next/server";
+import { logoMarkPng } from "@/lib/logoIcon";
 
-/** 512x512 PNG for manifest.ts's `icons` array — see icon-192/route.tsx header. */
-export const runtime = "edge";
-
+/**
+ * 512x512 PNG for manifest.ts's `icons` array. Serves the real logo mark
+ * (public/logo-mark.png) directly. Previously generated a placeholder "M"
+ * via ImageResponse/Satori.
+ */
 export async function GET() {
-  return new ImageResponse(
-    (
-      <div
-        style={{
-          width: "100%",
-          height: "100%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "#0B1F3A",
-        }}
-      >
-        <span style={{ fontSize: 320, fontWeight: 800, color: "#FFFFFF", fontFamily: "sans-serif" }}>M</span>
-      </div>
-    ),
-    { width: 512, height: 512 }
-  );
+  return new NextResponse(logoMarkPng(), {
+    headers: { "Content-Type": "image/png" },
+  });
 }

@@ -23,7 +23,7 @@ registerPage({
     { key: "field-grid", label: "Detail field grid" },
     { key: "timeline", label: "Activity timeline" },
   ],
-  explanation: "Detail view of a single stock adjustment — an audit-trail document, but editable via 'Edit' (see updateStockAdjustmentAction): saving reverses the original delta against the real Stock ledger and re-applies the edited one, so the ledger stays correct rather than double-counting.",
+  explanation: "Detail view of a single stock adjustment — an audit-trail document. Not editable after creation: a stock adjustment applies its delta to the real Stock ledger immediately on create, so it's finished the moment it exists (corrections go through a new adjustment, not an edit of the old one).",
   sourceFile: "src/app/partner/[partnerId]/inventory/stock-adjustments/[recordId]/page.tsx",
 });
 
@@ -64,9 +64,6 @@ export default async function StockAdjustmentDetailPage({
               <div className="flex items-center gap-3">
                 <Link href={`/partner/${params.partnerId}/inventory/stock-adjustments/${params.recordId}/document`} className="btn-outline">
                   View document
-                </Link>
-                <Link href={`/partner/${params.partnerId}/inventory/stock-adjustments/${params.recordId}/edit`} className="btn-outline">
-                  Edit
                 </Link>
                 <Link href={`/partner/${params.partnerId}/inventory/stock-adjustments`} className="btn-outline">
                   &larr; Back

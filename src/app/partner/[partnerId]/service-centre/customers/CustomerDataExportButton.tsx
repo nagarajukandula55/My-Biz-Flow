@@ -27,7 +27,7 @@ export function CustomerDataExportButton({ columns, rows }: { columns: Column[];
     const header = columns.map((c) => toCsvValue(c.label)).join(",");
     const lines = rows.map((row) => columns.map((c) => toCsvValue(formatExportCell(c, row))).join(","));
     const csv = [header, ...lines].join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;

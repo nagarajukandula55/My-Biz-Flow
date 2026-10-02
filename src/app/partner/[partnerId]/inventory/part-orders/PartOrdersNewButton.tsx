@@ -8,20 +8,20 @@ import { createPartOrdersMultiAction } from "./actions";
 
 /** These move from the flat single form into a per-row line item (see
  * MaterialLineItemsTable) — Linked Return Order/Source Warehouse/
- * Destination Location/Status/Dispatched Date stay shared across every
- * line in one submission. */
-const LINE_FIELD_KEYS = new Set(["materialId", "quantity", "unitPrice", "serialNumbers"]);
+ * Destination Location stay shared across every line in one submission. */
+const LINE_FIELD_KEYS = new Set(["materialId", "quantity", "unitPrice"]);
 
 /**
  * Create-as-modal for inventory/part-orders — supports one or many line
  * items in a single submission, matching the "add row" pattern Return
  * Orders/Stock Adjustments already use (see CLAUDE.md's multi-line
  * request): a shared header (still rendered by RecordForm exactly as
- * before) plus an "add row" material table (MaterialLineItemsTable,
- * branching serialized-vs-not per row, with Unit Price for the Inventory
- * ledger). Each line becomes its own inventory-part-orders BusinessRecord
- * and its own real Stock deduction on submit via createPartOrdersMultiAction
- * — same effect per line as the original single-item flow, just looped.
+ * before) plus an "add row" material table (MaterialLineItemsTable, Unit
+ * Price for the Inventory ledger). Each line becomes its own
+ * inventory-part-orders BusinessRecord, always "Pending" ("Waiting for
+ * Parts") — no stock effect yet; serial capture and the real Stock
+ * deduction only happen once each order is explicitly Dispatched (see its
+ * own detail page).
  */
 export function PartOrdersNewButton({
   partnerId,
@@ -46,10 +46,10 @@ export function PartOrdersNewButton({
         <div className="mb-6">
           <h3 className="mb-2 font-display text-sm font-bold text-text">Line items</h3>
           <p className="mb-2 text-xs text-text-muted">
-            Add one row per material — a Serialized material asks for its serial/barcode numbers once Status is
-            Dispatched or Delivered (quantity is derived from how many you enter).
+            Add one row per material — this order starts Waiting for Parts. Serial/barcode numbers for a Serialized
+            material are captured once you Dispatch it (see its detail page).
           </p>
-          <MaterialLineItemsTable items={items} onChange={setItems} materialOptions={materialOptions} showSerials showUnitPrice />
+          <MaterialLineItemsTable items={items} onChange={setItems} materialOptions={materialOptions} showUnitPrice />
         </div>
         <RecordForm
           fields={headerFields}
@@ -60,7 +60,6 @@ export function PartOrdersNewButton({
               materialId: it.materialId,
               quantity: it.quantity,
               unitPrice: it.unitPrice ?? 0,
-              serialNumbers: it.serialNumbers ?? "",
             }));
             return createPartOrdersMultiAction(partnerId, values, lines);
           }}

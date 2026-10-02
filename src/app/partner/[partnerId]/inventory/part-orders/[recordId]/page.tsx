@@ -6,6 +6,8 @@ import { RecordDetail } from "@/components/RecordDetail";
 import { getPartOrderDetailFields, getPartOrderTimeline, partOrderRelated, partOrderColumns } from "@/lib/sample-data/warehouse";
 import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
 import { getBusinessRecord } from "@/lib/businessRecords";
+import { getBomOptionsForPartner } from "@/lib/sample-data/bom";
+import { PartOrderLifecycle } from "./PartOrderLifecycle";
 
 registerPage({
   id: "inventory.part-orders.detail",
@@ -36,10 +38,18 @@ export default async function PartOrdersDetailPage({
   const fields = await applyCustomizationsToDetailFields("inventory.part-orders.detail", getPartOrderDetailFields(record), partOrderColumns);
   const timeline = getPartOrderTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
+  const bomOptions = await getBomOptionsForPartner(params.partnerId);
+  const isSerialized = bomOptions.some((o) => o.label === String(record["materialId"] ?? "") && o.serialized);
 
   return (
     <AppShell topbarTitle="Part Orders">
-      <div>
+      <div className="space-y-4">
+        <PartOrderLifecycle
+          partnerId={params.partnerId}
+          recordId={params.recordId}
+          status={String(record["status"] ?? "Pending")}
+          serialized={isSerialized}
+        />
         <RecordDetail
           fields={fields}
           recordLabel={recordLabel}

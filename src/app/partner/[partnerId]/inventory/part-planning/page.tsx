@@ -3,6 +3,7 @@ import { registerPage } from "@/lib/designer/registry";
 import { DashboardWidget } from "@/components/DashboardWidget";
 import { computePartPlanningForecast, getForecastWindowDays } from "@/lib/inventoryForecast";
 import { setForecastWindowAction } from "./actions";
+import { RecordCsvExportButton } from "@/components/RecordCsvExportButton";
 
 registerPage({
   id: "inventory.part-planning.list",
@@ -57,6 +58,24 @@ export default async function PartPlanningPage({ params }: { params: { partnerId
           />
           <DashboardWidget label="Total Suggested Pre-Order Qty" value={String(forecast.reduce((s, f) => s + f.suggestedReorderQty, 0))} />
         </div>
+
+        {forecast.length > 0 && (
+          <div className="mt-4">
+            <RecordCsvExportButton
+              filename={`part-planning-forecast-${windowDays}d.csv`}
+              columns={["materialCode", "materialLabel", "usedQty", "onHand", "daysLeft", "suggestedReorderQty", "staticReorderLevel"]}
+              rows={forecast.map((f) => ({
+                materialCode: f.materialId,
+                materialLabel: f.materialLabel,
+                usedQty: f.totalQty,
+                onHand: f.onHand,
+                daysLeft: Number.isFinite(f.daysLeft) ? f.daysLeft : "",
+                suggestedReorderQty: f.suggestedReorderQty || "",
+                staticReorderLevel: f.staticReorderLevel ?? "",
+              }))}
+            />
+          </div>
+        )}
 
         {forecast.length === 0 ? (
           <p className="mt-6 text-sm text-text-muted">

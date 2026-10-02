@@ -35,7 +35,10 @@ export default async function StockDetailPage({
   if (!record) notFound();
   const fields = await applyCustomizationsToDetailFields("inventory.stock.detail", getStockDetailFields(record), stockColumns);
   const timeline = getStockTimeline();
-  const recordLabel = String(record["id"] ?? params.recordId);
+  // Material Code is the lead identifier for a Stock row, not the internal
+  // Stock ID (see getStockDetailFields's doc comment) — same reasoning as
+  // every CSV export/list column lead.
+  const recordLabel = String(record["materialId"] ?? record["id"] ?? params.recordId);
 
   return (
     <AppShell topbarTitle="Inventory (Stock)">
@@ -55,9 +58,6 @@ export default async function StockDetailPage({
               <div className="flex items-center gap-3">
                 <Link href={`/partner/${params.partnerId}/inventory/stock`} className="btn-outline">
                   &larr; Back
-                </Link>
-                <Link href={`/partner/${params.partnerId}/inventory/stock/${params.recordId}/edit`} className="btn-outline">
-                  Edit
                 </Link>
               </div>
             </div>
