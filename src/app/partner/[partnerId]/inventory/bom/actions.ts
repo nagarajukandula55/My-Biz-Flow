@@ -73,5 +73,22 @@ export async function bulkImportBomAction(
   }
 
   revalidatePath(`/partner/${partnerId}/inventory/bom`);
+  // Same stale-options bug createBusinessRecordAction/updateBusinessRecordAction
+  // fix for single-row BOM writes — a bulk-imported material must also show up
+  // immediately in every other picker built from getBomOptionsForPartner
+  // instead of leaving them on Next's cached Router Cache copy.
+  for (const path of [
+    "inventory/stock-adjustments",
+    "inventory/stock-take",
+    "inventory/stock-transfers",
+    "inventory/return-orders",
+    "inventory/part-orders",
+    "inventory/part-planning",
+    "manufacturing/bom",
+    "manufacturing",
+    "wholesale-b2b",
+  ]) {
+    revalidatePath(`/partner/${partnerId}/${path}`);
+  }
   return { count, failed };
 }

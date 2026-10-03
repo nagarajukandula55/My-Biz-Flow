@@ -10,6 +10,31 @@ import { withRecordLock } from "@/lib/withRecordLock";
 import { applyInvoiceConsumption, finalizeInvoiceItems, hasInventoryLines, planInvoiceConsumption } from "@/lib/invoiceInventory";
 
 /**
+ * Every page whose material picker is built from getBomOptionsForPartner
+ * (see src/lib/sample-data/bom.ts) — revalidated together whenever a BOM
+ * record is created/edited/bulk-imported, so a material added or renamed
+ * in BOM shows up immediately everywhere else instead of leaving those
+ * pages serving Next's stale Router Cache copy of the options list (the
+ * actual bug behind "select a material already in BOM → Material not
+ * available / add to BOM first").
+ */
+function revalidateBomConsumerPaths(partnerId: string) {
+  for (const path of [
+    "inventory/stock-adjustments",
+    "inventory/stock-take",
+    "inventory/stock-transfers",
+    "inventory/return-orders",
+    "inventory/part-orders",
+    "inventory/part-planning",
+    "manufacturing/bom",
+    "manufacturing",
+    "wholesale-b2b",
+  ]) {
+    revalidatePath(`/partner/${partnerId}/${path}`);
+  }
+}
+
+/**
  * Invoice-number assignment + origin stamp for a manually created Billing
  * invoice. Runs at actual creation time, after any stock check has passed.
  */
@@ -166,6 +191,9 @@ export async function createBusinessRecordAction(
     revalidatePath(`/partner/${partnerId}/inventory/stock`);
     revalidatePath(`/partner/${partnerId}/inventory/consumption`);
   }
+  if (moduleSlug === "inventory-bom") {
+    revalidateBomConsumerPaths(partnerId);
+  }
   // ?created=1 is read by RecordDetail (via each detail page's own
   // searchParams prop) to render a real "<record> created" acknowledgment
   // on arrival, instead of a silent redirect to the new record.
@@ -202,6 +230,9 @@ export async function updateBusinessRecordAction(
   await updateBusinessRecord(partnerId, moduleSlug, recordKey, values);
   revalidatePath(`/partner/${partnerId}/${urlPath}`);
   revalidatePath(`/partner/${partnerId}/${urlPath}/${recordKey}`);
+  if (moduleSlug === "inventory-bom") {
+    revalidateBomConsumerPaths(partnerId);
+  }
   // ?updated=1 — same acknowledgment mechanism as the create action above.
   redirect(`/partner/${partnerId}/${urlPath}/${recordKey}?updated=1`);
 }
