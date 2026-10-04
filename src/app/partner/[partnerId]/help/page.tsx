@@ -1,6 +1,8 @@
 import { AppShell } from "@/components/AppShell";
 import { registerPage } from "@/lib/designer/registry";
 import { HelpAccordion } from "./HelpAccordion";
+import { TutorialVideoGrid } from "./TutorialVideoGrid";
+import { getTutorialVideosForPartner, type TutorialVideo } from "@/lib/tutorialVideosData";
 import { env } from "@/lib/env";
 import type { SupportLanguage } from "@/lib/i18n/supportLanguages";
 
@@ -16,7 +18,7 @@ registerPage({
   superAdminOnly: false,
   customizableRegions: [],
   explanation:
-    "Static written help center covering this app's own features (Workorders/Service Centre, Brands/Models/Solutions, Service Centre BOM, Customers, Billing & Invoices, Settings, Telegram Alerts) — an accordion of Q&A entries grouped by topic (HelpAccordion.tsx, a small Client Component so each answer can expand/collapse), no database/model behind it, no tutorial videos yet. Written fresh for My Biz Flow's actual feature set; not a port of any other AN Group product's help content. Reached from the Partner Admin nav group (buildPartnerAdminNavGroups, src/lib/designer/partnerAdminNav.ts) alongside Settings and Subscription.",
+    "Written help center (accordion of Q&A entries grouped by topic, HelpAccordion.tsx) covering this app's own features (Workorders/Service Centre, Brands/Models/Solutions, Service Centre BOM, Customers, Billing & Invoices, Settings, Telegram Alerts), PLUS YouTube tutorial videos pulled from the shared `tutorial_videos` table (src/lib/tutorialVideosData.ts), managed from My-Biz-Flow-Admin's /admin/tutorials. Each partner only sees videos tagged with a module they're actually subscribed to (or untagged/general ones) via getVisibleModuleSlugs — general videos show in a grid at the top, section-pinned videos render inline inside that accordion section. Written fresh for My Biz Flow's actual feature set; not a port of any other AN Group product's help content. Reached from the Partner Admin nav group (buildPartnerAdminNavGroups, src/lib/designer/partnerAdminNav.ts) alongside Settings and Subscription.",
   sourceFile: "src/app/partner/[partnerId]/help/page.tsx",
 });
 
@@ -335,8 +337,14 @@ const HELP_SECTIONS: HelpSection[] = [
   },
 ];
 
-export default function HelpPage({ params }: { params: { partnerId: string } }) {
-  void params;
+export default async function HelpPage({ params }: { params: { partnerId: string } }) {
+  const videos = await getTutorialVideosForPartner(params.partnerId);
+  const generalVideos = videos.filter((v) => !v.sectionSlug);
+  const videosBySection = videos.reduce<Record<string, TutorialVideo[]>>((acc, v) => {
+    if (!v.sectionSlug) return acc;
+    (acc[v.sectionSlug] ??= []).push(v);
+    return acc;
+  }, {});
   const telegramBotUsername = env.telegramBotUsername();
   const telegramChatLink = telegramBotUsername ? `https://t.me/${telegramBotUsername}` : null;
   const whatsappNumber = env.platformSupportWhatsappNumber();
@@ -376,7 +384,9 @@ export default function HelpPage({ params }: { params: { partnerId: string } }) 
           </div>
         )}
 
-        <HelpAccordion sections={HELP_SECTIONS} />
+        <TutorialVideoGrid videos={generalVideos} />
+
+        <HelpAccordion sections={HELP_SECTIONS} videosBySection={videosBySection} />
       </div>
     </AppShell>
   );

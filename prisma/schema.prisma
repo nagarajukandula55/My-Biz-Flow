@@ -941,6 +941,36 @@ model EmailTemplate {
   @@map("email_templates")
 }
 
+/// A YouTube tutorial video shown on the partner Help & Tutorials page
+/// (src/app/partner/[partnerId]/help/page.tsx). Managed from
+/// My-Biz-Flow-Admin's /admin/tutorials; both repos read/write the same
+/// table since it's additive-only and lives on the shared DB (see
+/// CLAUDE.md's "Database safety" section before touching this model).
+model TutorialVideo {
+  id          String   @id @default(cuid())
+  title       String
+  /// Bare YouTube video id (the `v=` value / youtu.be path segment), not a
+  /// full URL — extracted server-side on save so the embed URL is built
+  /// consistently (youtube-nocookie.com) wherever this is rendered.
+  youtubeId   String
+  description String?  @db.Text
+  /// Module slugs (src/lib/designer/modules.ts) this video is relevant to.
+  /// A partner only sees a video if at least one slug here is in their
+  /// visible modules (getVisibleModuleSlugs). Empty array = shown to every
+  /// partner regardless of modules (e.g. a general "getting started" video).
+  moduleSlugs String[] @default([])
+  /// Optional Help page section slug (helpSectionSlug(section.title), e.g.
+  /// "billing-invoices") to anchor this video inside that accordion section
+  /// instead of (or in addition to) the general video strip at the top.
+  sectionSlug String?
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("tutorial_videos")
+}
+
 /// The platform's own commission on a Booking — a single global row
 /// (Super-Admin-only, same "platform-level, not partner-scoped" posture as
 /// Plan/Offer), not yet automatically collected/paid out (see

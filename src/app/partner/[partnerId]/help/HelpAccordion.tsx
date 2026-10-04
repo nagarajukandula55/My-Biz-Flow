@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import type { HelpSection } from "./page";
 import { helpSectionSlug } from "@/lib/helpSlug";
 import { SUPPORT_LANGUAGES, DEFAULT_SUPPORT_LANGUAGE, type SupportLanguage } from "@/lib/i18n/supportLanguages";
+import type { TutorialVideo } from "@/lib/tutorialVideosData";
+import { VideoEmbed } from "./TutorialVideoGrid";
 
 /**
  * Expand/collapse accordion for the static Help & Tutorials content —
@@ -19,7 +21,14 @@ import { SUPPORT_LANGUAGES, DEFAULT_SUPPORT_LANGUAGE, type SupportLanguage } fro
  * to English for any item not yet translated into the selected language
  * (translation coverage is added incrementally, section by section).
  */
-export function HelpAccordion({ sections }: { sections: HelpSection[] }) {
+export function HelpAccordion({
+  sections,
+  videosBySection = {},
+}: {
+  sections: HelpSection[];
+  /** Tutorial videos pinned to a section, keyed by helpSectionSlug(section.title). */
+  videosBySection?: Record<string, TutorialVideo[]>;
+}) {
   const [openKey, setOpenKey] = useState<string | null>(null);
   const [language, setLanguage] = useState<SupportLanguage>(DEFAULT_SUPPORT_LANGUAGE);
 
@@ -71,11 +80,20 @@ export function HelpAccordion({ sections }: { sections: HelpSection[] }) {
       </div>
 
       <div className="space-y-8">
-        {sections.map((section) => (
+        {sections.map((section) => {
+          const sectionVideos = videosBySection[helpSectionSlug(section.title)] ?? [];
+          return (
           <div key={section.title} id={helpSectionSlug(section.title)}>
             <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">
               {section.title}
             </div>
+            {sectionVideos.length > 0 && (
+              <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {sectionVideos.map((v) => (
+                  <VideoEmbed key={v.id} video={v} />
+                ))}
+              </div>
+            )}
             <div className="mt-2 divide-y divide-border overflow-hidden rounded-lg border border-border bg-bg-raised">
               {section.items.map((item) => {
                 const key = `${section.title}::${item.q.en}`;
@@ -96,7 +114,8 @@ export function HelpAccordion({ sections }: { sections: HelpSection[] }) {
               })}
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
