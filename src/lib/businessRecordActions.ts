@@ -18,7 +18,7 @@ import { applyInvoiceConsumption, finalizeInvoiceItems, hasInventoryLines, planI
  * actual bug behind "select a material already in BOM → Material not
  * available / add to BOM first").
  */
-function revalidateBomConsumerPaths(partnerId: string) {
+export async function revalidateBomConsumerPaths(partnerId: string): Promise<void> {
   for (const path of [
     "inventory/stock-adjustments",
     "inventory/stock-take",
@@ -192,7 +192,7 @@ export async function createBusinessRecordAction(
     revalidatePath(`/partner/${partnerId}/inventory/consumption`);
   }
   if (moduleSlug === "inventory-bom") {
-    revalidateBomConsumerPaths(partnerId);
+    await revalidateBomConsumerPaths(partnerId);
   }
   // ?created=1 is read by RecordDetail (via each detail page's own
   // searchParams prop) to render a real "<record> created" acknowledgment
@@ -231,7 +231,7 @@ export async function updateBusinessRecordAction(
   revalidatePath(`/partner/${partnerId}/${urlPath}`);
   revalidatePath(`/partner/${partnerId}/${urlPath}/${recordKey}`);
   if (moduleSlug === "inventory-bom") {
-    revalidateBomConsumerPaths(partnerId);
+    await revalidateBomConsumerPaths(partnerId);
   }
   // ?updated=1 — same acknowledgment mechanism as the create action above.
   redirect(`/partner/${partnerId}/${urlPath}/${recordKey}?updated=1`);

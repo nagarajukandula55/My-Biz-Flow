@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createBusinessRecord, listBusinessRecords } from "@/lib/businessRecords";
-import { createBusinessRecordAction } from "@/lib/businessRecordActions";
+import { createBusinessRecordAction, revalidateBomConsumerPaths } from "@/lib/businessRecordActions";
 import { assertPageTierAccess, getPageTierAccess } from "@/lib/tenant";
 import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import { getPartner } from "@/lib/partnerData";
@@ -164,6 +164,10 @@ export async function createServiceCentreBomMaterialInlineAction(
   await assertPageTierAccess(partnerId, "inventory.bom.create");
   const record = await createBusinessRecord(partnerId, "inventory-bom", values);
   revalidatePath(`/partner/${partnerId}/inventory/bom`);
+  // Same stale-options bug createBusinessRecordAction fixes for the standalone
+  // BOM create form — a material quick-added here mid-workorder must also show
+  // up immediately in Stock Adjustment/Take/Transfer, Return/Part Orders, etc.
+  await revalidateBomConsumerPaths(partnerId);
   return { id: String(record.id), label: String(record["description"] ?? record.id) };
 }
 
