@@ -111,7 +111,7 @@ export function MaterialLineItemsTable({
   }, [items]);
 
   function materialMeta(materialId: string): MaterialLineOption | undefined {
-    return materialOptions.find((o) => o.label === materialId);
+    return materialOptions.find((o) => o.label.trim() === materialId.trim());
   }
 
   function runExpectedQtyLookup(idx: number, materialId: string, condition: string | undefined) {
@@ -128,7 +128,7 @@ export function MaterialLineItemsTable({
     if (!materialId.trim()) return;
     if (
       restrictMaterialToBom &&
-      !materialOptions.some((o) => o.label.toLowerCase() === materialId.trim().toLowerCase())
+      !materialOptions.some((o) => o.label.trim().toLowerCase() === materialId.trim().toLowerCase())
     ) {
       return;
     }

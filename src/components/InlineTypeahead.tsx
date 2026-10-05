@@ -67,7 +67,7 @@ export function InlineTypeahead({
   const matchesOption =
     !restrictToOptions ||
     !value.trim() ||
-    options.some((o) => o.label.toLowerCase() === value.trim().toLowerCase());
+    options.some((o) => o.label.trim().toLowerCase() === value.trim().toLowerCase());
 
   return (
     <div ref={wrapRef} className="relative">

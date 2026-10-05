@@ -323,7 +323,15 @@ export async function getBomOptionsForPartner(
   ]);
   const options: { value: string; label: string; serialized: boolean; rate?: number; inactive?: boolean }[] = rows.map((r) => ({
     value: String(r["id"]),
-    label: `${r["id"]} — ${r["description"] ?? r["id"]}`,
+    // Trim the description — stray leading/trailing whitespace from data
+    // entry (CSV import, a trailing space typed in the form) otherwise
+    // becomes part of this label, and every picker that matches a typed/
+    // picked value against this exact label (InlineTypeahead, addRow's BOM
+    // restriction, materialMeta lookup) does an exact-ish compare, so an
+    // untrimmed label silently breaks "pick it from the dropdown you got
+    // it from" — this showed up as "Material not found — add it in BOM
+    // first" even when selecting the suggestion directly.
+    label: `${r["id"]} — ${String(r["description"] ?? r["id"]).trim()}`,
     serialized: Boolean(r["serialized"]),
     inactive: !isActiveMaterial(r),
     // The BOM catalog's own selling/costing rate — carried through so a
