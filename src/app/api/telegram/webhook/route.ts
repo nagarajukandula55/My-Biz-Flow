@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { env } from "@/lib/env";
 import { getPartner } from "@/lib/partnerData";
+import { getBusinessRecord } from "@/lib/businessRecords";
 import {
   connectTelegramChat,
   findWorkorderByReplyMessageId,
@@ -26,7 +27,7 @@ import {
   getAverageTat,
 } from "@/lib/analyticsData";
 import { computeAlerts } from "@/lib/alerts";
-import { findSupportTicketByReplyMessageId, appendSupportReply } from "@/lib/supportTickets";
+import { findSupportTicketByReplyMessageId, appendSupportReply, setSupportTicketStatus } from "@/lib/supportTickets";
 import { getAdminChatIds } from "@/lib/platformSettings";
 import { getReportRuns } from "@/lib/reportRunLog";
 import { getPlan } from "@/lib/plansData";
@@ -110,12 +111,35 @@ const SAMPLE_VARS: Record<string, string> = {
 function liveDataCommandLines(modules: readonly string[]): string[] {
   const lines = ["/subscription — your plan and expiry status", "/lowstock — items currently at or below reorder level"];
   if (modules.includes("service-centre")) {
-    lines.push("/workorders — live open-workorder counts", "/inquiries — open/converted/closed inquiry counts", "/tat — average turnaround time (closed jobs)");
+    lines.push(
+      "/workorders — live open-workorder counts",
+      "/inquiries — open/converted/closed inquiry counts",
+      "/tat — average turnaround time (closed jobs)",
+      "/note <workorder number> <text> — add a note to that workorder"
+    );
   }
   if (modules.includes("billing")) {
     lines.push("/invoices — invoice counts by payment status");
   }
   return lines;
+}
+
+/**
+ * A persistent reply-keyboard (tap-to-fill, see sendRawTelegramMessage's
+ * replyKeyboard param) of this partner's top commands, attached to /help so
+ * the most-used ones are one tap away instead of typed out — tapping a
+ * button just sends that exact text, which goes through the exact same
+ * dispatch as typing it. Deliberately a short curated set (not every
+ * command) — a keyboard crammed with 30 buttons is worse than no keyboard.
+ */
+function quickReplyKeyboard(modules: readonly string[]): string[][] {
+  const rows: string[][] = [["/help", "/tgid"]];
+  const dataRow: string[] = ["/subscription"];
+  if (modules.includes("service-centre")) dataRow.push("/workorders");
+  if (modules.includes("billing")) dataRow.push("/invoices");
+  rows.push(dataRow);
+  rows.push(["/report_daily", "/pna_report"]);
+  return rows;
 }
 
 async function handleTemplateCommand(chatId: string, text: string): Promise<boolean> {
@@ -128,7 +152,7 @@ async function handleTemplateCommand(chatId: string, text: string): Promise<bool
     const commandList = TELEGRAM_TEMPLATE_DEFS.filter((d) => d.command !== "/start")
       .map((d) => `${d.command} — ${d.label}`)
       .join("\n") + "\n" + liveDataCommandLines(modules).join("\n") + "\n/tgid — this chat's Telegram id";
-    await sendRawTelegramMessage(chatId, await helpMessageText(commandList));
+    await sendRawTelegramMessage(chatId, await helpMessageText(commandList), undefined, quickReplyKeyboard(modules));
     return true;
   }
 
@@ -184,7 +208,7 @@ async function handleTemplateCommand(chatId: string, text: string): Promise<bool
   return true;
 }
 
-const LIVE_DATA_COMMANDS = new Set(["/workorders", "/invoices", "/lowstock", "/subscription", "/inquiries", "/tat"]);
+const LIVE_DATA_COMMANDS = new Set(["/workorders", "/invoices", "/lowstock", "/subscription", "/inquiries", "/tat", "/note"]);
 
 /**
  * On-demand live-data pull commands — same connected-chat requirement as
@@ -225,6 +249,34 @@ async function handleLiveDataCommand(chatId: string, text: string): Promise<bool
       chatId,
       `📋 <b>${escapeHtml(partner.businessName)} — Workorders</b>\n\n<pre>\nOpen            ${o.openWorkorders}\nOverdue (SLA)   ${o.overdueWorkorders}\nPart pending    ${o.partPendingWorkorders}\nRepair done     ${o.repairCompletedWorkorders}\nClosed (month)  ${o.closedThisMonth}\nToday / Week    ${o.workordersToday} / ${o.workordersThisWeek}\nRevenue (month) ${formatInr(o.revenueThisMonth)}\n</pre>`
     );
+    return true;
+  }
+
+  // /note <workorderNumber> <text> — adds a note to that workorder's
+  // Telegram chat log, same storage/display as a reply-to-alert note
+  // (appendTelegramChatLogEntry, surfaced on the workorder's own timeline
+  // in-app) — this is for when the original alert has scrolled out of
+  // reach and replying to it directly isn't practical.
+  if (head === "/note") {
+    if (!modules.includes("service-centre")) {
+      await sendRawTelegramMessage(chatId, "This command needs the Service Centre module. Use /help to see your commands.");
+      return true;
+    }
+    const rest = text.trim().slice(head.length).trim();
+    const spaceIdx = rest.indexOf(" ");
+    const workorderNumber = spaceIdx === -1 ? rest : rest.slice(0, spaceIdx);
+    const noteText = spaceIdx === -1 ? "" : rest.slice(spaceIdx + 1).trim();
+    if (!workorderNumber || !noteText) {
+      await sendRawTelegramMessage(chatId, "Usage: /note <workorder number> <your note>");
+      return true;
+    }
+    const workorder = await getBusinessRecord(partnerId, "service-centre", workorderNumber);
+    if (!workorder) {
+      await sendRawTelegramMessage(chatId, `Workorder "${escapeHtml(workorderNumber)}" not found.`);
+      return true;
+    }
+    await appendTelegramChatLogEntry(partnerId, workorderNumber, { direction: "in", text: noteText, chatId });
+    await sendRawTelegramMessage(chatId, `Note added to ${escapeHtml(workorderNumber)}.`);
     return true;
   }
 
@@ -626,14 +678,17 @@ export async function POST(request: Request) {
   if (text.trim().toLowerCase() === "/help") {
     const adminChatIds = await getAdminChatIds();
     if (adminChatIds.includes(chatId)) {
-      await sendTelegramReply(
-        message.chat.id,
+      await sendRawTelegramMessage(
+        chatId,
         "Admin commands (this chat only):\n" +
           "/status — cron health for the Telegram report runs (last send per cadence, in IST)\n" +
           "/sendreport — trigger today's due reports right now (same send/skip rules as the cron)\n" +
           "/announce [owner|group|both] <text> — broadcast to every partner's chosen chat (defaults to both)\n" +
           "/syncmenu — re-sync the \"/\" command menu for everyone and every admin chat\n" +
-          "/tgid — this chat's Telegram id (also works for any partner/group chat, not admin-only)"
+          "/resolve — reply this to a support-ticket thread message to mark that ticket resolved\n" +
+          "/tgid — this chat's Telegram id (also works for any partner/group chat, not admin-only)",
+        undefined,
+        [["/status", "/sendreport"], ["/help", "/tgid"]]
       );
     }
   }
@@ -676,6 +731,16 @@ export async function POST(request: Request) {
     // src/lib/supportTickets.ts's own doc comment for the full mechanism.
     const ticketMatch = await findSupportTicketByReplyMessageId(chatId, repliedToMessageId);
     if (ticketMatch && text) {
+      // /resolve as a reply to the ticket's own thread, instead of a
+      // separate "/resolve <ticketId>" command — reuses the exact same
+      // thread-matching this case already does, so there's no separate
+      // ticketId lookup to get wrong, and it's naturally admin-only since
+      // only an admin chat ever receives this thread to reply within.
+      if (text.trim().toLowerCase() === "/resolve") {
+        await setSupportTicketStatus(ticketMatch.partnerId, ticketMatch.ticketId, "resolved");
+        await sendTelegramReply(message.chat.id, `Ticket ${ticketMatch.ticketId} marked resolved.`);
+        return NextResponse.json({ ok: true });
+      }
       await appendSupportReply(ticketMatch.partnerId, ticketMatch.ticketId, text, { chatId, messageId: message.message_id });
       return NextResponse.json({ ok: true });
     }

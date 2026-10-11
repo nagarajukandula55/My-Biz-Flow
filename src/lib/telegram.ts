@@ -558,7 +558,13 @@ export async function findPartnerIdByChatId(chatId: string): Promise<string | nu
  * mirrors the same pattern sendWorkorderTelegramAlert already uses via
  * TelegramLogEntry.messageId).
  */
-export async function sendRawTelegramMessage(chatId: string, text: string, replyToMessageId?: number): Promise<number | null> {
+export async function sendRawTelegramMessage(
+  chatId: string,
+  text: string,
+  replyToMessageId?: number,
+  /** A persistent reply keyboard (tap-to-fill buttons) — e.g. [["/workorders", "/invoices"], ["/help"]]. Each inner array is one row; tapping a button just sends that exact text, reusing the same command dispatch as typing it — no new callback/button-click handling needed. Omit for no keyboard change. */
+  replyKeyboard?: string[][]
+): Promise<number | null> {
   const botToken = env.telegramBotToken();
   if (!botToken) return null;
   try {
@@ -571,6 +577,9 @@ export async function sendRawTelegramMessage(chatId: string, text: string, reply
         text,
         parse_mode: "HTML",
         ...(replyToMessageId ? { reply_to_message_id: replyToMessageId } : {}),
+        ...(replyKeyboard
+          ? { reply_markup: { keyboard: replyKeyboard.map((row) => row.map((t) => ({ text: t }))), resize_keyboard: true, is_persistent: true } }
+          : {}),
       }),
     });
     const body = await res.json().catch(() => null);
