@@ -15,10 +15,7 @@ import { findTelegramTemplateDefByCommand, TELEGRAM_TEMPLATE_DEFS } from "@/lib/
 import { getTelegramTemplateBody, renderTelegramTemplate } from "@/lib/telegramTemplatesData";
 import { businessReportMessage, helpMessageText, connectConfirmationMessage, pnaReportMessage, generalAnnouncementMessage, type ReportFrequency } from "@/lib/telegramTemplates";
 import { computePartnerReportComparison } from "@/lib/telegramReportData";
-import { moduleReportMessage } from "@/lib/workspaceTelegram";
-import { getPartnerType } from "@/lib/designer/partnerTypesData";
 import { getVisibleModuleSlugs } from "@/lib/designer/entitlements";
-import { workspaceTelegramCommandAllowed } from "@/lib/workspaceProfiles";
 import { runTelegramReportsNow } from "@/lib/telegramReportRunner";
 import {
   computePnaTelegramReport,
@@ -92,22 +89,10 @@ async function handleTemplateCommand(chatId: string, text: string): Promise<bool
 
   if (head.toLowerCase() === "/help") {
     const connectedId = await findPartnerIdByChatId(chatId);
-    const connectedPartner = connectedId ? await getPartner(connectedId) : undefined;
-    const connectedType = connectedPartner ? await getPartnerType(connectedPartner.partnerTypeId) : undefined;
-    if (connectedPartner && !connectedType?.defaultModules.includes("service-centre")) {
-      const modules = await getVisibleModuleSlugs(connectedPartner.id);
-      const commands = TELEGRAM_TEMPLATE_DEFS.filter(d => workspaceTelegramCommandAllowed(d.key, modules))
-        .map(d => `${d.command} — ${d.key.startsWith("report_") ? "Current module snapshot" : d.label}`).join("\n");
-      await sendRawTelegramMessage(
-        chatId,
-        `Available commands for your active modules:\n${commands}\n${liveDataCommandLines(modules).join("\n")}\n/tgid — this chat's Telegram id`
-      );
-      return true;
-    }
-    const scModules = connectedPartner ? await getVisibleModuleSlugs(connectedPartner.id) : ["service-centre"];
+    const modules = connectedId ? await getVisibleModuleSlugs(connectedId) : [];
     const commandList = TELEGRAM_TEMPLATE_DEFS.filter((d) => d.command !== "/start")
       .map((d) => `${d.command} — ${d.label}`)
-      .join("\n") + "\n" + liveDataCommandLines(scModules).join("\n") + "\n/tgid — this chat's Telegram id";
+      .join("\n") + "\n" + liveDataCommandLines(modules).join("\n") + "\n/tgid — this chat's Telegram id";
     await sendRawTelegramMessage(chatId, await helpMessageText(commandList));
     return true;
   }
@@ -126,20 +111,8 @@ async function handleTemplateCommand(chatId: string, text: string): Promise<bool
     return true;
   }
 
-  const partnerType = await getPartnerType(partner.partnerTypeId);
-  if (!partnerType?.defaultModules.includes("service-centre") &&
-      !workspaceTelegramCommandAllowed(def.key, await getVisibleModuleSlugs(partnerId))) {
-    await sendRawTelegramMessage(chatId, "This command is not available for your active modules. Use /help to see your commands.");
-    return true;
-  }
-
   if (def.key === "report_daily" || def.key === "report_weekly" || def.key === "report_monthly") {
     const frequency = def.key.replace("report_", "").toUpperCase() as ReportFrequency;
-    const moduleMessage = await moduleReportMessage(partner, frequency, new Date());
-    if (moduleMessage !== null) {
-      await sendRawTelegramMessage(chatId, moduleMessage);
-      return true;
-    }
     const { current, prior, changePct } = await computePartnerReportComparison(partnerId, frequency, new Date());
     const message = await businessReportMessage({
       partnerBusinessName: partner.businessName,

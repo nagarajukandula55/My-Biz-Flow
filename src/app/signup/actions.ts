@@ -2,7 +2,7 @@
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { provisionSignup } from "@/lib/signupProvisioning";
+import { createPartner } from "@/lib/partnerData";
 import { getPartnerType } from "@/lib/designer/partnerTypesData";
 import { resolveReferrer } from "@/lib/referrals";
 import { sendPartnerWelcomeEmail } from "@/lib/email";
@@ -52,9 +52,6 @@ export async function registerBusiness(formData: FormData) {
   }
 
   const partnerType = await getPartnerType(partnerTypeId);
-  if (!partnerType || partnerType.status !== "Active") throw new Error("This business type is not accepting registrations.");
-  // Fail before creating an account if session signing is not configured.
-  await createPartnerSessionToken("signup-configuration-check");
 
   // Server-side validation for this type's own custom signup fields — the
   // form marks required ones with the `required` attribute, but that's
@@ -66,8 +63,6 @@ export async function registerBusiness(formData: FormData) {
     if (field.required && !value) {
       throw new Error(`Missing required field: ${field.label}`);
     }
-    if (value && field.type === "select" && !field.options?.includes(value)) throw new Error(`Invalid choice for ${field.label}`);
-    if (value && field.type === "number" && !Number.isFinite(Number(value))) throw new Error(`Invalid number for ${field.label}`);
     if (value) customFieldValues[field.key] = value;
   }
 
@@ -95,12 +90,14 @@ export async function registerBusiness(formData: FormData) {
 
   let partnerId: string;
   try {
-    const result = await provisionSignup(input);
-    partnerId = result.id;
-    // The generated credential stays private; the signed-in owner sets a password next.
-  } catch (error) {
-    const duplicate = typeof error === "object" && error !== null && "code" in error && error.code === "P2002" && "meta" in error && JSON.stringify(error.meta).includes("loginContact");
-    redirect(`/signup/${encodeURIComponent(partnerTypeId)}?error=${duplicate ? "contact_taken" : "registration_failed"}`);
+    const result = await createPartner(input);
+    partnerId = result.partner.id;
+    // result.password is a real password (hashed and stored, needed so
+    // this account works with /login on another device), but it's
+    // intentionally never shown or emailed — the visitor is auto-signed-in
+    // below straight into setting their own password.
+  } catch {
+    redirect(`/signup/${encodeURIComponent(partnerTypeId)}?error=contact_taken`);
   }
 
   // Best-effort — sendPartnerWelcomeEmail never throws — but awaited
@@ -117,7 +114,7 @@ export async function registerBusiness(formData: FormData) {
   // build but was never actually wired to a real signup, so every new
   // partner signing up has been invisible to ops until now.
   try {
-    await notifyAdmins(await newPartnerApplicationMessage({ businessName, partnerTypeName: partnerType.id }));
+    await notifyAdmins(await newPartnerApplicationMessage({ businessName, partnerTypeName: partnerType?.id ?? partnerTypeId }));
   } catch {
     // Best-effort — the account is already created either way.
   }

@@ -15,7 +15,6 @@ import { listPartnersWithReportsEnabled, sendPartnerTelegramAlert, sendPartnerTe
 import { getOpsChatId } from "@/lib/platformSettings";
 import { logReportRun } from "@/lib/reportRunLog";
 import { istDateKey, istStartOfDay } from "@/lib/format";
-import { sendModuleReportIfApplicable } from "@/lib/workspaceTelegram";
 
 /** True when `d` falls on the last calendar day of its month. */
 function isLastDayOfMonth(d: Date): boolean {
@@ -248,7 +247,6 @@ const FREQUENCY_LABEL: Record<ReportFrequency, string> = { DAILY: "Daily", WEEKL
 export async function sendOnePartnerReport(partnerId: string, frequency: ReportFrequency, now: Date): Promise<void> {
   const partner = await getPartner(partnerId);
   if (!partner) throw new Error("Partner not found");
-  if (await sendModuleReportIfApplicable(partner, frequency, now)) return;
 
   const { current, prior, changePct } = await computePartnerReportComparison(partnerId, frequency, now);
   const message = await businessReportMessage({
