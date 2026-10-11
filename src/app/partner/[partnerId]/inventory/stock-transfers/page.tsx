@@ -6,9 +6,10 @@ import { BulkUploadButton } from "@/components/BulkUploadButton";
 import { bulkImportStockTransfersAction } from "./actions";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { stockTransferColumns, getStockTransferFormFields } from "@/lib/sample-data/warehouse";
-import { listBusinessRecords } from "@/lib/businessRecords";
+import { listBusinessRecordsPaginated } from "@/lib/businessRecords";
 import { getBomOptionsForPartner } from "@/lib/sample-data/bom";
 import { getPartner } from "@/lib/partnerData";
+import { PaginationControls, buildPageQueryString } from "@/components/PaginationControls";
 
 registerPage({
   id: "inventory.stock-transfers.list",
@@ -27,9 +28,16 @@ registerPage({
 
 export const dynamic = "force-dynamic";
 
-export default async function StockTransfersPage({ params }: { params: { partnerId: string } }) {
+export default async function StockTransfersPage({
+  params,
+  searchParams,
+}: {
+  params: { partnerId: string };
+  searchParams: { page?: string };
+}) {
   const columns = await applyCustomizations("inventory.stock-transfers.list", stockTransferColumns);
-  const rows = await listBusinessRecords(params.partnerId, "inventory-stock-transfers");
+  const page = Math.max(1, Number(searchParams.page) || 1);
+  const { rows, total, totalPages, pageSize } = await listBusinessRecordsPaginated(params.partnerId, "inventory-stock-transfers", { page });
   const formFields = await getStockTransferFormFields(params.partnerId);
   const materialOptions = await getBomOptionsForPartner(params.partnerId);
   const partner = await getPartner(params.partnerId);
@@ -62,6 +70,13 @@ export default async function StockTransfersPage({ params }: { params: { partner
         <div className="mt-2">
           <StockTransfersClientTable partnerId={params.partnerId} columns={columns} rows={rows} />
         </div>
+        <PaginationControls
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          pageSize={pageSize}
+          buildHref={(p) => buildPageQueryString(searchParams, { page: String(p) })}
+        />
       </div>
     </AppShell>
   );

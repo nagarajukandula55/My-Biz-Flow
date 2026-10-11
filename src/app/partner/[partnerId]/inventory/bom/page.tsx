@@ -7,8 +7,9 @@ import { BomBulkUploadButton } from "./BomBulkUploadButton";
 import { RecordCsvExportButton } from "@/components/RecordCsvExportButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { bomColumns } from "@/lib/sample-data/bom";
-import { listBusinessRecords } from "@/lib/businessRecords";
+import { listBusinessRecords, listBusinessRecordsPaginated } from "@/lib/businessRecords";
 import { isActiveMaterial } from "@/lib/materialStatus";
+import { PaginationControls, buildPageQueryString } from "@/components/PaginationControls";
 
 registerPage({
   id: "inventory.bom.list",
@@ -27,12 +28,25 @@ registerPage({
 
 export const dynamic = "force-dynamic";
 
-export default async function BomPage({ params }: { params: { partnerId: string } }) {
+export default async function BomPage({
+  params,
+  searchParams,
+}: {
+  params: { partnerId: string };
+  searchParams: { page?: string };
+}) {
   const columns = await applyCustomizations("inventory.bom.list", bomColumns);
-  const rows = await listBusinessRecords(params.partnerId, "inventory-bom");
+  const page = Math.max(1, Number(searchParams.page) || 1);
+  // Two reads: BomSearchButton's typeahead and the CSV export both need
+  // every material, not just the current page, while the table itself
+  // only renders one page at a time.
+  const [allRows, { rows, total, totalPages, pageSize }] = await Promise.all([
+    listBusinessRecords(params.partnerId, "inventory-bom"),
+    listBusinessRecordsPaginated(params.partnerId, "inventory-bom", { page }),
+  ]);
   // Same shape as getBomOptionsForPartner — derived from the already-fetched
-  // `rows` instead of a second query, since this page needs them anyway.
-  const bomOptions = rows
+  // `allRows` instead of a second query, since this page needs them anyway.
+  const bomOptions = allRows
     .filter((r) => isActiveMaterial(r))
     .map((r) => ({ value: String(r["id"]), label: `${r["id"]} — ${r["description"] ?? r["id"]}` }));
 
@@ -46,7 +60,7 @@ export default async function BomPage({ params }: { params: { partnerId: string 
           <BomNewButton partnerId={params.partnerId} />
           <RecordCsvExportButton
             columns={columns.map((c) => ({ key: c.key, type: c.type === "date" ? "date" : c.type === "datetime" ? "datetime" : undefined }))}
-            rows={rows}
+            rows={allRows}
             filename={`bom-${params.partnerId}-${new Date().toISOString().slice(0, 10)}.csv`}
           />
         </div>
@@ -56,6 +70,13 @@ export default async function BomPage({ params }: { params: { partnerId: string 
         <div className="mt-2">
           <BomClientTable partnerId={params.partnerId} columns={columns} rows={rows} />
         </div>
+        <PaginationControls
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          pageSize={pageSize}
+          buildHref={(p) => buildPageQueryString(searchParams, { page: String(p) })}
+        />
       </div>
     </AppShell>
   );

@@ -7,7 +7,8 @@ import { bulkImportPartOrdersAction } from "./actions";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { partOrderColumns, getPartOrderFormFields } from "@/lib/sample-data/warehouse";
 import { getBomOptionsForPartner } from "@/lib/sample-data/bom";
-import { listBusinessRecords } from "@/lib/businessRecords";
+import { listBusinessRecordsPaginated } from "@/lib/businessRecords";
+import { PaginationControls, buildPageQueryString } from "@/components/PaginationControls";
 
 registerPage({
   id: "inventory.part-orders.list",
@@ -26,9 +27,16 @@ registerPage({
 
 export const dynamic = "force-dynamic";
 
-export default async function PartOrdersPage({ params }: { params: { partnerId: string } }) {
+export default async function PartOrdersPage({
+  params,
+  searchParams,
+}: {
+  params: { partnerId: string };
+  searchParams: { page?: string };
+}) {
   const columns = await applyCustomizations("inventory.part-orders.list", partOrderColumns);
-  const rows = await listBusinessRecords(params.partnerId, "inventory-part-orders");
+  const page = Math.max(1, Number(searchParams.page) || 1);
+  const { rows, total, totalPages, pageSize } = await listBusinessRecordsPaginated(params.partnerId, "inventory-part-orders", { page });
   const formFields = await getPartOrderFormFields(params.partnerId);
   const materialOptions = await getBomOptionsForPartner(params.partnerId);
 
@@ -53,6 +61,13 @@ export default async function PartOrdersPage({ params }: { params: { partnerId: 
         <div className="mt-2">
           <PartOrdersClientTable partnerId={params.partnerId} columns={columns} rows={rows} />
         </div>
+        <PaginationControls
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          pageSize={pageSize}
+          buildHref={(p) => buildPageQueryString(searchParams, { page: String(p) })}
+        />
       </div>
     </AppShell>
   );

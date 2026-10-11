@@ -7,7 +7,8 @@ import { RecordCsvExportButton } from "@/components/RecordCsvExportButton";
 import { bulkImportStockTakeAction } from "./actions";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { stockTakeColumns, getStockTakeFormFields, getStockTakeCsvFields, getStockTakeMaterialOptions } from "@/lib/sample-data/warehouse";
-import { listBusinessRecords } from "@/lib/businessRecords";
+import { listBusinessRecords, listBusinessRecordsPaginated } from "@/lib/businessRecords";
+import { PaginationControls, buildPageQueryString } from "@/components/PaginationControls";
 
 registerPage({
   id: "inventory.stock-take.list",
@@ -27,9 +28,19 @@ registerPage({
 
 export const dynamic = "force-dynamic";
 
-export default async function StockTakePage({ params }: { params: { partnerId: string } }) {
+export default async function StockTakePage({
+  params,
+  searchParams,
+}: {
+  params: { partnerId: string };
+  searchParams: { page?: string };
+}) {
   const columns = await applyCustomizations("inventory.stock-take.list", stockTakeColumns);
-  const rows = await listBusinessRecords(params.partnerId, "inventory-stock-take");
+  const page = Math.max(1, Number(searchParams.page) || 1);
+  const [allRows, { rows, total, totalPages, pageSize }] = await Promise.all([
+    listBusinessRecords(params.partnerId, "inventory-stock-take"),
+    listBusinessRecordsPaginated(params.partnerId, "inventory-stock-take", { page }),
+  ]);
   const formFields = await getStockTakeFormFields(params.partnerId);
   const csvFields = await getStockTakeCsvFields(params.partnerId);
   const materialOptions = await getStockTakeMaterialOptions(params.partnerId);
@@ -50,7 +61,7 @@ export default async function StockTakePage({ params }: { params: { partnerId: s
           <StockTakeNewButton partnerId={params.partnerId} fields={formFields} materialOptions={materialOptions} />
           <RecordCsvExportButton
             columns={columns.map((c) => ({ key: c.key, type: c.type === "date" ? "date" : c.type === "datetime" ? "datetime" : undefined }))}
-            rows={rows}
+            rows={allRows}
             filename={`stock-takes-${params.partnerId}-${new Date().toISOString().slice(0, 10)}.csv`}
           />
         </div>
@@ -60,6 +71,13 @@ export default async function StockTakePage({ params }: { params: { partnerId: s
         <div className="mt-2">
           <StockTakeClientTable partnerId={params.partnerId} columns={columns} rows={rows} />
         </div>
+        <PaginationControls
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          pageSize={pageSize}
+          buildHref={(p) => buildPageQueryString(searchParams, { page: String(p) })}
+        />
       </div>
     </AppShell>
   );

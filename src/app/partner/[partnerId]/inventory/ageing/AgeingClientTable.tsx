@@ -20,12 +20,20 @@ const STATUS_VARIANT: Record<string, StatusVariant> = {
  * bespoke columns (Age (days), Status chip banding) not worth forcing
  * through DataTable's generic Column shape for this one page.
  */
+const PAGE_SIZE = 25;
+
 export function AgeingClientTable({ rows }: { rows: AgeingRow[] }) {
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
   const q = search.trim().toLowerCase();
-  const visibleRows = !q
+  const searchedRows = !q
     ? rows
     : rows.filter((r) => `${r.materialId} ${r.warehouseName} ${r.condition} ${r.status}`.toLowerCase().includes(q));
+  // CSV export stays on searchedRows (every match, not just this page) —
+  // only the rendered <table> below is capped to one page at a time.
+  const totalPages = Math.max(1, Math.ceil(searchedRows.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const visibleRows = searchedRows.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   return (
     <div>
@@ -33,14 +41,17 @@ export function AgeingClientTable({ rows }: { rows: AgeingRow[] }) {
         <input
           type="text"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setPage(1);
+          }}
           placeholder="Search material, warehouse…"
           className="w-full max-w-xs rounded-md border border-border bg-bg px-3 py-1.5 text-sm text-text outline-none focus:border-accent sm:w-72"
         />
         <RecordCsvExportButton
           filename="material-ageing.csv"
           columns={["materialId", "warehouseName", "condition", "qtyOnHand", "lastReceivedAt", "ageDays", "status", "serialNumbers"]}
-          rows={visibleRows.map((r) => ({
+          rows={searchedRows.map((r) => ({
             materialId: r.materialId,
             warehouseName: r.warehouseName,
             condition: r.condition,
@@ -91,6 +102,34 @@ export function AgeingClientTable({ rows }: { rows: AgeingRow[] }) {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+      {searchedRows.length > 0 && (
+        <div className="mt-3 flex items-center justify-between text-sm text-text-muted">
+          <span>
+            Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(searchedRows.length, currentPage * PAGE_SIZE)} of {searchedRows.length}
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={currentPage <= 1}
+              onClick={() => setPage(currentPage - 1)}
+              className={`rounded-md border border-border px-3 py-1.5 ${currentPage <= 1 ? "opacity-40" : "hover:bg-bg-sunken"}`}
+            >
+              Previous
+            </button>
+            <span>
+              Page {currentPage} of {totalPages}
+            </span>
+            <button
+              type="button"
+              disabled={currentPage >= totalPages}
+              onClick={() => setPage(currentPage + 1)}
+              className={`rounded-md border border-border px-3 py-1.5 ${currentPage >= totalPages ? "opacity-40" : "hover:bg-bg-sunken"}`}
+            >
+              Next
+            </button>
+          </div>
         </div>
       )}
     </div>

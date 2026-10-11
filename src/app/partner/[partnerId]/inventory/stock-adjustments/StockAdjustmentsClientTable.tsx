@@ -14,6 +14,7 @@ export function StockAdjustmentsClientTable({ partnerId, columns, rows }: { part
       enableQuickView
       enableSearch
       searchPlaceholder="Search material, warehouse, reason…"
+      pageSize={25}
     />
   );
 }

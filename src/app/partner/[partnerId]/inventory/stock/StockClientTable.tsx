@@ -14,6 +14,7 @@ export function StockClientTable({ partnerId, columns, rows }: { partnerId: stri
       enableQuickView
       enableSearch
       searchPlaceholder="Search material, warehouse, SKU…"
+      pageSize={25}
     />
   );
 }

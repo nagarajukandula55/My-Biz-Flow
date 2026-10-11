@@ -14,6 +14,7 @@ export function ReturnOrdersClientTable({ partnerId, columns, rows }: { partnerI
       enableQuickView
       enableSearch
       searchPlaceholder="Search material, workorder, vendor, challan no…"
+      pageSize={25}
     />
   );
 }

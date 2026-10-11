@@ -81,6 +81,18 @@ type DataTableProps = {
   enableSearch?: boolean;
   /** Placeholder for the search input — defaults to "Search…". Only used when enableSearch is true. */
   searchPlaceholder?: string;
+  /**
+   * Caps how many rows render into the DOM at once, with a client-side
+   * Previous/Next footer — for callers that already need the FULL row set
+   * in memory for something else on the page (enableSearch filtering,
+   * running totals, CSV export) and can't just swap to a server-paginated
+   * query without losing that. Unlike enableSearch (which is safe with any
+   * row count), this exists specifically so "fetch everything, search/sum
+   * it client-side" callers don't also have to render everything — search
+   * still runs across every row; only the post-filter render is capped.
+   * Omit for no change (every existing caller's behavior is unaffected).
+   */
+  pageSize?: number;
 };
 
 export function renderCell(column: Column, row: Row) {
@@ -188,12 +200,13 @@ export function renderCell(column: Column, row: Row) {
   }
 }
 
-export function DataTable({ columns, rows, onRowClick, enableQuickView, enableSearch, searchPlaceholder }: DataTableProps) {
+export function DataTable({ columns, rows, onRowClick, enableQuickView, enableSearch, searchPlaceholder, pageSize }: DataTableProps) {
   const [quickViewRow, setQuickViewRow] = useState<Row | null>(null);
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
 
   const q = search.trim().toLowerCase();
-  const visibleRows = !enableSearch || !q
+  const searchedRows = !enableSearch || !q
     ? rows
     : rows.filter((row) =>
         columns.some((column) => {
@@ -204,6 +217,13 @@ export function DataTable({ columns, rows, onRowClick, enableQuickView, enableSe
         })
       );
 
+  // A changed search query can leave `page` pointing past the new result
+  // set's last page — clamp rather than let it render an empty table with
+  // "Next" still somehow reachable.
+  const totalPages = pageSize ? Math.max(1, Math.ceil(searchedRows.length / pageSize)) : 1;
+  const currentPage = Math.min(page, totalPages);
+  const visibleRows = !pageSize ? searchedRows : searchedRows.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
   return (
     <div className="w-full">
       {enableSearch && (
@@ -211,7 +231,10 @@ export function DataTable({ columns, rows, onRowClick, enableQuickView, enableSe
           <input
             type="text"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
             placeholder={searchPlaceholder ?? "Search…"}
             className="w-full max-w-xs rounded-md border border-border bg-bg px-3 py-1.5 text-sm text-text outline-none focus:border-accent sm:w-72"
           />
@@ -276,6 +299,34 @@ export function DataTable({ columns, rows, onRowClick, enableQuickView, enableSe
         />
       )}
       </div>
+      {pageSize && searchedRows.length > 0 && (
+        <div className="mt-3 flex items-center justify-between text-sm text-text-muted">
+          <span>
+            Showing {(currentPage - 1) * pageSize + 1}–{Math.min(searchedRows.length, currentPage * pageSize)} of {searchedRows.length}
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={currentPage <= 1}
+              onClick={() => setPage(currentPage - 1)}
+              className={`rounded-md border border-border px-3 py-1.5 ${currentPage <= 1 ? "opacity-40" : "hover:bg-bg-sunken"}`}
+            >
+              Previous
+            </button>
+            <span>
+              Page {currentPage} of {totalPages}
+            </span>
+            <button
+              type="button"
+              disabled={currentPage >= totalPages}
+              onClick={() => setPage(currentPage + 1)}
+              className={`rounded-md border border-border px-3 py-1.5 ${currentPage >= totalPages ? "opacity-40" : "hover:bg-bg-sunken"}`}
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
