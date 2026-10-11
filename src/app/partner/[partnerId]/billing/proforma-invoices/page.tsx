@@ -5,7 +5,8 @@ import Link from "next/link";
 import { ProformaInvoicesClientTable } from "./ProformaInvoicesClientTable";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { proformaInvoiceColumns } from "@/lib/sample-data/billing-sales-documents";
-import { listBusinessRecords } from "@/lib/businessRecords";
+import { listBusinessRecordsPaginated } from "@/lib/businessRecords";
+import { PaginationControls, buildPageQueryString } from "@/components/PaginationControls";
 
 registerPage({
   id: "billing.proforma-invoices.list",
@@ -24,12 +25,19 @@ registerPage({
 
 export const dynamic = "force-dynamic";
 
-export default async function ProformaInvoicesPage({ params }: { params: { partnerId: string } }) {
+export default async function ProformaInvoicesPage({
+  params,
+  searchParams,
+}: {
+  params: { partnerId: string };
+  searchParams: { page?: string };
+}) {
   const tierGate = await renderTierGate(params.partnerId, "billing.proforma-invoices.list", "Proforma Invoices");
   if (tierGate) return <AppShell topbarTitle={"Proforma Invoices"}>{tierGate}</AppShell>;
 
   const columns = await applyCustomizations("billing.proforma-invoices.list", proformaInvoiceColumns);
-  const rows = await listBusinessRecords(params.partnerId, "billing-proforma-invoices");
+  const page = Math.max(1, Number(searchParams.page) || 1);
+  const { rows, total, totalPages, pageSize } = await listBusinessRecordsPaginated(params.partnerId, "billing-proforma-invoices", { page });
 
   return (
     <AppShell
@@ -44,6 +52,13 @@ export default async function ProformaInvoicesPage({ params }: { params: { partn
         <div className="mt-2">
           <ProformaInvoicesClientTable partnerId={params.partnerId} columns={columns} rows={rows} />
         </div>
+        <PaginationControls
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          pageSize={pageSize}
+          buildHref={(p) => buildPageQueryString(searchParams, { page: String(p) })}
+        />
       </div>
     </AppShell>
   );

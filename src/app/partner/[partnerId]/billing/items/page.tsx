@@ -4,7 +4,8 @@ import { ItemsClientTable } from "./ItemsClientTable";
 import { ItemsNewButton } from "./ItemsNewButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { billingItemColumns } from "@/lib/sample-data/billing-items";
-import { listBusinessRecords } from "@/lib/businessRecords";
+import { listBusinessRecordsPaginated } from "@/lib/businessRecords";
+import { PaginationControls, buildPageQueryString } from "@/components/PaginationControls";
 
 registerPage({
   id: "billing.items.list",
@@ -23,9 +24,16 @@ registerPage({
 
 export const dynamic = "force-dynamic";
 
-export default async function BillingItemsPage({ params }: { params: { partnerId: string } }) {
+export default async function BillingItemsPage({
+  params,
+  searchParams,
+}: {
+  params: { partnerId: string };
+  searchParams: { page?: string };
+}) {
   const columns = await applyCustomizations("billing.items.list", billingItemColumns);
-  const rows = await listBusinessRecords(params.partnerId, "billing-items");
+  const page = Math.max(1, Number(searchParams.page) || 1);
+  const { rows, total, totalPages, pageSize } = await listBusinessRecordsPaginated(params.partnerId, "billing-items", { page });
 
   return (
     <AppShell
@@ -36,6 +44,13 @@ export default async function BillingItemsPage({ params }: { params: { partnerId
         <div className="mt-2">
           <ItemsClientTable partnerId={params.partnerId} columns={columns} rows={rows} />
         </div>
+        <PaginationControls
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          pageSize={pageSize}
+          buildHref={(p) => buildPageQueryString(searchParams, { page: String(p) })}
+        />
       </div>
     </AppShell>
   );

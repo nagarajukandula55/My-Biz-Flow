@@ -1,7 +1,8 @@
 import { AppShell } from "@/components/AppShell";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
-import { listBusinessRecords } from "@/lib/businessRecords";
+import { listBusinessRecordsPaginated } from "@/lib/businessRecords";
+import { PaginationControls, buildPageQueryString } from "@/components/PaginationControls";
 
 registerPage({
   id: "billing.reports.contact-statement.index",
@@ -17,8 +18,15 @@ registerPage({
 
 export const dynamic = "force-dynamic";
 
-export default async function ContactStatementIndexPage({ params }: { params: { partnerId: string } }) {
-  const contacts = await listBusinessRecords(params.partnerId, "billing-contacts");
+export default async function ContactStatementIndexPage({
+  params,
+  searchParams,
+}: {
+  params: { partnerId: string };
+  searchParams: { page?: string };
+}) {
+  const page = Math.max(1, Number(searchParams.page) || 1);
+  const { rows: contacts, total, totalPages, pageSize } = await listBusinessRecordsPaginated(params.partnerId, "billing-contacts", { page });
 
   return (
     <AppShell topbarTitle="Contact Statement">
@@ -37,6 +45,13 @@ export default async function ContactStatementIndexPage({ params }: { params: { 
             </Link>
           ))}
         </div>
+        <PaginationControls
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          pageSize={pageSize}
+          buildHref={(p) => buildPageQueryString(searchParams, { page: String(p) })}
+        />
       </div>
     </AppShell>
   );

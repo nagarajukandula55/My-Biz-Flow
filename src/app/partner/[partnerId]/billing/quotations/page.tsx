@@ -5,7 +5,8 @@ import Link from "next/link";
 import { QuotationsClientTable } from "./QuotationsClientTable";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { quotationColumns } from "@/lib/sample-data/billing-sales-documents";
-import { listBusinessRecords } from "@/lib/businessRecords";
+import { listBusinessRecordsPaginated } from "@/lib/businessRecords";
+import { PaginationControls, buildPageQueryString } from "@/components/PaginationControls";
 
 registerPage({
   id: "billing.quotations.list",
@@ -24,12 +25,19 @@ registerPage({
 
 export const dynamic = "force-dynamic";
 
-export default async function QuotationsPage({ params }: { params: { partnerId: string } }) {
+export default async function QuotationsPage({
+  params,
+  searchParams,
+}: {
+  params: { partnerId: string };
+  searchParams: { page?: string };
+}) {
   const tierGate = await renderTierGate(params.partnerId, "billing.quotations.list", "Quotations");
   if (tierGate) return <AppShell topbarTitle={"Quotations"}>{tierGate}</AppShell>;
 
   const columns = await applyCustomizations("billing.quotations.list", quotationColumns);
-  const rows = await listBusinessRecords(params.partnerId, "billing-quotations");
+  const page = Math.max(1, Number(searchParams.page) || 1);
+  const { rows, total, totalPages, pageSize } = await listBusinessRecordsPaginated(params.partnerId, "billing-quotations", { page });
 
   return (
     <AppShell
@@ -44,6 +52,13 @@ export default async function QuotationsPage({ params }: { params: { partnerId: 
         <div className="mt-2">
           <QuotationsClientTable partnerId={params.partnerId} columns={columns} rows={rows} />
         </div>
+        <PaginationControls
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          pageSize={pageSize}
+          buildHref={(p) => buildPageQueryString(searchParams, { page: String(p) })}
+        />
       </div>
     </AppShell>
   );

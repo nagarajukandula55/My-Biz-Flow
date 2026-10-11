@@ -5,7 +5,8 @@ import Link from "next/link";
 import { CreditNotesClientTable } from "./CreditNotesClientTable";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { creditNoteColumns } from "@/lib/sample-data/billing-credit-notes";
-import { listBusinessRecords } from "@/lib/businessRecords";
+import { listBusinessRecordsPaginated } from "@/lib/businessRecords";
+import { PaginationControls, buildPageQueryString } from "@/components/PaginationControls";
 
 registerPage({
   id: "billing.credit-notes.list",
@@ -24,12 +25,19 @@ registerPage({
 
 export const dynamic = "force-dynamic";
 
-export default async function CreditNotesPage({ params }: { params: { partnerId: string } }) {
+export default async function CreditNotesPage({
+  params,
+  searchParams,
+}: {
+  params: { partnerId: string };
+  searchParams: { page?: string };
+}) {
   const tierGate = await renderTierGate(params.partnerId, "billing.credit-notes.list", "Credit & Debit Notes");
   if (tierGate) return <AppShell topbarTitle={"Credit & Debit Notes"}>{tierGate}</AppShell>;
 
   const columns = await applyCustomizations("billing.credit-notes.list", creditNoteColumns);
-  const rows = await listBusinessRecords(params.partnerId, "billing-credit-notes");
+  const page = Math.max(1, Number(searchParams.page) || 1);
+  const { rows, total, totalPages, pageSize } = await listBusinessRecordsPaginated(params.partnerId, "billing-credit-notes", { page });
 
   return (
     <AppShell
@@ -44,6 +52,13 @@ export default async function CreditNotesPage({ params }: { params: { partnerId:
         <div className="mt-2">
           <CreditNotesClientTable partnerId={params.partnerId} columns={columns} rows={rows} />
         </div>
+        <PaginationControls
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          pageSize={pageSize}
+          buildHref={(p) => buildPageQueryString(searchParams, { page: String(p) })}
+        />
       </div>
     </AppShell>
   );
