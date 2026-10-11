@@ -10,6 +10,7 @@ import {
   sendRawTelegramMessage,
   getTelegramSettings,
   listPartnersWithReportsEnabled,
+  setTelegramCommands,
 } from "@/lib/telegram";
 import { findTelegramTemplateDefByCommand, TELEGRAM_TEMPLATE_DEFS } from "@/lib/telegramTemplateDefs";
 import { getTelegramTemplateBody, renderTelegramTemplate } from "@/lib/telegramTemplatesData";
@@ -37,6 +38,40 @@ function istTimestamp(d: Date): string {
 function formatInr(n: number): string {
   return `₹${Math.round(n).toLocaleString("en-IN")}`;
 }
+
+/**
+ * The Telegram-native "/" autocomplete menu (setTelegramCommands —
+ * src/lib/telegram.ts), kept separate from TELEGRAM_TEMPLATE_DEFS/
+ * LIVE_DATA_COMMANDS since the menu is deliberately curated (no /test_*
+ * preview commands cluttering it) rather than a literal dump of every
+ * handled command. PUBLIC_COMMANDS is what every chat sees; admin chats
+ * (getAdminChatIds()) get ADMIN_COMMANDS instead — Telegram replaces the
+ * whole per-chat list rather than merging it with the default, so
+ * ADMIN_COMMANDS repeats every public command plus the admin-only ones.
+ */
+const PUBLIC_COMMANDS = [
+  { command: "help", description: "List every command available to you" },
+  { command: "tgid", description: "Get this chat's Telegram ID" },
+  { command: "start", description: "Connect this chat to your My Biz Flow account" },
+  { command: "test", description: "Send a test message to confirm alerts work" },
+  { command: "report_daily", description: "Pull your current daily business report" },
+  { command: "report_weekly", description: "Pull your current weekly business report" },
+  { command: "report_monthly", description: "Pull your current monthly business report" },
+  { command: "pna_report", description: "Parts Not Available report" },
+  { command: "workorders", description: "Live open-workorder counts" },
+  { command: "inquiries", description: "Open/converted/closed inquiry counts" },
+  { command: "tat", description: "Average turnaround time (closed jobs)" },
+  { command: "invoices", description: "Invoice counts by payment status" },
+  { command: "lowstock", description: "Items at or below reorder level" },
+  { command: "subscription", description: "Your plan and expiry status" },
+];
+const ADMIN_COMMANDS = [
+  ...PUBLIC_COMMANDS,
+  { command: "status", description: "[Admin] Telegram report cron health" },
+  { command: "sendreport", description: "[Admin] Trigger due reports now" },
+  { command: "announce", description: "[Admin] Broadcast to all partners" },
+  { command: "syncmenu", description: "[Admin] Re-sync this \"/\" command menu" },
+];
 
 /** Same HTML-escaping convention as errorLog.ts's own escapeHtml — messages
  * are sent with parse_mode: "HTML" (see sendRawTelegramMessage), so raw
@@ -488,6 +523,30 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   }
 
+  // Case 1c-3: /syncmenu — re-pushes the Telegram-native "/" autocomplete
+  // menu (PUBLIC_COMMANDS to everyone, ADMIN_COMMANDS to every current
+  // admin chat from getAdminChatIds()). That popup is Telegram's own UI
+  // feature (setMyCommands), entirely separate from this route's command
+  // dispatch — it never updates itself when a command is added/removed
+  // here or when TELEGRAM_ADMIN_CHAT_IDS changes, so this is the deliberate
+  // re-sync point for that drift.
+  if (text.trim().toLowerCase() === "/syncmenu") {
+    const adminChatIds = await getAdminChatIds();
+    if (!adminChatIds.includes(chatId)) {
+      return NextResponse.json({ ok: true });
+    }
+    const defaultOk = await setTelegramCommands(PUBLIC_COMMANDS);
+    let adminOk = 0;
+    for (const id of adminChatIds) {
+      if (await setTelegramCommands(ADMIN_COMMANDS, id)) adminOk += 1;
+    }
+    await sendTelegramReply(
+      message.chat.id,
+      `Menu sync: default list ${defaultOk ? "OK" : "FAILED"}, admin list pushed to ${adminOk}/${adminChatIds.length} admin chat(s).`
+    );
+    return NextResponse.json({ ok: true });
+  }
+
   // Case 1d: /announce [owner|group|both] <text> — ad-hoc broadcast of a
   // free-text message to every partner. Composed in Telegram, this is
   // meant to be sent via Telegram's own native "Schedule Message" feature so
@@ -573,6 +632,7 @@ export async function POST(request: Request) {
           "/status — cron health for the Telegram report runs (last send per cadence, in IST)\n" +
           "/sendreport — trigger today's due reports right now (same send/skip rules as the cron)\n" +
           "/announce [owner|group|both] <text> — broadcast to every partner's chosen chat (defaults to both)\n" +
+          "/syncmenu — re-sync the \"/\" command menu for everyone and every admin chat\n" +
           "/tgid — this chat's Telegram id (also works for any partner/group chat, not admin-only)"
       );
     }

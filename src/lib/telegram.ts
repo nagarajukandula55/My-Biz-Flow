@@ -583,6 +583,39 @@ export async function sendRawTelegramMessage(chatId: string, text: string, reply
 }
 
 /**
+ * Registers the Telegram-native "/" autocomplete menu (Bot API
+ * setMyCommands) — entirely separate from this app's own command dispatch
+ * in the webhook route; that popup only ever shows what's been explicitly
+ * registered here, regardless of what the bot can actually handle. `scope`
+ * omitted sets the default menu everyone sees; `{ type: "chat", chat_id }`
+ * overrides it for one specific chat (used for admin chats, which need the
+ * admin-only commands added on top of the public list — Telegram replaces
+ * the whole list per scope, it doesn't merge, so the admin scope's list
+ * must include the public commands too). Returns false (never throws) on
+ * any failure — this is cosmetic (command discoverability), never load-bearing.
+ */
+export async function setTelegramCommands(commands: { command: string; description: string }[], chatId?: string): Promise<boolean> {
+  const botToken = env.telegramBotToken();
+  if (!botToken) return false;
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${botToken}/setMyCommands`, {
+      method: "POST",
+      signal: AbortSignal.timeout(10000),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        commands,
+        ...(chatId ? { scope: { type: "chat", chat_id: chatId } } : {}),
+      }),
+    });
+    const body = await res.json().catch(() => null);
+    return Boolean(res.ok && body?.ok);
+  } catch (err) {
+    console.error("[telegram] setMyCommands failed:", err);
+    return false;
+  }
+}
+
+/**
  * Reply-threading lookup: given the chat a reply came in on and the
  * message_id it was a reply TO (Telegram's
  * update.message.reply_to_message.message_id), finds which
