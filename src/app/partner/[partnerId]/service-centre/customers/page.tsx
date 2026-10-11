@@ -8,8 +8,9 @@ import { CustomerDataExportButton } from "./CustomerDataExportButton";
 import { LockCustomerDataButton } from "./LockCustomerDataButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { customersColumns } from "@/lib/sample-data/service-centre-customers";
-import { listBusinessRecords } from "@/lib/businessRecords";
+import { listBusinessRecords, listBusinessRecordsPaginated } from "@/lib/businessRecords";
 import { isCustomerDataUnlocked } from "@/lib/customerDataAccess";
+import { PaginationControls, buildPageQueryString } from "@/components/PaginationControls";
 
 registerPage({
   id: "service-centre.customers.list",
@@ -28,7 +29,13 @@ registerPage({
 
 export const dynamic = "force-dynamic";
 
-export default async function ScCustomerListPage({ params }: { params: { partnerId: string } }) {
+export default async function ScCustomerListPage({
+  params,
+  searchParams,
+}: {
+  params: { partnerId: string };
+  searchParams: { page?: string };
+}) {
   const tierGate = await renderTierGate(params.partnerId, "service-centre.customers.list", "Customers");
   if (tierGate) return <AppShell topbarTitle={"Customers"}>{tierGate}</AppShell>;
 
@@ -42,7 +49,15 @@ export default async function ScCustomerListPage({ params }: { params: { partner
   }
 
   const columns = await applyCustomizations("service-centre.customers.list", customersColumns);
-  const rows = await listBusinessRecords(params.partnerId, "service-centre-customers");
+  const page = Math.max(1, Number(searchParams.page) || 1);
+  // Two reads deliberately: the export button must offer every customer,
+  // not just the current page, while the table itself only renders one
+  // page at a time — same split billing/page.tsx uses for its CSV export
+  // vs. its paginated table.
+  const [allRows, { rows, total, totalPages, pageSize }] = await Promise.all([
+    listBusinessRecords(params.partnerId, "service-centre-customers"),
+    listBusinessRecordsPaginated(params.partnerId, "service-centre-customers", { page }),
+  ]);
 
   return (
     <AppShell
@@ -50,7 +65,7 @@ export default async function ScCustomerListPage({ params }: { params: { partner
       topbarActions={
         <div className="flex items-center gap-3">
           <LockCustomerDataButton partnerId={params.partnerId} />
-          <CustomerDataExportButton columns={columns} rows={rows} />
+          <CustomerDataExportButton columns={columns} rows={allRows} />
           <ScCustomerNewButton partnerId={params.partnerId} />
         </div>
       }
@@ -59,6 +74,13 @@ export default async function ScCustomerListPage({ params }: { params: { partner
         <div className="mt-2">
           <ScCustomerClientTable partnerId={params.partnerId} columns={columns} rows={rows} />
         </div>
+        <PaginationControls
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          pageSize={pageSize}
+          buildHref={(p) => buildPageQueryString(searchParams, { page: String(p) })}
+        />
       </div>
     </AppShell>
   );
