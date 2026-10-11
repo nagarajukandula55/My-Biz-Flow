@@ -13,6 +13,7 @@ import { prisma } from "@/lib/prisma";
 import { env } from "@/lib/env";
 import type { ReportFrequency } from "@/lib/telegramTemplates";
 import { safeCache as cache } from "@/lib/safeCache";
+import { sendRawTelegramMessage } from "@/lib/telegram";
 
 const SETTINGS_ID = "platform";
 
@@ -30,6 +31,36 @@ const getSettings = cache(async function getSettings() {
 export async function getOpsChatId(): Promise<string | undefined> {
   const row = await getSettings();
   return row?.opsChatId || env.telegramOpsChatId();
+}
+
+/**
+ * Every chat id that should be treated as a full admin — the main ops
+ * group (getOpsChatId() above) PLUS any extra personal/staff chat ids from
+ * TELEGRAM_ADMIN_CHAT_IDS (env.telegramAdminChatIds()). This is additive,
+ * not a replacement: a personal chat added here gets the exact same
+ * command access (/sendreport, /announce, /status) and receives every ops
+ * notification (signups, support tickets, subscription payments, billing
+ * failures) in ADDITION to the group, never instead of it. Deduplicated
+ * since the same id could theoretically appear in both sources.
+ */
+export async function getAdminChatIds(): Promise<string[]> {
+  const opsChatId = await getOpsChatId();
+  return [...new Set([opsChatId, ...env.telegramAdminChatIds()].filter((id): id is string => Boolean(id)))];
+}
+
+/**
+ * Sends `text` to every admin chat (getAdminChatIds() — main ops group plus
+ * any extra personal/staff chats), not just one. The single shared fan-out
+ * every one-off ops notification (signup, contact form, unassigned
+ * inquiry, subscription payment, etc.) should go through instead of each
+ * call site hand-rolling its own loop. Best-effort per chat — one chat
+ * failing to deliver never stops the others.
+ */
+export async function notifyAdmins(text: string): Promise<void> {
+  const chatIds = await getAdminChatIds();
+  for (const chatId of chatIds) {
+    await sendRawTelegramMessage(chatId, text);
+  }
 }
 
 /** The Telegram group for application error alerts (see src/lib/errorLog.ts). */

@@ -16,7 +16,7 @@
  */
 import { prisma } from "@/lib/prisma";
 import { createBusinessRecord, getBusinessRecord, updateBusinessRecord, listBusinessRecords } from "@/lib/businessRecords";
-import { getOpsChatId } from "@/lib/platformSettings";
+import { getAdminChatIds } from "@/lib/platformSettings";
 import { sendRawTelegramMessage } from "@/lib/telegram";
 import { matchAutoReply } from "@/lib/supportAutoReply";
 import type { SupportLanguage } from "@/lib/i18n/supportLanguages";
@@ -129,22 +129,32 @@ export async function sendPartnerSupportMessage(
   return ticket;
 }
 
-/** Finds an existing anchor message_id for this ticket's Telegram thread, if the chat is configured and one was already sent. */
-async function findThreadAnchor(ticketId: string): Promise<{ chatId: string; messageId: number } | undefined> {
-  const link = await prisma.supportTicketTelegramLink.findFirst({ where: { ticketId }, orderBy: { createdAt: "asc" } });
+/** Finds this ticket's existing anchor message_id in ONE specific chat, if that chat is configured and one was already sent there — per-chat, since each admin chat (main ops group + any extra admin DMs from getAdminChatIds()) threads independently; a reply in chat A must never anchor off a message_id that only exists in chat B. */
+async function findThreadAnchor(ticketId: string, chatId: string): Promise<{ chatId: string; messageId: number } | undefined> {
+  const link = await prisma.supportTicketTelegramLink.findFirst({ where: { ticketId, chatId }, orderBy: { createdAt: "asc" } });
   return link ? { chatId: link.chatId, messageId: link.messageId } : undefined;
 }
 
+/**
+ * Pushes to EVERY admin chat (getAdminChatIds() — the main ops group plus
+ * any extra personal/staff admin chats), not just the group, so a personal
+ * admin chat added via TELEGRAM_ADMIN_CHAT_IDS sees and can reply to
+ * support tickets exactly like the group can. Each chat gets its own
+ * independent reply thread (own anchor message_id, own
+ * SupportTicketTelegramLink row) — findSupportTicketByReplyMessageId
+ * already keys on (chatId, messageId), so a reply from any of these chats
+ * correctly resolves back to this ticket.
+ */
 async function pushToTelegramThread(ticket: SupportTicketRecord, text: string): Promise<void> {
-  const opsChatId = await getOpsChatId();
-  if (!opsChatId) return; // not configured — the chat still works via the widget/admin page, just no Telegram side
-
-  const anchor = await findThreadAnchor(ticket.id);
-  const messageId = await sendRawTelegramMessage(opsChatId, text, anchor?.messageId);
-  if (messageId) {
-    await prisma.supportTicketTelegramLink.create({
-      data: { chatId: opsChatId, messageId, partnerId: ticket.partnerId, ticketId: ticket.id },
-    });
+  const adminChatIds = await getAdminChatIds();
+  for (const chatId of adminChatIds) {
+    const anchor = await findThreadAnchor(ticket.id, chatId);
+    const messageId = await sendRawTelegramMessage(chatId, text, anchor?.messageId);
+    if (messageId) {
+      await prisma.supportTicketTelegramLink.create({
+        data: { chatId, messageId, partnerId: ticket.partnerId, ticketId: ticket.id },
+      });
+    }
   }
 }
 

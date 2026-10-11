@@ -147,6 +147,19 @@ export const env = {
   whatsappBusinessPhoneNumberId: () => process.env.WHATSAPP_BUSINESS_PHONE_NUMBER_ID,
   whatsappAccessToken: () => process.env.WHATSAPP_ACCESS_TOKEN,
   whatsappVerifyToken: () => process.env.WHATSAPP_VERIFY_TOKEN,
+  /** Name/language of the Meta-approved WhatsApp AUTHENTICATION-category
+   * template used to deliver login OTP codes (see src/lib/whatsappOtp.ts) —
+   * a login OTP is a cold send (the partner/customer hasn't messaged this
+   * WhatsApp number first), so it can only go out as an approved template,
+   * never sendWhatsAppMessage's free-form text. Create this template in
+   * Meta Business Manager > WhatsApp Manager > Message Templates, category
+   * "Authentication", with a single body variable for the code (Meta's
+   * built-in one-time-passcode template wizard produces exactly this
+   * shape). Unset means requestPartnerLoginOtp/requestCustomerLoginOtp
+   * no-op (same graceful-degradation posture as the rest of whatsapp.ts).
+   */
+  whatsappOtpTemplateName: () => process.env.WHATSAPP_OTP_TEMPLATE_NAME,
+  whatsappOtpTemplateLang: () => process.env.WHATSAPP_OTP_TEMPLATE_LANG || "en_US",
   /** Telegram bot token (see src/lib/telegram.ts) — per-partner chatId/alert-type settings
    * are real and persisted (TelegramSettings), but actual delivery needs a real bot token,
    * which isn't set up here yet; unset means sendPartnerTelegramAlert() logs instead of
@@ -174,6 +187,17 @@ export const env = {
    * alerts silently no-op, same graceful-degradation posture as every other
    * Telegram send here. */
   telegramOpsChatId: () => process.env.TELEGRAM_OPS_CHAT_ID,
+  /** Extra admin chat ids (personal DMs, additional staff) that get full
+   * admin command access (/sendreport, /announce, /status) and every ops
+   * notification ALONGSIDE the main ops group (TELEGRAM_OPS_CHAT_ID /
+   * platformSettings.opsChatId) — not a replacement for it. Comma-separated,
+   * e.g. "123456789,987654321". See getAdminChatIds() in platformSettings.ts,
+   * which is what actually combines this with the main ops chat id. */
+  telegramAdminChatIds: () =>
+    (process.env.TELEGRAM_ADMIN_CHAT_IDS || "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean),
   /** Platform Super Admin's own WhatsApp number for partners reaching MY BIZ FLOW support
    * (the support-ticket widget's "message us on WhatsApp" link — see
    * src/components/SupportWidget.tsx). NOT a partner's own supportHotline (that's the
@@ -223,5 +247,17 @@ export function googleOAuthConfigured(): boolean {
  * needed since this button is fully custom rather than Telegram's widget. */
 export function telegramLoginConfigured(): boolean {
   return Boolean(process.env.TELEGRAM_BOT_TOKEN);
+}
+
+/** True only when WhatsApp sending AND the login OTP template are all
+ * configured — gates rendering the "Login with WhatsApp OTP" tab on
+ * /login so it never offers a method that would just silently fail to
+ * send. */
+export function whatsappOtpLoginConfigured(): boolean {
+  return Boolean(
+    process.env.WHATSAPP_BUSINESS_PHONE_NUMBER_ID &&
+      process.env.WHATSAPP_ACCESS_TOKEN &&
+      process.env.WHATSAPP_OTP_TEMPLATE_NAME
+  );
 }
 

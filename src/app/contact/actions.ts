@@ -1,8 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { getOpsChatId } from "@/lib/platformSettings";
-import { sendRawTelegramMessage } from "@/lib/telegram";
+import { notifyAdmins } from "@/lib/platformSettings";
 import { contactSubmittedMessage } from "@/lib/telegramTemplates";
 
 /**
@@ -26,10 +25,7 @@ export async function submitContactForm(formData: FormData) {
   await prisma.contactSubmission.create({ data: { name, email, message } });
 
   try {
-    const opsChatId = await getOpsChatId();
-    if (opsChatId) {
-      await sendRawTelegramMessage(opsChatId, await contactSubmittedMessage({ name, email, message }));
-    }
+    await notifyAdmins(await contactSubmittedMessage({ name, email, message }));
   } catch {
     // Best-effort — the submission is already saved either way.
   }

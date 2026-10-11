@@ -4,10 +4,10 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { createBusinessRecord } from "@/lib/businessRecords";
 import { findPartnerForInquiry } from "@/lib/serviceCentreInquiryAssignment";
-import { sendPartnerTelegramAlert, sendRawTelegramMessage } from "@/lib/telegram";
+import { sendPartnerTelegramAlert } from "@/lib/telegram";
 import { inquiryAssignedMessage, inquiryUnassignedMessage } from "@/lib/telegramTemplates";
 import { serviceTypeLabel } from "@/lib/serviceTypes";
-import { getOpsChatId } from "@/lib/platformSettings";
+import { notifyAdmins } from "@/lib/platformSettings";
 
 /**
  * Public, no-login "Book Appointment" submit — the customer never picks a
@@ -47,19 +47,15 @@ export async function bookAppointmentAction(formData: FormData): Promise<void> {
       data: { customerName, customerPhone, serviceType, complaint, pincode, addressLine, brand, model },
     });
 
-    const opsChatId = await getOpsChatId();
-    if (opsChatId) {
-      await sendRawTelegramMessage(
-        opsChatId,
-        await inquiryUnassignedMessage({
-          customerName,
-          customerPhone,
-          serviceType: serviceTypeLabel(serviceType),
-          pincode,
-          complaint,
-        })
-      );
-    }
+    await notifyAdmins(
+      await inquiryUnassignedMessage({
+        customerName,
+        customerPhone,
+        serviceType: serviceTypeLabel(serviceType),
+        pincode,
+        complaint,
+      })
+    );
 
     redirect(`/book-appointment?error=no_coverage`);
   }

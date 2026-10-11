@@ -29,7 +29,7 @@ import {
 } from "@/lib/analyticsData";
 import { computeAlerts } from "@/lib/alerts";
 import { findSupportTicketByReplyMessageId, appendSupportReply } from "@/lib/supportTickets";
-import { getOpsChatId } from "@/lib/platformSettings";
+import { getAdminChatIds } from "@/lib/platformSettings";
 import { getReportRuns } from "@/lib/reportRunLog";
 import { getPlan } from "@/lib/plansData";
 
@@ -462,8 +462,8 @@ export async function POST(request: Request) {
   // all, same posture as an unrecognized command from Case 1b's
   // handleTemplateCommand (only /help lists real commands).
   if (text.trim().toLowerCase() === "/sendreport") {
-    const opsChatId = await getOpsChatId();
-    if (!opsChatId || String(opsChatId) !== chatId) {
+    const adminChatIds = await getAdminChatIds();
+    if (!adminChatIds.includes(chatId)) {
       return NextResponse.json({ ok: true });
     }
     try {
@@ -490,8 +490,8 @@ export async function POST(request: Request) {
   // telegramReportData.ts for why a run can legitimately land after
   // midnight IST and still count as the prior business day.
   if (text.trim().toLowerCase() === "/status") {
-    const opsChatId = await getOpsChatId();
-    if (!opsChatId || String(opsChatId) !== chatId) {
+    const adminChatIds = await getAdminChatIds();
+    if (!adminChatIds.includes(chatId)) {
       return NextResponse.json({ ok: true });
     }
     const runs = await getReportRuns(100);
@@ -539,8 +539,8 @@ export async function POST(request: Request) {
   // so a real "/announce ..." from the ops chat performs the actual
   // broadcast instead of falling into that preview path.
   if (/^\/announce(?:@\S+)?(\s|$)/i.test(text)) {
-    const opsChatId = await getOpsChatId();
-    if (!opsChatId || String(opsChatId) !== chatId) {
+    const adminChatIds = await getAdminChatIds();
+    if (!adminChatIds.includes(chatId)) {
       return NextResponse.json({ ok: true });
     }
     const spaceIdx = text.indexOf(" ");
@@ -592,8 +592,8 @@ export async function POST(request: Request) {
   // regular per-partner command list from handleTemplateCommand, since
   // those admin commands aren't in TELEGRAM_TEMPLATE_DEFS at all.
   if (text.trim().toLowerCase() === "/help") {
-    const opsChatId = await getOpsChatId();
-    if (opsChatId && String(opsChatId) === chatId) {
+    const adminChatIds = await getAdminChatIds();
+    if (adminChatIds.includes(chatId)) {
       await sendTelegramReply(
         message.chat.id,
         "Admin commands (this chat only):\n" +

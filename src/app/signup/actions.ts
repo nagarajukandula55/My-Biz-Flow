@@ -2,7 +2,7 @@
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { createPartner } from "@/lib/partnerData";
+import { provisionSignup } from "@/lib/signupProvisioning";
 import { getPartnerType } from "@/lib/designer/partnerTypesData";
 import { resolveReferrer } from "@/lib/referrals";
 import { sendPartnerWelcomeEmail } from "@/lib/email";
@@ -11,6 +11,8 @@ import {
   PARTNER_SESSION_MAX_AGE_SECONDS,
   createPartnerSessionToken,
 } from "@/lib/partnerSession";
+import { notifyAdmins } from "@/lib/platformSettings";
+import { newPartnerApplicationMessage } from "@/lib/telegramTemplates";
 
 /**
  * Real "register your business" action. No password is collected here — one
@@ -50,6 +52,9 @@ export async function registerBusiness(formData: FormData) {
   }
 
   const partnerType = await getPartnerType(partnerTypeId);
+  if (!partnerType || partnerType.status !== "Active") throw new Error("This business type is not accepting registrations.");
+  // Fail before creating an account if session signing is not configured.
+  await createPartnerSessionToken("signup-configuration-check");
 
   // Server-side validation for this type's own custom signup fields — the
   // form marks required ones with the `required` attribute, but that's
@@ -61,6 +66,8 @@ export async function registerBusiness(formData: FormData) {
     if (field.required && !value) {
       throw new Error(`Missing required field: ${field.label}`);
     }
+    if (value && field.type === "select" && !field.options?.includes(value)) throw new Error(`Invalid choice for ${field.label}`);
+    if (value && field.type === "number" && !Number.isFinite(Number(value))) throw new Error(`Invalid number for ${field.label}`);
     if (value) customFieldValues[field.key] = value;
   }
 
@@ -88,14 +95,12 @@ export async function registerBusiness(formData: FormData) {
 
   let partnerId: string;
   try {
-    const result = await createPartner(input);
-    partnerId = result.partner.id;
-    // result.password is a real password (hashed and stored, needed so
-    // this account works with /login on another device), but it's
-    // intentionally never shown or emailed — the visitor is auto-signed-in
-    // below straight into setting their own password.
-  } catch {
-    redirect(`/signup/${encodeURIComponent(partnerTypeId)}?error=contact_taken`);
+    const result = await provisionSignup(input);
+    partnerId = result.id;
+    // The generated credential stays private; the signed-in owner sets a password next.
+  } catch (error) {
+    const duplicate = typeof error === "object" && error !== null && "code" in error && error.code === "P2002" && "meta" in error && JSON.stringify(error.meta).includes("loginContact");
+    redirect(`/signup/${encodeURIComponent(partnerTypeId)}?error=${duplicate ? "contact_taken" : "registration_failed"}`);
   }
 
   // Best-effort — sendPartnerWelcomeEmail never throws — but awaited
@@ -103,6 +108,19 @@ export async function registerBusiness(formData: FormData) {
   // navigate, and a serverless function invocation can end before a
   // dangling background promise completes.
   await sendPartnerWelcomeEmail({ to: businessEmail, businessName, partnerId });
+
+  // Ops-facing "new partner application" ping to every admin chat
+  // (notifyAdmins — main ops group + any extra admin chats) — same
+  // best-effort, never-throws posture as contact/actions.ts's own ops
+  // alert. The "new_partner_application" template/alert type has existed
+  // in telegramTemplateDefs.ts/telegram.ts since the original Telegram
+  // build but was never actually wired to a real signup, so every new
+  // partner signing up has been invisible to ops until now.
+  try {
+    await notifyAdmins(await newPartnerApplicationMessage({ businessName, partnerTypeName: partnerType.id }));
+  } catch {
+    // Best-effort — the account is already created either way.
+  }
 
   // No password field at signup, so there's nothing for the visitor to
   // type in to "log in" right after registering — sign them straight into

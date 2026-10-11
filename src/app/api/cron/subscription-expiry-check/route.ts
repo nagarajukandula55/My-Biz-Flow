@@ -7,6 +7,7 @@ import { listPartners } from "@/lib/partnerData";
 import { sendPartnerTelegramAlert } from "@/lib/telegram";
 import { subscriptionExpiringMessage } from "@/lib/telegramTemplates";
 import { istStartOfDay } from "@/lib/format";
+import { notifyAdmins } from "@/lib/platformSettings";
 
 const WARNING_DAYS_BEFORE = 3;
 
@@ -52,6 +53,20 @@ export async function GET(request: Request) {
         planName: "Trial",
       })
     );
+
+    // Ops-facing ping — sales follow-up signal (a trial approaching/at
+    // expiry is exactly when a human should be deciding whether to call
+    // the partner, not something that should only ever reach the partner
+    // themselves). Best-effort, never blocks the partner-facing alert
+    // above.
+    try {
+      await notifyAdmins(
+        `⏰ <b>Trial ${remaining === 0 ? "Expires Today" : `Expires in ${remaining} day(s)`}</b>\n\n<pre>\nBusiness   ${partner.businessName}\nPartner ID ${partner.id}\nExpiry     ${partner.trialEndAt.toISOString().slice(0, 10)}\n</pre>`
+      );
+    } catch {
+      // Best-effort — the partner-facing alert already went out either way.
+    }
+
     sentCount += 1;
   }
 

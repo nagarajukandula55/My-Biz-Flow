@@ -8,6 +8,7 @@ import { paymentReceivedMessage } from "@/lib/telegramTemplates";
 import { cycleLabel } from "@/lib/subscriptionData";
 import { logError } from "@/lib/errorLog";
 import type { acceptSubscriptionPayment } from "@/lib/acceptSubscriptionPayment";
+import { notifyAdmins } from "@/lib/platformSettings";
 
 export async function sendPaymentDelivery(job: DeliveryJob): Promise<boolean> {
   const payment = { ...job.payment, capturedAt: new Date(job.payment.capturedAt) };
@@ -40,5 +41,23 @@ export async function deliverSubscriptionPaymentReceipt(payment: Awaited<ReturnT
   } catch {
     await logError({ message: `Payment recorded; durable delivery jobs require review: ${payment.razorpayPaymentId}`,
       source: "subscriptionPaymentReceipt", severity: "error" }).catch(() => {});
+  }
+
+  // Ops-facing ping to every admin chat (notifyAdmins) — separate from the
+  // durable per-partner delivery queue above (accounting/wallet/email/
+  // telegram receipt jobs), which exists so a partner's own receipt
+  // survives a transient failure with retries. This is advisory only,
+  // best-effort, never throws — a missed ops ping doesn't need the same
+  // durability since the payment itself is already recorded and the
+  // partner's own receipt is handled by the queue regardless of whether
+  // this succeeds.
+  try {
+    const partner = await getPartner(payment.partnerId);
+    const amount = `₹${payment.amount.toLocaleString("en-IN")}`;
+    await notifyAdmins(
+      `💰 <b>Subscription Payment Received</b>\n\n<pre>\nBusiness      ${partner?.businessName ?? payment.partnerId}\nPlan          ${payment.planName}\nAmount        ${amount}\nPayment ID    ${payment.razorpayPaymentId}\n</pre>`
+    );
+  } catch {
+    // Best-effort — the payment is already recorded either way.
   }
 }
