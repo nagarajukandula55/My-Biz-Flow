@@ -10,16 +10,24 @@ import {
   sendRawTelegramMessage,
   getTelegramSettings,
   listPartnersWithReportsEnabled,
-  sendPartnerTelegramAlert,
 } from "@/lib/telegram";
 import { findTelegramTemplateDefByCommand, TELEGRAM_TEMPLATE_DEFS } from "@/lib/telegramTemplateDefs";
 import { getTelegramTemplateBody, renderTelegramTemplate } from "@/lib/telegramTemplatesData";
 import { businessReportMessage, helpMessageText, connectConfirmationMessage, pnaReportMessage, generalAnnouncementMessage, type ReportFrequency } from "@/lib/telegramTemplates";
 import { computePartnerReportComparison } from "@/lib/telegramReportData";
+import { moduleReportMessage } from "@/lib/workspaceTelegram";
+import { getPartnerType } from "@/lib/designer/partnerTypesData";
+import { getVisibleModuleSlugs } from "@/lib/designer/entitlements";
+import { workspaceTelegramCommandAllowed } from "@/lib/workspaceProfiles";
 import { runTelegramReportsNow } from "@/lib/telegramReportRunner";
 import { computePnaTelegramReport } from "@/lib/analyticsData";
 import { findSupportTicketByReplyMessageId, appendSupportReply } from "@/lib/supportTickets";
 import { getOpsChatId } from "@/lib/platformSettings";
+import { getReportRuns } from "@/lib/reportRunLog";
+
+function istTimestamp(d: Date): string {
+  return d.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata" });
+}
 
 function formatInr(n: number): string {
   return `₹${Math.round(n).toLocaleString("en-IN")}`;
@@ -63,9 +71,19 @@ async function handleTemplateCommand(chatId: string, text: string): Promise<bool
   if (!head.startsWith("/")) return false;
 
   if (head.toLowerCase() === "/help") {
+    const connectedId = await findPartnerIdByChatId(chatId);
+    const connectedPartner = connectedId ? await getPartner(connectedId) : undefined;
+    const connectedType = connectedPartner ? await getPartnerType(connectedPartner.partnerTypeId) : undefined;
+    if (connectedPartner && !connectedType?.defaultModules.includes("service-centre")) {
+      const modules = await getVisibleModuleSlugs(connectedPartner.id);
+      const commands = TELEGRAM_TEMPLATE_DEFS.filter(d => workspaceTelegramCommandAllowed(d.key, modules))
+        .map(d => `${d.command} — ${d.key.startsWith("report_") ? "Current module snapshot" : d.label}`).join("\n");
+      await sendRawTelegramMessage(chatId, `Available commands for your active modules:\n${commands}\n/tgid — this chat's Telegram id`);
+      return true;
+    }
     const commandList = TELEGRAM_TEMPLATE_DEFS.filter((d) => d.command !== "/start")
       .map((d) => `${d.command} — ${d.label}`)
-      .join("\n");
+      .join("\n") + "\n/tgid — this chat's Telegram id";
     await sendRawTelegramMessage(chatId, await helpMessageText(commandList));
     return true;
   }
@@ -84,8 +102,20 @@ async function handleTemplateCommand(chatId: string, text: string): Promise<bool
     return true;
   }
 
+  const partnerType = await getPartnerType(partner.partnerTypeId);
+  if (!partnerType?.defaultModules.includes("service-centre") &&
+      !workspaceTelegramCommandAllowed(def.key, await getVisibleModuleSlugs(partnerId))) {
+    await sendRawTelegramMessage(chatId, "This command is not available for your active modules. Use /help to see your commands.");
+    return true;
+  }
+
   if (def.key === "report_daily" || def.key === "report_weekly" || def.key === "report_monthly") {
     const frequency = def.key.replace("report_", "").toUpperCase() as ReportFrequency;
+    const moduleMessage = await moduleReportMessage(partner, frequency, new Date());
+    if (moduleMessage !== null) {
+      await sendRawTelegramMessage(chatId, moduleMessage);
+      return true;
+    }
     const { current, prior, changePct } = await computePartnerReportComparison(partnerId, frequency, new Date());
     const message = await businessReportMessage({
       partnerBusinessName: partner.businessName,
@@ -268,6 +298,25 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   }
 
+  // Case 1a-1: /tgid — open to every chat (no ops/connect gating), since
+  // this is exactly the number someone needs *before* they can set up
+  // anything else (TELEGRAM_OPS_CHAT_ID, a group chat connection, etc.) —
+  // gating it would make it useless for that purpose. Reports the chat's
+  // own Telegram id and whether it's a group so the same reply works for
+  // "what's my personal chat id" and "what's my group's chat id".
+  if (text.trim().toLowerCase() === "/tgid") {
+    const chatType = message.chat.type; // "private" | "group" | "supergroup" | "channel"
+    const isGroup = chatType === "group" || chatType === "supergroup";
+    const title = message.chat.title;
+    await sendTelegramReply(
+      message.chat.id,
+      isGroup
+        ? `This group's Telegram chat id: ${chatId}${title ? `\nGroup: ${title}` : ""}`
+        : `Your personal Telegram chat id: ${chatId}`
+    );
+    return NextResponse.json({ ok: true });
+  }
+
   // Case 1c: /sendreport — manual on-demand trigger for the same run the
   // 9 PM IST cron endpoint performs (src/app/api/cron/telegram-reports/
   // route.ts), added because GitHub Actions' own `schedule` trigger for
@@ -298,19 +347,62 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  // Case 1d: /announce <text> — ad-hoc broadcast of a free-text message to
-  // every partner as a "general announcement". Composed in Telegram, this is
+  // Case 1c-2: /status — ops-chat-only visibility into whether the
+  // Telegram report cron is actually firing, since GitHub Actions'
+  // `schedule` trigger returning HTTP 200 doesn't mean a report was ever
+  // sent (it's a no-op outside isWithinReportWindow). Shows the last cron-
+  // triggered run and the last run overall (any trigger), per cadence,
+  // all in IST — see reportDay()/isWithinReportWindow in
+  // telegramReportData.ts for why a run can legitimately land after
+  // midnight IST and still count as the prior business day.
+  if (text.trim().toLowerCase() === "/status") {
+    const opsChatId = await getOpsChatId();
+    if (!opsChatId || String(opsChatId) !== chatId) {
+      return NextResponse.json({ ok: true });
+    }
+    const runs = await getReportRuns(100);
+    const cadences = ["DAILY", "WEEKLY", "MONTHLY"];
+    const lines: string[] = [];
+    for (const cadence of cadences) {
+      const cadenceRuns = runs.filter((r) => r.cadence === cadence);
+      const lastCron = cadenceRuns.find((r) => r.trigger === "cron");
+      const lastAny = cadenceRuns[0];
+      if (!lastAny) {
+        lines.push(`${cadence}: no run recorded yet`);
+        continue;
+      }
+      const lastAnyWhen = istTimestamp(new Date(lastAny.createdAt));
+      lines.push(
+        `${cadence}: last run ${lastAnyWhen} (${lastAny.trigger}) — sent ${lastAny.sent}, failed ${lastAny.failed}, skipped ${lastAny.skipped}` +
+          (lastCron ? `\n  last cron-triggered: ${istTimestamp(new Date(lastCron.createdAt))}` : `\n  last cron-triggered: never`)
+      );
+    }
+    await sendTelegramReply(message.chat.id, `Report cron status (IST):\n\n${lines.join("\n\n")}`);
+    return NextResponse.json({ ok: true });
+  }
+
+  // Case 1d: /announce [owner|group|both] <text> — ad-hoc broadcast of a
+  // free-text message to every partner. Composed in Telegram, this is
   // meant to be sent via Telegram's own native "Schedule Message" feature so
   // it arrives (and triggers this broadcast) at a chosen future time — a
   // one-off scheduler with no cron/DB entry needed. Same ops-chat-only
   // authorization as /sendreport above: this fans out to every partner, so
   // it must never be reachable from an arbitrary partner's own chat.
   //
+  // The optional leading target word picks WHICH connected chat(s) per
+  // partner get this broadcast — "owner" (personal chat only), "group"
+  // (group chat only), or "both" (whichever exist). Defaults to "both" when
+  // omitted, matching the original behaviour. This deliberately sends
+  // straight to chatId/groupChatId rather than going through
+  // sendPartnerTelegramAlert's routing["generalAnnouncement"] opt-out: an
+  // explicit admin-chosen target for a one-off broadcast should reach that
+  // chat regardless of a partner's standing announcement preference.
+  //
   // Note: telegramTemplateDefs.ts already registers "/announce" as the
   // /test_* preview command for the "general_announcement" template (see
   // handleTemplateCommand's generic fallback branch) — that preview only
   // ever replies to the sender with sample data. This case is checked FIRST
-  // so a real "/announce <text>" from the ops chat performs the actual
+  // so a real "/announce ..." from the ops chat performs the actual
   // broadcast instead of falling into that preview path.
   if (/^\/announce(?:@\S+)?(\s|$)/i.test(text)) {
     const opsChatId = await getOpsChatId();
@@ -318,30 +410,65 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true });
     }
     const spaceIdx = text.indexOf(" ");
-    const announcementText = spaceIdx === -1 ? "" : text.slice(spaceIdx + 1);
-    if (!announcementText.trim()) {
-      await sendTelegramReply(message.chat.id, "Usage: /announce <your message>");
+    let rest = spaceIdx === -1 ? "" : text.slice(spaceIdx + 1);
+
+    type AnnounceTarget = "owner" | "group" | "both";
+    let target: AnnounceTarget = "both";
+    const targetMatch = rest.match(/^(owner|group|both)(\s+|$)/i);
+    if (targetMatch) {
+      target = targetMatch[1].toLowerCase() as AnnounceTarget;
+      rest = rest.slice(targetMatch[0].length);
+    }
+
+    const announcementText = rest.trim();
+    if (!announcementText) {
+      await sendTelegramReply(message.chat.id, "Usage: /announce [owner|group|both] <your message> — target defaults to both if omitted.");
       return NextResponse.json({ ok: true });
     }
 
     const partners = await listPartnersWithReportsEnabled(); // every partner with at least one connected chat (personal or group) — see that function's own doc comment
     const rendered = await generalAnnouncementMessage(escapeHtml(announcementText));
     let sentCount = 0;
+    let skippedCount = 0;
     for (const partner of partners) {
-      // Per-partner routing["generalAnnouncement"] ("none"/"personal"/"group"/"both")
-      // is resolved and honoured inside sendPartnerTelegramAlert — this loop
-      // never bypasses a partner's own opt-out.
-      const delivered = await sendPartnerTelegramAlert(partner.partnerId, "generalAnnouncement", rendered);
-      if (delivered) sentCount += 1;
+      const targets: string[] = [];
+      if ((target === "owner" || target === "both") && partner.chatId) targets.push(partner.chatId);
+      if ((target === "group" || target === "both") && partner.groupChatId) targets.push(partner.groupChatId);
+      if (targets.length === 0) {
+        skippedCount += 1;
+        continue;
+      }
+      for (const targetChatId of targets) {
+        const messageId = await sendRawTelegramMessage(targetChatId, rendered);
+        if (messageId !== null) sentCount += 1;
+      }
     }
 
     await sendTelegramReply(
       message.chat.id,
       partners.length === 0
         ? "0 partners have a connected chat — nothing was sent."
-        : `Announcement sent to ${sentCount} partner(s).`
+        : `Announcement (target: ${target}) sent to ${sentCount} chat(s) across ${partners.length} partner(s)${skippedCount > 0 ? `, ${skippedCount} partner(s) had no matching chat for this target` : ""}.`
     );
     return NextResponse.json({ ok: true });
+  }
+
+  // Case 1a-2: /help from the ops chat specifically also lists the
+  // platform-wide admin commands (Case 1c/1c-2/1d below) ahead of the
+  // regular per-partner command list from handleTemplateCommand, since
+  // those admin commands aren't in TELEGRAM_TEMPLATE_DEFS at all.
+  if (text.trim().toLowerCase() === "/help") {
+    const opsChatId = await getOpsChatId();
+    if (opsChatId && String(opsChatId) === chatId) {
+      await sendTelegramReply(
+        message.chat.id,
+        "Admin commands (this chat only):\n" +
+          "/status — cron health for the Telegram report runs (last send per cadence, in IST)\n" +
+          "/sendreport — trigger today's due reports right now (same send/skip rules as the cron)\n" +
+          "/announce [owner|group|both] <text> — broadcast to every partner's chosen chat (defaults to both)\n" +
+          "/tgid — this chat's Telegram id (also works for any partner/group chat, not admin-only)"
+      );
+    }
   }
 
   // Case 1b: any other slash command from telegramTemplateDefs.ts — see

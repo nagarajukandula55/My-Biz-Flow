@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 import { isAuthorizedCronRequest } from "@/lib/cronAuthorization";
 import { env } from "@/lib/env";
-import { isWithinReportWindow, isPastFinalCatchupDeadline } from "@/lib/telegramReportData";
+import { isWithinReportWindow } from "@/lib/telegramReportData";
 import { runTelegramReportsNow } from "@/lib/telegramReportRunner";
 
 /**
@@ -36,19 +36,18 @@ export async function GET(request: Request) {
 
   const now = new Date();
 
-  // GitHub Actions now triggers this endpoint every 15 min through the
-  // evening (see .github/workflows/cron.yml) since its `schedule` trigger
-  // is best-effort and can land late by anywhere from minutes to hours, or
-  // be skipped some days entirely. Normally only send inside the 9 PM IST
-  // window; other invocations are a cheap no-op. But from 23:15 IST onward,
-  // send regardless of window — alreadySentToday still makes this a no-op
-  // for anything that DID go out earlier, so this only fires for a cadence
-  // the window's runs all missed, which is exactly what let reports go
-  // silently unsent for days at a time.
-  const inWindow = isWithinReportWindow(now);
-  const catchUp = isPastFinalCatchupDeadline(now);
-  if (!inWindow && !catchUp) {
-    return NextResponse.json({ ok: true, skipped: "Outside 9 PM IST report window" });
+  // GitHub Actions now triggers this endpoint every 10-15 min through the
+  // evening and overnight (see .github/workflows/cron.yml) since its
+  // `schedule` trigger is best-effort and has been observed landing as
+  // late as ~01:47 IST the next calendar day for a run meant to fire at
+  // 20:30-23:00 IST. isWithinReportWindow() now covers the whole observed
+  // drift range (20:30 IST -> 06:00 IST next day) as one window, with
+  // shouldSendReportToday/alreadySentToday resolving a late-landing run
+  // back to the correct business day — see reportDay() in
+  // telegramReportData.ts. Invocations outside that window are a cheap
+  // no-op; alreadySentToday makes repeated in-window firings a no-op too.
+  if (!isWithinReportWindow(now)) {
+    return NextResponse.json({ ok: true, skipped: "Outside 20:30 IST - 06:00 IST report window" });
   }
 
   const result = await runTelegramReportsNow(now, "cron");

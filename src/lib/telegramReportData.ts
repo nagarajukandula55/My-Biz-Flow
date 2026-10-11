@@ -15,17 +15,11 @@ import { listPartnersWithReportsEnabled, sendPartnerTelegramAlert, sendPartnerTe
 import { getOpsChatId } from "@/lib/platformSettings";
 import { logReportRun } from "@/lib/reportRunLog";
 import { istDateKey, istStartOfDay } from "@/lib/format";
+import { sendModuleReportIfApplicable } from "@/lib/workspaceTelegram";
 
-/** True when `now` falls on the last calendar day of its month. */
-function isLastDayOfMonth(now: Date): boolean {
-  return new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() === now.getDate();
-}
-
-/** Which day the cron should actually send each frequency on — DAILY every run (9 PM IST), WEEKLY only Saturday (9 PM IST), MONTHLY only the last day of the month (9 PM IST). Reports cover the immediately preceding, now-complete period, not "so far today". */
-export function shouldSendReportToday(frequency: ReportFrequency, now: Date): boolean {
-  if (frequency === "DAILY") return true;
-  if (frequency === "WEEKLY") return now.getDay() === 6; // Saturday
-  return isLastDayOfMonth(now); // MONTHLY
+/** True when `d` falls on the last calendar day of its month. */
+function isLastDayOfMonth(d: Date): boolean {
+  return new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate() === d.getDate();
 }
 
 function istMinutesSinceMidnight(now: Date): number {
@@ -41,36 +35,50 @@ function istMinutesSinceMidnight(now: Date): number {
 }
 
 /**
- * True when `now` falls in the main ~9 PM IST send window. GitHub Actions
- * `schedule` triggers are best-effort and can fire late by anywhere from
- * minutes to hours under load (confirmed via actual run history drifting
- * across 08:00-20:00 UTC instead of landing at the configured 15:30 UTC) —
- * or can be skipped entirely some days. A 75-minute window was too narrow
- * to reliably catch a run inside it, so this is widened to 2.5 hours, and
- * isPastFinalCatchupDeadline() below is a last-resort fallback so a day
- * with zero on-time deliveries still isn't a day with zero report at all.
+ * The "business day" this run belongs to, for due-day/already-sent
+ * purposes only (reportPeriodRange below still uses the true instant).
+ * GitHub Actions `schedule` triggers are best-effort and have been
+ * observed landing anywhere from minutes to ~7+ hours after their
+ * configured time — confirmed via run history landing as late as 01:47 IST
+ * the *next* calendar day for a run meant to fire at 20:30-23:00 IST. A
+ * send that actually executes at, say, 00:30 IST must still count as last
+ * night's report, not get silently skipped (wrong "today") or send an
+ * almost-empty digest for a day that just started. So the day rolls over
+ * at 06:00 IST, not midnight: anything before 6 AM IST is still "yesterday"
+ * for cadence/idempotency purposes.
  */
-export function isWithinReportWindow(now: Date): boolean {
-  const minutesSinceMidnight = istMinutesSinceMidnight(now);
-  return minutesSinceMidnight >= 20 * 60 + 30 && minutesSinceMidnight <= 23 * 60; // 20:30-23:00 IST
+function reportDay(now: Date): Date {
+  if (istMinutesSinceMidnight(now) < 6 * 60) {
+    return new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  }
+  return now;
+}
+
+/** Which day the cron should actually send each frequency on — DAILY every business day, WEEKLY only Saturday, MONTHLY only the last day of the month — all evaluated against reportDay(), not the raw instant, so a late-landing run still resolves to the right day. Reports cover the immediately preceding, now-complete period, not "so far today". */
+export function shouldSendReportToday(frequency: ReportFrequency, now: Date): boolean {
+  const day = reportDay(now);
+  if (frequency === "DAILY") return true;
+  if (frequency === "WEEKLY") return day.getDay() === 6; // Saturday
+  return isLastDayOfMonth(day); // MONTHLY
 }
 
 /**
- * Last-resort catch-up: true from 23:15 IST to end of day. If nothing has
- * sent a given cadence by then (alreadySentToday still false), the cron
- * route sends anyway rather than let the whole day pass with no report —
- * this is what actually fixes "reports didn't fire for 3 days straight",
- * since the main window alone still depends on GitHub Actions happening to
- * fire during it, which it has been observed not to do.
+ * True whenever a send is allowed to happen at all: 20:30 IST through 06:00
+ * IST the next calendar day — one contiguous ~9.5h window instead of a
+ * narrow slot plus a separate catch-up, since GitHub Actions' drift has
+ * been observed spanning that whole range. Anything landing inside it
+ * resolves to the correct reportDay() above; alreadySentToday is still the
+ * real idempotency guard against the repeated 10-15 min firings inside it.
  */
-export function isPastFinalCatchupDeadline(now: Date): boolean {
-  return istMinutesSinceMidnight(now) >= 23 * 60 + 15; // 23:15 IST onward
+export function isWithinReportWindow(now: Date): boolean {
+  const minutesSinceMidnight = istMinutesSinceMidnight(now);
+  return minutesSinceMidnight >= 20 * 60 + 30 || minutesSinceMidnight < 6 * 60; // 20:30 IST -> 06:00 IST next day
 }
 
 /** True once this partner has already gotten (or had an attempted) send today for this cadence — Vercel Cron doesn't guarantee exactly-once, so this is the idempotency check. Each cadence only ever triggers once per calendar day (see shouldSendReportToday), so a same-day check per cadence is sufficient. `lastReportSentAt` is TelegramSettingsRecord's per-cadence stamp map (src/lib/telegram.ts). Compared as an IST calendar day, not the server/runner's local zone — otherwise a UTC-day rollover mid-window could misclassify a send as "not today" or vice versa. */
 export function alreadySentToday(lastReportSentAt: Date | null | undefined, now: Date): boolean {
   if (!lastReportSentAt) return false;
-  return istDateKey(lastReportSentAt) === istDateKey(now);
+  return istDateKey(lastReportSentAt) === istDateKey(reportDay(now));
 }
 
 /**
@@ -240,6 +248,7 @@ const FREQUENCY_LABEL: Record<ReportFrequency, string> = { DAILY: "Daily", WEEKL
 export async function sendOnePartnerReport(partnerId: string, frequency: ReportFrequency, now: Date): Promise<void> {
   const partner = await getPartner(partnerId);
   if (!partner) throw new Error("Partner not found");
+  if (await sendModuleReportIfApplicable(partner, frequency, now)) return;
 
   const { current, prior, changePct } = await computePartnerReportComparison(partnerId, frequency, now);
   const message = await businessReportMessage({
