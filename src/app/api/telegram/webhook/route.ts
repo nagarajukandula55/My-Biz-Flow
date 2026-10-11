@@ -20,10 +20,18 @@ import { getPartnerType } from "@/lib/designer/partnerTypesData";
 import { getVisibleModuleSlugs } from "@/lib/designer/entitlements";
 import { workspaceTelegramCommandAllowed } from "@/lib/workspaceProfiles";
 import { runTelegramReportsNow } from "@/lib/telegramReportRunner";
-import { computePnaTelegramReport } from "@/lib/analyticsData";
+import {
+  computePnaTelegramReport,
+  getServiceCentreOverview,
+  getInquiryOverview,
+  getInvoiceStatusBreakdown,
+  getAverageTat,
+} from "@/lib/analyticsData";
+import { computeAlerts } from "@/lib/alerts";
 import { findSupportTicketByReplyMessageId, appendSupportReply } from "@/lib/supportTickets";
 import { getOpsChatId } from "@/lib/platformSettings";
 import { getReportRuns } from "@/lib/reportRunLog";
+import { getPlan } from "@/lib/plansData";
 
 function istTimestamp(d: Date): string {
   return d.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata" });
@@ -66,6 +74,18 @@ const SAMPLE_VARS: Record<string, string> = {
  * digest; /test_* commands preview a template with sample data; /help lists
  * every command. Returns true if `text` was a recognized command (caller
  * should stop processing the update either way once this returns). */
+/** Lines for handleLiveDataCommand's commands, filtered to what this partner's modules actually support — used by both /help branches below. */
+function liveDataCommandLines(modules: readonly string[]): string[] {
+  const lines = ["/subscription — your plan and expiry status", "/lowstock — items currently at or below reorder level"];
+  if (modules.includes("service-centre")) {
+    lines.push("/workorders — live open-workorder counts", "/inquiries — open/converted/closed inquiry counts", "/tat — average turnaround time (closed jobs)");
+  }
+  if (modules.includes("billing")) {
+    lines.push("/invoices — invoice counts by payment status");
+  }
+  return lines;
+}
+
 async function handleTemplateCommand(chatId: string, text: string): Promise<boolean> {
   const head = text.trim().split(/\s/)[0];
   if (!head.startsWith("/")) return false;
@@ -78,12 +98,16 @@ async function handleTemplateCommand(chatId: string, text: string): Promise<bool
       const modules = await getVisibleModuleSlugs(connectedPartner.id);
       const commands = TELEGRAM_TEMPLATE_DEFS.filter(d => workspaceTelegramCommandAllowed(d.key, modules))
         .map(d => `${d.command} — ${d.key.startsWith("report_") ? "Current module snapshot" : d.label}`).join("\n");
-      await sendRawTelegramMessage(chatId, `Available commands for your active modules:\n${commands}\n/tgid — this chat's Telegram id`);
+      await sendRawTelegramMessage(
+        chatId,
+        `Available commands for your active modules:\n${commands}\n${liveDataCommandLines(modules).join("\n")}\n/tgid — this chat's Telegram id`
+      );
       return true;
     }
+    const scModules = connectedPartner ? await getVisibleModuleSlugs(connectedPartner.id) : ["service-centre"];
     const commandList = TELEGRAM_TEMPLATE_DEFS.filter((d) => d.command !== "/start")
       .map((d) => `${d.command} — ${d.label}`)
-      .join("\n") + "\n/tgid — this chat's Telegram id";
+      .join("\n") + "\n" + liveDataCommandLines(scModules).join("\n") + "\n/tgid — this chat's Telegram id";
     await sendRawTelegramMessage(chatId, await helpMessageText(commandList));
     return true;
   }
@@ -149,6 +173,116 @@ async function handleTemplateCommand(chatId: string, text: string): Promise<bool
   const body = await getTelegramTemplateBody(def.key);
   const vars: Record<string, string> = { ...SAMPLE_VARS, businessName: partner.businessName };
   await sendRawTelegramMessage(chatId, renderTelegramTemplate(body, vars));
+  return true;
+}
+
+const LIVE_DATA_COMMANDS = new Set(["/workorders", "/invoices", "/lowstock", "/subscription", "/inquiries", "/tat"]);
+
+/**
+ * On-demand live-data pull commands — same connected-chat requirement as
+ * handleTemplateCommand's /report_* and /pna_report, but these aren't templates
+ * (no admin-editable body, nothing in telegramTemplateDefs.ts) since
+ * there's no fixed copy to preview — they just read the same aggregation
+ * functions the partner's own Dashboard/Analytics pages already use
+ * (src/lib/analyticsData.ts, src/lib/alerts.ts) and format a plain-text
+ * snapshot. Module-gated the same way handleTemplateCommand's event-alert
+ * commands are (service-centre for workorders/inquiries/tat, billing for
+ * invoices) — /subscription and /lowstock need no module gate: the former
+ * reads the Partner row itself, the latter (via computeAlerts) harmlessly
+ * returns nothing for a module that isn't enabled.
+ */
+async function handleLiveDataCommand(chatId: string, text: string): Promise<boolean> {
+  const head = text.trim().split(/\s/)[0].toLowerCase();
+  if (!LIVE_DATA_COMMANDS.has(head)) return false;
+
+  const partnerId = await findPartnerIdByChatId(chatId);
+  if (!partnerId) {
+    await sendRawTelegramMessage(chatId, "This chat isn't connected to a My Biz Flow account yet — use the \"Connect Telegram\" link on your Telegram Alerts page first.");
+    return true;
+  }
+  const partner = await getPartner(partnerId);
+  if (!partner) {
+    await sendRawTelegramMessage(chatId, "Couldn't find this account anymore.");
+    return true;
+  }
+  const modules = await getVisibleModuleSlugs(partnerId);
+
+  if (head === "/workorders") {
+    if (!modules.includes("service-centre")) {
+      await sendRawTelegramMessage(chatId, "This command needs the Service Centre module. Use /help to see your commands.");
+      return true;
+    }
+    const o = await getServiceCentreOverview(partnerId);
+    await sendRawTelegramMessage(
+      chatId,
+      `📋 <b>${escapeHtml(partner.businessName)} — Workorders</b>\n\n<pre>\nOpen            ${o.openWorkorders}\nOverdue (SLA)   ${o.overdueWorkorders}\nPart pending    ${o.partPendingWorkorders}\nRepair done     ${o.repairCompletedWorkorders}\nClosed (month)  ${o.closedThisMonth}\nToday / Week    ${o.workordersToday} / ${o.workordersThisWeek}\nRevenue (month) ${formatInr(o.revenueThisMonth)}\n</pre>`
+    );
+    return true;
+  }
+
+  if (head === "/inquiries") {
+    if (!modules.includes("service-centre")) {
+      await sendRawTelegramMessage(chatId, "This command needs the Service Centre module. Use /help to see your commands.");
+      return true;
+    }
+    const o = await getInquiryOverview(partnerId);
+    await sendRawTelegramMessage(
+      chatId,
+      `📞 <b>${escapeHtml(partner.businessName)} — Inquiries</b>\n\n<pre>\nOpen         ${o.open}\nConverted    ${o.converted}\nClosed       ${o.closed}\nTotal        ${o.total}\nConversion   ${o.conversionRatePercent}%\n</pre>`
+    );
+    return true;
+  }
+
+  if (head === "/tat") {
+    if (!modules.includes("service-centre")) {
+      await sendRawTelegramMessage(chatId, "This command needs the Service Centre module. Use /help to see your commands.");
+      return true;
+    }
+    const t = await getAverageTat(partnerId);
+    await sendRawTelegramMessage(
+      chatId,
+      t.avgHours === undefined
+        ? "No closed workorders yet — nothing to average."
+        : `⏱️ <b>${escapeHtml(partner.businessName)} — Average Turnaround Time</b>\n\n<pre>\nAvg TAT      ${t.avgHours.toFixed(1)} hours\nClosed jobs  ${t.closedCount}\n</pre>`
+    );
+    return true;
+  }
+
+  if (head === "/invoices") {
+    if (!modules.includes("billing")) {
+      await sendRawTelegramMessage(chatId, "This command needs the Billing module. Use /help to see your commands.");
+      return true;
+    }
+    const breakdown = await getInvoiceStatusBreakdown(partnerId);
+    const lines = breakdown.length === 0 ? "No invoices yet." : breakdown.map((b) => `${b.name.padEnd(12)} ${b.value}`).join("\n");
+    await sendRawTelegramMessage(chatId, `💳 <b>${escapeHtml(partner.businessName)} — Invoices by Status</b>\n\n<pre>\n${lines}\n</pre>`);
+    return true;
+  }
+
+  if (head === "/lowstock") {
+    const alerts = (await computeAlerts(partnerId)).filter((a) => a.title === "Low stock" || a.title === "Out of stock");
+    if (alerts.length === 0) {
+      await sendRawTelegramMessage(chatId, "✅ Nothing at or below its reorder level right now.");
+      return true;
+    }
+    const lines = alerts.slice(0, 25).map((a) => `${a.severity === "danger" ? "🔴" : "🟡"} ${a.detail}`).join("\n");
+    await sendRawTelegramMessage(
+      chatId,
+      `📉 <b>${escapeHtml(partner.businessName)} — Low Stock (${alerts.length})</b>\n\n${lines}${alerts.length > 25 ? `\n\n…and ${alerts.length - 25} more.` : ""}`
+    );
+    return true;
+  }
+
+  // /subscription — reads the Partner row itself, no module gate.
+  const planName = partner.planId ? (await getPlan(partner.planId))?.name ?? partner.planId : "Trial";
+  const expiry =
+    partner.subscriptionStatus === "Trial" && partner.trialEndAt
+      ? `Trial ends ${istTimestamp(partner.trialEndAt)}`
+      : partner.subscriptionStatus;
+  await sendRawTelegramMessage(
+    chatId,
+    `🔑 <b>${escapeHtml(partner.businessName)} — Subscription</b>\n\n<pre>\nPlan     ${planName}\nStatus   ${partner.subscriptionStatus}\n${partner.subscriptionStatus === "Trial" ? "Expiry   " + expiry : ""}\n</pre>`
+  );
   return true;
 }
 
@@ -469,6 +603,14 @@ export async function POST(request: Request) {
           "/tgid — this chat's Telegram id (also works for any partner/group chat, not admin-only)"
       );
     }
+  }
+
+  // Case 1b-2: /workorders, /inquiries, /tat, /invoices, /lowstock,
+  // /subscription — on-demand live data pulls, see handleLiveDataCommand's
+  // own doc comment. Checked before Case 1b so these never fall through to
+  // handleTemplateCommand's "unrecognized command" no-op.
+  if (text.startsWith("/") && (await handleLiveDataCommand(chatId, text))) {
+    return NextResponse.json({ ok: true });
   }
 
   // Case 1b: any other slash command from telegramTemplateDefs.ts — see
