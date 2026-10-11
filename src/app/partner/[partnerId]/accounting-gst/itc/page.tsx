@@ -5,7 +5,8 @@ import { GstItcClientTable } from "./GstItcClientTable";
 import { GstItcNewButton } from "./GstItcNewButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { gstItcColumns } from "@/lib/sample-data/accounting-gst-itc";
-import { listBusinessRecords } from "@/lib/businessRecords";
+import { listBusinessRecordsPaginated } from "@/lib/businessRecords";
+import { PaginationControls, buildPageQueryString } from "@/components/PaginationControls";
 
 registerPage({
   id: "accounting-gst.itc.list",
@@ -24,11 +25,18 @@ registerPage({
 
 export const dynamic = "force-dynamic";
 
-export default async function GstItcPage({ params }: { params: { partnerId: string } }) {
+export default async function GstItcPage({
+  params,
+  searchParams,
+}: {
+  params: { partnerId: string };
+  searchParams: { page?: string };
+}) {
   const tierGate = await renderTierGate(params.partnerId, "accounting-gst.itc.list", "ITC Register");
   if (tierGate) return <AppShell topbarTitle="ITC Register">{tierGate}</AppShell>;
   const columns = await applyCustomizations("accounting-gst.itc.list", gstItcColumns);
-  const rows = await listBusinessRecords(params.partnerId, "accounting-gst-itc");
+  const page = Math.max(1, Number(searchParams.page) || 1);
+  const { rows, total, totalPages, pageSize } = await listBusinessRecordsPaginated(params.partnerId, "accounting-gst-itc", { page });
 
   return (
     <AppShell
@@ -40,6 +48,13 @@ export default async function GstItcPage({ params }: { params: { partnerId: stri
         <div className="mt-4">
           <GstItcClientTable partnerId={params.partnerId} columns={columns} rows={rows} />
         </div>
+        <PaginationControls
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          pageSize={pageSize}
+          buildHref={(p) => buildPageQueryString(searchParams, { page: String(p) })}
+        />
       </div>
     </AppShell>
   );

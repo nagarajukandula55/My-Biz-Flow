@@ -6,7 +6,8 @@ import { EducationClientTable } from "./EducationClientTable";
 import { EducationNewButton } from "./EducationNewButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { educationColumns } from "@/lib/sample-data/education";
-import { listBusinessRecords } from "@/lib/businessRecords";
+import { listBusinessRecordsPaginated } from "@/lib/businessRecords";
+import { PaginationControls, buildPageQueryString } from "@/components/PaginationControls";
 
 registerPage({
   id: "education.list",
@@ -26,10 +27,17 @@ registerPage({
 
 export const dynamic = "force-dynamic";
 
-export default async function EducationPage({ params }: { params: { partnerId: string } }) {
+export default async function EducationPage({
+  params,
+  searchParams,
+}: {
+  params: { partnerId: string };
+  searchParams: { page?: string };
+}) {
   const mod = await getModule("education");
   const columns = await applyCustomizations("education.list", educationColumns);
-  const rows = await listBusinessRecords(params.partnerId, "education");
+  const page = Math.max(1, Number(searchParams.page) || 1);
+  const { rows, total, totalPages, pageSize } = await listBusinessRecordsPaginated(params.partnerId, "education", { page });
 
   return (
     <AppShell
@@ -54,6 +62,13 @@ export default async function EducationPage({ params }: { params: { partnerId: s
         <div className="mt-6">
           <EducationClientTable partnerId={params.partnerId} columns={columns} rows={rows} />
         </div>
+        <PaginationControls
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          pageSize={pageSize}
+          buildHref={(p) => buildPageQueryString(searchParams, { page: String(p) })}
+        />
       </div>
     </AppShell>
   );

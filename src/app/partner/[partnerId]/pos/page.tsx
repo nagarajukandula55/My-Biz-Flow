@@ -6,8 +6,9 @@ import { PosClientTable } from "./PosClientTable";
 import { PosNewButton } from "./PosNewButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { posColumns } from "@/lib/sample-data/pos";
-import { listBusinessRecords } from "@/lib/businessRecords";
+import { listBusinessRecordsPaginated } from "@/lib/businessRecords";
 import { requirePosStaff } from "@/lib/pos/posAuth";
+import { PaginationControls, buildPageQueryString } from "@/components/PaginationControls";
 
 export const dynamic = "force-dynamic";
 
@@ -28,11 +29,18 @@ registerPage({
   sourceFile: "src/app/partner/[partnerId]/pos/page.tsx",
 });
 
-export default async function PosPage({ params }: { params: { partnerId: string } }) {
+export default async function PosPage({
+  params,
+  searchParams,
+}: {
+  params: { partnerId: string };
+  searchParams: { page?: string };
+}) {
   const staff = await requirePosStaff(params.partnerId);
   const mod = await getModule("pos");
   const columns = await applyCustomizations("pos.list", posColumns);
-  const rows = await listBusinessRecords(params.partnerId, "pos");
+  const page = Math.max(1, Number(searchParams.page) || 1);
+  const { rows, total, totalPages, pageSize } = await listBusinessRecordsPaginated(params.partnerId, "pos", { page });
 
   return (
     <AppShell
@@ -60,6 +68,13 @@ export default async function PosPage({ params }: { params: { partnerId: string 
         <div className="mt-6">
           <PosClientTable partnerId={params.partnerId} columns={columns} rows={rows} />
         </div>
+        <PaginationControls
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          pageSize={pageSize}
+          buildHref={(p) => buildPageQueryString(searchParams, { page: String(p) })}
+        />
       </div>
     </AppShell>
   );
