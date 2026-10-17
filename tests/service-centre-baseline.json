@@ -16,7 +16,7 @@
   "src/app/partner/[partnerId]/service-centre/fault-codes/page.tsx": "ea21a58c0cabb8d6ed760c415e1b7c6b0822e622202321f8bf49ec86d23efb02",
   "src/app/partner/[partnerId]/service-centre/fault-codes/ScFaultCodeClientTable.tsx": "41fa902bd0ffced3e46569fca0849a8e250af8c3b48fca343c74d339b55b4e0b",
   "src/app/partner/[partnerId]/service-centre/fault-codes/ScFaultCodeNewButton.tsx": "7b29fb5084cd02ace53a0b63ce7ee881e37f8998eba5dddc86d337d6c3cfe151",
-  "src/app/partner/[partnerId]/service-centre/inquiries/actions.ts": "ea9f80d575ebf6ff9e6b406630b08696eb7e8e4a66ef409507041881251f2870",
+  "src/app/partner/[partnerId]/service-centre/inquiries/actions.ts": "2d2f12829164d7b113c5c6db190616f432a21849c5f1d8ba153fdf6a9505b1f8",
   "src/app/partner/[partnerId]/service-centre/inquiries/InquiryClientTable.tsx": "a15959ced3ecc67fd05deeb20677ea61ab0dd18daf64471adc51e2fa3293a800",
   "src/app/partner/[partnerId]/service-centre/inquiries/InquiryNewButton.tsx": "e48da2249a901dcf11e4d843235a22ebface5f5f5287477729ea11ead2e93a31",
   "src/app/partner/[partnerId]/service-centre/inquiries/page.tsx": "fca15a9b23b578d9cb990148d29ae46a51bd33c4aec39d7b15218774b887c121",
