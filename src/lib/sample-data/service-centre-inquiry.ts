@@ -39,6 +39,7 @@ export const inquiryColumns: Column[] = [
   { key: "id", label: "Inquiry No", type: "text" },
   { key: "customerName", label: "Customer Name", type: "text" },
   { key: "customerPhone", label: "Phone", type: "text" },
+  { key: "customerEmail", label: "Email", type: "email" },
   { key: "serviceType", label: "Service Type", type: "select-chip" },
   { key: "complaint", label: "Complaint", type: "text" },
   { key: "pincode", label: "Pincode", type: "text" },
@@ -52,6 +53,7 @@ export const inquiryColumns: Column[] = [
 export const inquiryFormFields: FormFieldDef[] = [
   { key: "customerName", label: "Customer Name", type: "text", required: true },
   { key: "customerPhone", label: "Phone", type: "text", required: true },
+  { key: "customerEmail", label: "Email", type: "email", required: false },
   {
     key: "serviceType",
     label: "Service Type",
@@ -72,6 +74,7 @@ export function getInquiryDetailFields(record: Row): RecordField[] {
     { label: "Inquiry No", value: record["id"], type: "text" },
     { label: "Customer Name", value: record["customerName"], type: "text" },
     { label: "Phone", value: record["customerPhone"], type: "text" },
+    { label: "Email", value: record["customerEmail"], type: "text" },
     { label: "Service Type", value: serviceTypeLabel(String(record["serviceType"] ?? "")), type: "text" },
     { label: "Complaint", value: record["complaint"], type: "text" },
     { label: "Brand / Model", value: [record["brand"], record["model"]].filter(Boolean).join(" ") || "—", type: "text" },

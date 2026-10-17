@@ -23,6 +23,8 @@ export async function createInquiryAction(
   const customerName = String(values.customerName ?? "").trim();
   const customerPhone = String(values.customerPhone ?? "").trim();
   if (!customerName || !customerPhone) return { error: "Customer Name and Phone are required" };
+  const customerEmail = String(values.customerEmail ?? "").trim();
+  if (customerEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)) return { error: "Enter a valid email address" };
 
   // Same pincode -> city/state lookup convertInquiryToWorkorderAction
   // already did at conversion time — doing it here too means the inquiry
@@ -150,6 +152,7 @@ async function convertInquiryToWorkorderInner(
   const values: Record<string, unknown> = {
     customer: inquiry["customerName"],
     customerPhone: inquiry["customerPhone"],
+    customerEmail: inquiry["customerEmail"] ?? "",
     faultDescription: inquiry["complaint"],
     customerAddress: inquiry["addressLine"] ?? "",
     customerCity: city,
