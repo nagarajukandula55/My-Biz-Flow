@@ -80,8 +80,8 @@ export default function DownloadsPage() {
         </h1>
         <p className="mbf-prose mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-text-muted">
           {SITE_NAME}'s apps install straight from your browser — no app store, no separate download. Sign in, then
-          use "Add to Home Screen," and you get a real app icon that opens full-screen, works offline for what's
-          already loaded, and feels like a native app.
+          use "Add to Home Screen" or "Install app." The shared shell is PWA-enabled, while live workspace data
+          always comes from your signed-in account and is never stored in the offline cache.
         </p>
       </section>
 

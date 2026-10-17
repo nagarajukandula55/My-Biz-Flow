@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { mbfDisplay, mbfSans, mbfMono } from "@/lib/fonts";
 import { SITE_URL } from "@/lib/seo";
+import { PwaRegistration } from "@/components/PwaRegistration";
 import "./globals.css";
 
 // Next.js 14's `viewport` export is separate from `metadata` (theme-color
@@ -78,7 +79,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body>{children}</body>
+      <body><PwaRegistration />{children}</body>
     </html>
   );
 }
