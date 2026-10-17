@@ -4,6 +4,7 @@ import { PublicHeader } from "@/components/PublicHeader";
 import { registerPage } from "@/lib/designer/registry";
 import { SITE_URL, SITE_NAME } from "@/lib/seo";
 import { BUSINESS_OFFERINGS } from "@/lib/businessOfferings";
+import { InstallAppPrompt } from "@/components/InstallAppPrompt";
 
 registerPage({
   id: "platform.downloads",
@@ -83,6 +84,7 @@ export default function DownloadsPage() {
           use "Add to Home Screen" or "Install app." The shared shell is PWA-enabled, while live workspace data
           always comes from your signed-in account and is never stored in the offline cache.
         </p>
+        <div className="mt-6 flex justify-center"><InstallAppPrompt /></div>
       </section>
 
       <section className="border-t border-border px-6 py-16">
