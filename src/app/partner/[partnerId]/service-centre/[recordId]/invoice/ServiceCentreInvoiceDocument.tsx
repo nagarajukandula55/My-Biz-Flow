@@ -194,6 +194,7 @@ export function ServiceCentreInvoiceDocument({
       igstTotal,
       taxAmount: gstTotal,
       totalAmount: grandTotal,
+      termsAndConditions: termsText ?? "",
     });
     return (
       <div className="mbf-page bg-gray-100 print:bg-white">
@@ -202,6 +203,12 @@ export function ServiceCentreInvoiceDocument({
             <div className="ric-page">
               <style>{RIC_STYLES}</style>
               <div dangerouslySetInnerHTML={{ __html: html }} />
+              {termsText?.trim() && (
+                <div className="ric-box" style={{ marginTop: 12 }}>
+                  <p className="ric-sectionTitle">Terms &amp; Conditions</p>
+                  <p style={{ whiteSpace: "pre-line" }}>{termsText.trim()}</p>
+                </div>
+              )}
             </div>
           </PrintFrame>
         </div>
