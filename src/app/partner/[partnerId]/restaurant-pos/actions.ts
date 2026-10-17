@@ -18,8 +18,6 @@ import {
   type OrderLine,
 } from "@/lib/sample-data/restaurant-pos";
 
-export { findOpenOrderForTable };
-
 /**
  * Adds (or increments) a menu item on a table's open order — creates the
  * order if the table currently has no open one. Mirrors PosCheckout's

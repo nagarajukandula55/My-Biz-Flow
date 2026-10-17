@@ -26,7 +26,7 @@ import { env } from "@/lib/env";
 // definitions, see this file's own comment) and the tier-vs-price index
 // this app already uses on /pricing -- reused here so the Subscription
 // page's plan picker shows the same real features, not invented copy.
-import { TIER_FEATURES, tierForPlanIndex } from "@/lib/designer/pageTiers";
+import { TIER_FEATURES, tierForPlan } from "@/lib/designer/pageTiers";
 
 /** My Biz Flow is the seller on this one document — see src/lib/env.ts. */
 const PLATFORM_BILLING_HEADER = `My Biz Flow — a unit of ${env.platformLegalEntityName()}`;
@@ -182,7 +182,7 @@ export default async function PartnerSubscriptionPage({ params }: { params: { pa
                 )}
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   {bundledPlans.map((p, i) => {
-                    const tier = tierForPlanIndex(i, bundledPlans.length);
+                    const tier = tierForPlan(p.id, i, bundledPlans.length);
                     const features = TIER_FEATURES[tier];
                     const rate = currentMonthlyRate(p);
                     const onLaunchRate = rate !== p.price;

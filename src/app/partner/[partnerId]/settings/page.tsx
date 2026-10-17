@@ -10,6 +10,9 @@ import { ConfigForm } from "./ConfigForm";
 import { NumberingPanel } from "./NumberingPanel";
 import { ServiceCentrePanel } from "./ServiceCentrePanel";
 import { SettingsTabs } from "./SettingsTabs";
+import { ModuleSettings } from "@/components/ModuleSettings";
+import { requirePartnerSessionForPage } from "@/lib/requirePartnerSession";
+import { redirect } from "next/navigation";
 
 registerPage({
   id: "settings.partner",
@@ -30,6 +33,10 @@ registerPage({
  * Client Component) and hands the interactive body to SettingsPageClient.
  */
 export default async function SettingsPage({ params }: { params: { partnerId: string } }) {
+  const session = await requirePartnerSessionForPage(params.partnerId);
+  if (session.kind === "staff") redirect(`/partner/${params.partnerId}/telecalling/queue`);
+  const workspaceModules = await getVisibleModuleSlugs(params.partnerId);
+  if (!workspaceModules.includes("service-centre")) return <ModuleSettings partnerId={params.partnerId} modules={workspaceModules} />;
   // A transient Prisma/connection blip in any one of these used to 500 the
   // whole page via Promise.all's fail-fast behavior (see the same fix in
   // ../layout.tsx, which runs on every partner page and hit this exact

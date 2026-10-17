@@ -35,12 +35,13 @@ test('telecalling records failed and unconfigured sends honestly',async()=>{
  const api=load('src/lib/telecalling/messaging.ts',{
   '@/lib/prisma':{prisma:{
    lead:{findUniqueOrThrow:async()=>({id:'lead',partnerId:'p1',name:'Lead',phone:'phone'})},
-   messageTemplate:{findUniqueOrThrow:async()=>({id:'template',partnerId:'p1',channel:'whatsapp',body:'text'})},
+   messageTemplate:{findUniqueOrThrow:async()=>({id:'template',partnerId:'p1',channel:'whatsapp',body:'text',metaTemplateName:'approved_template'})},
    partnerStaff:{findFirst:async()=>({id:'agent'})},messageLog:{create:async({data})=>{record=data;}},
   }},
-  '@/lib/tenant':{assertPartnerScope:(a,b)=>assert.equal(a,b)},'@/lib/telecalling/templatesData':{fillTemplate:()=> 'text'},
+  '@/lib/tenant':{assertPartnerScope:(a,b)=>assert.equal(a,b)},'@/lib/telecalling/templatesData':{fillTemplate:()=> 'text',extractTemplateParamsInOrder:()=>[]},
+  '@/lib/telecalling/whatsappGate':{isTemplateApprovedForWhatsApp:async()=>true},
   '@/lib/env':{env:{whatsappBusinessPhoneNumberId:()=> configured?'phone':undefined,whatsappAccessToken:()=> 'key'}},
-  '@/lib/whatsapp':{sendWhatsAppMessage:async()=>{network++;return accepted;}},'@/lib/sms':{},'@/lib/smsFlowMapping':{},
+  '@/lib/whatsapp':{sendWhatsAppTemplateMessage:async()=>{network++;return accepted;}},'@/lib/sms':{},'@/lib/smsFlowMapping':{},
  });
  const send=()=>api.sendTemplateToLead('p1',{leadId:'lead',templateId:'template',sentById:'agent'});
  assert.equal((await send()).status,'failed');assert.equal(record.status,'failed');

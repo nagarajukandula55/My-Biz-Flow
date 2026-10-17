@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { StatusChip, type StatusVariant } from "@/components/StatusChip";
-import { EVENT_BOOKING_STATUSES, type EventBookingStatus } from "@/lib/eventBooking";
+import { EVENT_BOOKING_STATUSES, type EventBookingStatus } from "@/lib/eventBookingTypes";
 import { setBookingStatusAction, recordPaymentAction } from "./actions";
 
 const STATUS_VARIANT: Record<string, StatusVariant> = {

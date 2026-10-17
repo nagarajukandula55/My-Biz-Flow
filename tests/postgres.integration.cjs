@@ -53,6 +53,7 @@ test('PostgreSQL overlapping recurring runs create exactly one numbered invoice'
 
 test('real inventory helpers serialize first receipts and roll back bucket transfers', async () => {
  const records = load('src/lib/businessRecords.ts', {
+  '@prisma/client': require('@prisma/client'),
   '@/lib/prisma': { prisma }, '@/lib/safeCache': { safeCache: fn => fn },
   '@/lib/tenant': { assertPartnerCanWrite: async id => assert.equal(id, partnerId) },
  });
@@ -104,7 +105,7 @@ test('durable delivery jobs roll back with payment work and concurrent workers c
 });
 
 test('POS invoice failure rolls back stock; concurrent sales cannot oversell', async () => {
- const records=load('src/lib/businessRecords.ts',{'@/lib/prisma':{prisma},'@/lib/safeCache':{safeCache:fn=>fn},'@/lib/tenant':{assertPartnerCanWrite:async id=>assert.equal(id,partnerId)}});
+ const records=load('src/lib/businessRecords.ts',{'@prisma/client':require('@prisma/client'),'@/lib/prisma':{prisma},'@/lib/safeCache':{safeCache:fn=>fn},'@/lib/tenant':{assertPartnerCanWrite:async id=>assert.equal(id,partnerId)}});
  const stock=await records.createBusinessRecord(partnerId,'inventory-stock',{qtyOnHand:5,reservedQty:0,availableQty:5});
  let failInvoice=true;
  const actions=load('src/app/partner/[partnerId]/pos/checkout/actions.ts',{

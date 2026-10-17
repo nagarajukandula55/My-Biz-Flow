@@ -1,0 +1,507 @@
+{
+  "status": "UNPUBLISHED — human review required",
+  "pricing": "Unset — supply approved prices before publishing",
+  "changes": [
+    {
+      "businessType": "brand",
+      "operation": "create-business-type",
+      "expectedExisting": null,
+      "type": {
+        "id": "brand",
+        "description": "Standalone brand business",
+        "idPrefix": "BRD",
+        "defaultModules": [
+          "brand"
+        ],
+        "assignableRoleIds": [
+          "Owner / Admin"
+        ],
+        "planTierByPage": {},
+        "planIds": [
+          "PLAN-BRAND-BASIC",
+          "PLAN-BRAND-PRO",
+          "PLAN-BRAND-ULTIMATE"
+        ],
+        "requiresApproval": false,
+        "customSignupFields": [],
+        "status": "Active"
+      },
+      "plans": [
+        {
+          "id": "PLAN-BRAND-BASIC",
+          "name": "Starter",
+          "price": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "brand"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": true
+        },
+        {
+          "id": "PLAN-BRAND-PRO",
+          "name": "Pro",
+          "price": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "brand"
+          ],
+          "maxUsers": 10,
+          "maxLocations": 3,
+          "isPublic": true
+        },
+        {
+          "id": "PLAN-BRAND-ULTIMATE",
+          "name": "Ultimate",
+          "price": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "brand"
+          ],
+          "maxUsers": 9999,
+          "maxLocations": 9999,
+          "isPublic": true
+        }
+      ]
+    },
+    {
+      "businessType": "inventory",
+      "operation": "create-business-type",
+      "expectedExisting": null,
+      "type": {
+        "id": "inventory",
+        "description": "Standalone inventory business",
+        "idPrefix": "INV",
+        "defaultModules": [
+          "inventory"
+        ],
+        "assignableRoleIds": [
+          "Owner / Admin"
+        ],
+        "planTierByPage": {},
+        "planIds": [
+          "PLAN-INVENTORY-BASIC",
+          "PLAN-INVENTORY-PRO",
+          "PLAN-INVENTORY-ULTIMATE"
+        ],
+        "requiresApproval": false,
+        "customSignupFields": [],
+        "status": "Active"
+      },
+      "plans": [
+        {
+          "id": "PLAN-INVENTORY-BASIC",
+          "name": "Starter",
+          "price": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "inventory"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": true
+        },
+        {
+          "id": "PLAN-INVENTORY-PRO",
+          "name": "Pro",
+          "price": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "inventory"
+          ],
+          "maxUsers": 10,
+          "maxLocations": 3,
+          "isPublic": true
+        },
+        {
+          "id": "PLAN-INVENTORY-ULTIMATE",
+          "name": "Ultimate",
+          "price": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "inventory"
+          ],
+          "maxUsers": 9999,
+          "maxLocations": 9999,
+          "isPublic": true
+        }
+      ]
+    },
+    {
+      "businessType": "accounting-gst",
+      "operation": "create-business-type",
+      "expectedExisting": null,
+      "type": {
+        "id": "accounting-gst",
+        "description": "Standalone accounting-gst business",
+        "idPrefix": "GST",
+        "defaultModules": [
+          "accounting-gst",
+          "billing"
+        ],
+        "assignableRoleIds": [
+          "Owner / Admin"
+        ],
+        "planTierByPage": {},
+        "planIds": [
+          "PLAN-ACCOUNTINGGST-BASIC",
+          "PLAN-ACCOUNTINGGST-PRO",
+          "PLAN-ACCOUNTINGGST-ULTIMATE"
+        ],
+        "requiresApproval": false,
+        "customSignupFields": [],
+        "status": "Active"
+      },
+      "plans": [
+        {
+          "id": "PLAN-ACCOUNTINGGST-BASIC",
+          "name": "Starter",
+          "price": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "accounting-gst",
+            "billing"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": true
+        },
+        {
+          "id": "PLAN-ACCOUNTINGGST-PRO",
+          "name": "Pro",
+          "price": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "accounting-gst",
+            "billing"
+          ],
+          "maxUsers": 10,
+          "maxLocations": 3,
+          "isPublic": true
+        },
+        {
+          "id": "PLAN-ACCOUNTINGGST-ULTIMATE",
+          "name": "Ultimate",
+          "price": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "accounting-gst",
+            "billing"
+          ],
+          "maxUsers": 9999,
+          "maxLocations": 9999,
+          "isPublic": true
+        }
+      ]
+    },
+    {
+      "businessType": "accounting",
+      "operation": "create-business-type",
+      "expectedExisting": null,
+      "type": {
+        "id": "accounting",
+        "description": "Standalone accounting business",
+        "idPrefix": "ACC",
+        "defaultModules": [
+          "accounting"
+        ],
+        "assignableRoleIds": [
+          "Owner / Admin"
+        ],
+        "planTierByPage": {},
+        "planIds": [
+          "PLAN-ACCOUNTING-BASIC",
+          "PLAN-ACCOUNTING-PRO",
+          "PLAN-ACCOUNTING-ULTIMATE"
+        ],
+        "requiresApproval": false,
+        "customSignupFields": [],
+        "status": "Active"
+      },
+      "plans": [
+        {
+          "id": "PLAN-ACCOUNTING-BASIC",
+          "name": "Starter",
+          "price": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "accounting"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": true
+        },
+        {
+          "id": "PLAN-ACCOUNTING-PRO",
+          "name": "Pro",
+          "price": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "accounting"
+          ],
+          "maxUsers": 10,
+          "maxLocations": 3,
+          "isPublic": true
+        },
+        {
+          "id": "PLAN-ACCOUNTING-ULTIMATE",
+          "name": "Ultimate",
+          "price": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "accounting"
+          ],
+          "maxUsers": 9999,
+          "maxLocations": 9999,
+          "isPublic": true
+        }
+      ]
+    },
+    {
+      "businessType": "hrms",
+      "operation": "create-business-type",
+      "expectedExisting": null,
+      "type": {
+        "id": "hrms",
+        "description": "Standalone hrms business",
+        "idPrefix": "HRM",
+        "defaultModules": [
+          "hrms"
+        ],
+        "assignableRoleIds": [
+          "Owner / Admin"
+        ],
+        "planTierByPage": {},
+        "planIds": [
+          "PLAN-HRMS-BASIC",
+          "PLAN-HRMS-PRO",
+          "PLAN-HRMS-ULTIMATE"
+        ],
+        "requiresApproval": false,
+        "customSignupFields": [],
+        "status": "Active"
+      },
+      "plans": [
+        {
+          "id": "PLAN-HRMS-BASIC",
+          "name": "Starter",
+          "price": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "hrms"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": true
+        },
+        {
+          "id": "PLAN-HRMS-PRO",
+          "name": "Pro",
+          "price": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "hrms"
+          ],
+          "maxUsers": 10,
+          "maxLocations": 3,
+          "isPublic": true
+        },
+        {
+          "id": "PLAN-HRMS-ULTIMATE",
+          "name": "Ultimate",
+          "price": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "hrms"
+          ],
+          "maxUsers": 9999,
+          "maxLocations": 9999,
+          "isPublic": true
+        }
+      ]
+    },
+    {
+      "businessType": "marketplace",
+      "operation": "create-business-type",
+      "expectedExisting": null,
+      "type": {
+        "id": "marketplace",
+        "description": "Standalone marketplace business",
+        "idPrefix": "MKT",
+        "defaultModules": [
+          "marketplace"
+        ],
+        "assignableRoleIds": [
+          "Owner / Admin"
+        ],
+        "planTierByPage": {},
+        "planIds": [
+          "PLAN-MARKETPLACE-BASIC",
+          "PLAN-MARKETPLACE-PRO",
+          "PLAN-MARKETPLACE-ULTIMATE"
+        ],
+        "requiresApproval": false,
+        "customSignupFields": [],
+        "status": "Active"
+      },
+      "plans": [
+        {
+          "id": "PLAN-MARKETPLACE-BASIC",
+          "name": "Starter",
+          "price": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "marketplace"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": true
+        },
+        {
+          "id": "PLAN-MARKETPLACE-PRO",
+          "name": "Pro",
+          "price": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "marketplace"
+          ],
+          "maxUsers": 10,
+          "maxLocations": 3,
+          "isPublic": true
+        },
+        {
+          "id": "PLAN-MARKETPLACE-ULTIMATE",
+          "name": "Ultimate",
+          "price": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "marketplace"
+          ],
+          "maxUsers": 9999,
+          "maxLocations": 9999,
+          "isPublic": true
+        }
+      ]
+    },
+    {
+      "businessType": "billing",
+      "operation": "link-plans-only",
+      "expectedExisting": {
+        "status": "Active",
+        "defaultModules": [
+          "billing"
+        ],
+        "planIds": []
+      },
+      "type": {
+        "planIds": [
+          "PLAN-BILLING-BASIC",
+          "PLAN-BILLING-PRO",
+          "PLAN-BILLING-ULTIMATE"
+        ]
+      },
+      "plans": [
+        {
+          "id": "PLAN-BILLING-BASIC",
+          "name": "Starter",
+          "price": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "billing"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": true
+        },
+        {
+          "id": "PLAN-BILLING-PRO",
+          "name": "Pro",
+          "price": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "billing"
+          ],
+          "maxUsers": 10,
+          "maxLocations": 3,
+          "isPublic": true
+        },
+        {
+          "id": "PLAN-BILLING-ULTIMATE",
+          "name": "Ultimate",
+          "price": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "billing"
+          ],
+          "maxUsers": 9999,
+          "maxLocations": 9999,
+          "isPublic": true
+        }
+      ]
+    },
+    {
+      "businessType": "loyalty-rewards",
+      "operation": "link-plans-only",
+      "expectedExisting": {
+        "status": "Active",
+        "defaultModules": [
+          "loyalty-rewards"
+        ],
+        "planIds": []
+      },
+      "type": {
+        "planIds": [
+          "PLAN-LOYALTYREWARDS-BASIC",
+          "PLAN-LOYALTYREWARDS-PRO",
+          "PLAN-LOYALTYREWARDS-ULTIMATE"
+        ]
+      },
+      "plans": [
+        {
+          "id": "PLAN-LOYALTYREWARDS-BASIC",
+          "name": "Starter",
+          "price": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "loyalty-rewards"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": true
+        },
+        {
+          "id": "PLAN-LOYALTYREWARDS-PRO",
+          "name": "Pro",
+          "price": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "loyalty-rewards"
+          ],
+          "maxUsers": 10,
+          "maxLocations": 3,
+          "isPublic": true
+        },
+        {
+          "id": "PLAN-LOYALTYREWARDS-ULTIMATE",
+          "name": "Ultimate",
+          "price": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "loyalty-rewards"
+          ],
+          "maxUsers": 9999,
+          "maxLocations": 9999,
+          "isPublic": true
+        }
+      ]
+    }
+  ],
+  "protected": [
+    "All existing Service Centre types, plans, accounts and access keys"
+  ],
+  "unresolved": [
+    "Service Centre Ultimate advertises Accounting/GST outside its bundle. Leave unchanged until a separately tested package transition is agreed.",
+    "Seat/location values describe catalog limits; confirm enforcement and commercial commitments before publication."
+  ]
+}

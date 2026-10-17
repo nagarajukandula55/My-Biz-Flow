@@ -1,0 +1,807 @@
+{
+  "checkedAt": "2026-10-06T04:28:55.854Z",
+  "scope": "Read-only configured database catalog; availability is not end-to-end acceptance.",
+  "activeTypes": 19,
+  "modules": [
+    {
+      "module": "pos",
+      "signupTypes": [
+        "pos"
+      ]
+    },
+    {
+      "module": "service-centre",
+      "signupTypes": [
+        "service-centre"
+      ]
+    },
+    {
+      "module": "billing",
+      "signupTypes": [
+        "amc-field-service",
+        "billing",
+        "clinic",
+        "education",
+        "event-booking",
+        "legal",
+        "manufacturing",
+        "pos",
+        "restaurant-pos",
+        "salon-spa",
+        "service-centre",
+        "wholesale-b2b"
+      ]
+    },
+    {
+      "module": "brand",
+      "signupTypes": []
+    },
+    {
+      "module": "clinic",
+      "signupTypes": [
+        "clinic"
+      ]
+    },
+    {
+      "module": "amc-field-service",
+      "signupTypes": [
+        "amc-field-service"
+      ]
+    },
+    {
+      "module": "restaurant-pos",
+      "signupTypes": [
+        "restaurant-pos"
+      ]
+    },
+    {
+      "module": "subscriptions",
+      "signupTypes": [
+        "subscriptions"
+      ]
+    },
+    {
+      "module": "real-estate",
+      "signupTypes": [
+        "real-estate"
+      ]
+    },
+    {
+      "module": "rentals",
+      "signupTypes": [
+        "rentals"
+      ]
+    },
+    {
+      "module": "education",
+      "signupTypes": [
+        "education"
+      ]
+    },
+    {
+      "module": "manufacturing",
+      "signupTypes": [
+        "manufacturing"
+      ]
+    },
+    {
+      "module": "wholesale-b2b",
+      "signupTypes": [
+        "wholesale-b2b"
+      ]
+    },
+    {
+      "module": "logistics-fleet",
+      "signupTypes": [
+        "logistics-fleet"
+      ]
+    },
+    {
+      "module": "legal",
+      "signupTypes": [
+        "legal"
+      ]
+    },
+    {
+      "module": "event-booking",
+      "signupTypes": [
+        "event-booking"
+      ]
+    },
+    {
+      "module": "salon-spa",
+      "signupTypes": [
+        "salon-spa"
+      ]
+    },
+    {
+      "module": "telecalling",
+      "signupTypes": [
+        "telecalling"
+      ]
+    },
+    {
+      "module": "inventory",
+      "signupTypes": [
+        "pos",
+        "service-centre"
+      ]
+    },
+    {
+      "module": "accounting-gst",
+      "signupTypes": []
+    },
+    {
+      "module": "accounting",
+      "signupTypes": [
+        "education",
+        "event-booking",
+        "legal",
+        "manufacturing",
+        "wholesale-b2b"
+      ]
+    },
+    {
+      "module": "loyalty-rewards",
+      "signupTypes": [
+        "loyalty-rewards"
+      ]
+    },
+    {
+      "module": "hrms",
+      "signupTypes": [
+        "education",
+        "event-booking",
+        "legal",
+        "manufacturing",
+        "wholesale-b2b"
+      ]
+    },
+    {
+      "module": "marketplace",
+      "signupTypes": [
+        "education",
+        "event-booking",
+        "legal",
+        "manufacturing",
+        "wholesale-b2b"
+      ]
+    },
+    {
+      "module": "field-force",
+      "signupTypes": [
+        "field-force"
+      ]
+    }
+  ],
+  "missingModules": [
+    "brand",
+    "accounting-gst"
+  ],
+  "issues": [
+    "billing: no linked plans",
+    "field-force: approval flag is enabled but public signup currently bypasses it",
+    "loyalty-rewards: no linked plans",
+    "service-centre: plan PLAN-ULTIMATE includes accounting-gst outside defaultModules; verify entitlement provisioning",
+    "telecalling: approval flag is enabled but public signup currently bypasses it"
+  ],
+  "catalog": {
+    "types": [
+      {
+        "id": "amc-field-service",
+        "status": "Active",
+        "defaultModules": [
+          "amc-field-service",
+          "billing"
+        ],
+        "planIds": [
+          "PLAN-AMCFIELDSERVICE-BASIC",
+          "PLAN-AMCFIELDSERVICE-PRO",
+          "PLAN-AMCFIELDSERVICE-ULTIMATE"
+        ],
+        "requiresApproval": false
+      },
+      {
+        "id": "billing",
+        "status": "Active",
+        "defaultModules": [
+          "billing"
+        ],
+        "planIds": [],
+        "requiresApproval": false
+      },
+      {
+        "id": "clinic",
+        "status": "Active",
+        "defaultModules": [
+          "clinic",
+          "billing"
+        ],
+        "planIds": [
+          "PLAN-CLINIC-BASIC",
+          "PLAN-CLINIC-PRO",
+          "PLAN-CLINIC-ULTIMATE"
+        ],
+        "requiresApproval": false
+      },
+      {
+        "id": "education",
+        "status": "Active",
+        "defaultModules": [
+          "education",
+          "billing",
+          "hrms",
+          "marketplace",
+          "accounting"
+        ],
+        "planIds": [
+          "PLAN-EDUCATION-BASIC",
+          "PLAN-EDUCATION-PRO",
+          "PLAN-EDUCATION-ULTIMATE"
+        ],
+        "requiresApproval": false
+      },
+      {
+        "id": "event-booking",
+        "status": "Active",
+        "defaultModules": [
+          "event-booking",
+          "billing",
+          "hrms",
+          "marketplace",
+          "accounting"
+        ],
+        "planIds": [
+          "PLAN-EVENTBOOKING-BASIC",
+          "PLAN-EVENTBOOKING-PRO",
+          "PLAN-EVENTBOOKING-ULTIMATE"
+        ],
+        "requiresApproval": false
+      },
+      {
+        "id": "field-force",
+        "status": "Active",
+        "defaultModules": [
+          "field-force"
+        ],
+        "planIds": [
+          "PLAN-FIELDFORCE-FREE"
+        ],
+        "requiresApproval": true
+      },
+      {
+        "id": "legal",
+        "status": "Active",
+        "defaultModules": [
+          "legal",
+          "billing",
+          "hrms",
+          "marketplace",
+          "accounting"
+        ],
+        "planIds": [
+          "PLAN-LEGAL-BASIC",
+          "PLAN-LEGAL-PRO",
+          "PLAN-LEGAL-ULTIMATE"
+        ],
+        "requiresApproval": false
+      },
+      {
+        "id": "logistics-fleet",
+        "status": "Active",
+        "defaultModules": [
+          "logistics-fleet"
+        ],
+        "planIds": [
+          "PLAN-LOGISTICSFLEET-BASIC",
+          "PLAN-LOGISTICSFLEET-PRO",
+          "PLAN-LOGISTICSFLEET-ULTIMATE"
+        ],
+        "requiresApproval": false
+      },
+      {
+        "id": "loyalty-rewards",
+        "status": "Active",
+        "defaultModules": [
+          "loyalty-rewards"
+        ],
+        "planIds": [],
+        "requiresApproval": false
+      },
+      {
+        "id": "manufacturing",
+        "status": "Active",
+        "defaultModules": [
+          "manufacturing",
+          "billing",
+          "hrms",
+          "marketplace",
+          "accounting"
+        ],
+        "planIds": [
+          "PLAN-MANUFACTURING-BASIC",
+          "PLAN-MANUFACTURING-PRO",
+          "PLAN-MANUFACTURING-ULTIMATE"
+        ],
+        "requiresApproval": false
+      },
+      {
+        "id": "pos",
+        "status": "Active",
+        "defaultModules": [
+          "pos",
+          "billing",
+          "inventory"
+        ],
+        "planIds": [
+          "PLAN-POS-BASIC",
+          "PLAN-POS-PRO",
+          "PLAN-POS-ULTIMATE"
+        ],
+        "requiresApproval": false
+      },
+      {
+        "id": "real-estate",
+        "status": "Active",
+        "defaultModules": [
+          "real-estate"
+        ],
+        "planIds": [
+          "PLAN-REALESTATE-BASIC",
+          "PLAN-REALESTATE-PRO",
+          "PLAN-REALESTATE-ULTIMATE"
+        ],
+        "requiresApproval": false
+      },
+      {
+        "id": "rentals",
+        "status": "Active",
+        "defaultModules": [
+          "rentals"
+        ],
+        "planIds": [
+          "PLAN-RENTALS-BASIC",
+          "PLAN-RENTALS-PRO",
+          "PLAN-RENTALS-ULTIMATE"
+        ],
+        "requiresApproval": false
+      },
+      {
+        "id": "restaurant-pos",
+        "status": "Active",
+        "defaultModules": [
+          "restaurant-pos",
+          "billing"
+        ],
+        "planIds": [
+          "PLAN-RESTAURANTPOS-BASIC",
+          "PLAN-RESTAURANTPOS-PRO",
+          "PLAN-RESTAURANTPOS-ULTIMATE"
+        ],
+        "requiresApproval": false
+      },
+      {
+        "id": "salon-spa",
+        "status": "Active",
+        "defaultModules": [
+          "salon-spa",
+          "billing"
+        ],
+        "planIds": [
+          "PLAN-SALONSPA-BASIC",
+          "PLAN-SALONSPA-PRO",
+          "PLAN-SALONSPA-ULTIMATE"
+        ],
+        "requiresApproval": false
+      },
+      {
+        "id": "service-centre",
+        "status": "Active",
+        "defaultModules": [
+          "service-centre",
+          "inventory",
+          "billing"
+        ],
+        "planIds": [
+          "PLAN-BASIC",
+          "PLAN-PRO",
+          "PLAN-ULTIMATE"
+        ],
+        "requiresApproval": false
+      },
+      {
+        "id": "subscriptions",
+        "status": "Active",
+        "defaultModules": [
+          "subscriptions"
+        ],
+        "planIds": [
+          "PLAN-SUBSCRIPTIONS-BASIC",
+          "PLAN-SUBSCRIPTIONS-PRO",
+          "PLAN-SUBSCRIPTIONS-ULTIMATE"
+        ],
+        "requiresApproval": false
+      },
+      {
+        "id": "telecalling",
+        "status": "Active",
+        "defaultModules": [
+          "telecalling"
+        ],
+        "planIds": [
+          "PLAN-TELECALLING-BASIC",
+          "PLAN-TELECALLING-PRO",
+          "PLAN-TELECALLING-ULTIMATE"
+        ],
+        "requiresApproval": true
+      },
+      {
+        "id": "wholesale-b2b",
+        "status": "Active",
+        "defaultModules": [
+          "wholesale-b2b",
+          "billing",
+          "hrms",
+          "marketplace",
+          "accounting"
+        ],
+        "planIds": [
+          "PLAN-WHOLESALEB2B-BASIC",
+          "PLAN-WHOLESALEB2B-PRO",
+          "PLAN-WHOLESALEB2B-ULTIMATE"
+        ],
+        "requiresApproval": false
+      }
+    ],
+    "plans": [
+      {
+        "id": "PLAN-AMCFIELDSERVICE-BASIC",
+        "isPublic": true,
+        "includedModuleSlugs": [
+          "amc-field-service"
+        ]
+      },
+      {
+        "id": "PLAN-AMCFIELDSERVICE-PRO",
+        "isPublic": true,
+        "includedModuleSlugs": [
+          "amc-field-service"
+        ]
+      },
+      {
+        "id": "PLAN-AMCFIELDSERVICE-ULTIMATE",
+        "isPublic": true,
+        "includedModuleSlugs": [
+          "amc-field-service"
+        ]
+      },
+      {
+        "id": "PLAN-BASIC",
+        "isPublic": true,
+        "includedModuleSlugs": [
+          "service-centre"
+        ]
+      },
+      {
+        "id": "PLAN-CLINIC-BASIC",
+        "isPublic": true,
+        "includedModuleSlugs": [
+          "clinic"
+        ]
+      },
+      {
+        "id": "PLAN-CLINIC-PRO",
+        "isPublic": true,
+        "includedModuleSlugs": [
+          "clinic"
+        ]
+      },
+      {
+        "id": "PLAN-CLINIC-ULTIMATE",
+        "isPublic": true,
+        "includedModuleSlugs": [
+          "clinic"
+        ]
+      },
+      {
+        "id": "PLAN-EDUCATION-BASIC",
+        "isPublic": true,
+        "includedModuleSlugs": [
+          "education"
+        ]
+      },
+      {
+        "id": "PLAN-EDUCATION-PRO",
+        "isPublic": true,
+        "includedModuleSlugs": [
+          "education"
+        ]
+      },
+      {
+        "id": "PLAN-EDUCATION-ULTIMATE",
+        "isPublic": true,
+        "includedModuleSlugs": [
+          "education"
+        ]
+      },
+      {
+        "id": "PLAN-EVENTBOOKING-BASIC",
+        "isPublic": true,
+        "includedModuleSlugs": [
+          "event-booking"
+        ]
+      },
+      {
+        "id": "PLAN-EVENTBOOKING-PRO",
+        "isPublic": true,
+        "includedModuleSlugs": [
+          "event-booking"
+        ]
+      },
+      {
+        "id": "PLAN-EVENTBOOKING-ULTIMATE",
+        "isPublic": true,
+        "includedModuleSlugs": [
+          "event-booking"
+        ]
+      },
+      {
+        "id": "PLAN-FIELDFORCE-FREE",
+        "isPublic": true,
+        "includedModuleSlugs": [
+          "field-force"
+        ]
+      },
+      {
+        "id": "PLAN-LEGAL-BASIC",
+        "isPublic": true,
+        "includedModuleSlugs": [
+          "legal"
+        ]
+      },
+      {
+        "id": "PLAN-LEGAL-PRO",
+        "isPublic": true,
+        "includedModuleSlugs": [
+          "legal"
+        ]
+      },
+      {
+        "id": "PLAN-LEGAL-ULTIMATE",
+        "isPublic": true,
+        "includedModuleSlugs": [
+          "legal"
+        ]
+      },
+      {
+        "id": "PLAN-LOGISTICSFLEET-BASIC",
+        "isPublic": true,
+        "includedModuleSlugs": [
+          "logistics-fleet"
+        ]
+      },
+      {
+        "id": "PLAN-LOGISTICSFLEET-PRO",
+        "isPublic": true,
+        "includedModuleSlugs": [
+          "logistics-fleet"
+        ]
+      },
+      {
+        "id": "PLAN-LOGISTICSFLEET-ULTIMATE",
+        "isPublic": true,
+        "includedModuleSlugs": [
+          "logistics-fleet"
+        ]
+      },
+      {
+        "id": "PLAN-MANUFACTURING-BASIC",
+        "isPublic": true,
+        "includedModuleSlugs": [
+          "manufacturing"
+        ]
+      },
+      {
+        "id": "PLAN-MANUFACTURING-PRO",
+        "isPublic": true,
+        "includedModuleSlugs": [
+          "manufacturing"
+        ]
+      },
+      {
+        "id": "PLAN-MANUFACTURING-ULTIMATE",
+        "isPublic": true,
+        "includedModuleSlugs": [
+          "manufacturing"
+        ]
+      },
+      {
+        "id": "PLAN-POS-BASIC",
+        "isPublic": true,
+        "includedModuleSlugs": [
+          "pos"
+        ]
+      },
+      {
+        "id": "PLAN-POS-PRO",
+        "isPublic": true,
+        "includedModuleSlugs": [
+          "pos"
+        ]
+      },
+      {
+        "id": "PLAN-POS-ULTIMATE",
+        "isPublic": true,
+        "includedModuleSlugs": [
+          "pos"
+        ]
+      },
+      {
+        "id": "PLAN-PRO",
+        "isPublic": true,
+        "includedModuleSlugs": [
+          "service-centre",
+          "inventory",
+          "billing"
+        ]
+      },
+      {
+        "id": "PLAN-REALESTATE-BASIC",
+        "isPublic": true,
+        "includedModuleSlugs": [
+          "real-estate"
+        ]
+      },
+      {
+        "id": "PLAN-REALESTATE-PRO",
+        "isPublic": true,
+        "includedModuleSlugs": [
+          "real-estate"
+        ]
+      },
+      {
+        "id": "PLAN-REALESTATE-ULTIMATE",
+        "isPublic": true,
+        "includedModuleSlugs": [
+          "real-estate"
+        ]
+      },
+      {
+        "id": "PLAN-RENTALS-BASIC",
+        "isPublic": true,
+        "includedModuleSlugs": [
+          "rentals"
+        ]
+      },
+      {
+        "id": "PLAN-RENTALS-PRO",
+        "isPublic": true,
+        "includedModuleSlugs": [
+          "rentals"
+        ]
+      },
+      {
+        "id": "PLAN-RENTALS-ULTIMATE",
+        "isPublic": true,
+        "includedModuleSlugs": [
+          "rentals"
+        ]
+      },
+      {
+        "id": "PLAN-RESTAURANTPOS-BASIC",
+        "isPublic": true,
+        "includedModuleSlugs": [
+          "restaurant-pos"
+        ]
+      },
+      {
+        "id": "PLAN-RESTAURANTPOS-PRO",
+        "isPublic": true,
+        "includedModuleSlugs": [
+          "restaurant-pos"
+        ]
+      },
+      {
+        "id": "PLAN-RESTAURANTPOS-ULTIMATE",
+        "isPublic": true,
+        "includedModuleSlugs": [
+          "restaurant-pos"
+        ]
+      },
+      {
+        "id": "PLAN-SALONSPA-BASIC",
+        "isPublic": true,
+        "includedModuleSlugs": [
+          "salon-spa"
+        ]
+      },
+      {
+        "id": "PLAN-SALONSPA-PRO",
+        "isPublic": true,
+        "includedModuleSlugs": [
+          "salon-spa"
+        ]
+      },
+      {
+        "id": "PLAN-SALONSPA-ULTIMATE",
+        "isPublic": true,
+        "includedModuleSlugs": [
+          "salon-spa"
+        ]
+      },
+      {
+        "id": "PLAN-SUBSCRIPTIONS-BASIC",
+        "isPublic": true,
+        "includedModuleSlugs": [
+          "subscriptions"
+        ]
+      },
+      {
+        "id": "PLAN-SUBSCRIPTIONS-PRO",
+        "isPublic": true,
+        "includedModuleSlugs": [
+          "subscriptions"
+        ]
+      },
+      {
+        "id": "PLAN-SUBSCRIPTIONS-ULTIMATE",
+        "isPublic": true,
+        "includedModuleSlugs": [
+          "subscriptions"
+        ]
+      },
+      {
+        "id": "PLAN-TELECALLING-BASIC",
+        "isPublic": true,
+        "includedModuleSlugs": [
+          "telecalling"
+        ]
+      },
+      {
+        "id": "PLAN-TELECALLING-PRO",
+        "isPublic": true,
+        "includedModuleSlugs": [
+          "telecalling"
+        ]
+      },
+      {
+        "id": "PLAN-TELECALLING-ULTIMATE",
+        "isPublic": true,
+        "includedModuleSlugs": [
+          "telecalling"
+        ]
+      },
+      {
+        "id": "PLAN-ULTIMATE",
+        "isPublic": true,
+        "includedModuleSlugs": [
+          "service-centre",
+          "inventory",
+          "billing",
+          "accounting-gst"
+        ]
+      },
+      {
+        "id": "PLAN-WHOLESALEB2B-BASIC",
+        "isPublic": true,
+        "includedModuleSlugs": [
+          "wholesale-b2b"
+        ]
+      },
+      {
+        "id": "PLAN-WHOLESALEB2B-PRO",
+        "isPublic": true,
+        "includedModuleSlugs": [
+          "wholesale-b2b"
+        ]
+      },
+      {
+        "id": "PLAN-WHOLESALEB2B-ULTIMATE",
+        "isPublic": true,
+        "includedModuleSlugs": [
+          "wholesale-b2b"
+        ]
+      }
+    ]
+  }
+}

@@ -19,26 +19,10 @@ import { prisma } from "@/lib/prisma";
 import type { Row } from "@/components/DataTable";
 import { assertPartnerCanWrite, PartnerScopeError } from "@/lib/tenant";
 import type { LoyaltyMember, PointsLedgerEntry } from "@prisma/client";
+import { withRecordLock } from "@/lib/withRecordLock";
 
-export const EARN_RATE = 0.05; // 5% of a linked purchase amount, earned as points
-
-export type LoyaltyTierName = "Bronze" | "Silver" | "Gold" | "Platinum";
-
-/** Real tier thresholds, derived from lifetime points earned — never manually set (see the model's doc comment). */
-export function computeTier(lifetimePointsEarned: number): LoyaltyTierName {
-  if (lifetimePointsEarned >= 5000) return "Platinum";
-  if (lifetimePointsEarned >= 3000) return "Gold";
-  if (lifetimePointsEarned >= 1000) return "Silver";
-  return "Bronze";
-}
-
-export interface LoyaltyTransaction {
-  id: string;
-  type: "Earn" | "Redeem";
-  points: number;
-  amount?: number; // rupees — linked purchase amount, for Earn entries
-  timestamp: string;
-}
+import { EARN_RATE, computeTier, type LoyaltyTransaction } from "@/lib/loyaltyRules";
+export { EARN_RATE, computeTier, type LoyaltyTierName, type LoyaltyTransaction } from "@/lib/loyaltyRules";
 
 function toRow(member: LoyaltyMember): Row {
   return {
@@ -140,35 +124,38 @@ export async function earnPoints(
   amountRupees: number
 ): Promise<{ error?: string }> {
   await assertPartnerCanWrite(partnerId);
-  if (!(amountRupees > 0)) return { error: "Enter a purchase amount greater than zero." };
+  if (!Number.isFinite(amountRupees) || amountRupees <= 0 || Math.round(amountRupees * 100) > 2147483647) return { error: "Enter a valid purchase amount greater than zero." };
 
-  const member = await prisma.loyaltyMember.findUnique({ where: { id: memberId } });
-  if (!member || member.partnerId !== partnerId) return { error: "Loyalty record not found." };
+  return withRecordLock("loyalty-member", `${partnerId}:${memberId}`, async () => {
+    const member = await prisma.loyaltyMember.findUnique({ where: { id: memberId } });
+    if (!member || member.partnerId !== partnerId) return { error: "Loyalty record not found." };
 
-  const points = Math.round(amountRupees * EARN_RATE);
-  const lifetimePointsEarned = member.lifetimePointsEarned + points;
-  const tier = computeTier(lifetimePointsEarned);
+    const points = Math.round(amountRupees * EARN_RATE);
+    if (!points || member.pointsBalance + points > 2147483647 || member.lifetimePointsEarned + points > 2147483647) return { error: "Purchase amount cannot be represented as a valid points credit." };
+    const lifetimePointsEarned = member.lifetimePointsEarned + points;
+    const tier = computeTier(lifetimePointsEarned);
 
-  await prisma.$transaction([
-    prisma.pointsLedgerEntry.create({
-      data: {
-        memberId,
-        type: "Earn",
-        points,
-        amount: Math.round(amountRupees * 100),
-      },
-    }),
-    prisma.loyaltyMember.update({
-      where: { id: memberId },
-      data: {
-        pointsBalance: member.pointsBalance + points,
-        lifetimePointsEarned,
-        tier,
-      },
-    }),
-  ]);
+    await prisma.$transaction([
+      prisma.pointsLedgerEntry.create({
+        data: {
+          memberId,
+          type: "Earn",
+          points,
+          amount: Math.round(amountRupees * 100),
+        },
+      }),
+      prisma.loyaltyMember.update({
+        where: { id: memberId },
+        data: {
+          pointsBalance: member.pointsBalance + points,
+          lifetimePointsEarned,
+          tier,
+        },
+      }),
+    ]);
 
-  return {};
+    return {};
+  });
 }
 
 /** Redeems points — fails closed if the balance is insufficient (same pattern as POS's stock check). */
@@ -178,33 +165,35 @@ export async function redeemPoints(
   points: number
 ): Promise<{ error?: string }> {
   await assertPartnerCanWrite(partnerId);
-  if (!(points > 0)) return { error: "Enter a points amount greater than zero." };
+  if (!Number.isSafeInteger(points) || points <= 0 || points > 2147483647) return { error: "Enter a whole points amount greater than zero." };
 
-  const member = await prisma.loyaltyMember.findUnique({ where: { id: memberId } });
-  if (!member || member.partnerId !== partnerId) return { error: "Loyalty record not found." };
+  return withRecordLock("loyalty-member", `${partnerId}:${memberId}`, async () => {
+    const member = await prisma.loyaltyMember.findUnique({ where: { id: memberId } });
+    if (!member || member.partnerId !== partnerId) return { error: "Loyalty record not found." };
 
-  if (member.pointsBalance < points) {
-    return { error: `Insufficient points balance (${member.pointsBalance} available, ${points} requested).` };
-  }
+    if (member.pointsBalance < points) {
+      return { error: `Insufficient points balance (${member.pointsBalance} available, ${points} requested).` };
+    }
 
-  const now = new Date();
+    const now = new Date();
 
-  await prisma.$transaction([
-    prisma.pointsLedgerEntry.create({
-      data: {
-        memberId,
-        type: "Redeem",
-        points,
-      },
-    }),
-    prisma.loyaltyMember.update({
-      where: { id: memberId },
-      data: {
-        pointsBalance: member.pointsBalance - points,
-        lastRedemption: now,
-      },
-    }),
-  ]);
+    await prisma.$transaction([
+      prisma.pointsLedgerEntry.create({
+        data: {
+          memberId,
+          type: "Redeem",
+          points,
+        },
+      }),
+      prisma.loyaltyMember.update({
+        where: { id: memberId },
+        data: {
+          pointsBalance: member.pointsBalance - points,
+          lastRedemption: now,
+        },
+      }),
+    ]);
 
-  return {};
+    return {};
+  });
 }

@@ -92,6 +92,15 @@
       "workflowStatus": "End-to-end validation required"
     },
     {
+      "id": "hotel",
+      "module": "Hotel Management",
+      "pages": 4,
+      "entryRoute": true,
+      "missingImports": [],
+      "missingDefinitions": [],
+      "workflowStatus": "End-to-end validation required"
+    },
+    {
       "id": "education",
       "module": "Education / Coaching",
       "pages": 13,
@@ -157,7 +166,7 @@
     {
       "id": "telecalling",
       "module": "Telecalling",
-      "pages": 8,
+      "pages": 9,
       "entryRoute": true,
       "missingImports": [],
       "missingDefinitions": [],
@@ -184,7 +193,7 @@
     {
       "id": "accounting",
       "module": "Accounting",
-      "pages": 13,
+      "pages": 14,
       "entryRoute": true,
       "missingImports": [],
       "missingDefinitions": [],
@@ -202,7 +211,7 @@
     {
       "id": "hrms",
       "module": "HRMS / Payroll",
-      "pages": 13,
+      "pages": 15,
       "entryRoute": true,
       "missingImports": [],
       "missingDefinitions": [],
@@ -220,7 +229,7 @@
     {
       "id": "field-force",
       "module": "Field Force",
-      "pages": 15,
+      "pages": 17,
       "entryRoute": true,
       "missingImports": [],
       "missingDefinitions": [],

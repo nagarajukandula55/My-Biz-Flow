@@ -1,0 +1,36 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const crypto = require('node:crypto');
+const load = require('./loadModule.cjs');
+if(process.env.MBF_ISOLATED_TEST!=='1'||process.env.DATABASE_URL!=='postgresql://ci:ci@127.0.0.1:55439/ci')throw Error('Disposable local database required');
+const {PrismaClient}=require('@prisma/client');const base=new PrismaClient();
+const db=load('src/lib/databaseTransaction.ts',{'node:async_hooks':require('node:async_hooks'),'@/lib/databaseClientContext':load('src/lib/databaseClientContext.ts')});
+const prisma=db.transactionAwareClient(base);
+const lock=load('src/lib/withRecordLock.ts',{'@/lib/prisma':{prisma},'@/lib/databaseTransaction':db});
+let owner=true;
+const common={'@/lib/prisma':{prisma},'@/lib/withRecordLock':lock,'@/lib/tenant':{assertModuleAccess:async()=>{},assertPartnerCanWrite:async()=>{}}};
+const accounting=load('src/lib/accounting.ts',common);
+const api=load('src/lib/accountingReversal.ts',{...common,'@/lib/accounting':accounting,'@/lib/requirePartnerSession':{requireSessionPartnerId:async()=>{if(!owner)throw Error('Owner required');}}});
+const partnerId='reversal-'+crypto.randomUUID();
+test('reversals are atomic, tenant scoped, idempotent, retained and respect closed periods',async()=>{
+ const cash=await accounting.createChartOfAccount(partnerId,{accountCode:'100',accountName:'Cash',accountType:'Asset'});
+ const sales=await accounting.createChartOfAccount(partnerId,{accountCode:'400',accountName:'Sales',accountType:'Income'});
+ const original=(await accounting.createJournalEntry(partnerId,{entryNumber:'Original',entryDate:new Date('2020-01-05'),lines:[{accountId:cash.id,debit:10000,credit:0},{accountId:sales.id,debit:0,credit:10000}]})).entry;
+ const input={reversalDate:'2020-02-05',reason:'Correct duplicate entry'};
+ owner=false;try{await assert.rejects(api.reverseJournal(partnerId,original.id,input),/Owner/);}finally{owner=true;}
+ await assert.rejects(api.reverseJournal(partnerId+'-other',original.id,input),/not found/);
+ await assert.rejects(api.reverseJournal(partnerId,original.id,{...input,reversalDate:'2020-02-30'}),/valid reversal date/);
+ const period=await accounting.createFiscalPeriod(partnerId,{name:'Jan',startDate:new Date('2020-01-01'),endDate:new Date('2020-01-31')});await accounting.closeFiscalPeriod(partnerId,period.id);
+ await assert.rejects(api.reverseJournal(partnerId,original.id,{...input,reversalDate:'2020-01-10'}),/closed/);
+ await assert.rejects(lock.withRecordLock('rollback-reversal',partnerId,async()=>{await api.reverseJournal(partnerId,original.id,input);throw Error('rollback');}),/rollback/);
+ assert.equal(await prisma.journalEntry.count({where:{partnerId}}),1);
+ assert.equal(await prisma.businessRecord.count({where:{partnerId}}),0);
+ const [a,b]=await Promise.all([api.reverseJournal(partnerId,original.id,input),api.reverseJournal(partnerId,original.id,input)]);assert.equal(a.id,b.id);
+ assert.equal(await prisma.businessRecord.count({where:{partnerId,moduleSlug:'accounting-reversal-audit'}}),1);
+ await assert.rejects(api.reverseJournal(partnerId,original.id,{...input,reason:'Different reason'}),/already/);
+ await assert.rejects(api.reverseJournal(partnerId,a.id,input),/cannot itself/);
+ for(const id of [original.id,a.id])assert.match((await accounting.updateJournalEntry(partnerId,id,{entryDate:new Date('2020-02-06'),lines:original.lines})).error,/cannot be edited/);
+ const report=await accounting.getTrialBalance(partnerId);assert.ok(report.every(row=>row.totalDebit===row.totalCredit));
+ assert.equal((await accounting.getJournalEntry(partnerId,original.id)).totalDebit,10000);
+});
+test.after(async()=>{await prisma.businessRecord.deleteMany({where:{partnerId}});await prisma.journalLine.deleteMany({where:{journalEntry:{partnerId}}});await prisma.journalEntry.deleteMany({where:{partnerId}});await prisma.chartOfAccount.deleteMany({where:{partnerId}});await prisma.fiscalPeriod.deleteMany({where:{partnerId}});await base.$disconnect();});

@@ -12,7 +12,7 @@ import { isWhatsappTriggerEnabled } from "@/lib/whatsappTriggers";
 import { SITE_URL } from "@/lib/seo";
 
 /** Meta-approved WhatsApp template name/language for the lead-accepted welcome message (WhatsApp Manager > Message templates) — {{1}}=lead name, {{2}}=site link, matching the order the template body was written in. */
-const LEAD_WELCOME_TEMPLATE = { name: "lead_welcome", languageCode: "en" };
+const LEAD_WELCOME_TEMPLATE = { name: "lead_welcome", languageCode: "en_US" };
 
 export const CALL_OUTCOMES = [
   "Interested",

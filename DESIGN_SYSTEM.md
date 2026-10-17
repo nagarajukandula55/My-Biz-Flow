@@ -82,14 +82,28 @@ shell must not.
 
 ## 5. Component library — use these, don't rebuild them
 
+`ResponsivePartnerShell` is the opt-in non-Service Centre owner frame. Below
+1024px its existing sidebar becomes an inline menu disclosure with 44px targets;
+content uses the full width and topbar actions and standing banners wrap. It
+closes on navigation and supports Escape. Service Centre retains its existing
+shell pending its separate live-user regression review.
+
 Everything in `src/components/` is the only approved way to build the UI
 surfaces below. If a new page needs one of these patterns, import the
 component — do not hand-roll a new table, chip, or card style.
+
+`BusinessOfferingDirectory` is the shared public business-package chooser.
+It uses the existing glass-card and button styles, a labelled search input,
+an availability filter and 44px minimum action targets. It renders every
+offering and links signup only to active catalog IDs. Unpublished packages
+retain detail/contact links. Home and signup use the same availability data.
 
 | Component | Purpose | Notes |
 |---|---|---|
 | `AppShell` | Sidebar + topbar + content frame | Sidebar nav dots: teal = vertical module, neutral = cross-cutting module, amber = brand/admin |
 | `DataTable` | Config-driven table (`columns` + `rows`) | Column `type` drives cell rendering (text/currency/date/select-chip/relation-link) — never hardcode columns per page |
+| `LinkedRecordTable` | DataTable with explicit record links | A shared action column renders keyboard/touch-accessible links; server pages supply trusted application URLs in `href`. |
+| `RentalBookingForm` | RecordForm with per-asset price and quantity overrides | Additional selected assets reveal optional quantity, deposit, fixed-price and rate fields. Blank inherits the main value; monetary zero is explicit. Uses existing RecordForm controls and section headings. |
 | `StatusChip` | Pill + dot, variant-driven | Variants map to the soft-background tokens (`warning-soft`, `teal-soft`, etc.) |
 | `KanbanBoard` | Stage-driven card columns | Stages + cards are config, not hardcoded per module |
 | `RecordDetail` | Field-grid + timeline + related-records rail | One shared per-type field renderer (text/relation/currency/date/boolean/select) reused by every module |

@@ -1,0 +1,122 @@
+[
+  {
+    "slug": "hotel",
+    "scope": "Owner-operated rooms, reservations, stays, housekeeping and guest folios",
+    "limitation": "Private launch judgement for limited manual PMS scope. No verified numerical market comparison, OTA integration, statutory reporting, automatic payments or staff-role parity."
+  },
+  {
+    "slug": "pos",
+    "scope": "Checkout, tenders, voids, stock and invoice linkage",
+    "limitation": "Do not claim offline tills, hardware compatibility or omnichannel sync."
+  },
+  {
+    "slug": "billing",
+    "scope": "Invoices, payments, contacts, expenses and reports",
+    "limitation": "Below broader accounting suites; no bank-feed or automatic tax-filing promise."
+  },
+  {
+    "slug": "brand",
+    "scope": "Partner/location hierarchy and oversight",
+    "limitation": "Scope priced as coordination; cross-location permissions and roll-up acceptance remain required."
+  },
+  {
+    "slug": "clinic",
+    "scope": "Patients, appointments, consultation notes and billing",
+    "limitation": "Below established clinic software; no EMR, prescriptions or diagnostic integration parity."
+  },
+  {
+    "slug": "amc-field-service",
+    "scope": "Contracts, service visits and technician allocation",
+    "limitation": "Indirect ERP benchmark; no verified like-for-like local price. No automatic routing or offline technician promise."
+  },
+  {
+    "slug": "restaurant-pos",
+    "scope": "Tables, KOT, checkout and billing",
+    "limitation": "Price is a launch judgement; no verified local numeric benchmark. Aggregator/printer/offline acceptance outstanding."
+  },
+  {
+    "slug": "subscriptions",
+    "scope": "Memberships, renewals and check-in",
+    "limitation": "Simple membership operations; do not market as a payment mandate, dunning or proration engine."
+  },
+  {
+    "slug": "real-estate",
+    "scope": "Listings, leads, visits and agreements",
+    "limitation": "Quote-only comparison; launch price reflects CRM record workflows, not portal integrations."
+  },
+  {
+    "slug": "rentals",
+    "scope": "Assets, date conflicts, deposits and returns",
+    "limitation": "Currency unverified for competitor; price judgement, not claimed percentage savings. Online storefront not included."
+  },
+  {
+    "slug": "education",
+    "scope": "Students, batches, fees and attendance",
+    "limitation": "Quote-only comparison; no LMS, live classes, exam engine or parent app promise."
+  },
+  {
+    "slug": "manufacturing",
+    "scope": "BOM, production orders and material consumption",
+    "limitation": "Lower scope than MRP suites; finite-capacity planning and advanced costing not promised."
+  },
+  {
+    "slug": "wholesale-b2b",
+    "scope": "Dealer orders, price tiers, credits and billing",
+    "limitation": "ERP is an indirect upper-scope benchmark; EDI and automated logistics not included."
+  },
+  {
+    "slug": "logistics-fleet",
+    "scope": "Vehicles, drivers, trips and delivery status",
+    "limitation": "Flat business pricing, not per-vehicle parity; no GPS/telematics/route-optimisation claim."
+  },
+  {
+    "slug": "legal",
+    "scope": "Matters, hours, documents and billing",
+    "limitation": "No court integration, trust-account compliance or legal AI promise."
+  },
+  {
+    "slug": "event-booking",
+    "scope": "Venues, resources, scheduling and payment recording",
+    "limitation": "Indirect rental benchmark; no ticketing, guest app or automated settlements."
+  },
+  {
+    "slug": "salon-spa",
+    "scope": "Service menu, staff appointments and billing",
+    "limitation": "No customer-acquisition network, payment processing or marketing automation included."
+  },
+  {
+    "slug": "telecalling",
+    "scope": "Lead imports, assignments, call queue and message templates",
+    "limitation": "Flat business rate vs competitor per-user rate; telecom, SMS and WhatsApp usage charged separately. No unlimited dialling."
+  },
+  {
+    "slug": "inventory",
+    "scope": "Stock, warehouses, transfers, adjustments and stock take",
+    "limitation": "Standalone stock tool; source workflow dependencies must be accepted before publication."
+  },
+  {
+    "slug": "accounting",
+    "scope": "Accounting + GST: chart of accounts, journals, financial statements, tax records, ITC and HSN reports",
+    "limitation": "One package includes accounting, accounting-gst and billing; retains separate records and permissions. Bank feeds, automatic source posting and government filing are not promised."
+  },
+  {
+    "slug": "loyalty-rewards",
+    "scope": "Member points, earn/redeem ledger and tiers",
+    "limitation": "Basic standalone ledger; no automatic omnichannel purchase sync or marketing automation."
+  },
+  {
+    "slug": "hrms",
+    "scope": "Attendance, employee and payroll records",
+    "limitation": "Competitor has a free tier and statutory processing. No PF/ESI/TDS filing or full payroll parity claim."
+  },
+  {
+    "slug": "marketplace",
+    "scope": "Partner aggregation and coordination",
+    "limitation": "Not a full Sharetribe-style storefront/escrow/payout marketplace. Keep private pending settlement acceptance."
+  },
+  {
+    "slug": "field-force",
+    "scope": "Service catalog, bookings, dispatch and payment records",
+    "limitation": "Retain free subscription; existing configured transaction fees remain separate and unchanged. Provider settlement is manual."
+  }
+]

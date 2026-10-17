@@ -8,7 +8,8 @@ import { CustomerDataExportButton } from "./CustomerDataExportButton";
 import { LockCustomerDataButton } from "./LockCustomerDataButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { customersColumns } from "@/lib/sample-data/service-centre-customers";
-import { listBusinessRecords, listBusinessRecordsPaginated } from "@/lib/businessRecords";
+import { listServiceCentrePage } from "@/lib/serviceCentreListData";
+import { loadCustomerExportRows } from "../exportActions";
 import { isCustomerDataUnlocked } from "@/lib/customerDataAccess";
 import { PaginationControls, buildPageQueryString } from "@/components/PaginationControls";
 
@@ -49,15 +50,7 @@ export default async function ScCustomerListPage({
   }
 
   const columns = await applyCustomizations("service-centre.customers.list", customersColumns);
-  const page = Math.max(1, Number(searchParams.page) || 1);
-  // Two reads deliberately: the export button must offer every customer,
-  // not just the current page, while the table itself only renders one
-  // page at a time — same split billing/page.tsx uses for its CSV export
-  // vs. its paginated table.
-  const [allRows, { rows, total, totalPages, pageSize }] = await Promise.all([
-    listBusinessRecords(params.partnerId, "service-centre-customers"),
-    listBusinessRecordsPaginated(params.partnerId, "service-centre-customers", { page }),
-  ]);
+  const { rows, total, totalPages, pageSize, page } = await listServiceCentrePage(params.partnerId, "service-centre-customers", searchParams.page);
 
   return (
     <AppShell
@@ -65,7 +58,7 @@ export default async function ScCustomerListPage({
       topbarActions={
         <div className="flex items-center gap-3">
           <LockCustomerDataButton partnerId={params.partnerId} />
-          <CustomerDataExportButton columns={columns} rows={allRows} />
+          <CustomerDataExportButton columns={columns} loadRows={loadCustomerExportRows.bind(null, params.partnerId)} />
           <ScCustomerNewButton partnerId={params.partnerId} />
         </div>
       }

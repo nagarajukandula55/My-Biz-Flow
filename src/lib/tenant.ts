@@ -165,7 +165,7 @@ export type PageTierAccess = {
  * i.e. ungated — so adding a new page never accidentally locks it.
  */
 export async function getPageTierAccess(partnerId: string, pageId: string): Promise<PageTierAccess> {
-  const { DEFAULT_PAGE_TIERS, tierForPlanIndex, tierSatisfies } = await import("@/lib/designer/pageTiers");
+  const { DEFAULT_PAGE_TIERS, tierForPlan, tierSatisfies } = await import("@/lib/designer/pageTiers");
   type Tier = import("@/lib/designer/pageTiers").PlanTier;
   const { getPartner } = await import("@/lib/partnerData");
   const { getPartnerType } = await import("@/lib/designer/partnerTypesData");
@@ -186,13 +186,13 @@ export async function getPageTierAccess(partnerId: string, pageId: string): Prom
   if (partner) {
     const index = partner.planId ? ladder.findIndex((p) => p.id === partner.planId) : -1;
     if (index >= 0) {
-      heldTier = tierForPlanIndex(index, ladder.length);
+      heldTier = tierForPlan(ladder[index]?.id, index, ladder.length);
     } else if (partner.subscriptionStatus === "Trial" && ladder.length > 0) {
-      heldTier = tierForPlanIndex(ladder.length - 1, ladder.length);
+      heldTier = tierForPlan(ladder[ladder.length - 1]?.id, ladder.length - 1, ladder.length);
     }
   }
 
-  const upgradePlan = ladder.find((_, i) => tierSatisfies(tierForPlanIndex(i, ladder.length), requiredTier));
+  const upgradePlan = ladder.find((plan, i) => tierSatisfies(tierForPlan(plan.id, i, ladder.length), requiredTier));
 
   return {
     allowed: tierSatisfies(heldTier, requiredTier),

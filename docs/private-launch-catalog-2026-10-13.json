@@ -1,0 +1,1610 @@
+{
+  "version": "2026-10-13",
+  "status": "PRIVATE — NOT APPLIED",
+  "existingCustomerPolicy": "Keep all old plan rows and customer plan IDs unchanged. No automatic migration or renewal repricing.",
+  "planTiers": {
+    "MBF-LAUNCH-20261013-hotel-basic": "basic",
+    "MBF-LAUNCH-20261013-pos-basic": "basic",
+    "MBF-LAUNCH-20261013-pos-pro": "pro",
+    "MBF-LAUNCH-20261013-pos-ultimate": "ultimate",
+    "MBF-LAUNCH-20261013-billing-basic": "basic",
+    "MBF-LAUNCH-20261013-billing-pro": "pro",
+    "MBF-LAUNCH-20261013-billing-ultimate": "ultimate",
+    "MBF-LAUNCH-20261013-brand-basic": "basic",
+    "MBF-LAUNCH-20261013-clinic-basic": "basic",
+    "MBF-LAUNCH-20261013-clinic-pro": "pro",
+    "MBF-LAUNCH-20261013-clinic-ultimate": "ultimate",
+    "MBF-LAUNCH-20261013-amc-field-service-basic": "basic",
+    "MBF-LAUNCH-20261013-amc-field-service-pro": "pro",
+    "MBF-LAUNCH-20261013-amc-field-service-ultimate": "ultimate",
+    "MBF-LAUNCH-20261013-restaurant-pos-basic": "basic",
+    "MBF-LAUNCH-20261013-restaurant-pos-pro": "pro",
+    "MBF-LAUNCH-20261013-restaurant-pos-ultimate": "ultimate",
+    "MBF-LAUNCH-20261013-subscriptions-basic": "basic",
+    "MBF-LAUNCH-20261013-real-estate-basic": "basic",
+    "MBF-LAUNCH-20261013-rentals-basic": "basic",
+    "MBF-LAUNCH-20261013-education-basic": "basic",
+    "MBF-LAUNCH-20261013-education-pro": "pro",
+    "MBF-LAUNCH-20261013-education-ultimate": "ultimate",
+    "MBF-LAUNCH-20261013-manufacturing-basic": "basic",
+    "MBF-LAUNCH-20261013-manufacturing-pro": "pro",
+    "MBF-LAUNCH-20261013-manufacturing-ultimate": "ultimate",
+    "MBF-LAUNCH-20261013-wholesale-b2b-basic": "basic",
+    "MBF-LAUNCH-20261013-wholesale-b2b-pro": "pro",
+    "MBF-LAUNCH-20261013-wholesale-b2b-ultimate": "ultimate",
+    "MBF-LAUNCH-20261013-logistics-fleet-basic": "basic",
+    "MBF-LAUNCH-20261013-legal-basic": "basic",
+    "MBF-LAUNCH-20261013-legal-pro": "pro",
+    "MBF-LAUNCH-20261013-legal-ultimate": "ultimate",
+    "MBF-LAUNCH-20261013-event-booking-basic": "basic",
+    "MBF-LAUNCH-20261013-event-booking-pro": "pro",
+    "MBF-LAUNCH-20261013-event-booking-ultimate": "ultimate",
+    "MBF-LAUNCH-20261013-salon-spa-basic": "basic",
+    "MBF-LAUNCH-20261013-salon-spa-pro": "pro",
+    "MBF-LAUNCH-20261013-salon-spa-ultimate": "ultimate",
+    "MBF-LAUNCH-20261013-telecalling-basic": "basic",
+    "MBF-LAUNCH-20261013-telecalling-pro": "pro",
+    "MBF-LAUNCH-20261013-inventory-basic": "basic",
+    "MBF-LAUNCH-20261013-inventory-pro": "pro",
+    "MBF-LAUNCH-20261013-accounting-basic": "basic",
+    "MBF-LAUNCH-20261013-accounting-pro": "pro",
+    "MBF-LAUNCH-20261013-accounting-ultimate": "ultimate",
+    "MBF-LAUNCH-20261013-loyalty-rewards-basic": "basic",
+    "MBF-LAUNCH-20261013-hrms-basic": "basic",
+    "MBF-LAUNCH-20261013-hrms-pro": "pro",
+    "MBF-LAUNCH-20261013-marketplace-basic": "basic",
+    "MBF-LAUNCH-20261013-field-force-basic": "basic"
+  },
+  "changes": [
+    {
+      "businessType": "hotel",
+      "expectedExisting": null,
+      "plans": [
+        {
+          "id": "MBF-LAUNCH-20261013-hotel-basic",
+          "name": "Starter",
+          "price": 499,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "hotel"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": false
+        }
+      ],
+      "proposedPlanIds": [
+        "MBF-LAUNCH-20261013-hotel-basic"
+      ],
+      "proposedDefaultModules": [
+        "hotel"
+      ],
+      "draftType": {
+        "id": "hotel",
+        "description": "Hotel Management",
+        "idPrefix": "HTL",
+        "defaultModules": [
+          "hotel"
+        ],
+        "assignableRoleIds": [
+          "Owner / Admin"
+        ],
+        "planTierByPage": {},
+        "requiresApproval": false,
+        "customSignupFields": [],
+        "status": "Inactive",
+        "planIds": [
+          "MBF-LAUNCH-20261013-hotel-basic"
+        ]
+      },
+      "heldTiers": [
+        "pro",
+        "ultimate"
+      ],
+      "publicationGate": "Private candidates only. Workflow acceptance and human publication review required; no capacity or staff-role promises."
+    },
+    {
+      "businessType": "pos",
+      "expectedExisting": {
+        "id": "pos",
+        "status": "Active",
+        "idPrefix": "POS",
+        "defaultModules": [
+          "pos",
+          "billing",
+          "inventory"
+        ],
+        "planIds": [
+          "PLAN-POS-BASIC",
+          "PLAN-POS-PRO",
+          "PLAN-POS-ULTIMATE"
+        ],
+        "planTierByPage": {}
+      },
+      "plans": [
+        {
+          "id": "MBF-LAUNCH-20261013-pos-basic",
+          "name": "Starter",
+          "price": 299,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "pos",
+            "billing",
+            "inventory"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": false
+        },
+        {
+          "id": "MBF-LAUNCH-20261013-pos-pro",
+          "name": "Pro",
+          "price": 599,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "pos",
+            "billing",
+            "inventory"
+          ],
+          "maxUsers": 10,
+          "maxLocations": 3,
+          "isPublic": false
+        },
+        {
+          "id": "MBF-LAUNCH-20261013-pos-ultimate",
+          "name": "Ultimate",
+          "price": 999,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "pos",
+            "billing",
+            "inventory"
+          ],
+          "maxUsers": 25,
+          "maxLocations": 5,
+          "isPublic": false
+        }
+      ],
+      "proposedPlanIds": [
+        "MBF-LAUNCH-20261013-pos-basic",
+        "MBF-LAUNCH-20261013-pos-pro",
+        "MBF-LAUNCH-20261013-pos-ultimate"
+      ],
+      "proposedDefaultModules": [
+        "pos",
+        "billing",
+        "inventory"
+      ],
+      "draftType": null,
+      "heldTiers": [],
+      "publicationGate": "Private candidates only. Workflow acceptance and human publication review required; no capacity or staff-role promises."
+    },
+    {
+      "businessType": "billing",
+      "expectedExisting": {
+        "id": "billing",
+        "status": "Active",
+        "idPrefix": "BIL",
+        "defaultModules": [
+          "billing"
+        ],
+        "planIds": [],
+        "planTierByPage": {}
+      },
+      "plans": [
+        {
+          "id": "MBF-LAUNCH-20261013-billing-basic",
+          "name": "Starter",
+          "price": 199,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "billing"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": false
+        },
+        {
+          "id": "MBF-LAUNCH-20261013-billing-pro",
+          "name": "Pro",
+          "price": 399,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "billing"
+          ],
+          "maxUsers": 10,
+          "maxLocations": 3,
+          "isPublic": false
+        },
+        {
+          "id": "MBF-LAUNCH-20261013-billing-ultimate",
+          "name": "Ultimate",
+          "price": 799,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "billing"
+          ],
+          "maxUsers": 25,
+          "maxLocations": 5,
+          "isPublic": false
+        }
+      ],
+      "proposedPlanIds": [
+        "MBF-LAUNCH-20261013-billing-basic",
+        "MBF-LAUNCH-20261013-billing-pro",
+        "MBF-LAUNCH-20261013-billing-ultimate"
+      ],
+      "proposedDefaultModules": [
+        "billing"
+      ],
+      "draftType": null,
+      "heldTiers": [],
+      "publicationGate": "Private candidates only. Workflow acceptance and human publication review required; no capacity or staff-role promises."
+    },
+    {
+      "businessType": "brand",
+      "expectedExisting": null,
+      "plans": [
+        {
+          "id": "MBF-LAUNCH-20261013-brand-basic",
+          "name": "Starter",
+          "price": 699,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "brand"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": false
+        }
+      ],
+      "proposedPlanIds": [
+        "MBF-LAUNCH-20261013-brand-basic"
+      ],
+      "proposedDefaultModules": [
+        "brand"
+      ],
+      "draftType": {
+        "id": "brand",
+        "description": "Standalone brand business",
+        "idPrefix": "BRD",
+        "defaultModules": [
+          "brand"
+        ],
+        "assignableRoleIds": [
+          "Owner / Admin"
+        ],
+        "planTierByPage": {},
+        "planIds": [
+          "MBF-LAUNCH-20261013-brand-basic"
+        ],
+        "requiresApproval": false,
+        "customSignupFields": [],
+        "status": "Inactive"
+      },
+      "heldTiers": [
+        "pro",
+        "ultimate"
+      ],
+      "publicationGate": "Private candidates only. Workflow acceptance and human publication review required; no capacity or staff-role promises."
+    },
+    {
+      "businessType": "clinic",
+      "expectedExisting": {
+        "id": "clinic",
+        "status": "Active",
+        "idPrefix": "CLN",
+        "defaultModules": [
+          "clinic",
+          "billing"
+        ],
+        "planIds": [
+          "PLAN-CLINIC-BASIC",
+          "PLAN-CLINIC-PRO",
+          "PLAN-CLINIC-ULTIMATE"
+        ],
+        "planTierByPage": {}
+      },
+      "plans": [
+        {
+          "id": "MBF-LAUNCH-20261013-clinic-basic",
+          "name": "Starter",
+          "price": 399,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "clinic",
+            "billing"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": false
+        },
+        {
+          "id": "MBF-LAUNCH-20261013-clinic-pro",
+          "name": "Pro",
+          "price": 699,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "clinic",
+            "billing"
+          ],
+          "maxUsers": 10,
+          "maxLocations": 3,
+          "isPublic": false
+        },
+        {
+          "id": "MBF-LAUNCH-20261013-clinic-ultimate",
+          "name": "Ultimate",
+          "price": 999,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "clinic",
+            "billing"
+          ],
+          "maxUsers": 25,
+          "maxLocations": 5,
+          "isPublic": false
+        }
+      ],
+      "proposedPlanIds": [
+        "MBF-LAUNCH-20261013-clinic-basic",
+        "MBF-LAUNCH-20261013-clinic-pro",
+        "MBF-LAUNCH-20261013-clinic-ultimate"
+      ],
+      "proposedDefaultModules": [
+        "clinic",
+        "billing"
+      ],
+      "draftType": null,
+      "heldTiers": [],
+      "publicationGate": "Private candidates only. Workflow acceptance and human publication review required; no capacity or staff-role promises."
+    },
+    {
+      "businessType": "amc-field-service",
+      "expectedExisting": {
+        "id": "amc-field-service",
+        "status": "Active",
+        "idPrefix": "AMC",
+        "defaultModules": [
+          "amc-field-service",
+          "billing"
+        ],
+        "planIds": [
+          "PLAN-AMCFIELDSERVICE-BASIC",
+          "PLAN-AMCFIELDSERVICE-PRO",
+          "PLAN-AMCFIELDSERVICE-ULTIMATE"
+        ],
+        "planTierByPage": {}
+      },
+      "plans": [
+        {
+          "id": "MBF-LAUNCH-20261013-amc-field-service-basic",
+          "name": "Starter",
+          "price": 499,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "amc-field-service",
+            "billing"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": false
+        },
+        {
+          "id": "MBF-LAUNCH-20261013-amc-field-service-pro",
+          "name": "Pro",
+          "price": 999,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "amc-field-service",
+            "billing"
+          ],
+          "maxUsers": 10,
+          "maxLocations": 3,
+          "isPublic": false
+        },
+        {
+          "id": "MBF-LAUNCH-20261013-amc-field-service-ultimate",
+          "name": "Ultimate",
+          "price": 1999,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "amc-field-service",
+            "billing"
+          ],
+          "maxUsers": 25,
+          "maxLocations": 5,
+          "isPublic": false
+        }
+      ],
+      "proposedPlanIds": [
+        "MBF-LAUNCH-20261013-amc-field-service-basic",
+        "MBF-LAUNCH-20261013-amc-field-service-pro",
+        "MBF-LAUNCH-20261013-amc-field-service-ultimate"
+      ],
+      "proposedDefaultModules": [
+        "amc-field-service",
+        "billing"
+      ],
+      "draftType": null,
+      "heldTiers": [],
+      "publicationGate": "Private candidates only. Workflow acceptance and human publication review required; no capacity or staff-role promises."
+    },
+    {
+      "businessType": "restaurant-pos",
+      "expectedExisting": {
+        "id": "restaurant-pos",
+        "status": "Active",
+        "idPrefix": "RPO",
+        "defaultModules": [
+          "restaurant-pos",
+          "billing"
+        ],
+        "planIds": [
+          "PLAN-RESTAURANTPOS-BASIC",
+          "PLAN-RESTAURANTPOS-PRO",
+          "PLAN-RESTAURANTPOS-ULTIMATE"
+        ],
+        "planTierByPage": {}
+      },
+      "plans": [
+        {
+          "id": "MBF-LAUNCH-20261013-restaurant-pos-basic",
+          "name": "Starter",
+          "price": 499,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "restaurant-pos",
+            "billing"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": false
+        },
+        {
+          "id": "MBF-LAUNCH-20261013-restaurant-pos-pro",
+          "name": "Pro",
+          "price": 999,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "restaurant-pos",
+            "billing"
+          ],
+          "maxUsers": 10,
+          "maxLocations": 3,
+          "isPublic": false
+        },
+        {
+          "id": "MBF-LAUNCH-20261013-restaurant-pos-ultimate",
+          "name": "Ultimate",
+          "price": 1999,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "restaurant-pos",
+            "billing"
+          ],
+          "maxUsers": 25,
+          "maxLocations": 5,
+          "isPublic": false
+        }
+      ],
+      "proposedPlanIds": [
+        "MBF-LAUNCH-20261013-restaurant-pos-basic",
+        "MBF-LAUNCH-20261013-restaurant-pos-pro",
+        "MBF-LAUNCH-20261013-restaurant-pos-ultimate"
+      ],
+      "proposedDefaultModules": [
+        "restaurant-pos",
+        "billing"
+      ],
+      "draftType": null,
+      "heldTiers": [],
+      "publicationGate": "Private candidates only. Workflow acceptance and human publication review required; no capacity or staff-role promises."
+    },
+    {
+      "businessType": "subscriptions",
+      "expectedExisting": {
+        "id": "subscriptions",
+        "status": "Active",
+        "idPrefix": "SUB",
+        "defaultModules": [
+          "subscriptions"
+        ],
+        "planIds": [
+          "PLAN-SUBSCRIPTIONS-BASIC",
+          "PLAN-SUBSCRIPTIONS-PRO",
+          "PLAN-SUBSCRIPTIONS-ULTIMATE"
+        ],
+        "planTierByPage": {}
+      },
+      "plans": [
+        {
+          "id": "MBF-LAUNCH-20261013-subscriptions-basic",
+          "name": "Starter",
+          "price": 299,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "subscriptions"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": false
+        }
+      ],
+      "proposedPlanIds": [
+        "MBF-LAUNCH-20261013-subscriptions-basic"
+      ],
+      "proposedDefaultModules": [
+        "subscriptions"
+      ],
+      "draftType": null,
+      "heldTiers": [
+        "pro",
+        "ultimate"
+      ],
+      "publicationGate": "Private candidates only. Workflow acceptance and human publication review required; no capacity or staff-role promises."
+    },
+    {
+      "businessType": "real-estate",
+      "expectedExisting": {
+        "id": "real-estate",
+        "status": "Active",
+        "idPrefix": "RLE",
+        "defaultModules": [
+          "real-estate"
+        ],
+        "planIds": [
+          "PLAN-REALESTATE-BASIC",
+          "PLAN-REALESTATE-PRO",
+          "PLAN-REALESTATE-ULTIMATE"
+        ],
+        "planTierByPage": {}
+      },
+      "plans": [
+        {
+          "id": "MBF-LAUNCH-20261013-real-estate-basic",
+          "name": "Starter",
+          "price": 399,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "real-estate"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": false
+        }
+      ],
+      "proposedPlanIds": [
+        "MBF-LAUNCH-20261013-real-estate-basic"
+      ],
+      "proposedDefaultModules": [
+        "real-estate"
+      ],
+      "draftType": null,
+      "heldTiers": [
+        "pro",
+        "ultimate"
+      ],
+      "publicationGate": "Private candidates only. Workflow acceptance and human publication review required; no capacity or staff-role promises."
+    },
+    {
+      "businessType": "rentals",
+      "expectedExisting": {
+        "id": "rentals",
+        "status": "Active",
+        "idPrefix": "RNT",
+        "defaultModules": [
+          "rentals"
+        ],
+        "planIds": [
+          "PLAN-RENTALS-BASIC",
+          "PLAN-RENTALS-PRO",
+          "PLAN-RENTALS-ULTIMATE"
+        ],
+        "planTierByPage": {}
+      },
+      "plans": [
+        {
+          "id": "MBF-LAUNCH-20261013-rentals-basic",
+          "name": "Starter",
+          "price": 399,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "rentals"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": false
+        }
+      ],
+      "proposedPlanIds": [
+        "MBF-LAUNCH-20261013-rentals-basic"
+      ],
+      "proposedDefaultModules": [
+        "rentals"
+      ],
+      "draftType": null,
+      "heldTiers": [
+        "pro",
+        "ultimate"
+      ],
+      "publicationGate": "Private candidates only. Workflow acceptance and human publication review required; no capacity or staff-role promises."
+    },
+    {
+      "businessType": "education",
+      "expectedExisting": {
+        "id": "education",
+        "status": "Active",
+        "idPrefix": "EDU",
+        "defaultModules": [
+          "education",
+          "billing",
+          "hrms",
+          "marketplace",
+          "accounting"
+        ],
+        "planIds": [
+          "PLAN-EDUCATION-BASIC",
+          "PLAN-EDUCATION-PRO",
+          "PLAN-EDUCATION-ULTIMATE"
+        ],
+        "planTierByPage": {}
+      },
+      "plans": [
+        {
+          "id": "MBF-LAUNCH-20261013-education-basic",
+          "name": "Starter",
+          "price": 399,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "education",
+            "billing",
+            "hrms",
+            "marketplace",
+            "accounting"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": false
+        },
+        {
+          "id": "MBF-LAUNCH-20261013-education-pro",
+          "name": "Pro",
+          "price": 799,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "education",
+            "billing",
+            "hrms",
+            "marketplace",
+            "accounting"
+          ],
+          "maxUsers": 10,
+          "maxLocations": 3,
+          "isPublic": false
+        },
+        {
+          "id": "MBF-LAUNCH-20261013-education-ultimate",
+          "name": "Ultimate",
+          "price": 1499,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "education",
+            "billing",
+            "hrms",
+            "marketplace",
+            "accounting"
+          ],
+          "maxUsers": 25,
+          "maxLocations": 5,
+          "isPublic": false
+        }
+      ],
+      "proposedPlanIds": [
+        "MBF-LAUNCH-20261013-education-basic",
+        "MBF-LAUNCH-20261013-education-pro",
+        "MBF-LAUNCH-20261013-education-ultimate"
+      ],
+      "proposedDefaultModules": [
+        "education",
+        "billing",
+        "hrms",
+        "marketplace",
+        "accounting"
+      ],
+      "draftType": null,
+      "heldTiers": [],
+      "publicationGate": "Private candidates only. Workflow acceptance and human publication review required; no capacity or staff-role promises."
+    },
+    {
+      "businessType": "manufacturing",
+      "expectedExisting": {
+        "id": "manufacturing",
+        "status": "Active",
+        "idPrefix": "MFG",
+        "defaultModules": [
+          "manufacturing",
+          "billing",
+          "hrms",
+          "marketplace",
+          "accounting"
+        ],
+        "planIds": [
+          "PLAN-MANUFACTURING-BASIC",
+          "PLAN-MANUFACTURING-PRO",
+          "PLAN-MANUFACTURING-ULTIMATE"
+        ],
+        "planTierByPage": {}
+      },
+      "plans": [
+        {
+          "id": "MBF-LAUNCH-20261013-manufacturing-basic",
+          "name": "Starter",
+          "price": 599,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "manufacturing",
+            "billing",
+            "hrms",
+            "marketplace",
+            "accounting"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": false
+        },
+        {
+          "id": "MBF-LAUNCH-20261013-manufacturing-pro",
+          "name": "Pro",
+          "price": 1199,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "manufacturing",
+            "billing",
+            "hrms",
+            "marketplace",
+            "accounting"
+          ],
+          "maxUsers": 10,
+          "maxLocations": 3,
+          "isPublic": false
+        },
+        {
+          "id": "MBF-LAUNCH-20261013-manufacturing-ultimate",
+          "name": "Ultimate",
+          "price": 1999,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "manufacturing",
+            "billing",
+            "hrms",
+            "marketplace",
+            "accounting"
+          ],
+          "maxUsers": 25,
+          "maxLocations": 5,
+          "isPublic": false
+        }
+      ],
+      "proposedPlanIds": [
+        "MBF-LAUNCH-20261013-manufacturing-basic",
+        "MBF-LAUNCH-20261013-manufacturing-pro",
+        "MBF-LAUNCH-20261013-manufacturing-ultimate"
+      ],
+      "proposedDefaultModules": [
+        "manufacturing",
+        "billing",
+        "hrms",
+        "marketplace",
+        "accounting"
+      ],
+      "draftType": null,
+      "heldTiers": [],
+      "publicationGate": "Private candidates only. Workflow acceptance and human publication review required; no capacity or staff-role promises."
+    },
+    {
+      "businessType": "wholesale-b2b",
+      "expectedExisting": {
+        "id": "wholesale-b2b",
+        "status": "Active",
+        "idPrefix": "WSB",
+        "defaultModules": [
+          "wholesale-b2b",
+          "billing",
+          "hrms",
+          "marketplace",
+          "accounting"
+        ],
+        "planIds": [
+          "PLAN-WHOLESALEB2B-BASIC",
+          "PLAN-WHOLESALEB2B-PRO",
+          "PLAN-WHOLESALEB2B-ULTIMATE"
+        ],
+        "planTierByPage": {}
+      },
+      "plans": [
+        {
+          "id": "MBF-LAUNCH-20261013-wholesale-b2b-basic",
+          "name": "Starter",
+          "price": 499,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "wholesale-b2b",
+            "billing",
+            "hrms",
+            "marketplace",
+            "accounting"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": false
+        },
+        {
+          "id": "MBF-LAUNCH-20261013-wholesale-b2b-pro",
+          "name": "Pro",
+          "price": 999,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "wholesale-b2b",
+            "billing",
+            "hrms",
+            "marketplace",
+            "accounting"
+          ],
+          "maxUsers": 10,
+          "maxLocations": 3,
+          "isPublic": false
+        },
+        {
+          "id": "MBF-LAUNCH-20261013-wholesale-b2b-ultimate",
+          "name": "Ultimate",
+          "price": 1799,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "wholesale-b2b",
+            "billing",
+            "hrms",
+            "marketplace",
+            "accounting"
+          ],
+          "maxUsers": 25,
+          "maxLocations": 5,
+          "isPublic": false
+        }
+      ],
+      "proposedPlanIds": [
+        "MBF-LAUNCH-20261013-wholesale-b2b-basic",
+        "MBF-LAUNCH-20261013-wholesale-b2b-pro",
+        "MBF-LAUNCH-20261013-wholesale-b2b-ultimate"
+      ],
+      "proposedDefaultModules": [
+        "wholesale-b2b",
+        "billing",
+        "hrms",
+        "marketplace",
+        "accounting"
+      ],
+      "draftType": null,
+      "heldTiers": [],
+      "publicationGate": "Private candidates only. Workflow acceptance and human publication review required; no capacity or staff-role promises."
+    },
+    {
+      "businessType": "logistics-fleet",
+      "expectedExisting": {
+        "id": "logistics-fleet",
+        "status": "Active",
+        "idPrefix": "LOG",
+        "defaultModules": [
+          "logistics-fleet"
+        ],
+        "planIds": [
+          "PLAN-LOGISTICSFLEET-BASIC",
+          "PLAN-LOGISTICSFLEET-PRO",
+          "PLAN-LOGISTICSFLEET-ULTIMATE"
+        ],
+        "planTierByPage": {}
+      },
+      "plans": [
+        {
+          "id": "MBF-LAUNCH-20261013-logistics-fleet-basic",
+          "name": "Starter",
+          "price": 399,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "logistics-fleet"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": false
+        }
+      ],
+      "proposedPlanIds": [
+        "MBF-LAUNCH-20261013-logistics-fleet-basic"
+      ],
+      "proposedDefaultModules": [
+        "logistics-fleet"
+      ],
+      "draftType": null,
+      "heldTiers": [
+        "pro",
+        "ultimate"
+      ],
+      "publicationGate": "Private candidates only. Workflow acceptance and human publication review required; no capacity or staff-role promises."
+    },
+    {
+      "businessType": "legal",
+      "expectedExisting": {
+        "id": "legal",
+        "status": "Active",
+        "idPrefix": "LGL",
+        "defaultModules": [
+          "legal",
+          "billing",
+          "hrms",
+          "marketplace",
+          "accounting"
+        ],
+        "planIds": [
+          "PLAN-LEGAL-BASIC",
+          "PLAN-LEGAL-PRO",
+          "PLAN-LEGAL-ULTIMATE"
+        ],
+        "planTierByPage": {}
+      },
+      "plans": [
+        {
+          "id": "MBF-LAUNCH-20261013-legal-basic",
+          "name": "Starter",
+          "price": 399,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "legal",
+            "billing",
+            "hrms",
+            "marketplace",
+            "accounting"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": false
+        },
+        {
+          "id": "MBF-LAUNCH-20261013-legal-pro",
+          "name": "Pro",
+          "price": 799,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "legal",
+            "billing",
+            "hrms",
+            "marketplace",
+            "accounting"
+          ],
+          "maxUsers": 10,
+          "maxLocations": 3,
+          "isPublic": false
+        },
+        {
+          "id": "MBF-LAUNCH-20261013-legal-ultimate",
+          "name": "Ultimate",
+          "price": 1499,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "legal",
+            "billing",
+            "hrms",
+            "marketplace",
+            "accounting"
+          ],
+          "maxUsers": 25,
+          "maxLocations": 5,
+          "isPublic": false
+        }
+      ],
+      "proposedPlanIds": [
+        "MBF-LAUNCH-20261013-legal-basic",
+        "MBF-LAUNCH-20261013-legal-pro",
+        "MBF-LAUNCH-20261013-legal-ultimate"
+      ],
+      "proposedDefaultModules": [
+        "legal",
+        "billing",
+        "hrms",
+        "marketplace",
+        "accounting"
+      ],
+      "draftType": null,
+      "heldTiers": [],
+      "publicationGate": "Private candidates only. Workflow acceptance and human publication review required; no capacity or staff-role promises."
+    },
+    {
+      "businessType": "event-booking",
+      "expectedExisting": {
+        "id": "event-booking",
+        "status": "Active",
+        "idPrefix": "EVB",
+        "defaultModules": [
+          "event-booking",
+          "billing",
+          "hrms",
+          "marketplace",
+          "accounting"
+        ],
+        "planIds": [
+          "PLAN-EVENTBOOKING-BASIC",
+          "PLAN-EVENTBOOKING-PRO",
+          "PLAN-EVENTBOOKING-ULTIMATE"
+        ],
+        "planTierByPage": {}
+      },
+      "plans": [
+        {
+          "id": "MBF-LAUNCH-20261013-event-booking-basic",
+          "name": "Starter",
+          "price": 499,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "event-booking",
+            "billing",
+            "hrms",
+            "marketplace",
+            "accounting"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": false
+        },
+        {
+          "id": "MBF-LAUNCH-20261013-event-booking-pro",
+          "name": "Pro",
+          "price": 999,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "event-booking",
+            "billing",
+            "hrms",
+            "marketplace",
+            "accounting"
+          ],
+          "maxUsers": 10,
+          "maxLocations": 3,
+          "isPublic": false
+        },
+        {
+          "id": "MBF-LAUNCH-20261013-event-booking-ultimate",
+          "name": "Ultimate",
+          "price": 1999,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "event-booking",
+            "billing",
+            "hrms",
+            "marketplace",
+            "accounting"
+          ],
+          "maxUsers": 25,
+          "maxLocations": 5,
+          "isPublic": false
+        }
+      ],
+      "proposedPlanIds": [
+        "MBF-LAUNCH-20261013-event-booking-basic",
+        "MBF-LAUNCH-20261013-event-booking-pro",
+        "MBF-LAUNCH-20261013-event-booking-ultimate"
+      ],
+      "proposedDefaultModules": [
+        "event-booking",
+        "billing",
+        "hrms",
+        "marketplace",
+        "accounting"
+      ],
+      "draftType": null,
+      "heldTiers": [],
+      "publicationGate": "Private candidates only. Workflow acceptance and human publication review required; no capacity or staff-role promises."
+    },
+    {
+      "businessType": "salon-spa",
+      "expectedExisting": {
+        "id": "salon-spa",
+        "status": "Active",
+        "idPrefix": "SPA",
+        "defaultModules": [
+          "salon-spa",
+          "billing"
+        ],
+        "planIds": [
+          "PLAN-SALONSPA-BASIC",
+          "PLAN-SALONSPA-PRO",
+          "PLAN-SALONSPA-ULTIMATE"
+        ],
+        "planTierByPage": {}
+      },
+      "plans": [
+        {
+          "id": "MBF-LAUNCH-20261013-salon-spa-basic",
+          "name": "Starter",
+          "price": 399,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "salon-spa",
+            "billing"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": false
+        },
+        {
+          "id": "MBF-LAUNCH-20261013-salon-spa-pro",
+          "name": "Pro",
+          "price": 699,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "salon-spa",
+            "billing"
+          ],
+          "maxUsers": 10,
+          "maxLocations": 3,
+          "isPublic": false
+        },
+        {
+          "id": "MBF-LAUNCH-20261013-salon-spa-ultimate",
+          "name": "Ultimate",
+          "price": 1299,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "salon-spa",
+            "billing"
+          ],
+          "maxUsers": 25,
+          "maxLocations": 5,
+          "isPublic": false
+        }
+      ],
+      "proposedPlanIds": [
+        "MBF-LAUNCH-20261013-salon-spa-basic",
+        "MBF-LAUNCH-20261013-salon-spa-pro",
+        "MBF-LAUNCH-20261013-salon-spa-ultimate"
+      ],
+      "proposedDefaultModules": [
+        "salon-spa",
+        "billing"
+      ],
+      "draftType": null,
+      "heldTiers": [],
+      "publicationGate": "Private candidates only. Workflow acceptance and human publication review required; no capacity or staff-role promises."
+    },
+    {
+      "businessType": "telecalling",
+      "expectedExisting": {
+        "id": "telecalling",
+        "status": "Active",
+        "idPrefix": "CC",
+        "defaultModules": [
+          "telecalling"
+        ],
+        "planIds": [
+          "PLAN-TELECALLING-BASIC",
+          "PLAN-TELECALLING-PRO",
+          "PLAN-TELECALLING-ULTIMATE"
+        ],
+        "planTierByPage": {}
+      },
+      "plans": [
+        {
+          "id": "MBF-LAUNCH-20261013-telecalling-basic",
+          "name": "Starter",
+          "price": 399,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "telecalling"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": false
+        },
+        {
+          "id": "MBF-LAUNCH-20261013-telecalling-pro",
+          "name": "Pro",
+          "price": 799,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "telecalling"
+          ],
+          "maxUsers": 10,
+          "maxLocations": 3,
+          "isPublic": false
+        }
+      ],
+      "proposedPlanIds": [
+        "MBF-LAUNCH-20261013-telecalling-basic",
+        "MBF-LAUNCH-20261013-telecalling-pro"
+      ],
+      "proposedDefaultModules": [
+        "telecalling"
+      ],
+      "draftType": null,
+      "heldTiers": [
+        "ultimate"
+      ],
+      "publicationGate": "Private candidates only. Workflow acceptance and human publication review required; no capacity or staff-role promises."
+    },
+    {
+      "businessType": "inventory",
+      "expectedExisting": null,
+      "plans": [
+        {
+          "id": "MBF-LAUNCH-20261013-inventory-basic",
+          "name": "Starter",
+          "price": 299,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "inventory"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": false
+        },
+        {
+          "id": "MBF-LAUNCH-20261013-inventory-pro",
+          "name": "Pro",
+          "price": 599,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "inventory"
+          ],
+          "maxUsers": 10,
+          "maxLocations": 3,
+          "isPublic": false
+        }
+      ],
+      "proposedPlanIds": [
+        "MBF-LAUNCH-20261013-inventory-basic",
+        "MBF-LAUNCH-20261013-inventory-pro"
+      ],
+      "proposedDefaultModules": [
+        "inventory"
+      ],
+      "draftType": {
+        "id": "inventory",
+        "description": "Standalone inventory business",
+        "idPrefix": "INV",
+        "defaultModules": [
+          "inventory"
+        ],
+        "assignableRoleIds": [
+          "Owner / Admin"
+        ],
+        "planTierByPage": {},
+        "planIds": [
+          "MBF-LAUNCH-20261013-inventory-basic",
+          "MBF-LAUNCH-20261013-inventory-pro"
+        ],
+        "requiresApproval": false,
+        "customSignupFields": [],
+        "status": "Inactive"
+      },
+      "heldTiers": [
+        "ultimate"
+      ],
+      "publicationGate": "Private candidates only. Workflow acceptance and human publication review required; no capacity or staff-role promises."
+    },
+    {
+      "businessType": "accounting",
+      "expectedExisting": null,
+      "plans": [
+        {
+          "id": "MBF-LAUNCH-20261013-accounting-basic",
+          "name": "Starter",
+          "price": 299,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "accounting",
+            "accounting-gst",
+            "billing"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": false
+        },
+        {
+          "id": "MBF-LAUNCH-20261013-accounting-pro",
+          "name": "Pro",
+          "price": 599,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "accounting",
+            "accounting-gst",
+            "billing"
+          ],
+          "maxUsers": 10,
+          "maxLocations": 3,
+          "isPublic": false
+        },
+        {
+          "id": "MBF-LAUNCH-20261013-accounting-ultimate",
+          "name": "Ultimate",
+          "price": 999,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "accounting",
+            "accounting-gst",
+            "billing"
+          ],
+          "maxUsers": 25,
+          "maxLocations": 5,
+          "isPublic": false
+        }
+      ],
+      "proposedPlanIds": [
+        "MBF-LAUNCH-20261013-accounting-basic",
+        "MBF-LAUNCH-20261013-accounting-pro",
+        "MBF-LAUNCH-20261013-accounting-ultimate"
+      ],
+      "proposedDefaultModules": [
+        "accounting",
+        "accounting-gst",
+        "billing"
+      ],
+      "draftType": {
+        "id": "accounting",
+        "description": "Standalone accounting business",
+        "idPrefix": "ACC",
+        "defaultModules": [
+          "accounting",
+          "accounting-gst",
+          "billing"
+        ],
+        "assignableRoleIds": [
+          "Owner / Admin"
+        ],
+        "planTierByPage": {},
+        "planIds": [
+          "MBF-LAUNCH-20261013-accounting-basic",
+          "MBF-LAUNCH-20261013-accounting-pro",
+          "MBF-LAUNCH-20261013-accounting-ultimate"
+        ],
+        "requiresApproval": false,
+        "customSignupFields": [],
+        "status": "Inactive"
+      },
+      "heldTiers": [],
+      "publicationGate": "Private candidates only. Workflow acceptance and human publication review required; no capacity or staff-role promises."
+    },
+    {
+      "businessType": "loyalty-rewards",
+      "expectedExisting": {
+        "id": "loyalty-rewards",
+        "status": "Active",
+        "idPrefix": "LOY",
+        "defaultModules": [
+          "loyalty-rewards"
+        ],
+        "planIds": [],
+        "planTierByPage": {}
+      },
+      "plans": [
+        {
+          "id": "MBF-LAUNCH-20261013-loyalty-rewards-basic",
+          "name": "Starter",
+          "price": 149,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "loyalty-rewards"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": false
+        }
+      ],
+      "proposedPlanIds": [
+        "MBF-LAUNCH-20261013-loyalty-rewards-basic"
+      ],
+      "proposedDefaultModules": [
+        "loyalty-rewards"
+      ],
+      "draftType": null,
+      "heldTiers": [
+        "pro",
+        "ultimate"
+      ],
+      "publicationGate": "Private candidates only. Workflow acceptance and human publication review required; no capacity or staff-role promises."
+    },
+    {
+      "businessType": "hrms",
+      "expectedExisting": null,
+      "plans": [
+        {
+          "id": "MBF-LAUNCH-20261013-hrms-basic",
+          "name": "Starter",
+          "price": 199,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "hrms"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": false
+        },
+        {
+          "id": "MBF-LAUNCH-20261013-hrms-pro",
+          "name": "Pro",
+          "price": 399,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "hrms"
+          ],
+          "maxUsers": 10,
+          "maxLocations": 3,
+          "isPublic": false
+        }
+      ],
+      "proposedPlanIds": [
+        "MBF-LAUNCH-20261013-hrms-basic",
+        "MBF-LAUNCH-20261013-hrms-pro"
+      ],
+      "proposedDefaultModules": [
+        "hrms"
+      ],
+      "draftType": {
+        "id": "hrms",
+        "description": "Standalone hrms business",
+        "idPrefix": "HRM",
+        "defaultModules": [
+          "hrms"
+        ],
+        "assignableRoleIds": [
+          "Owner / Admin"
+        ],
+        "planTierByPage": {},
+        "planIds": [
+          "MBF-LAUNCH-20261013-hrms-basic",
+          "MBF-LAUNCH-20261013-hrms-pro"
+        ],
+        "requiresApproval": false,
+        "customSignupFields": [],
+        "status": "Inactive"
+      },
+      "heldTiers": [
+        "ultimate"
+      ],
+      "publicationGate": "Private candidates only. Workflow acceptance and human publication review required; no capacity or staff-role promises."
+    },
+    {
+      "businessType": "marketplace",
+      "expectedExisting": null,
+      "plans": [
+        {
+          "id": "MBF-LAUNCH-20261013-marketplace-basic",
+          "name": "Starter",
+          "price": 299,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "marketplace"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": false
+        }
+      ],
+      "proposedPlanIds": [
+        "MBF-LAUNCH-20261013-marketplace-basic"
+      ],
+      "proposedDefaultModules": [
+        "marketplace"
+      ],
+      "draftType": {
+        "id": "marketplace",
+        "description": "Standalone marketplace business",
+        "idPrefix": "MKT",
+        "defaultModules": [
+          "marketplace"
+        ],
+        "assignableRoleIds": [
+          "Owner / Admin"
+        ],
+        "planTierByPage": {},
+        "planIds": [
+          "MBF-LAUNCH-20261013-marketplace-basic"
+        ],
+        "requiresApproval": false,
+        "customSignupFields": [],
+        "status": "Inactive"
+      },
+      "heldTiers": [
+        "pro",
+        "ultimate"
+      ],
+      "publicationGate": "Private candidates only. Workflow acceptance and human publication review required; no capacity or staff-role promises."
+    },
+    {
+      "businessType": "field-force",
+      "expectedExisting": {
+        "id": "field-force",
+        "status": "Active",
+        "idPrefix": "FF",
+        "defaultModules": [
+          "field-force"
+        ],
+        "planIds": [
+          "PLAN-FIELDFORCE-FREE"
+        ],
+        "planTierByPage": {}
+      },
+      "plans": [
+        {
+          "id": "MBF-LAUNCH-20261013-field-force-basic",
+          "name": "Free",
+          "price": 0,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "field-force"
+          ],
+          "maxUsers": 9999,
+          "maxLocations": 9999,
+          "isPublic": false
+        }
+      ],
+      "proposedPlanIds": [
+        "MBF-LAUNCH-20261013-field-force-basic"
+      ],
+      "proposedDefaultModules": [
+        "field-force"
+      ],
+      "draftType": null,
+      "heldTiers": [],
+      "publicationGate": "Private candidates only. Workflow acceptance and human publication review required; no capacity or staff-role promises."
+    }
+  ]
+}

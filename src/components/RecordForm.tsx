@@ -632,7 +632,7 @@ function renderInput(
                   setValue(field.key, next);
                 }}
               />
-              {opt}
+              {field.optionLabels?.[opt] ?? opt}
             </label>
           ))}
         </div>

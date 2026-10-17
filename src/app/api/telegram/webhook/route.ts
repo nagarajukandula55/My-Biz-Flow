@@ -31,6 +31,7 @@ import { findSupportTicketByReplyMessageId, appendSupportReply, setSupportTicket
 import { getAdminChatIds } from "@/lib/platformSettings";
 import { getReportRuns } from "@/lib/reportRunLog";
 import { getPlan } from "@/lib/plansData";
+import { assertPartnerCanWrite } from "@/lib/tenant";
 
 function istTimestamp(d: Date): string {
   return d.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata" });
@@ -132,13 +133,19 @@ function liveDataCommandLines(modules: readonly string[]): string[] {
  * dispatch as typing it. Deliberately a short curated set (not every
  * command) — a keyboard crammed with 30 buttons is worse than no keyboard.
  */
+function partnerNativeCommands(modules: readonly string[]) {
+  return PUBLIC_COMMANDS.filter(({ command }) =>
+    !["pna_report", "workorders", "inquiries", "tat"].includes(command) || modules.includes("service-centre")
+  ).filter(({ command }) => command !== "invoices" || modules.includes("billing"));
+}
+
 function quickReplyKeyboard(modules: readonly string[]): string[][] {
   const rows: string[][] = [["/help", "/tgid"]];
   const dataRow: string[] = ["/subscription"];
   if (modules.includes("service-centre")) dataRow.push("/workorders");
   if (modules.includes("billing")) dataRow.push("/invoices");
   rows.push(dataRow);
-  rows.push(["/report_daily", "/pna_report"]);
+  rows.push(modules.includes("service-centre") ? ["/report_daily", "/pna_report"] : ["/report_daily"]);
   return rows;
 }
 
@@ -149,7 +156,10 @@ async function handleTemplateCommand(chatId: string, text: string): Promise<bool
   if (head.toLowerCase() === "/help") {
     const connectedId = await findPartnerIdByChatId(chatId);
     const modules = connectedId ? await getVisibleModuleSlugs(connectedId) : [];
-    const commandList = TELEGRAM_TEMPLATE_DEFS.filter((d) => d.command !== "/start")
+    // Refresh this chat only; the default menu contains no vertical-specific commands.
+    const adminChatIds = await getAdminChatIds();
+    await setTelegramCommands(adminChatIds.includes(chatId) ? ADMIN_COMMANDS : partnerNativeCommands(modules), chatId);
+    const commandList = TELEGRAM_TEMPLATE_DEFS.filter((d) => d.command !== "/start" && (d.key !== "pna_report" || modules.includes("service-centre")))
       .map((d) => `${d.command} — ${d.label}`)
       .join("\n") + "\n" + liveDataCommandLines(modules).join("\n") + "\n/tgid — this chat's Telegram id";
     await sendRawTelegramMessage(chatId, await helpMessageText(commandList), undefined, quickReplyKeyboard(modules));
@@ -189,6 +199,10 @@ async function handleTemplateCommand(chatId: string, text: string): Promise<bool
   }
 
   if (def.key === "pna_report") {
+    if (!(await getVisibleModuleSlugs(partnerId)).includes("service-centre")) {
+      await sendRawTelegramMessage(chatId, "This command needs the Service Centre module. Use /help to see your commands.");
+      return true;
+    }
     const { totalOpen, totalQty, lines } = await computePnaTelegramReport(partnerId);
     const message = await pnaReportMessage({ partnerBusinessName: partner.businessName, totalOpen, totalQty, lines });
     await sendRawTelegramMessage(chatId, message);
@@ -223,7 +237,7 @@ const LIVE_DATA_COMMANDS = new Set(["/workorders", "/invoices", "/lowstock", "/s
  * reads the Partner row itself, the latter (via computeAlerts) harmlessly
  * returns nothing for a module that isn't enabled.
  */
-async function handleLiveDataCommand(chatId: string, text: string): Promise<boolean> {
+async function handleLiveDataCommand(chatId: string, text: string, messageId?: number): Promise<boolean> {
   const head = text.trim().split(/\s/)[0].toLowerCase();
   if (!LIVE_DATA_COMMANDS.has(head)) return false;
 
@@ -275,7 +289,8 @@ async function handleLiveDataCommand(chatId: string, text: string): Promise<bool
       await sendRawTelegramMessage(chatId, `Workorder "${escapeHtml(workorderNumber)}" not found.`);
       return true;
     }
-    await appendTelegramChatLogEntry(partnerId, workorderNumber, { direction: "in", text: noteText, chatId });
+    await assertPartnerCanWrite(partnerId);
+    await appendTelegramChatLogEntry(partnerId, workorderNumber, { direction: "in", text: noteText, chatId, messageId });
     await sendRawTelegramMessage(chatId, `Note added to ${escapeHtml(workorderNumber)}.`);
     return true;
   }
@@ -587,7 +602,7 @@ export async function POST(request: Request) {
     if (!adminChatIds.includes(chatId)) {
       return NextResponse.json({ ok: true });
     }
-    const defaultOk = await setTelegramCommands(PUBLIC_COMMANDS);
+    const defaultOk = await setTelegramCommands(partnerNativeCommands([]));
     let adminOk = 0;
     for (const id of adminChatIds) {
       if (await setTelegramCommands(ADMIN_COMMANDS, id)) adminOk += 1;
@@ -697,7 +712,7 @@ export async function POST(request: Request) {
   // /subscription — on-demand live data pulls, see handleLiveDataCommand's
   // own doc comment. Checked before Case 1b so these never fall through to
   // handleTemplateCommand's "unrecognized command" no-op.
-  if (text.startsWith("/") && (await handleLiveDataCommand(chatId, text))) {
+  if (text.startsWith("/") && (await handleLiveDataCommand(chatId, text, message.message_id))) {
     return NextResponse.json({ ok: true });
   }
 
@@ -713,6 +728,11 @@ export async function POST(request: Request) {
   if (typeof repliedToMessageId === "number") {
     const workorderMatch = await findWorkorderByReplyMessageId(chatId, repliedToMessageId);
     if (workorderMatch && text) {
+      const connectedId = await findPartnerIdByChatId(chatId);
+      if (connectedId !== workorderMatch.partnerId || !(await getVisibleModuleSlugs(connectedId)).includes("service-centre")) {
+        return NextResponse.json({ ok: true });
+      }
+      await assertPartnerCanWrite(workorderMatch.partnerId);
       await appendTelegramChatLogEntry(workorderMatch.partnerId, workorderMatch.workorderId, {
         direction: "in",
         text,
@@ -731,11 +751,13 @@ export async function POST(request: Request) {
     // src/lib/supportTickets.ts's own doc comment for the full mechanism.
     const ticketMatch = await findSupportTicketByReplyMessageId(chatId, repliedToMessageId);
     if (ticketMatch && text) {
+      // Historical message links survive removal from the admin chat list.
+      // Authorization must be checked at the time of every reply or resolution.
+      if (!(await getAdminChatIds()).includes(chatId)) return NextResponse.json({ ok: true });
       // /resolve as a reply to the ticket's own thread, instead of a
       // separate "/resolve <ticketId>" command — reuses the exact same
       // thread-matching this case already does, so there's no separate
-      // ticketId lookup to get wrong, and it's naturally admin-only since
-      // only an admin chat ever receives this thread to reply within.
+      // ticketId lookup to get wrong. Current admin membership was checked above.
       if (text.trim().toLowerCase() === "/resolve") {
         await setSupportTicketStatus(ticketMatch.partnerId, ticketMatch.ticketId, "resolved");
         await sendTelegramReply(message.chat.id, `Ticket ${ticketMatch.ticketId} marked resolved.`);

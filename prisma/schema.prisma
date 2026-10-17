@@ -1218,8 +1218,20 @@ model MessageTemplate {
   /// Welcome | ProductInfo | FollowUp | General
   category  String   @default("General")
   body      String   @db.Text
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  /// Meta WhatsApp Business-approved template name (WhatsApp Manager >
+  /// Message Templates) this row sends for — channel "whatsapp" only. A
+  /// cold send (the lead hasn't messaged this WhatsApp number first, which
+  /// is the normal Telecalling case) can ONLY go out as an approved
+  /// template (sendWhatsAppTemplateMessage in src/lib/whatsapp.ts), never
+  /// as free-form text — see sendTemplateToLead in messaging.ts, which
+  /// refuses to send a whatsapp-channel template with this unset rather
+  /// than silently falling back to free-form text that Meta would reject
+  /// for a lead outside the 24h customer-initiated window. Null for "sms"
+  /// channel rows, and for any "whatsapp" row created before this field
+  /// existed until someone backfills it with the real approved name.
+  metaTemplateName String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   logs MessageLog[]
 
@@ -1307,6 +1319,55 @@ model OtpCode {
 
   @@index([partnerId, targetRecordId, purpose])
   @@map("otp_codes")
+}
+
+/// Per-partner WhatsApp capability flags — two INDEPENDENT features, both
+/// off by default, both toggled only from My-Biz-Flow-Admin's Super Admin
+/// UI (never self-serve by the partner): (1) Telecalling's agent-triggered
+/// send (the "Send WhatsApp" button in the Agents UI,
+/// src/lib/telecalling/messaging.ts), scoped further by approvedTemplateIds
+/// below, and (2) WhatsApp OTP login (src/lib/whatsappOtp.ts) for that
+/// partner's own owner login AND any Field Force customer login under
+/// them. Global env config (WHATSAPP_ACCESS_TOKEN etc., see env.ts) only
+/// controls whether the CAPABILITY exists on the platform at all — this
+/// table is the per-partner approval on top of that, since a real Meta
+/// send costs money and goes out under the business's own WABA identity.
+/// Table is OWNED by this repo (My-Biz-Flow runs the real migration that
+/// creates it). My-Biz-Flow-Admin's Super Admin toggle pages do NOT
+/// declare this model in their own schema.prisma — they read/write this
+/// table via `prisma.$queryRaw`/`$executeRaw` instead (see that repo's
+/// telegramActions.ts for the identical existing pattern against
+/// telegram_settings), which sidesteps any cross-repo migration-history
+/// mismatch entirely rather than risking one.
+model PartnerWhatsAppMessaging {
+  id          String    @id @default(cuid())
+  partnerId   String    @unique
+  /// Telecalling agent-triggered send — see approvedTemplateIds below too.
+  enabled     Boolean   @default(false)
+  enabledAt   DateTime?
+  enabledById String?
+  /// Which of this partner's own whatsapp-channel MessageTemplate rows
+  /// (by id) their Telecalling agents are allowed to see/send on the
+  /// Agents Queue's "Send WhatsApp" button — Super Admin's per-partner
+  /// picklist, not just a blanket on/off. A template with metaTemplateName
+  /// set but NOT in this list is still hidden from the button (see
+  /// isWhatsAppMessagingEnabledForPartner/sendTemplateToLead). Empty by
+  /// default even when enabled=true, so turning WhatsApp on for a partner
+  /// never silently exposes every template they happen to already have —
+  /// Super Admin must explicitly pick which ones.
+  approvedTemplateIds String[] @default([])
+  /// WhatsApp OTP login — independent of the two fields above; a partner
+  /// can have this on with Telecalling's send still off, or vice versa.
+  /// Gates the "WhatsApp OTP" tab actually sending anything on both
+  /// src/app/login (partner owner) and every Field Force customer login
+  /// under this partner (src/lib/fieldForce/actions.ts) — see
+  /// requestLoginOtp's callers for where this is checked.
+  otpLoginEnabled   Boolean   @default(false)
+  otpLoginEnabledAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("partner_whatsapp_messaging")
 }
 
 /// Pro+ money ledger (credit/debit) for Inventory documents that carry a

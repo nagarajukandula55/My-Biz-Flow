@@ -190,6 +190,7 @@ export async function setProductionOrderStatusAction(
   status: ProductionOrderStatus
 ): Promise<{ error?: string }> {
   await requireSessionPartnerId(partnerId);
+  if (status === "Completed") return { error: "Use Complete production to record produced quantities, costs and stock movements." };
   const updated = await setProductionOrderStatus(partnerId, orderId, status);
   if (!updated) return { error: "Production order not found." };
 

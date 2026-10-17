@@ -7,8 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test:safety": "node --test tests/security.test.cjs tests/payments.test.cjs tests/recurring.test.cjs tests/transactions.test.cjs tests/analytics.test.cjs tests/module-coverage.test.cjs tests/delivery.test.cjs tests/invoiceInventory.test.cjs tests/stock-policy.test.cjs",
-    "test:isolated-db": "node --test tests/postgres.integration.cjs",
+    "test:safety": "node --test tests/security.test.cjs tests/payments.test.cjs tests/recurring.test.cjs tests/transactions.test.cjs tests/analytics.test.cjs tests/module-coverage.test.cjs tests/delivery.test.cjs tests/invoiceInventory.test.cjs tests/stock-policy.test.cjs tests/workspace.test.cjs tests/readiness.test.cjs tests/hrms-employee.test.cjs tests/billing-reconciliation.test.cjs tests/rental-corrections.test.cjs tests/rental-pools.test.cjs tests/hrms-payroll-calculation.test.cjs tests/hotel-folio.test.cjs tests/workspace-payment-settings.test.cjs tests/rental-fulfillment.test.cjs tests/pricing-launch-recommendation.test.cjs tests/telegram-command-security.test.cjs tests/service-centre-list.test.cjs",
+    "test:isolated-db": "node --test tests/postgres.integration.cjs tests/workspace.postgres.integration.cjs tests/readiness.postgres.integration.cjs tests/hotel.postgres.integration.cjs tests/billing-reconciliation.postgres.integration.cjs tests/rental-corrections.postgres.integration.cjs tests/rental-pools.postgres.integration.cjs tests/hrms-payroll.postgres.integration.cjs tests/hotel-groups.postgres.integration.cjs tests/rental-fulfillment.postgres.integration.cjs tests/accounting-reversal.postgres.integration.cjs tests/hotel-moves.postgres.integration.cjs tests/cross-module-workflows.postgres.integration.cjs tests/signup-launch.postgres.integration.cjs",
     "postinstall": "prisma generate",
     "sync:pincodes": "tsx scripts/syncPincodes.ts"
   },

@@ -1,4 +1,6 @@
 import type { Metadata, Viewport } from "next";
+import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
+import { assertModuleAccess } from "@/lib/tenant";
 
 /**
  * PWA metadata for the whole Accounting subtree — same pattern as
@@ -20,6 +22,8 @@ export async function generateMetadata({ params }: { params: { partnerId: string
 
 export const viewport: Viewport = { themeColor: "#0B0F19" };
 
-export default function AccountingLayout({ children }: { children: React.ReactNode }) {
+export default async function AccountingLayout({ children, params }: { children: React.ReactNode; params: { partnerId: string } }) {
+  await requireSessionPartnerId(params.partnerId);
+  await assertModuleAccess(params.partnerId, "accounting");
   return children;
 }

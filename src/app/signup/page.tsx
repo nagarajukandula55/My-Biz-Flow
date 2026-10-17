@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import { PublicHeader } from "@/components/PublicHeader";
 import { registerPage } from "@/lib/designer/registry";
 import { listActivePartnerTypes } from "@/lib/designer/partnerTypesData";
+import { buildPublicBusinessCatalog } from "@/lib/publicBusinessCatalog";
+import { BusinessOfferingDirectory } from "@/components/BusinessOfferingDirectory";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +35,8 @@ export default async function SignupPickerPage({
   searchParams: { type?: string; error?: string; ref?: string };
 }) {
   const partnerTypes = await listActivePartnerTypes();
+  const offerings = buildPublicBusinessCatalog(partnerTypes);
+  const represented = new Set(offerings.flatMap(card => card.signupOptions.map(option => option.id)));
 
   // Preserve old /signup?type=<slug>[&ref=...][&error=...] links/bookmarks
   // by forwarding straight into that type's own page, rather than 404ing
@@ -49,17 +53,19 @@ export default async function SignupPickerPage({
     <div className="min-h-screen w-full bg-bg">
       <PublicHeader showCta={false} signInLabel="Already have an account? Sign in" />
 
-      <div className="mx-auto max-w-3xl px-6 py-12">
+      <div className="w-full px-6 py-12">
         <h1 className="font-display text-3xl font-bold text-text">Register your business</h1>
         <p className="mt-2 max-w-xl text-sm text-text-muted">Choose the type of business you run to continue.</p>
+        <Link href="/business-types" className="mt-3 inline-flex min-h-11 items-center text-teal underline">Explore features by business type</Link>
 
+        <div className="mt-8"><BusinessOfferingDirectory offerings={offerings} referral={searchParams.ref} /></div>
         {partnerTypes.length === 0 ? (
           <p className="mt-8 rounded-md border border-dashed border-border bg-bg-raised p-6 text-center text-sm text-text-muted">
             No business types are open for signup yet — check back soon.
           </p>
         ) : (
           <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {partnerTypes.map((t) => (
+            {partnerTypes.filter(type => !represented.has(type.id)).map((t) => (
               <Link
                 key={t.id}
                 href={`/signup/${encodeURIComponent(t.id)}${searchParams.ref ? `?ref=${encodeURIComponent(searchParams.ref)}` : ""}`}

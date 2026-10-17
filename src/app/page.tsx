@@ -6,10 +6,10 @@ import { PublicHelpBubble } from "@/components/PublicHelpBubble";
 import { registerPage } from "@/lib/designer/registry";
 import { listActivePartnerTypes } from "@/lib/designer/partnerTypesData";
 import { SITE_URL, SITE_NAME } from "@/lib/seo";
-import { MODULES } from "@/lib/designer/modules";
-import { getIconComponent } from "@/lib/designer/icons";
 import { getLocaleFromCookie } from "@/lib/i18n/cookie";
 import { tPublic } from "@/lib/i18n/publicLocales";
+import { buildPublicBusinessCatalog } from "@/lib/publicBusinessCatalog";
+import { BusinessOfferingDirectory } from "@/components/BusinessOfferingDirectory";
 
 // Public marketing homepage reads Super-Admin-configured partner types, so it
 // must render on request instead of querying the database during deployment.
@@ -51,42 +51,6 @@ const SERVICE_CENTRE_FAQ_KEYS = [
   ["scFaq3Q", "scFaq3A"],
 ] as const;
 
-// Icon per module for the homepage's "All modules" grid — reuses the same
-// curated lucide-react subset the Designer's module-appearance picker draws
-// from (src/lib/designer/icons.ts), never a new icon choice invented for
-// this page. Purely a display default; a Super Admin's real icon override
-// (ModuleDefinition.icon) isn't read here since this is the anonymous
-// marketing page, not a partner's own sidebar.
-const MODULE_ICON_NAMES: Record<string, string> = {
-  pos: "ShoppingCart",
-  "service-centre": "Wrench",
-  billing: "Receipt",
-  brand: "Building2",
-  clinic: "Stethoscope",
-  "amc-field-service": "ClipboardCheck",
-  "restaurant-pos": "UtensilsCrossed",
-  subscriptions: "Dumbbell",
-  "real-estate": "Home",
-  rentals: "CalendarDays",
-  education: "GraduationCap",
-  manufacturing: "Factory",
-  "wholesale-b2b": "Boxes",
-  "logistics-fleet": "Truck",
-  legal: "Scale",
-  "event-booking": "PartyPopper",
-  "salon-spa": "Scissors",
-  inventory: "Warehouse",
-  "accounting-gst": "FileSpreadsheet",
-  accounting: "Landmark",
-  "loyalty-rewards": "Gift",
-  hrms: "UserCog",
-  marketplace: "Store",
-  "field-force": "Users",
-  telecalling: "Phone",
-};
-
-// Modules with their own dedicated /solutions/<slug> marketing page.
-const MODULE_SOLUTIONS_SLUGS = new Set(["service-centre", "telecalling", "field-force", "pos"]);
 
 registerPage({
   id: "platform.home",
@@ -115,60 +79,20 @@ const SCREENSHOTS: { name: string; alt: string }[] = [
 export default async function RootPage({
   searchParams,
 }: {
-  searchParams: { type?: string };
+  searchParams: { type?: string; ref?: string };
 }) {
   const partnerTypes = await listActivePartnerTypes();
+  const offerings = buildPublicBusinessCatalog(partnerTypes);
 
-  const knownModules = new Set(MODULES.map(module => module.slug));
-  const qualifyingPartnerTypes = partnerTypes.filter(type => type.defaultModules.some(slug => knownModules.has(slug)));
   const locale = getLocaleFromCookie();
   const tp = (key: Parameters<typeof tPublic>[1], vars?: Record<string, string | number>) => tPublic(locale, key, vars);
-
-  function BusinessCard({ typeId, label, description, moduleSlug }: { typeId: string; label: string; description: string; moduleSlug: string }) {
-    const mod = MODULES.find(m => m.slug === moduleSlug);
-    const Icon = getIconComponent(MODULE_ICON_NAMES[moduleSlug]);
-    const href = `/signup/${encodeURIComponent(typeId)}`;
-    return (
-      <div className="mbf-glass-card flex h-full flex-col gap-3 p-5">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent-soft text-accent">
-          {Icon ? <Icon className="h-5 w-5" /> : null}
-        </div>
-        <div className="flex-1">
-          <h3 className="font-display text-base font-bold text-text">{label}</h3>
-          <p className="mt-1 text-sm leading-relaxed text-text-muted">{description || mod?.description || "—"}</p>
-        </div>
-        <div className="mt-1 flex items-center gap-3">
-          {typeId === "field-force" ? (
-            // Field Force isn't a business you register a paid account for
-            // -- it's a free marketplace individuals join directly (see
-            // /solutions/field-force), so it skips the signup form.
-            <Link href="/solutions/field-force" className="btn-accent mbf-cta-glow flex-1 text-center">
-              {tp("joinOrRequestService")}
-            </Link>
-          ) : (
-            <>
-              <Link href={href} className="btn-accent mbf-cta-glow flex-1 text-center">
-                {tp("signUpAsPrefix", { label })}
-              </Link>
-              {MODULE_SOLUTIONS_SLUGS.has(moduleSlug) && moduleSlug !== "field-force" && (
-                <Link href={`/solutions/${moduleSlug}`} className="btn-outline shrink-0">
-                  {tp("learnMore")}
-                </Link>
-              )}
-            </>
-          )}
-        </div>
-      </div>
-    );
-  }
 
   // Service Centre variant triggers on an explicit ?type=service-centre
   // (e.g. arriving from the pricing/signup business-type chooser), or when
   // Service Centre is the only active business type configured at all --
   // in which case the generic multi-vertical pitch would be misleading.
   const isServiceCentre =
-    searchParams.type === "service-centre" ||
-    (partnerTypes.length === 1 && partnerTypes[0].id === "service-centre");
+    searchParams.type === "service-centre";
   const faqKeyPairs = isServiceCentre ? [...FAQ_KEYS, ...SERVICE_CENTRE_FAQ_KEYS] : FAQ_KEYS;
   const faqs = faqKeyPairs.map(([qKey, aKey]) => ({ question: tp(qKey), answer: tp(aKey) }));
 
@@ -229,6 +153,7 @@ export default async function RootPage({
       <PublicHelpBubble />
       <PublicHeader
         links={[
+          { href: "#businesses", label: "Business types" },
           { href: "/pricing", label: tp("navPricing") },
           { href: "/track", label: tp("navTrackMyRepair") },
           { href: "/book-appointment", label: tp("navBookAppointment") },
@@ -262,7 +187,7 @@ export default async function RootPage({
 
         {/* Concrete workorder lifecycle, in place of a generic icon badge --
             this is a real product mechanic, not decoration. */}
-        <div className="mx-auto mt-8 flex max-w-2xl flex-wrap items-center justify-center gap-x-2 gap-y-3">
+        {isServiceCentre && <div className="mx-auto mt-8 flex max-w-2xl flex-wrap items-center justify-center gap-x-2 gap-y-3">
           {([tp("stageCreated"), tp("stageInProgress"), tp("stageCompleted"), tp("stageClosed")]).map((stage, i, arr) => (
             <div key={stage} className="flex items-center gap-2">
               <span className="rounded-full border border-border bg-bg-raised px-3 py-1 text-xs font-semibold text-text-muted">
@@ -271,11 +196,11 @@ export default async function RootPage({
               {i < arr.length - 1 && <span className="text-text-muted">→</span>}
             </div>
           ))}
-        </div>
+        </div>}
 
-        <div className="mt-8 flex items-center justify-center gap-4">
-          <Link href={isServiceCentre ? "/signup/service-centre" : "/signup"} className="btn-accent mbf-cta-glow">
-            {tp("registerBusiness")}
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+          <Link href={isServiceCentre ? "/signup/service-centre" : "#businesses"} className="btn-accent mbf-cta-glow min-h-11">
+            {isServiceCentre ? tp("registerBusiness") : "Find your business workspace"}
           </Link>
           <Link href={isServiceCentre ? "/pricing?type=service-centre" : "/pricing"} className="btn-outline">
             {tp("seePricing")}
@@ -283,7 +208,13 @@ export default async function RootPage({
         </div>
       </section>
 
-      <section className="border-t border-border px-6 py-16">
+      <section id="businesses" className="scroll-mt-6 border-t border-border px-6 py-12 sm:py-16" aria-labelledby="businesses-title">
+        <h2 id="businesses-title" className="font-display text-2xl font-bold text-text sm:text-3xl">Every business, its own workspace</h2>
+        <p className="mbf-prose mt-3 mb-8 text-text-muted">Explore all {offerings.length} packages, including Hotel, Rentals, HRMS and Accounting &amp; GST. Read what each includes and register for the packages currently open. Your dashboard, settings and notification choices follow your enabled modules.</p>
+        <BusinessOfferingDirectory offerings={offerings} referral={searchParams.ref} />
+      </section>
+
+      {isServiceCentre && <section className="border-t border-border px-6 py-16">
           <div className="mx-auto max-w-5xl">
             <p className="text-center text-xs font-semibold uppercase tracking-widest text-accent">
               {isServiceCentre ? tp("spotlightLabelSc") : tp("spotlightLabelGeneric")}
@@ -315,7 +246,7 @@ export default async function RootPage({
               </div>
             )}
           </div>
-        </section>
+        </section>}
 
       <section className="border-t border-border px-6 py-16">
         <div className="mx-auto max-w-5xl">
@@ -328,17 +259,13 @@ export default async function RootPage({
           <p className="mbf-prose mx-auto mt-2 text-center text-base text-text-muted">
             {tp("everyBusinessIntro")}
           </p>
-          {qualifyingPartnerTypes.length === 0 ? (
-            <p className="mx-auto mt-10 max-w-md rounded-lg border border-dashed border-border bg-bg-raised p-6 text-center text-sm text-text-muted">
-              {tp("noBusinessTypesAvailable")}
-            </p>
-          ) : (
-            <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {qualifyingPartnerTypes.map((t) => (
-                <BusinessCard key={t.id} typeId={t.id} label={MODULES.find(module => module.slug === t.id)?.label ?? t.id} description={t.description} moduleSlug={t.defaultModules.find(slug => knownModules.has(slug)) ?? ""} />
-              ))}
-            </div>
-          )}
+          <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-3">
+            {[
+              { title: "1. Choose your business", body: "Compare workflows and available tools on the detailed page for each package." },
+              { title: "2. Register and set up", body: "Create your business account and configure the settings relevant to your selected modules." },
+              { title: "3. Work from your phone or desktop", body: "Use the web application for daily records, dashboards and reports. Native mobile apps will follow." },
+            ].map(step => <div key={step.title} className="mbf-glass-card p-5"><h3 className="font-display text-lg font-bold text-text">{step.title}</h3><p className="mt-2 text-sm text-text-muted">{step.body}</p></div>)}
+          </div>
         </div>
       </section>
 
@@ -382,7 +309,7 @@ export default async function RootPage({
 
       <section className="border-t border-border bg-bg-raised px-6 py-16 text-center">
         <h2 className="font-display text-2xl font-bold text-text">{tp("readyTitle")}</h2>
-        <div className="mt-6 flex items-center justify-center gap-4">
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-4">
           <Link href="/signup" className="btn-accent mbf-cta-glow">
             {tp("registerBusiness")}
           </Link>

@@ -12,7 +12,7 @@ export function AttendanceClient({
 }: {
   partnerId: string;
   employees: EmployeeOption[];
-  /** Employee ids that already have an open (not-checked-out) check-in today. */
+  /** Employee ids that already have an open (not-checked-out) shift, including overnight shifts. */
   openCheckIns: Set<string>;
 }) {
   const [employeeId, setEmployeeId] = useState(employees[0]?.id ?? "");
@@ -20,7 +20,8 @@ export function AttendanceClient({
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  const hasOpenCheckIn = openCheckIns.has(employeeId);
+  const [openIds, setOpenIds] = useState(() => new Set(openCheckIns));
+  const hasOpenCheckIn = openIds.has(employeeId);
 
   function getLocation(): Promise<GeolocationPosition> {
     return new Promise((resolve, reject) => {
@@ -48,7 +49,7 @@ export function AttendanceClient({
           return;
         }
         setStatus("Checked in successfully.");
-        openCheckIns.add(employeeId);
+        setOpenIds(current => new Set(current).add(employeeId));
       } catch (e) {
         setError(e instanceof Error ? e.message : "Could not read your location. Location access is required to check in.");
       }
@@ -71,7 +72,7 @@ export function AttendanceClient({
           return;
         }
         setStatus("Checked out successfully.");
-        openCheckIns.delete(employeeId);
+        setOpenIds(current => { const next = new Set(current); next.delete(employeeId); return next; });
       } catch (e) {
         setError(e instanceof Error ? e.message : "Could not read your location. Location access is required to check out.");
       }

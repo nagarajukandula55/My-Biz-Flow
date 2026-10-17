@@ -87,7 +87,7 @@ export function LogoUploadForm({
             "—"
           )}
         </div>
-        <div className="flex-1">
+        <div className="mbf-logo-upload-field flex-1">
           <input
             ref={inputRef}
             type="file"

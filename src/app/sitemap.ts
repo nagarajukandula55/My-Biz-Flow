@@ -1,3 +1,4 @@
+import { BUSINESS_OFFERINGS } from "@/lib/businessOfferings";
 import type { MetadataRoute } from "next";
 import { SITE_URL } from "@/lib/seo";
 import { MODULES } from "@/lib/designer/modules";
@@ -18,6 +19,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: "/solutions/pos", priority: 0.9, changeFrequency: "weekly" },
     { path: "/solutions/telecalling", priority: 0.9, changeFrequency: "weekly" },
     { path: "/solutions/field-force", priority: 0.9, changeFrequency: "weekly" },
+    { path: "/business-types", priority: 0.8, changeFrequency: "weekly" },
+    ...BUSINESS_OFFERINGS.map(o=>({path:`/business-types/${o.slug}`,priority:0.7,changeFrequency:"weekly" as const})),
     { path: "/pricing", priority: 0.9, changeFrequency: "weekly" },
     { path: "/downloads", priority: 0.7, changeFrequency: "monthly" },
     { path: "/book-appointment", priority: 0.7, changeFrequency: "monthly" },

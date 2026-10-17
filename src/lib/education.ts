@@ -11,6 +11,8 @@
  * (assertPartnerScope), fail-closed, same convention as src/lib/tenant.ts.
  */
 import { prisma } from "@/lib/prisma";
+import { withRecordLock } from "@/lib/withRecordLock";
+import { afterDatabaseCommit } from "@/lib/databaseTransaction";
 import { assertPartnerScope } from "@/lib/tenant";
 import { sendPartnerTelegramAlert } from "@/lib/telegram";
 import { getPartner } from "@/lib/partnerData";
@@ -127,6 +129,7 @@ export async function createBatch(
 ) {
   const course = await getCourse(partnerId, data.courseId);
   if (!course) throw new Error("Course not found for this partner.");
+  if (data.capacity != null && (!Number.isSafeInteger(data.capacity) || data.capacity < 1)) throw new Error("Capacity must be a positive whole number.");
   return prisma.batch.create({
     data: {
       partnerId,
@@ -145,9 +148,16 @@ export async function updateBatch(
   id: string,
   data: { courseId?: string; batchName?: string; startDate?: Date | null; endDate?: Date | null; status?: string; capacity?: number | null }
 ) {
+  return withRecordLock("education-batch", id, async () => {
   const existing = await getBatch(partnerId, id);
   if (!existing) return null;
+  if (data.courseId && !(await getCourse(partnerId, data.courseId))) throw new Error("Course not found for this partner.");
+  if (data.capacity != null) {
+    if (!Number.isSafeInteger(data.capacity) || data.capacity < 1) throw new Error("Capacity must be a positive whole number.");
+    if (data.capacity < await countActiveEnrollments(id)) throw new Error("Capacity cannot be below active enrollments.");
+  }
   return prisma.batch.update({ where: { id }, data });
+  });
 }
 
 // --- Enrollments -----------------------------------------------------
@@ -195,10 +205,12 @@ export class BatchAtCapacityError extends Error {
  * Fires the educationEnrollmentConfirmed Telegram alert live on success.
  */
 export async function createEnrollment(partnerId: string, batchId: string, studentId: string) {
+  return withRecordLock("education-batch", batchId, async () => {
   const batch = await getBatch(partnerId, batchId);
   if (!batch) throw new Error("Batch not found for this partner.");
   const student = await getStudent(partnerId, studentId);
   if (!student) throw new Error("Student not found for this partner.");
+  if (await prisma.enrollment.findFirst({ where: { batchId, studentId, status: "Active" } })) throw new Error("Student is already actively enrolled.");
 
   if (batch.capacity != null && batch.capacity > 0) {
     const activeCount = await countActiveEnrollments(batchId);
@@ -211,6 +223,7 @@ export async function createEnrollment(partnerId: string, batchId: string, stude
     data: { studentId, batchId, status: "Active" },
   });
 
+  await afterDatabaseCommit(async () => {
   const partner = await getPartner(partnerId);
   if (partner) {
     const message = await educationEnrollmentConfirmedMessage({
@@ -231,15 +244,26 @@ export async function createEnrollment(partnerId: string, batchId: string, stude
       });
     }
   }
+  });
 
   return enrollment;
+  });
 }
 
 export async function updateEnrollmentStatus(partnerId: string, enrollmentId: string, status: string) {
+  if (!["Active", "Dropped", "Completed"].includes(status)) throw new Error("Invalid enrollment status.");
+  const scope = await getEnrollmentScoped(partnerId, enrollmentId);
+  if (!scope) return null;
+  return withRecordLock("education-batch", scope.batchId, async () => {
   const enrollment = await prisma.enrollment.findUnique({ where: { id: enrollmentId }, include: { batch: true } });
   if (!enrollment) return null;
   assertPartnerScope(partnerId, enrollment.batch.partnerId);
+  if (status === "Active" && enrollment.status !== "Active") {
+    if (await prisma.enrollment.findFirst({ where: { batchId: enrollment.batchId, studentId: enrollment.studentId, status: "Active" } })) throw new Error("Student is already actively enrolled.");
+    if (enrollment.batch.capacity != null && enrollment.batch.capacity > 0 && await countActiveEnrollments(enrollment.batchId) >= enrollment.batch.capacity) throw new BatchAtCapacityError();
+  }
   return prisma.enrollment.update({ where: { id: enrollmentId }, data: { status } });
+  });
 }
 
 async function getEnrollmentScoped(partnerId: string, enrollmentId: string) {
@@ -264,21 +288,28 @@ export async function addFeeInstallment(
 ) {
   const enrollment = await getEnrollmentScoped(partnerId, enrollmentId);
   if (!enrollment) throw new Error("Enrollment not found for this partner.");
+  if (!Number.isSafeInteger(data.amount) || data.amount <= 0) throw new Error("Fee must be a positive amount in paise.");
+  if (!Number.isFinite(data.dueDate.getTime())) throw new Error("Invalid fee due date.");
   return prisma.feeInstallment.create({
     data: { enrollmentId, dueDate: data.dueDate, amount: data.amount },
   });
 }
 
 export async function markFeeInstallmentPaid(partnerId: string, installmentId: string, paidAmount: number) {
+  return withRecordLock("education-fee", installmentId, async () => {
   const installment = await prisma.feeInstallment.findUnique({
     where: { id: installmentId },
     include: { enrollment: { include: { batch: true } } },
   });
   if (!installment) return null;
   assertPartnerScope(partnerId, installment.enrollment.batch.partnerId);
+  if (!Number.isSafeInteger(paidAmount) || paidAmount <= 0 || paidAmount > installment.amount) throw new Error("Paid amount must be positive and cannot exceed the installment amount.");
+  if (installment.paidAmount != null && paidAmount < installment.paidAmount) throw new Error("Recorded payments cannot be reduced.");
+  if (installment.paidAmount === paidAmount) return installment;
   return prisma.feeInstallment.update({
     where: { id: installmentId },
     data: { paidAt: new Date(), paidAmount },
+  });
   });
 }
 
@@ -317,10 +348,14 @@ export async function upsertClassAttendance(
   date: Date,
   status: "Present" | "Absent" | "Late"
 ) {
+  if (!Number.isFinite(date.getTime())) throw new Error("Invalid attendance date.");
+  if (!["Present", "Absent", "Late"].includes(status)) throw new Error("Invalid attendance status.");
+  return withRecordLock("education-batch", batchId, async () => {
   const batch = await getBatch(partnerId, batchId);
   if (!batch) throw new Error("Batch not found for this partner.");
   const student = await getStudent(partnerId, studentId);
   if (!student) throw new Error("Student not found for this partner.");
+  if (!(await prisma.enrollment.findFirst({ where: { batchId, studentId, status: "Active" } }))) throw new Error("Student must be actively enrolled to record attendance.");
 
   const start = new Date(date);
   start.setHours(0, 0, 0, 0);
@@ -335,4 +370,5 @@ export async function upsertClassAttendance(
     return prisma.classAttendance.update({ where: { id: existing.id }, data: { status } });
   }
   return prisma.classAttendance.create({ data: { batchId, studentId, date: start, status } });
+  });
 }

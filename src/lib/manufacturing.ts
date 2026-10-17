@@ -15,6 +15,15 @@
  * same as src/lib/fieldForce/bookingsData.ts.
  */
 import { prisma } from "@/lib/prisma";
+import { withRecordLock } from "@/lib/withRecordLock";
+import { PRODUCTION_ORDER_STATUSES, type ProductionOrderStatus } from "@/lib/manufacturingTypes";
+export { PRODUCTION_ORDER_STATUSES, type ProductionOrderStatus } from "@/lib/manufacturingTypes";
+
+async function validateProductionInput(partnerId: string, input: { bomId?: string | null; workCenterId?: string | null; quantityPlanned: number }) {
+  if (!Number.isSafeInteger(input.quantityPlanned) || input.quantityPlanned <= 0) throw new Error("Planned quantity must be a positive whole number.");
+  if (input.bomId && !(await getBom(partnerId, input.bomId))) throw new Error("Bill of materials not found for this partner.");
+  if (input.workCenterId && !(await getWorkCenter(partnerId, input.workCenterId))) throw new Error("Work center not found for this partner.");
+}
 
 // ---------------------------------------------------------------------
 // Bill of Materials
@@ -146,8 +155,6 @@ export async function updateWorkCenter(
 // ---------------------------------------------------------------------
 
 /** Planned | InProduction | QC | Completed | Delayed — matches the comment on ProductionOrder.status in prisma/schema.prisma. */
-export const PRODUCTION_ORDER_STATUSES = ["Planned", "InProduction", "QC", "Completed", "Delayed"] as const;
-export type ProductionOrderStatus = (typeof PRODUCTION_ORDER_STATUSES)[number];
 
 export type ProductionStageHistoryRecord = {
   id: string;
@@ -248,6 +255,8 @@ export async function createProductionOrder(
     plannedEndDate?: Date | null;
   }
 ): Promise<ProductionOrderRecord> {
+  return withRecordLock("inventory-partner", partnerId, async () => {
+  await validateProductionInput(partnerId, input);
   const created = await prisma.productionOrder.create({
     data: {
       partnerId,
@@ -265,6 +274,7 @@ export async function createProductionOrder(
     data: { productionOrderId: created.id, stage: "Planned", note: "Production order created." },
   });
   return toProductionOrderRecord(created);
+  });
 }
 
 export async function updateProductionOrder(
@@ -279,8 +289,11 @@ export async function updateProductionOrder(
     plannedEndDate?: Date | null;
   }
 ): Promise<ProductionOrderRecord | null> {
+  return withRecordLock("inventory-partner", partnerId, async () => {
   const existing = await prisma.productionOrder.findFirst({ where: { id, partnerId } });
   if (!existing) return null;
+  if (existing.status === "Completed") throw new Error("Completed production orders cannot be edited.");
+  await validateProductionInput(partnerId, input);
   const updated = await prisma.productionOrder.update({
     where: { id },
     data: {
@@ -294,6 +307,7 @@ export async function updateProductionOrder(
     include: PRODUCTION_ORDER_INCLUDE,
   });
   return toProductionOrderRecord(updated);
+  });
 }
 
 /**
@@ -312,8 +326,12 @@ export async function setProductionOrderStatus(
   status: ProductionOrderStatus,
   note?: string
 ): Promise<ProductionOrderRecord | null> {
+  if (!PRODUCTION_ORDER_STATUSES.includes(status)) throw new Error("Invalid production status.");
+  return withRecordLock("inventory-partner", partnerId, async () => {
   const existing = await prisma.productionOrder.findFirst({ where: { id, partnerId } });
   if (!existing) return null;
+  if (existing.status === "Completed" && status !== "Completed") throw new Error("Completed production orders cannot be reopened.");
+  if (existing.status === status) return getProductionOrder(partnerId, id);
   const updated = await prisma.productionOrder.update({
     where: { id },
     data: {
@@ -326,4 +344,5 @@ export async function setProductionOrderStatus(
     data: { productionOrderId: id, stage: status, note: note ?? null },
   });
   return toProductionOrderRecord(updated);
+  });
 }

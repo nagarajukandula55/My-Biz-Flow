@@ -1,3 +1,4 @@
+import { rentalTermsFields } from "@/lib/rentalTerms";
 import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
@@ -25,7 +26,7 @@ registerPage({
 export const dynamic = "force-dynamic";
 
 function toDateInput(d: Date): string {
-  return d.toISOString().slice(0, 10);
+  return new Date(d.getTime() + 330 * 60000).toISOString().slice(0, 16);
 }
 
 export default async function EditRentalsPage({ params }: { params: { partnerId: string; recordId: string } }) {
@@ -50,10 +51,11 @@ export default async function EditRentalsPage({ params }: { params: { partnerId:
       : []),
     { key: "assetName", label: "Asset / Venue Name", type: "text", required: true },
     { key: "renter", label: "Renter", type: "text", required: true },
-    { key: "bookingStart", label: "Booking Start", type: "date", required: true },
-    { key: "bookingEnd", label: "Booking End", type: "date", required: true },
+    { key: "bookingStart", label: "Booking Start (IST)", type: "datetime", required: true },
+    { key: "bookingEnd", label: "Booking End (IST)", type: "datetime", required: true },
     { key: "depositAmountRupees", label: "Deposit Amount", type: "currency", required: false },
-    { key: "rentalAmountRupees", label: "Rental Amount", type: "currency", required: true },
+    { key: "rentalAmountRupees", label: "Fixed quote amount (ignored for calculated pricing)", type: "currency", required: false },
+    ...rentalTermsFields,
     { key: "status", label: "Status", type: "select", required: false, options: RENTAL_AGREEMENT_STATUSES },
   ];
 
@@ -74,6 +76,13 @@ export default async function EditRentalsPage({ params }: { params: { partnerId:
               depositAmountRupees: agreement.depositAmount / 100,
               rentalAmountRupees: agreement.rentalAmount / 100,
               status: agreement.status,
+              rentalCategory: agreement.terms?.category,
+              quantity: agreement.terms?.quantity ?? 1,
+              rateUnit: agreement.terms?.rateUnit,
+              rateRupees: (agreement.terms?.ratePaise ?? 0) / 100,
+              pickupInstructions: agreement.terms?.pickupInstructions,
+              returnInstructions: agreement.terms?.returnInstructions,
+              cancellationTerms: agreement.terms?.cancellationTerms,
             }}
             submitLabel="Save changes"
             action={updateAgreementAction.bind(null, params.partnerId, params.recordId)}

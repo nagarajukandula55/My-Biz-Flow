@@ -35,22 +35,23 @@ function formatExportCell(c: ExportColumn, row: Row): unknown {
 }
 
 /**
- * Generic "Download CSV" button for a list already loaded client-side —
- * no Server Action needed (unlike GstExportDownloadButton, which recomputes
- * a report server-side): the rows are already on the page, so this just
- * serializes them. Same Blob + `<a download>` mechanism every other export
- * button in this app uses.
+ * Downloads existing rows, or calls an authorized server loader on demand.
+ * Existing callers retain the same CSV serialization and download behavior.
  */
-export function RecordCsvExportButton({ columns, rows, filename }: { columns: ExportColumn[]; rows: Row[]; filename: string }) {
+export function RecordCsvExportButton({ columns, rows = [], loadRows, filename }: { columns: ExportColumn[]; rows?: Row[]; loadRows?: () => Promise<Row[]>; filename: string }) {
   const [message, setMessage] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  function handleDownload() {
-    if (rows.length === 0) {
+  async function handleDownload() {
+    setLoading(true);
+    try {
+    const exportRows = loadRows ? await loadRows() : rows;
+    if (exportRows.length === 0) {
       setMessage("Nothing to export.");
       return;
     }
     const lines = [columns.map((c) => toCsvValue(columnKey(c))).join(",")];
-    for (const row of rows) {
+    for (const row of exportRows) {
       lines.push(columns.map((c) => toCsvValue(formatExportCell(c, row))).join(","));
     }
     // Leading BOM so Excel on Windows reads this as UTF-8 instead of
@@ -63,6 +64,11 @@ export function RecordCsvExportButton({ columns, rows, filename }: { columns: Ex
     a.click();
     URL.revokeObjectURL(url);
     setMessage(null);
+    } catch {
+      setMessage("Export unavailable. Refresh the page and try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -70,6 +76,7 @@ export function RecordCsvExportButton({ columns, rows, filename }: { columns: Ex
       <button
         type="button"
         onClick={handleDownload}
+        disabled={loading}
         className="rounded-md border border-border px-3 py-1.5 text-sm font-semibold text-text hover:bg-bg-sunken"
       >
         Download CSV

@@ -24,6 +24,7 @@ test('payment acceptance persists before activation, does not reactivate replay,
     $queryRaw: async () => { events.push('lock'); return []; },
     subscriptionPayment: {
       findUnique: async () => existing,
+      count: async () => 0,
       create: async ({ data }) => { events.push('insert'); if (failInsert) throw new Error('database failure'); existing = data; },
     },
     partner: {
@@ -36,6 +37,7 @@ test('payment acceptance persists before activation, does not reactivate replay,
     '@/lib/razorpay': { fetchPaymentAndOrder: async () => ({ payment, order }) },
     '@/lib/subscriptionPaymentPolicy': policy,
     '@/lib/paymentDeliveryQueue': { enqueuePaymentDelivery: async () => events.push('enqueue') },
+    '@/lib/env': { env: { walletCommissionEnabled: () => false } },
   });
   assert.equal((await service.acceptSubscriptionPayment('pay_123', 'order_123', 'SC0001')).newlyRecorded, true);
   assert.deepEqual(events, ['lock', 'insert', 'enqueue', 'activate']);

@@ -21,7 +21,9 @@ import {
 import { dispatchBookingRequest, respondToOffer } from "@/lib/fieldForce/matchingEngine";
 import { setFieldForceSettings } from "@/lib/fieldForce/settingsData";
 import { setPlatformFeeConfig } from "@/lib/fieldForce/platformFeeData";
-import { createCustomerAccount, verifyCustomerLogin, getCurrentCustomer, CUSTOMER_SESSION_COOKIE } from "@/lib/fieldForce/customerAuth";
+import { createCustomerAccount, verifyCustomerLogin, findCustomerByPhone, getCurrentCustomer, CUSTOMER_SESSION_COOKIE } from "@/lib/fieldForce/customerAuth";
+import { requestLoginOtp, verifyLoginOtp } from "@/lib/whatsappOtp";
+import { isOtpLoginEnabledForPartner } from "@/lib/telecalling/whatsappGate";
 import { verifyProviderLogin, getCurrentProvider, PROVIDER_SESSION_COOKIE } from "@/lib/fieldForce/providerAuth";
 import { markRead, notify } from "@/lib/fieldForce/notifications";
 import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
@@ -314,6 +316,53 @@ export async function loginCustomerAction(partnerId: string, formData: FormData)
 export async function logoutCustomerAction(partnerId: string) {
   cookies().delete(CUSTOMER_SESSION_COOKIE);
   redirect(`/partner/${partnerId}/field-force/customer/login`);
+}
+
+/**
+ * Step 1 of WhatsApp OTP login for a Field Force customer — a second login
+ * method alongside phone+password above, not a replacement (see
+ * WhatsAppOtpLoginForm.tsx under customer/login). Deliberately matches a
+ * customer with NO passwordHash too (findCustomerByPhone, not
+ * verifyCustomerLogin) — see that function's doc comment. Returns
+ * `{ ok: true }` even when no customer matches, same "don't confirm
+ * whether an account exists" posture as the partner-side equivalent in
+ * src/app/login/actions.ts. Same silent no-op when this PARTNER (not the
+ * customer) hasn't been enabled for OTP login by Super Admin
+ * (PartnerWhatsAppMessaging.otpLoginEnabled) — a Field Force customer's
+ * OTP login only works once their own business has it turned on.
+ */
+export async function requestCustomerWhatsAppOtpAction(partnerId: string, phone: string): Promise<{ ok: boolean; error?: string }> {
+  const trimmed = phone.trim();
+  if (!trimmed) return { ok: false, error: "Enter your registered WhatsApp number." };
+  if (!(await isOtpLoginEnabledForPartner(partnerId))) return { ok: true };
+
+  const customer = await findCustomerByPhone(partnerId, trimmed);
+  if (!customer) return { ok: true };
+
+  const result = await requestLoginOtp(partnerId, "ff-customer-login", customer.id, trimmed);
+  if (!result.sent) {
+    return {
+      ok: false,
+      error:
+        result.reason === "not_configured"
+          ? "WhatsApp OTP login isn't available right now."
+          : "Couldn't send the code — check the number and try again.",
+    };
+  }
+  return { ok: true };
+}
+
+/** Step 2 — verifies the code and, on success, signs the customer in exactly like loginCustomerAction above. */
+export async function verifyCustomerWhatsAppOtpAction(partnerId: string, phone: string, code: string): Promise<void | { error?: string }> {
+  const customer = await findCustomerByPhone(partnerId, phone.trim());
+  if (!customer) return { error: "Incorrect or expired code." };
+
+  const result = await verifyLoginOtp(partnerId, "ff-customer-login", customer.id, code);
+  if (!result.verified) return { error: "Incorrect or expired code." };
+
+  await prisma.customer.update({ where: { id: customer.id }, data: { lastLoginAt: new Date() } });
+  cookies().set(CUSTOMER_SESSION_COOKIE, customer.id, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 30 });
+  redirect(`/partner/${partnerId}/field-force/customer/bookings`);
 }
 
 /** The customer's own self-service booking creation — identity comes from the session, not a typed-in name/phone.

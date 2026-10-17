@@ -27,6 +27,7 @@ export function SignupForm({ partnerType, error, referralCode }: { partnerType: 
           That contact number is already registered. Try signing in instead, or use a different number.
         </p>
       )}
+      {error === "registration_failed" && <p className="rounded-md border border-danger bg-danger-soft px-3 py-2 text-sm text-danger">Registration could not be completed. Please retry or contact support.</p>}
 
       <div>
         <h2 className="font-display text-base font-bold text-text">Business Details</h2>
@@ -168,8 +169,7 @@ export function SignupForm({ partnerType, error, referralCode }: { partnerType: 
       <div>
         <h2 className="font-display text-base font-bold text-text">Login</h2>
         <p className="mt-1 text-xs text-text-muted">
-          This number is what you&apos;ll sign in with, alongside your Partner ID. OTP verification is coming
-          soon — for now, a generated password.
+          Use this number or your Partner ID to sign in. After registration, you&apos;ll set your own password.
         </p>
         <div className="mt-4 max-w-sm">
           <label className="text-xs font-semibold uppercase tracking-wide text-text-muted">

@@ -21,7 +21,7 @@ type Lead = {
   assignedToId: string | null;
 };
 
-type Template = { id: string; name: string; channel: string; category: string };
+type Template = { id: string; name: string; channel: string; category: string; metaTemplateName: string | null };
 
 const STATUS_VARIANT: Record<string, StatusVariant> = {
   New: "neutral",
@@ -40,12 +40,24 @@ export function QueueClient({
   view,
   leads,
   templates,
+  whatsappEnabled,
+  approvedWhatsappTemplateIds,
 }: {
   partnerId: string;
   agentId: string;
   view: "active" | "closed";
   leads: Lead[];
   templates: Template[];
+  /** PartnerWhatsAppMessaging's per-partner approval (see whatsappGate.ts)
+   * — gates the dedicated "Send WhatsApp" button below, separate from the
+   * generic SMS/WhatsApp "Send message" dropdown (which stays available
+   * either way, since an unapproved partner's whatsapp-channel templates
+   * would just fail server-side with a clear error if picked there). */
+  whatsappEnabled: boolean;
+  /** Super Admin's per-partner template picklist (same source) — a
+   * template id not in this list is hidden from the button even if
+   * whatsappEnabled is true and the template has a metaTemplateName. */
+  approvedWhatsappTemplateIds: string[];
 }) {
   const [openLeadId, setOpenLeadId] = useState<string | null>(null);
   const [messageStatus, setMessageStatus] = useState<Record<string, string>>({});
@@ -53,6 +65,12 @@ export function QueueClient({
 
   const boundLogCall = logCallAction.bind(null, partnerId);
   const boundSendTemplate = sendTemplateAction.bind(null, partnerId);
+  // Only a WhatsApp template with its approved Meta name set AND Super
+  // Admin's own per-partner approval (see sendTemplateToLead) can be sent —
+  // the dedicated button only offers those, rather than listing a template
+  // that's guaranteed to error.
+  const approvedIds = new Set(approvedWhatsappTemplateIds);
+  const whatsappTemplates = templates.filter((t) => t.channel === "whatsapp" && t.metaTemplateName && approvedIds.has(t.id));
 
   function handleSend(leadId: string, templateId: string) {
     if (!templateId) return;
@@ -169,6 +187,38 @@ export function QueueClient({
                   </select>
                 )}
                 {messageStatus[lead.id] && <span className="text-xs text-text-muted">{messageStatus[lead.id]}</span>}
+              </div>
+            )}
+
+            {view === "active" && whatsappEnabled && whatsappTemplates.length > 0 && (
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <span className="text-xs font-semibold uppercase tracking-wide text-success">WhatsApp:</span>
+                {whatsappTemplates.length === 1 ? (
+                  <button
+                    type="button"
+                    onClick={() => handleSend(lead.id, whatsappTemplates[0].id)}
+                    disabled={isPending}
+                    className="rounded-md border border-success bg-success-soft px-3 py-1.5 text-sm font-semibold text-success hover:bg-success-soft/80 disabled:opacity-50"
+                  >
+                    Send &ldquo;{whatsappTemplates[0].name}&rdquo; on WhatsApp
+                  </button>
+                ) : (
+                  <select
+                    defaultValue=""
+                    onChange={(e) => handleSend(lead.id, e.target.value)}
+                    disabled={isPending}
+                    className="rounded-md border border-success bg-success-soft px-2 py-1 text-sm font-semibold text-success"
+                  >
+                    <option value="" disabled>
+                      Send on WhatsApp…
+                    </option>
+                    {whatsappTemplates.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
             )}
 

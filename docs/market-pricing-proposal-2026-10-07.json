@@ -1,0 +1,2587 @@
+{
+  "version": "2026-10",
+  "status": "PRICED — PRIVATE DRAFT, NOT PUBLISHED",
+  "currency": "INR",
+  "unit": "business/month",
+  "tax": "Exclusive of applicable GST; checkout remains authoritative",
+  "existingCustomerPolicy": "Keep all old plan rows and customer plan IDs unchanged. No automatic migration or renewal repricing.",
+  "fieldForcePolicy": "Free subscription and existing numeric capacity metadata retained; do not alter transaction-fee settings or advertise unverified unlimited capacity.",
+  "changes": [
+    {
+      "businessType": "hotel",
+      "operation": "create-business-type",
+      "currentPlans": [],
+      "expectedExisting": null,
+      "proposedDefaultModules": [
+        "hotel"
+      ],
+      "draftType": {
+        "id": "hotel",
+        "description": "Hotel Management",
+        "idPrefix": "HTL",
+        "defaultModules": [
+          "hotel"
+        ],
+        "assignableRoleIds": [
+          "Owner / Admin"
+        ],
+        "planTierByPage": {},
+        "requiresApproval": false,
+        "customSignupFields": [],
+        "status": "Inactive",
+        "planIds": [
+          "PLAN-HOTEL-202610-BASIC",
+          "PLAN-HOTEL-202610-PRO",
+          "PLAN-HOTEL-202610-ULTIMATE"
+        ]
+      },
+      "proposedPlanIds": [
+        "PLAN-HOTEL-202610-BASIC",
+        "PLAN-HOTEL-202610-PRO",
+        "PLAN-HOTEL-202610-ULTIMATE"
+      ],
+      "plans": [
+        {
+          "id": "PLAN-HOTEL-202610-BASIC",
+          "name": "Starter",
+          "price": 499,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "hotel"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": false
+        },
+        {
+          "id": "PLAN-HOTEL-202610-PRO",
+          "name": "Pro",
+          "price": 999,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "hotel"
+          ],
+          "maxUsers": 10,
+          "maxLocations": 3,
+          "isPublic": false
+        },
+        {
+          "id": "PLAN-HOTEL-202610-ULTIMATE",
+          "name": "Ultimate",
+          "price": 1999,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "hotel"
+          ],
+          "maxUsers": 25,
+          "maxLocations": 5,
+          "isPublic": false
+        }
+      ],
+      "benchmark": {
+        "url": "https://www.hotelogix.com/faq",
+        "benchmark": "Verified 8 October 2026: pricing varies by room count and refers to a calculator. No numeric quote verified. Hotelogix includes broader PMS integrations; our initial owner-operated offering has no OTA sync or online payments."
+      },
+      "scope": "Owner-operated rooms, reservations, stays, housekeeping and guest folios",
+      "limitation": "Private launch judgement for limited manual PMS scope. No verified numerical market comparison, OTA integration, statutory reporting, automatic payments or staff-role parity.",
+      "releaseGate": "Business workflow acceptance, tier/page mapping, seat/location enforcement, billing and provider-cost review"
+    },
+    {
+      "businessType": "pos",
+      "operation": "version-plans",
+      "currentPlans": [
+        {
+          "id": "PLAN-POS-BASIC",
+          "name": "Starter",
+          "price": 699,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "pos"
+          ],
+          "maxUsers": 3,
+          "maxLocations": 1,
+          "isPublic": true
+        },
+        {
+          "id": "PLAN-POS-PRO",
+          "name": "Pro",
+          "price": 999,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "pos"
+          ],
+          "maxUsers": 10,
+          "maxLocations": 3,
+          "isPublic": true
+        },
+        {
+          "id": "PLAN-POS-ULTIMATE",
+          "name": "Ultimate",
+          "price": 2999,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "pos"
+          ],
+          "maxUsers": 9999,
+          "maxLocations": 9999,
+          "isPublic": true
+        }
+      ],
+      "expectedExisting": {
+        "id": "pos",
+        "status": "Active",
+        "idPrefix": "POS",
+        "defaultModules": [
+          "pos",
+          "billing",
+          "inventory"
+        ],
+        "planIds": [
+          "PLAN-POS-BASIC",
+          "PLAN-POS-PRO",
+          "PLAN-POS-ULTIMATE"
+        ],
+        "planTierByPage": {}
+      },
+      "proposedDefaultModules": [
+        "pos",
+        "billing",
+        "inventory"
+      ],
+      "draftType": null,
+      "proposedPlanIds": [
+        "PLAN-POS-202610-BASIC",
+        "PLAN-POS-202610-PRO",
+        "PLAN-POS-202610-ULTIMATE"
+      ],
+      "plans": [
+        {
+          "id": "PLAN-POS-202610-BASIC",
+          "name": "Starter",
+          "price": 399,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "pos",
+            "billing",
+            "inventory"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": false
+        },
+        {
+          "id": "PLAN-POS-202610-PRO",
+          "name": "Pro",
+          "price": 699,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "pos",
+            "billing",
+            "inventory"
+          ],
+          "maxUsers": 10,
+          "maxLocations": 3,
+          "isPublic": false
+        },
+        {
+          "id": "PLAN-POS-202610-ULTIMATE",
+          "name": "Ultimate",
+          "price": 1499,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "pos",
+            "billing",
+            "inventory"
+          ],
+          "maxUsers": 25,
+          "maxLocations": 5,
+          "isPublic": false
+        }
+      ],
+      "benchmark": {
+        "url": "https://mybillbook.in/s/pos-billing-software/",
+        "benchmark": "Plus INR 349/month; Pro INR 399/month. Pro Max starts INR 570/month billed annually and includes POS/loyalty."
+      },
+      "scope": "Checkout, tenders, voids, stock and invoice linkage",
+      "limitation": "Do not claim offline tills, hardware compatibility or omnichannel sync.",
+      "releaseGate": "Business workflow acceptance, tier/page mapping, seat/location enforcement, billing and provider-cost review"
+    },
+    {
+      "businessType": "billing",
+      "operation": "version-plans",
+      "currentPlans": [],
+      "expectedExisting": {
+        "id": "billing",
+        "status": "Active",
+        "idPrefix": "BIL",
+        "defaultModules": [
+          "billing"
+        ],
+        "planIds": [],
+        "planTierByPage": {}
+      },
+      "proposedDefaultModules": [
+        "billing"
+      ],
+      "draftType": null,
+      "proposedPlanIds": [
+        "PLAN-BILLING-202610-BASIC",
+        "PLAN-BILLING-202610-PRO",
+        "PLAN-BILLING-202610-ULTIMATE"
+      ],
+      "plans": [
+        {
+          "id": "PLAN-BILLING-202610-BASIC",
+          "name": "Starter",
+          "price": 199,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "billing"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": false
+        },
+        {
+          "id": "PLAN-BILLING-202610-PRO",
+          "name": "Pro",
+          "price": 399,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "billing"
+          ],
+          "maxUsers": 10,
+          "maxLocations": 3,
+          "isPublic": false
+        },
+        {
+          "id": "PLAN-BILLING-202610-ULTIMATE",
+          "name": "Ultimate",
+          "price": 799,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "billing"
+          ],
+          "maxUsers": 25,
+          "maxLocations": 5,
+          "isPublic": false
+        }
+      ],
+      "benchmark": {
+        "url": "https://mybillbook.in/s/pos-billing-software/",
+        "benchmark": "Plus INR 349/month; Pro INR 399/month. Pro Max starts INR 570/month billed annually and includes POS/loyalty."
+      },
+      "scope": "Invoices, payments, contacts, expenses and reports",
+      "limitation": "Below broader accounting suites; no bank-feed or automatic tax-filing promise.",
+      "releaseGate": "Business workflow acceptance, tier/page mapping, seat/location enforcement, billing and provider-cost review"
+    },
+    {
+      "businessType": "brand",
+      "operation": "create-business-type",
+      "currentPlans": [],
+      "expectedExisting": null,
+      "proposedDefaultModules": [
+        "brand"
+      ],
+      "draftType": {
+        "id": "brand",
+        "description": "Standalone brand business",
+        "idPrefix": "BRD",
+        "defaultModules": [
+          "brand"
+        ],
+        "assignableRoleIds": [
+          "Owner / Admin"
+        ],
+        "planTierByPage": {},
+        "planIds": [
+          "PLAN-BRAND-202610-BASIC",
+          "PLAN-BRAND-202610-PRO",
+          "PLAN-BRAND-202610-ULTIMATE"
+        ],
+        "requiresApproval": false,
+        "customSignupFields": [],
+        "status": "Inactive"
+      },
+      "proposedPlanIds": [
+        "PLAN-BRAND-202610-BASIC",
+        "PLAN-BRAND-202610-PRO",
+        "PLAN-BRAND-202610-ULTIMATE"
+      ],
+      "plans": [
+        {
+          "id": "PLAN-BRAND-202610-BASIC",
+          "name": "Starter",
+          "price": 999,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "brand"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": false
+        },
+        {
+          "id": "PLAN-BRAND-202610-PRO",
+          "name": "Pro",
+          "price": 1999,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "brand"
+          ],
+          "maxUsers": 10,
+          "maxLocations": 3,
+          "isPublic": false
+        },
+        {
+          "id": "PLAN-BRAND-202610-ULTIMATE",
+          "name": "Ultimate",
+          "price": 3999,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "brand"
+          ],
+          "maxUsers": 25,
+          "maxLocations": 5,
+          "isPublic": false
+        }
+      ],
+      "benchmark": {
+        "url": "https://www.zoho.com/en-in/erp/pricing/",
+        "benchmark": "Standard INR 1399/user/month monthly or 999 annually, minimum 5 users. Broad ERP, not equivalent to our smaller modules."
+      },
+      "scope": "Partner/location hierarchy and oversight",
+      "limitation": "Scope priced as coordination; cross-location permissions and roll-up acceptance remain required.",
+      "releaseGate": "Business workflow acceptance, tier/page mapping, seat/location enforcement, billing and provider-cost review"
+    },
+    {
+      "businessType": "clinic",
+      "operation": "version-plans",
+      "currentPlans": [
+        {
+          "id": "PLAN-CLINIC-BASIC",
+          "name": "Starter",
+          "price": 499,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "clinic"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": true
+        },
+        {
+          "id": "PLAN-CLINIC-PRO",
+          "name": "Pro",
+          "price": 799,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "clinic"
+          ],
+          "maxUsers": 10,
+          "maxLocations": 3,
+          "isPublic": true
+        },
+        {
+          "id": "PLAN-CLINIC-ULTIMATE",
+          "name": "Ultimate",
+          "price": 2499,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "clinic"
+          ],
+          "maxUsers": 9999,
+          "maxLocations": 9999,
+          "isPublic": true
+        }
+      ],
+      "expectedExisting": {
+        "id": "clinic",
+        "status": "Active",
+        "idPrefix": "CLN",
+        "defaultModules": [
+          "clinic",
+          "billing"
+        ],
+        "planIds": [
+          "PLAN-CLINIC-BASIC",
+          "PLAN-CLINIC-PRO",
+          "PLAN-CLINIC-ULTIMATE"
+        ],
+        "planTierByPage": {}
+      },
+      "proposedDefaultModules": [
+        "clinic",
+        "billing"
+      ],
+      "draftType": null,
+      "proposedPlanIds": [
+        "PLAN-CLINIC-202610-BASIC",
+        "PLAN-CLINIC-202610-PRO",
+        "PLAN-CLINIC-202610-ULTIMATE"
+      ],
+      "plans": [
+        {
+          "id": "PLAN-CLINIC-202610-BASIC",
+          "name": "Starter",
+          "price": 499,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "clinic",
+            "billing"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": false
+        },
+        {
+          "id": "PLAN-CLINIC-202610-PRO",
+          "name": "Pro",
+          "price": 799,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "clinic",
+            "billing"
+          ],
+          "maxUsers": 10,
+          "maxLocations": 3,
+          "isPublic": false
+        },
+        {
+          "id": "PLAN-CLINIC-202610-ULTIMATE",
+          "name": "Ultimate",
+          "price": 1499,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "clinic",
+            "billing"
+          ],
+          "maxUsers": 25,
+          "maxLocations": 5,
+          "isPublic": false
+        }
+      ],
+      "benchmark": {
+        "url": "https://www.practo.com/providers/clinics/ray/plans",
+        "benchmark": "CM Atom INR 999/month on a one-year plan; richer practice-management package."
+      },
+      "scope": "Patients, appointments, consultation notes and billing",
+      "limitation": "Below established clinic software; no EMR, prescriptions or diagnostic integration parity.",
+      "releaseGate": "Business workflow acceptance, tier/page mapping, seat/location enforcement, billing and provider-cost review"
+    },
+    {
+      "businessType": "amc-field-service",
+      "operation": "version-plans",
+      "currentPlans": [
+        {
+          "id": "PLAN-AMCFIELDSERVICE-BASIC",
+          "name": "Starter",
+          "price": 499,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "amc-field-service"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": true
+        },
+        {
+          "id": "PLAN-AMCFIELDSERVICE-PRO",
+          "name": "Pro",
+          "price": 799,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "amc-field-service"
+          ],
+          "maxUsers": 10,
+          "maxLocations": 3,
+          "isPublic": true
+        },
+        {
+          "id": "PLAN-AMCFIELDSERVICE-ULTIMATE",
+          "name": "Ultimate",
+          "price": 2499,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "amc-field-service"
+          ],
+          "maxUsers": 9999,
+          "maxLocations": 9999,
+          "isPublic": true
+        }
+      ],
+      "expectedExisting": {
+        "id": "amc-field-service",
+        "status": "Active",
+        "idPrefix": "AMC",
+        "defaultModules": [
+          "amc-field-service",
+          "billing"
+        ],
+        "planIds": [
+          "PLAN-AMCFIELDSERVICE-BASIC",
+          "PLAN-AMCFIELDSERVICE-PRO",
+          "PLAN-AMCFIELDSERVICE-ULTIMATE"
+        ],
+        "planTierByPage": {}
+      },
+      "proposedDefaultModules": [
+        "amc-field-service",
+        "billing"
+      ],
+      "draftType": null,
+      "proposedPlanIds": [
+        "PLAN-AMCFIELDSERVICE-202610-BASIC",
+        "PLAN-AMCFIELDSERVICE-202610-PRO",
+        "PLAN-AMCFIELDSERVICE-202610-ULTIMATE"
+      ],
+      "plans": [
+        {
+          "id": "PLAN-AMCFIELDSERVICE-202610-BASIC",
+          "name": "Starter",
+          "price": 499,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "amc-field-service",
+            "billing"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": false
+        },
+        {
+          "id": "PLAN-AMCFIELDSERVICE-202610-PRO",
+          "name": "Pro",
+          "price": 999,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "amc-field-service",
+            "billing"
+          ],
+          "maxUsers": 10,
+          "maxLocations": 3,
+          "isPublic": false
+        },
+        {
+          "id": "PLAN-AMCFIELDSERVICE-202610-ULTIMATE",
+          "name": "Ultimate",
+          "price": 1999,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "amc-field-service",
+            "billing"
+          ],
+          "maxUsers": 25,
+          "maxLocations": 5,
+          "isPublic": false
+        }
+      ],
+      "benchmark": {
+        "url": "https://www.zoho.com/en-in/erp/pricing/",
+        "benchmark": "Standard INR 1399/user/month monthly or 999 annually, minimum 5 users. Broad ERP, not equivalent to our smaller modules."
+      },
+      "scope": "Contracts, service visits and technician allocation",
+      "limitation": "Indirect ERP benchmark; no verified like-for-like local price. No automatic routing or offline technician promise.",
+      "releaseGate": "Business workflow acceptance, tier/page mapping, seat/location enforcement, billing and provider-cost review"
+    },
+    {
+      "businessType": "restaurant-pos",
+      "operation": "version-plans",
+      "currentPlans": [
+        {
+          "id": "PLAN-RESTAURANTPOS-BASIC",
+          "name": "Starter",
+          "price": 499,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "restaurant-pos"
+          ],
+          "maxUsers": 3,
+          "maxLocations": 1,
+          "isPublic": true
+        },
+        {
+          "id": "PLAN-RESTAURANTPOS-PRO",
+          "name": "Pro",
+          "price": 799,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "restaurant-pos"
+          ],
+          "maxUsers": 10,
+          "maxLocations": 3,
+          "isPublic": true
+        },
+        {
+          "id": "PLAN-RESTAURANTPOS-ULTIMATE",
+          "name": "Ultimate",
+          "price": 2499,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "restaurant-pos"
+          ],
+          "maxUsers": 9999,
+          "maxLocations": 9999,
+          "isPublic": true
+        }
+      ],
+      "expectedExisting": {
+        "id": "restaurant-pos",
+        "status": "Active",
+        "idPrefix": "RPO",
+        "defaultModules": [
+          "restaurant-pos",
+          "billing"
+        ],
+        "planIds": [
+          "PLAN-RESTAURANTPOS-BASIC",
+          "PLAN-RESTAURANTPOS-PRO",
+          "PLAN-RESTAURANTPOS-ULTIMATE"
+        ],
+        "planTierByPage": {}
+      },
+      "proposedDefaultModules": [
+        "restaurant-pos",
+        "billing"
+      ],
+      "draftType": null,
+      "proposedPlanIds": [
+        "PLAN-RESTAURANTPOS-202610-BASIC",
+        "PLAN-RESTAURANTPOS-202610-PRO",
+        "PLAN-RESTAURANTPOS-202610-ULTIMATE"
+      ],
+      "plans": [
+        {
+          "id": "PLAN-RESTAURANTPOS-202610-BASIC",
+          "name": "Starter",
+          "price": 499,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "restaurant-pos",
+            "billing"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": false
+        },
+        {
+          "id": "PLAN-RESTAURANTPOS-202610-PRO",
+          "name": "Pro",
+          "price": 999,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "restaurant-pos",
+            "billing"
+          ],
+          "maxUsers": 10,
+          "maxLocations": 3,
+          "isPublic": false
+        },
+        {
+          "id": "PLAN-RESTAURANTPOS-202610-ULTIMATE",
+          "name": "Ultimate",
+          "price": 1999,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "restaurant-pos",
+            "billing"
+          ],
+          "maxUsers": 25,
+          "maxLocations": 5,
+          "isPublic": false
+        }
+      ],
+      "benchmark": {
+        "url": "https://www.petpooja.com/poss/pricing",
+        "benchmark": "Restaurant-specific POS benchmark; no numeric price verified from the displayed pricing images."
+      },
+      "scope": "Tables, KOT, checkout and billing",
+      "limitation": "Price is a launch judgement; no verified local numeric benchmark. Aggregator/printer/offline acceptance outstanding.",
+      "releaseGate": "Business workflow acceptance, tier/page mapping, seat/location enforcement, billing and provider-cost review"
+    },
+    {
+      "businessType": "subscriptions",
+      "operation": "version-plans",
+      "currentPlans": [
+        {
+          "id": "PLAN-SUBSCRIPTIONS-BASIC",
+          "name": "Starter",
+          "price": 499,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "subscriptions"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": true
+        },
+        {
+          "id": "PLAN-SUBSCRIPTIONS-PRO",
+          "name": "Pro",
+          "price": 799,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "subscriptions"
+          ],
+          "maxUsers": 10,
+          "maxLocations": 3,
+          "isPublic": true
+        },
+        {
+          "id": "PLAN-SUBSCRIPTIONS-ULTIMATE",
+          "name": "Ultimate",
+          "price": 2499,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "subscriptions"
+          ],
+          "maxUsers": 9999,
+          "maxLocations": 9999,
+          "isPublic": true
+        }
+      ],
+      "expectedExisting": {
+        "id": "subscriptions",
+        "status": "Active",
+        "idPrefix": "SUB",
+        "defaultModules": [
+          "subscriptions"
+        ],
+        "planIds": [
+          "PLAN-SUBSCRIPTIONS-BASIC",
+          "PLAN-SUBSCRIPTIONS-PRO",
+          "PLAN-SUBSCRIPTIONS-ULTIMATE"
+        ],
+        "planTierByPage": {}
+      },
+      "proposedDefaultModules": [
+        "subscriptions"
+      ],
+      "draftType": null,
+      "proposedPlanIds": [
+        "PLAN-SUBSCRIPTIONS-202610-BASIC",
+        "PLAN-SUBSCRIPTIONS-202610-PRO",
+        "PLAN-SUBSCRIPTIONS-202610-ULTIMATE"
+      ],
+      "plans": [
+        {
+          "id": "PLAN-SUBSCRIPTIONS-202610-BASIC",
+          "name": "Starter",
+          "price": 299,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "subscriptions"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": false
+        },
+        {
+          "id": "PLAN-SUBSCRIPTIONS-202610-PRO",
+          "name": "Pro",
+          "price": 599,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "subscriptions"
+          ],
+          "maxUsers": 10,
+          "maxLocations": 3,
+          "isPublic": false
+        },
+        {
+          "id": "PLAN-SUBSCRIPTIONS-202610-ULTIMATE",
+          "name": "Ultimate",
+          "price": 1199,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "subscriptions"
+          ],
+          "maxUsers": 25,
+          "maxLocations": 5,
+          "isPublic": false
+        }
+      ],
+      "benchmark": {
+        "url": "https://mybillbook.in/s/pos-billing-software/",
+        "benchmark": "Plus INR 349/month; Pro INR 399/month. Pro Max starts INR 570/month billed annually and includes POS/loyalty."
+      },
+      "scope": "Memberships, renewals and check-in",
+      "limitation": "Simple membership operations; do not market as a payment mandate, dunning or proration engine.",
+      "releaseGate": "Business workflow acceptance, tier/page mapping, seat/location enforcement, billing and provider-cost review"
+    },
+    {
+      "businessType": "real-estate",
+      "operation": "version-plans",
+      "currentPlans": [
+        {
+          "id": "PLAN-REALESTATE-BASIC",
+          "name": "Starter",
+          "price": 499,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "real-estate"
+          ],
+          "maxUsers": 3,
+          "maxLocations": 1,
+          "isPublic": true
+        },
+        {
+          "id": "PLAN-REALESTATE-PRO",
+          "name": "Pro",
+          "price": 799,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "real-estate"
+          ],
+          "maxUsers": 15,
+          "maxLocations": 9999,
+          "isPublic": true
+        },
+        {
+          "id": "PLAN-REALESTATE-ULTIMATE",
+          "name": "Ultimate",
+          "price": 2499,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "real-estate"
+          ],
+          "maxUsers": 9999,
+          "maxLocations": 9999,
+          "isPublic": true
+        }
+      ],
+      "expectedExisting": {
+        "id": "real-estate",
+        "status": "Active",
+        "idPrefix": "RLE",
+        "defaultModules": [
+          "real-estate"
+        ],
+        "planIds": [
+          "PLAN-REALESTATE-BASIC",
+          "PLAN-REALESTATE-PRO",
+          "PLAN-REALESTATE-ULTIMATE"
+        ],
+        "planTierByPage": {}
+      },
+      "proposedDefaultModules": [
+        "real-estate"
+      ],
+      "draftType": null,
+      "proposedPlanIds": [
+        "PLAN-REALESTATE-202610-BASIC",
+        "PLAN-REALESTATE-202610-PRO",
+        "PLAN-REALESTATE-202610-ULTIMATE"
+      ],
+      "plans": [
+        {
+          "id": "PLAN-REALESTATE-202610-BASIC",
+          "name": "Starter",
+          "price": 399,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "real-estate"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": false
+        },
+        {
+          "id": "PLAN-REALESTATE-202610-PRO",
+          "name": "Pro",
+          "price": 799,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "real-estate"
+          ],
+          "maxUsers": 10,
+          "maxLocations": 3,
+          "isPublic": false
+        },
+        {
+          "id": "PLAN-REALESTATE-202610-ULTIMATE",
+          "name": "Ultimate",
+          "price": 1499,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "real-estate"
+          ],
+          "maxUsers": 25,
+          "maxLocations": 5,
+          "isPublic": false
+        }
+      ],
+      "benchmark": {
+        "url": "https://www.sell.do/pricing",
+        "benchmark": "Real-estate CRM pricing enquiry; no public numeric rate verified."
+      },
+      "scope": "Listings, leads, visits and agreements",
+      "limitation": "Quote-only comparison; launch price reflects CRM record workflows, not portal integrations.",
+      "releaseGate": "Business workflow acceptance, tier/page mapping, seat/location enforcement, billing and provider-cost review"
+    },
+    {
+      "businessType": "rentals",
+      "operation": "version-plans",
+      "currentPlans": [
+        {
+          "id": "PLAN-RENTALS-BASIC",
+          "name": "Starter",
+          "price": 499,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "rentals"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": true
+        },
+        {
+          "id": "PLAN-RENTALS-PRO",
+          "name": "Pro",
+          "price": 799,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "rentals"
+          ],
+          "maxUsers": 10,
+          "maxLocations": 3,
+          "isPublic": true
+        },
+        {
+          "id": "PLAN-RENTALS-ULTIMATE",
+          "name": "Ultimate",
+          "price": 2499,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "rentals"
+          ],
+          "maxUsers": 9999,
+          "maxLocations": 9999,
+          "isPublic": true
+        }
+      ],
+      "expectedExisting": {
+        "id": "rentals",
+        "status": "Active",
+        "idPrefix": "RNT",
+        "defaultModules": [
+          "rentals"
+        ],
+        "planIds": [
+          "PLAN-RENTALS-BASIC",
+          "PLAN-RENTALS-PRO",
+          "PLAN-RENTALS-ULTIMATE"
+        ],
+        "planTierByPage": {}
+      },
+      "proposedDefaultModules": [
+        "rentals"
+      ],
+      "draftType": null,
+      "proposedPlanIds": [
+        "PLAN-RENTALS-202610-BASIC",
+        "PLAN-RENTALS-202610-PRO",
+        "PLAN-RENTALS-202610-ULTIMATE"
+      ],
+      "plans": [
+        {
+          "id": "PLAN-RENTALS-202610-BASIC",
+          "name": "Starter",
+          "price": 399,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "rentals"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": false
+        },
+        {
+          "id": "PLAN-RENTALS-202610-PRO",
+          "name": "Pro",
+          "price": 799,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "rentals"
+          ],
+          "maxUsers": 10,
+          "maxLocations": 3,
+          "isPublic": false
+        },
+        {
+          "id": "PLAN-RENTALS-202610-ULTIMATE",
+          "name": "Ultimate",
+          "price": 1499,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "rentals"
+          ],
+          "maxUsers": 25,
+          "maxLocations": 5,
+          "isPublic": false
+        }
+      ],
+      "benchmark": {
+        "url": "https://booqable.com/pricing/",
+        "benchmark": "Rental-specific booking, inventory and online-store benchmark. Currency in extracted pricing was ambiguous; no numeric comparison used."
+      },
+      "scope": "Assets, date conflicts, deposits and returns",
+      "limitation": "Currency unverified for competitor; price judgement, not claimed percentage savings. Online storefront not included.",
+      "releaseGate": "Business workflow acceptance, tier/page mapping, seat/location enforcement, billing and provider-cost review"
+    },
+    {
+      "businessType": "education",
+      "operation": "version-plans",
+      "currentPlans": [
+        {
+          "id": "PLAN-EDUCATION-BASIC",
+          "name": "Starter",
+          "price": 499,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "education"
+          ],
+          "maxUsers": 3,
+          "maxLocations": 1,
+          "isPublic": true
+        },
+        {
+          "id": "PLAN-EDUCATION-PRO",
+          "name": "Pro",
+          "price": 799,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "education"
+          ],
+          "maxUsers": 15,
+          "maxLocations": 3,
+          "isPublic": true
+        },
+        {
+          "id": "PLAN-EDUCATION-ULTIMATE",
+          "name": "Ultimate",
+          "price": 2499,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "education"
+          ],
+          "maxUsers": 9999,
+          "maxLocations": 9999,
+          "isPublic": true
+        }
+      ],
+      "expectedExisting": {
+        "id": "education",
+        "status": "Active",
+        "idPrefix": "EDU",
+        "defaultModules": [
+          "education",
+          "billing",
+          "hrms",
+          "marketplace",
+          "accounting"
+        ],
+        "planIds": [
+          "PLAN-EDUCATION-BASIC",
+          "PLAN-EDUCATION-PRO",
+          "PLAN-EDUCATION-ULTIMATE"
+        ],
+        "planTierByPage": {}
+      },
+      "proposedDefaultModules": [
+        "education",
+        "billing",
+        "hrms",
+        "marketplace",
+        "accounting"
+      ],
+      "draftType": null,
+      "proposedPlanIds": [
+        "PLAN-EDUCATION-202610-BASIC",
+        "PLAN-EDUCATION-202610-PRO",
+        "PLAN-EDUCATION-202610-ULTIMATE"
+      ],
+      "plans": [
+        {
+          "id": "PLAN-EDUCATION-202610-BASIC",
+          "name": "Starter",
+          "price": 399,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "education",
+            "billing",
+            "hrms",
+            "marketplace",
+            "accounting"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": false
+        },
+        {
+          "id": "PLAN-EDUCATION-202610-PRO",
+          "name": "Pro",
+          "price": 799,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "education",
+            "billing",
+            "hrms",
+            "marketplace",
+            "accounting"
+          ],
+          "maxUsers": 10,
+          "maxLocations": 3,
+          "isPublic": false
+        },
+        {
+          "id": "PLAN-EDUCATION-202610-ULTIMATE",
+          "name": "Ultimate",
+          "price": 1499,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "education",
+            "billing",
+            "hrms",
+            "marketplace",
+            "accounting"
+          ],
+          "maxUsers": 25,
+          "maxLocations": 5,
+          "isPublic": false
+        }
+      ],
+      "benchmark": {
+        "url": "https://www.classpro.in/",
+        "benchmark": "Coaching-specific attendance, fees and operations benchmark; no verifiable numeric rate obtained."
+      },
+      "scope": "Students, batches, fees and attendance",
+      "limitation": "Quote-only comparison; no LMS, live classes, exam engine or parent app promise.",
+      "releaseGate": "Business workflow acceptance, tier/page mapping, seat/location enforcement, billing and provider-cost review"
+    },
+    {
+      "businessType": "manufacturing",
+      "operation": "version-plans",
+      "currentPlans": [
+        {
+          "id": "PLAN-MANUFACTURING-BASIC",
+          "name": "Starter",
+          "price": 699,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "manufacturing"
+          ],
+          "maxUsers": 3,
+          "maxLocations": 1,
+          "isPublic": true
+        },
+        {
+          "id": "PLAN-MANUFACTURING-PRO",
+          "name": "Pro",
+          "price": 999,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "manufacturing"
+          ],
+          "maxUsers": 15,
+          "maxLocations": 3,
+          "isPublic": true
+        },
+        {
+          "id": "PLAN-MANUFACTURING-ULTIMATE",
+          "name": "Ultimate",
+          "price": 2999,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "manufacturing"
+          ],
+          "maxUsers": 9999,
+          "maxLocations": 9999,
+          "isPublic": true
+        }
+      ],
+      "expectedExisting": {
+        "id": "manufacturing",
+        "status": "Active",
+        "idPrefix": "MFG",
+        "defaultModules": [
+          "manufacturing",
+          "billing",
+          "hrms",
+          "marketplace",
+          "accounting"
+        ],
+        "planIds": [
+          "PLAN-MANUFACTURING-BASIC",
+          "PLAN-MANUFACTURING-PRO",
+          "PLAN-MANUFACTURING-ULTIMATE"
+        ],
+        "planTierByPage": {}
+      },
+      "proposedDefaultModules": [
+        "manufacturing",
+        "billing",
+        "hrms",
+        "marketplace",
+        "accounting"
+      ],
+      "draftType": null,
+      "proposedPlanIds": [
+        "PLAN-MANUFACTURING-202610-BASIC",
+        "PLAN-MANUFACTURING-202610-PRO",
+        "PLAN-MANUFACTURING-202610-ULTIMATE"
+      ],
+      "plans": [
+        {
+          "id": "PLAN-MANUFACTURING-202610-BASIC",
+          "name": "Starter",
+          "price": 799,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "manufacturing",
+            "billing",
+            "hrms",
+            "marketplace",
+            "accounting"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": false
+        },
+        {
+          "id": "PLAN-MANUFACTURING-202610-PRO",
+          "name": "Pro",
+          "price": 1499,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "manufacturing",
+            "billing",
+            "hrms",
+            "marketplace",
+            "accounting"
+          ],
+          "maxUsers": 10,
+          "maxLocations": 3,
+          "isPublic": false
+        },
+        {
+          "id": "PLAN-MANUFACTURING-202610-ULTIMATE",
+          "name": "Ultimate",
+          "price": 2999,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "manufacturing",
+            "billing",
+            "hrms",
+            "marketplace",
+            "accounting"
+          ],
+          "maxUsers": 25,
+          "maxLocations": 5,
+          "isPublic": false
+        }
+      ],
+      "benchmark": {
+        "url": "https://www.mrpeasy.com/pricing/",
+        "benchmark": "Starter USD 49/user/month; Pro 69; Enterprise 99. Scheduling, costing and traceability exceed our current scope."
+      },
+      "scope": "BOM, production orders and material consumption",
+      "limitation": "Lower scope than MRP suites; finite-capacity planning and advanced costing not promised.",
+      "releaseGate": "Business workflow acceptance, tier/page mapping, seat/location enforcement, billing and provider-cost review"
+    },
+    {
+      "businessType": "wholesale-b2b",
+      "operation": "version-plans",
+      "currentPlans": [
+        {
+          "id": "PLAN-WHOLESALEB2B-BASIC",
+          "name": "Starter",
+          "price": 699,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "wholesale-b2b"
+          ],
+          "maxUsers": 3,
+          "maxLocations": 1,
+          "isPublic": true
+        },
+        {
+          "id": "PLAN-WHOLESALEB2B-PRO",
+          "name": "Pro",
+          "price": 999,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "wholesale-b2b"
+          ],
+          "maxUsers": 15,
+          "maxLocations": 3,
+          "isPublic": true
+        },
+        {
+          "id": "PLAN-WHOLESALEB2B-ULTIMATE",
+          "name": "Ultimate",
+          "price": 2999,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "wholesale-b2b"
+          ],
+          "maxUsers": 9999,
+          "maxLocations": 9999,
+          "isPublic": true
+        }
+      ],
+      "expectedExisting": {
+        "id": "wholesale-b2b",
+        "status": "Active",
+        "idPrefix": "WSB",
+        "defaultModules": [
+          "wholesale-b2b",
+          "billing",
+          "hrms",
+          "marketplace",
+          "accounting"
+        ],
+        "planIds": [
+          "PLAN-WHOLESALEB2B-BASIC",
+          "PLAN-WHOLESALEB2B-PRO",
+          "PLAN-WHOLESALEB2B-ULTIMATE"
+        ],
+        "planTierByPage": {}
+      },
+      "proposedDefaultModules": [
+        "wholesale-b2b",
+        "billing",
+        "hrms",
+        "marketplace",
+        "accounting"
+      ],
+      "draftType": null,
+      "proposedPlanIds": [
+        "PLAN-WHOLESALEB2B-202610-BASIC",
+        "PLAN-WHOLESALEB2B-202610-PRO",
+        "PLAN-WHOLESALEB2B-202610-ULTIMATE"
+      ],
+      "plans": [
+        {
+          "id": "PLAN-WHOLESALEB2B-202610-BASIC",
+          "name": "Starter",
+          "price": 599,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "wholesale-b2b",
+            "billing",
+            "hrms",
+            "marketplace",
+            "accounting"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": false
+        },
+        {
+          "id": "PLAN-WHOLESALEB2B-202610-PRO",
+          "name": "Pro",
+          "price": 1199,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "wholesale-b2b",
+            "billing",
+            "hrms",
+            "marketplace",
+            "accounting"
+          ],
+          "maxUsers": 10,
+          "maxLocations": 3,
+          "isPublic": false
+        },
+        {
+          "id": "PLAN-WHOLESALEB2B-202610-ULTIMATE",
+          "name": "Ultimate",
+          "price": 2499,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "wholesale-b2b",
+            "billing",
+            "hrms",
+            "marketplace",
+            "accounting"
+          ],
+          "maxUsers": 25,
+          "maxLocations": 5,
+          "isPublic": false
+        }
+      ],
+      "benchmark": {
+        "url": "https://www.zoho.com/en-in/erp/pricing/",
+        "benchmark": "Standard INR 1399/user/month monthly or 999 annually, minimum 5 users. Broad ERP, not equivalent to our smaller modules."
+      },
+      "scope": "Dealer orders, price tiers, credits and billing",
+      "limitation": "ERP is an indirect upper-scope benchmark; EDI and automated logistics not included.",
+      "releaseGate": "Business workflow acceptance, tier/page mapping, seat/location enforcement, billing and provider-cost review"
+    },
+    {
+      "businessType": "logistics-fleet",
+      "operation": "version-plans",
+      "currentPlans": [
+        {
+          "id": "PLAN-LOGISTICSFLEET-BASIC",
+          "name": "Starter",
+          "price": 499,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "logistics-fleet"
+          ],
+          "maxUsers": 3,
+          "maxLocations": 1,
+          "isPublic": true
+        },
+        {
+          "id": "PLAN-LOGISTICSFLEET-PRO",
+          "name": "Pro",
+          "price": 799,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "logistics-fleet"
+          ],
+          "maxUsers": 15,
+          "maxLocations": 5,
+          "isPublic": true
+        },
+        {
+          "id": "PLAN-LOGISTICSFLEET-ULTIMATE",
+          "name": "Ultimate",
+          "price": 2499,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "logistics-fleet"
+          ],
+          "maxUsers": 9999,
+          "maxLocations": 9999,
+          "isPublic": true
+        }
+      ],
+      "expectedExisting": {
+        "id": "logistics-fleet",
+        "status": "Active",
+        "idPrefix": "LOG",
+        "defaultModules": [
+          "logistics-fleet"
+        ],
+        "planIds": [
+          "PLAN-LOGISTICSFLEET-BASIC",
+          "PLAN-LOGISTICSFLEET-PRO",
+          "PLAN-LOGISTICSFLEET-ULTIMATE"
+        ],
+        "planTierByPage": {}
+      },
+      "proposedDefaultModules": [
+        "logistics-fleet"
+      ],
+      "draftType": null,
+      "proposedPlanIds": [
+        "PLAN-LOGISTICSFLEET-202610-BASIC",
+        "PLAN-LOGISTICSFLEET-202610-PRO",
+        "PLAN-LOGISTICSFLEET-202610-ULTIMATE"
+      ],
+      "plans": [
+        {
+          "id": "PLAN-LOGISTICSFLEET-202610-BASIC",
+          "name": "Starter",
+          "price": 399,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "logistics-fleet"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": false
+        },
+        {
+          "id": "PLAN-LOGISTICSFLEET-202610-PRO",
+          "name": "Pro",
+          "price": 799,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "logistics-fleet"
+          ],
+          "maxUsers": 10,
+          "maxLocations": 3,
+          "isPublic": false
+        },
+        {
+          "id": "PLAN-LOGISTICSFLEET-202610-ULTIMATE",
+          "name": "Ultimate",
+          "price": 1499,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "logistics-fleet"
+          ],
+          "maxUsers": 25,
+          "maxLocations": 5,
+          "isPublic": false
+        }
+      ],
+      "benchmark": {
+        "url": "https://www.fleetio.com/pricing",
+        "benchmark": "Essential USD 4/vehicle/month annually or 5 monthly; Professional 7 annually. Different vehicle-based unit and deeper maintenance."
+      },
+      "scope": "Vehicles, drivers, trips and delivery status",
+      "limitation": "Flat business pricing, not per-vehicle parity; no GPS/telematics/route-optimisation claim.",
+      "releaseGate": "Business workflow acceptance, tier/page mapping, seat/location enforcement, billing and provider-cost review"
+    },
+    {
+      "businessType": "legal",
+      "operation": "version-plans",
+      "currentPlans": [
+        {
+          "id": "PLAN-LEGAL-BASIC",
+          "name": "Starter",
+          "price": 499,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "legal"
+          ],
+          "maxUsers": 3,
+          "maxLocations": 1,
+          "isPublic": true
+        },
+        {
+          "id": "PLAN-LEGAL-PRO",
+          "name": "Pro",
+          "price": 799,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "legal"
+          ],
+          "maxUsers": 15,
+          "maxLocations": 3,
+          "isPublic": true
+        },
+        {
+          "id": "PLAN-LEGAL-ULTIMATE",
+          "name": "Ultimate",
+          "price": 2499,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "legal"
+          ],
+          "maxUsers": 9999,
+          "maxLocations": 9999,
+          "isPublic": true
+        }
+      ],
+      "expectedExisting": {
+        "id": "legal",
+        "status": "Active",
+        "idPrefix": "LGL",
+        "defaultModules": [
+          "legal",
+          "billing",
+          "hrms",
+          "marketplace",
+          "accounting"
+        ],
+        "planIds": [
+          "PLAN-LEGAL-BASIC",
+          "PLAN-LEGAL-PRO",
+          "PLAN-LEGAL-ULTIMATE"
+        ],
+        "planTierByPage": {}
+      },
+      "proposedDefaultModules": [
+        "legal",
+        "billing",
+        "hrms",
+        "marketplace",
+        "accounting"
+      ],
+      "draftType": null,
+      "proposedPlanIds": [
+        "PLAN-LEGAL-202610-BASIC",
+        "PLAN-LEGAL-202610-PRO",
+        "PLAN-LEGAL-202610-ULTIMATE"
+      ],
+      "plans": [
+        {
+          "id": "PLAN-LEGAL-202610-BASIC",
+          "name": "Starter",
+          "price": 399,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "legal",
+            "billing",
+            "hrms",
+            "marketplace",
+            "accounting"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": false
+        },
+        {
+          "id": "PLAN-LEGAL-202610-PRO",
+          "name": "Pro",
+          "price": 799,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "legal",
+            "billing",
+            "hrms",
+            "marketplace",
+            "accounting"
+          ],
+          "maxUsers": 10,
+          "maxLocations": 3,
+          "isPublic": false
+        },
+        {
+          "id": "PLAN-LEGAL-202610-ULTIMATE",
+          "name": "Ultimate",
+          "price": 1499,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "legal",
+            "billing",
+            "hrms",
+            "marketplace",
+            "accounting"
+          ],
+          "maxUsers": 25,
+          "maxLocations": 5,
+          "isPublic": false
+        }
+      ],
+      "benchmark": {
+        "url": "https://www.clio.com/pricing/",
+        "benchmark": "Displays starting at USD 49/user; billing term not established in extracted page. Qualitative comparison only; trust accounting and integrations are broader."
+      },
+      "scope": "Matters, hours, documents and billing",
+      "limitation": "No court integration, trust-account compliance or legal AI promise.",
+      "releaseGate": "Business workflow acceptance, tier/page mapping, seat/location enforcement, billing and provider-cost review"
+    },
+    {
+      "businessType": "event-booking",
+      "operation": "version-plans",
+      "currentPlans": [
+        {
+          "id": "PLAN-EVENTBOOKING-BASIC",
+          "name": "Starter",
+          "price": 499,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "event-booking"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": true
+        },
+        {
+          "id": "PLAN-EVENTBOOKING-PRO",
+          "name": "Pro",
+          "price": 799,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "event-booking"
+          ],
+          "maxUsers": 10,
+          "maxLocations": 3,
+          "isPublic": true
+        },
+        {
+          "id": "PLAN-EVENTBOOKING-ULTIMATE",
+          "name": "Ultimate",
+          "price": 2499,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "event-booking"
+          ],
+          "maxUsers": 9999,
+          "maxLocations": 9999,
+          "isPublic": true
+        }
+      ],
+      "expectedExisting": {
+        "id": "event-booking",
+        "status": "Active",
+        "idPrefix": "EVB",
+        "defaultModules": [
+          "event-booking",
+          "billing",
+          "hrms",
+          "marketplace",
+          "accounting"
+        ],
+        "planIds": [
+          "PLAN-EVENTBOOKING-BASIC",
+          "PLAN-EVENTBOOKING-PRO",
+          "PLAN-EVENTBOOKING-ULTIMATE"
+        ],
+        "planTierByPage": {}
+      },
+      "proposedDefaultModules": [
+        "event-booking",
+        "billing",
+        "hrms",
+        "marketplace",
+        "accounting"
+      ],
+      "draftType": null,
+      "proposedPlanIds": [
+        "PLAN-EVENTBOOKING-202610-BASIC",
+        "PLAN-EVENTBOOKING-202610-PRO",
+        "PLAN-EVENTBOOKING-202610-ULTIMATE"
+      ],
+      "plans": [
+        {
+          "id": "PLAN-EVENTBOOKING-202610-BASIC",
+          "name": "Starter",
+          "price": 499,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "event-booking",
+            "billing",
+            "hrms",
+            "marketplace",
+            "accounting"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": false
+        },
+        {
+          "id": "PLAN-EVENTBOOKING-202610-PRO",
+          "name": "Pro",
+          "price": 999,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "event-booking",
+            "billing",
+            "hrms",
+            "marketplace",
+            "accounting"
+          ],
+          "maxUsers": 10,
+          "maxLocations": 3,
+          "isPublic": false
+        },
+        {
+          "id": "PLAN-EVENTBOOKING-202610-ULTIMATE",
+          "name": "Ultimate",
+          "price": 1999,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "event-booking",
+            "billing",
+            "hrms",
+            "marketplace",
+            "accounting"
+          ],
+          "maxUsers": 25,
+          "maxLocations": 5,
+          "isPublic": false
+        }
+      ],
+      "benchmark": {
+        "url": "https://booqable.com/pricing/",
+        "benchmark": "Rental-specific booking, inventory and online-store benchmark. Currency in extracted pricing was ambiguous; no numeric comparison used."
+      },
+      "scope": "Venues, resources, scheduling and payment recording",
+      "limitation": "Indirect rental benchmark; no ticketing, guest app or automated settlements.",
+      "releaseGate": "Business workflow acceptance, tier/page mapping, seat/location enforcement, billing and provider-cost review"
+    },
+    {
+      "businessType": "salon-spa",
+      "operation": "version-plans",
+      "currentPlans": [
+        {
+          "id": "PLAN-SALONSPA-BASIC",
+          "name": "Starter",
+          "price": 499,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "salon-spa"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": true
+        },
+        {
+          "id": "PLAN-SALONSPA-PRO",
+          "name": "Pro",
+          "price": 799,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "salon-spa"
+          ],
+          "maxUsers": 10,
+          "maxLocations": 3,
+          "isPublic": true
+        },
+        {
+          "id": "PLAN-SALONSPA-ULTIMATE",
+          "name": "Ultimate",
+          "price": 2499,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "salon-spa"
+          ],
+          "maxUsers": 9999,
+          "maxLocations": 9999,
+          "isPublic": true
+        }
+      ],
+      "expectedExisting": {
+        "id": "salon-spa",
+        "status": "Active",
+        "idPrefix": "SPA",
+        "defaultModules": [
+          "salon-spa",
+          "billing"
+        ],
+        "planIds": [
+          "PLAN-SALONSPA-BASIC",
+          "PLAN-SALONSPA-PRO",
+          "PLAN-SALONSPA-ULTIMATE"
+        ],
+        "planTierByPage": {}
+      },
+      "proposedDefaultModules": [
+        "salon-spa",
+        "billing"
+      ],
+      "draftType": null,
+      "proposedPlanIds": [
+        "PLAN-SALONSPA-202610-BASIC",
+        "PLAN-SALONSPA-202610-PRO",
+        "PLAN-SALONSPA-202610-ULTIMATE"
+      ],
+      "plans": [
+        {
+          "id": "PLAN-SALONSPA-202610-BASIC",
+          "name": "Starter",
+          "price": 399,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "salon-spa",
+            "billing"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": false
+        },
+        {
+          "id": "PLAN-SALONSPA-202610-PRO",
+          "name": "Pro",
+          "price": 699,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "salon-spa",
+            "billing"
+          ],
+          "maxUsers": 10,
+          "maxLocations": 3,
+          "isPublic": false
+        },
+        {
+          "id": "PLAN-SALONSPA-202610-ULTIMATE",
+          "name": "Ultimate",
+          "price": 1299,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "salon-spa",
+            "billing"
+          ],
+          "maxUsers": 25,
+          "maxLocations": 5,
+          "isPublic": false
+        }
+      ],
+      "benchmark": {
+        "url": "https://www.fresha.com/pricing",
+        "benchmark": "Independent USD 19.95/month; Team USD 14.95/bookable team member/month. Marketplace and payment charges can be additional."
+      },
+      "scope": "Service menu, staff appointments and billing",
+      "limitation": "No customer-acquisition network, payment processing or marketing automation included.",
+      "releaseGate": "Business workflow acceptance, tier/page mapping, seat/location enforcement, billing and provider-cost review"
+    },
+    {
+      "businessType": "telecalling",
+      "operation": "version-plans",
+      "currentPlans": [
+        {
+          "id": "PLAN-TELECALLING-BASIC",
+          "name": "Telecalling Starter",
+          "price": 599,
+          "launchPrice": 299,
+          "billingCycle": "yearly",
+          "includedModuleSlugs": [
+            "telecalling"
+          ],
+          "maxUsers": 3,
+          "maxLocations": 1,
+          "isPublic": true
+        },
+        {
+          "id": "PLAN-TELECALLING-PRO",
+          "name": "Telecalling Pro",
+          "price": 999,
+          "launchPrice": 499,
+          "billingCycle": "yearly",
+          "includedModuleSlugs": [
+            "telecalling"
+          ],
+          "maxUsers": 10,
+          "maxLocations": 1,
+          "isPublic": true
+        },
+        {
+          "id": "PLAN-TELECALLING-ULTIMATE",
+          "name": "Telecalling Ultimate",
+          "price": 1999,
+          "launchPrice": 999,
+          "billingCycle": "yearly",
+          "includedModuleSlugs": [
+            "telecalling"
+          ],
+          "maxUsers": 9999,
+          "maxLocations": 9999,
+          "isPublic": true
+        }
+      ],
+      "expectedExisting": {
+        "id": "telecalling",
+        "status": "Active",
+        "idPrefix": "CC",
+        "defaultModules": [
+          "telecalling"
+        ],
+        "planIds": [
+          "PLAN-TELECALLING-BASIC",
+          "PLAN-TELECALLING-PRO",
+          "PLAN-TELECALLING-ULTIMATE"
+        ],
+        "planTierByPage": {}
+      },
+      "proposedDefaultModules": [
+        "telecalling"
+      ],
+      "draftType": null,
+      "proposedPlanIds": [
+        "PLAN-TELECALLING-202610-BASIC",
+        "PLAN-TELECALLING-202610-PRO",
+        "PLAN-TELECALLING-202610-ULTIMATE"
+      ],
+      "plans": [
+        {
+          "id": "PLAN-TELECALLING-202610-BASIC",
+          "name": "Starter",
+          "price": 399,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "telecalling"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": false
+        },
+        {
+          "id": "PLAN-TELECALLING-202610-PRO",
+          "name": "Pro",
+          "price": 799,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "telecalling"
+          ],
+          "maxUsers": 10,
+          "maxLocations": 3,
+          "isPublic": false
+        },
+        {
+          "id": "PLAN-TELECALLING-202610-ULTIMATE",
+          "name": "Ultimate",
+          "price": 1499,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "telecalling"
+          ],
+          "maxUsers": 25,
+          "maxLocations": 5,
+          "isPublic": false
+        }
+      ],
+      "benchmark": {
+        "url": "https://telecrm.in/pricing",
+        "benchmark": "INR 799/user/month annually or 1099/user/month quarterly; calling automation and integrations. Provider charges separate."
+      },
+      "scope": "Lead imports, assignments, call queue and message templates",
+      "limitation": "Flat business rate vs competitor per-user rate; telecom, SMS and WhatsApp usage charged separately. No unlimited dialling.",
+      "releaseGate": "Business workflow acceptance, tier/page mapping, seat/location enforcement, billing and provider-cost review"
+    },
+    {
+      "businessType": "inventory",
+      "operation": "create-business-type",
+      "currentPlans": [],
+      "expectedExisting": null,
+      "proposedDefaultModules": [
+        "inventory"
+      ],
+      "draftType": {
+        "id": "inventory",
+        "description": "Standalone inventory business",
+        "idPrefix": "INV",
+        "defaultModules": [
+          "inventory"
+        ],
+        "assignableRoleIds": [
+          "Owner / Admin"
+        ],
+        "planTierByPage": {},
+        "planIds": [
+          "PLAN-INVENTORY-202610-BASIC",
+          "PLAN-INVENTORY-202610-PRO",
+          "PLAN-INVENTORY-202610-ULTIMATE"
+        ],
+        "requiresApproval": false,
+        "customSignupFields": [],
+        "status": "Inactive"
+      },
+      "proposedPlanIds": [
+        "PLAN-INVENTORY-202610-BASIC",
+        "PLAN-INVENTORY-202610-PRO",
+        "PLAN-INVENTORY-202610-ULTIMATE"
+      ],
+      "plans": [
+        {
+          "id": "PLAN-INVENTORY-202610-BASIC",
+          "name": "Starter",
+          "price": 299,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "inventory"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": false
+        },
+        {
+          "id": "PLAN-INVENTORY-202610-PRO",
+          "name": "Pro",
+          "price": 599,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "inventory"
+          ],
+          "maxUsers": 10,
+          "maxLocations": 3,
+          "isPublic": false
+        },
+        {
+          "id": "PLAN-INVENTORY-202610-ULTIMATE",
+          "name": "Ultimate",
+          "price": 1299,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "inventory"
+          ],
+          "maxUsers": 25,
+          "maxLocations": 5,
+          "isPublic": false
+        }
+      ],
+      "benchmark": {
+        "url": "https://www.zoho.com/en-in/erp/pricing/",
+        "benchmark": "Standard INR 1399/user/month monthly or 999 annually, minimum 5 users. Broad ERP, not equivalent to our smaller modules."
+      },
+      "scope": "Stock, warehouses, transfers, adjustments and stock take",
+      "limitation": "Standalone stock tool; source workflow dependencies must be accepted before publication.",
+      "releaseGate": "Business workflow acceptance, tier/page mapping, seat/location enforcement, billing and provider-cost review"
+    },
+    {
+      "businessType": "accounting",
+      "operation": "create-business-type",
+      "currentPlans": [],
+      "expectedExisting": null,
+      "proposedDefaultModules": [
+        "accounting",
+        "accounting-gst",
+        "billing"
+      ],
+      "draftType": {
+        "id": "accounting",
+        "description": "Standalone accounting business",
+        "idPrefix": "ACC",
+        "defaultModules": [
+          "accounting",
+          "accounting-gst",
+          "billing"
+        ],
+        "assignableRoleIds": [
+          "Owner / Admin"
+        ],
+        "planTierByPage": {},
+        "planIds": [
+          "PLAN-ACCOUNTING-202610-BASIC",
+          "PLAN-ACCOUNTING-202610-PRO",
+          "PLAN-ACCOUNTING-202610-ULTIMATE"
+        ],
+        "requiresApproval": false,
+        "customSignupFields": [],
+        "status": "Inactive"
+      },
+      "proposedPlanIds": [
+        "PLAN-ACCOUNTING-202610-BASIC",
+        "PLAN-ACCOUNTING-202610-PRO",
+        "PLAN-ACCOUNTING-202610-ULTIMATE"
+      ],
+      "plans": [
+        {
+          "id": "PLAN-ACCOUNTING-202610-BASIC",
+          "name": "Starter",
+          "price": 399,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "accounting",
+            "accounting-gst",
+            "billing"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": false
+        },
+        {
+          "id": "PLAN-ACCOUNTING-202610-PRO",
+          "name": "Pro",
+          "price": 799,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "accounting",
+            "accounting-gst",
+            "billing"
+          ],
+          "maxUsers": 10,
+          "maxLocations": 3,
+          "isPublic": false
+        },
+        {
+          "id": "PLAN-ACCOUNTING-202610-ULTIMATE",
+          "name": "Ultimate",
+          "price": 1499,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "accounting",
+            "accounting-gst",
+            "billing"
+          ],
+          "maxUsers": 25,
+          "maxLocations": 5,
+          "isPublic": false
+        }
+      ],
+      "benchmark": {
+        "url": "https://www.zoho.com/in/books/pricing/",
+        "benchmark": "Standard INR 899/month or 749/month billed annually, 3 users; includes broader accounting and tax workflows."
+      },
+      "scope": "Accounting + GST: chart of accounts, journals, financial statements, tax records, ITC and HSN reports",
+      "limitation": "One package includes accounting, accounting-gst and billing; retains separate records and permissions. Bank feeds, automatic source posting and government filing are not promised.",
+      "releaseGate": "Business workflow acceptance, tier/page mapping, seat/location enforcement, billing and provider-cost review"
+    },
+    {
+      "businessType": "loyalty-rewards",
+      "operation": "version-plans",
+      "currentPlans": [],
+      "expectedExisting": {
+        "id": "loyalty-rewards",
+        "status": "Active",
+        "idPrefix": "LOY",
+        "defaultModules": [
+          "loyalty-rewards"
+        ],
+        "planIds": [],
+        "planTierByPage": {}
+      },
+      "proposedDefaultModules": [
+        "loyalty-rewards"
+      ],
+      "draftType": null,
+      "proposedPlanIds": [
+        "PLAN-LOYALTYREWARDS-202610-BASIC",
+        "PLAN-LOYALTYREWARDS-202610-PRO",
+        "PLAN-LOYALTYREWARDS-202610-ULTIMATE"
+      ],
+      "plans": [
+        {
+          "id": "PLAN-LOYALTYREWARDS-202610-BASIC",
+          "name": "Starter",
+          "price": 149,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "loyalty-rewards"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": false
+        },
+        {
+          "id": "PLAN-LOYALTYREWARDS-202610-PRO",
+          "name": "Pro",
+          "price": 299,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "loyalty-rewards"
+          ],
+          "maxUsers": 10,
+          "maxLocations": 3,
+          "isPublic": false
+        },
+        {
+          "id": "PLAN-LOYALTYREWARDS-202610-ULTIMATE",
+          "name": "Ultimate",
+          "price": 599,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "loyalty-rewards"
+          ],
+          "maxUsers": 25,
+          "maxLocations": 5,
+          "isPublic": false
+        }
+      ],
+      "benchmark": {
+        "url": "https://mybillbook.in/s/pos-billing-software/",
+        "benchmark": "Plus INR 349/month; Pro INR 399/month. Pro Max starts INR 570/month billed annually and includes POS/loyalty."
+      },
+      "scope": "Member points, earn/redeem ledger and tiers",
+      "limitation": "Basic standalone ledger; no automatic omnichannel purchase sync or marketing automation.",
+      "releaseGate": "Business workflow acceptance, tier/page mapping, seat/location enforcement, billing and provider-cost review"
+    },
+    {
+      "businessType": "hrms",
+      "operation": "create-business-type",
+      "currentPlans": [],
+      "expectedExisting": null,
+      "proposedDefaultModules": [
+        "hrms"
+      ],
+      "draftType": {
+        "id": "hrms",
+        "description": "Standalone hrms business",
+        "idPrefix": "HRM",
+        "defaultModules": [
+          "hrms"
+        ],
+        "assignableRoleIds": [
+          "Owner / Admin"
+        ],
+        "planTierByPage": {},
+        "planIds": [
+          "PLAN-HRMS-202610-BASIC",
+          "PLAN-HRMS-202610-PRO",
+          "PLAN-HRMS-202610-ULTIMATE"
+        ],
+        "requiresApproval": false,
+        "customSignupFields": [],
+        "status": "Inactive"
+      },
+      "proposedPlanIds": [
+        "PLAN-HRMS-202610-BASIC",
+        "PLAN-HRMS-202610-PRO",
+        "PLAN-HRMS-202610-ULTIMATE"
+      ],
+      "plans": [
+        {
+          "id": "PLAN-HRMS-202610-BASIC",
+          "name": "Starter",
+          "price": 199,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "hrms"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": false
+        },
+        {
+          "id": "PLAN-HRMS-202610-PRO",
+          "name": "Pro",
+          "price": 399,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "hrms"
+          ],
+          "maxUsers": 10,
+          "maxLocations": 3,
+          "isPublic": false
+        },
+        {
+          "id": "PLAN-HRMS-202610-ULTIMATE",
+          "name": "Ultimate",
+          "price": 799,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "hrms"
+          ],
+          "maxUsers": 25,
+          "maxLocations": 5,
+          "isPublic": false
+        }
+      ],
+      "benchmark": {
+        "url": "https://www.zoho.com/in/payroll/pricing/",
+        "benchmark": "Free up to 10 employees; Standard INR 1000/organisation/month billed annually includes 25 employees; statutory payroll capabilities."
+      },
+      "scope": "Attendance, employee and payroll records",
+      "limitation": "Competitor has a free tier and statutory processing. No PF/ESI/TDS filing or full payroll parity claim.",
+      "releaseGate": "Business workflow acceptance, tier/page mapping, seat/location enforcement, billing and provider-cost review"
+    },
+    {
+      "businessType": "marketplace",
+      "operation": "create-business-type",
+      "currentPlans": [],
+      "expectedExisting": null,
+      "proposedDefaultModules": [
+        "marketplace"
+      ],
+      "draftType": {
+        "id": "marketplace",
+        "description": "Standalone marketplace business",
+        "idPrefix": "MKT",
+        "defaultModules": [
+          "marketplace"
+        ],
+        "assignableRoleIds": [
+          "Owner / Admin"
+        ],
+        "planTierByPage": {},
+        "planIds": [
+          "PLAN-MARKETPLACE-202610-BASIC",
+          "PLAN-MARKETPLACE-202610-PRO",
+          "PLAN-MARKETPLACE-202610-ULTIMATE"
+        ],
+        "requiresApproval": false,
+        "customSignupFields": [],
+        "status": "Inactive"
+      },
+      "proposedPlanIds": [
+        "PLAN-MARKETPLACE-202610-BASIC",
+        "PLAN-MARKETPLACE-202610-PRO",
+        "PLAN-MARKETPLACE-202610-ULTIMATE"
+      ],
+      "plans": [
+        {
+          "id": "PLAN-MARKETPLACE-202610-BASIC",
+          "name": "Starter",
+          "price": 499,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "marketplace"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": false
+        },
+        {
+          "id": "PLAN-MARKETPLACE-202610-PRO",
+          "name": "Pro",
+          "price": 999,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "marketplace"
+          ],
+          "maxUsers": 10,
+          "maxLocations": 3,
+          "isPublic": false
+        },
+        {
+          "id": "PLAN-MARKETPLACE-202610-ULTIMATE",
+          "name": "Ultimate",
+          "price": 1999,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "marketplace"
+          ],
+          "maxUsers": 25,
+          "maxLocations": 5,
+          "isPublic": false
+        }
+      ],
+      "benchmark": {
+        "url": "https://www.sharetribe.com/help/en/articles/17105170-sharetribe-pricing-plans-and-usage-based-fees",
+        "benchmark": "Live USD 199/month annually or 259 monthly; Build USD 39 is test-only and is not a live-business comparison."
+      },
+      "scope": "Partner aggregation and coordination",
+      "limitation": "Not a full Sharetribe-style storefront/escrow/payout marketplace. Keep private pending settlement acceptance.",
+      "releaseGate": "Business workflow acceptance, tier/page mapping, seat/location enforcement, billing and provider-cost review"
+    },
+    {
+      "businessType": "field-force",
+      "operation": "version-plans",
+      "currentPlans": [
+        {
+          "id": "PLAN-FIELDFORCE-FREE",
+          "name": "Field Force",
+          "price": 0,
+          "launchPrice": null,
+          "billingCycle": "yearly",
+          "includedModuleSlugs": [
+            "field-force"
+          ],
+          "maxUsers": 9999,
+          "maxLocations": 9999,
+          "isPublic": true
+        }
+      ],
+      "expectedExisting": {
+        "id": "field-force",
+        "status": "Active",
+        "idPrefix": "FF",
+        "defaultModules": [
+          "field-force"
+        ],
+        "planIds": [
+          "PLAN-FIELDFORCE-FREE"
+        ],
+        "planTierByPage": {}
+      },
+      "proposedDefaultModules": [
+        "field-force"
+      ],
+      "draftType": null,
+      "proposedPlanIds": [
+        "PLAN-FIELDFORCE-202610-FREE"
+      ],
+      "plans": [
+        {
+          "id": "PLAN-FIELDFORCE-202610-FREE",
+          "name": "Free",
+          "price": 0,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "field-force"
+          ],
+          "maxUsers": 9999,
+          "maxLocations": 9999,
+          "isPublic": false
+        }
+      ],
+      "benchmark": {
+        "url": "https://www.sharetribe.com/help/en/articles/17105170-sharetribe-pricing-plans-and-usage-based-fees",
+        "benchmark": "Live USD 199/month annually or 259 monthly; Build USD 39 is test-only and is not a live-business comparison."
+      },
+      "scope": "Service catalog, bookings, dispatch and payment records",
+      "limitation": "Retain free subscription; existing configured transaction fees remain separate and unchanged. Provider settlement is manual.",
+      "releaseGate": "Business workflow acceptance, tier/page mapping, seat/location enforcement, billing and provider-cost review"
+    }
+  ]
+}

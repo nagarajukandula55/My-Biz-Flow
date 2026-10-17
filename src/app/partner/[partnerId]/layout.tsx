@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { Sidebar } from "@/components/Sidebar";
+import { ResponsivePartnerShell } from "@/components/ResponsivePartnerShell";
 import { SupportWidget } from "@/components/SupportWidget";
 import { PendingActionsBanner } from "@/components/PendingActionsBanner";
 import { buildPartnerAdminNavGroups } from "@/lib/designer/partnerAdminNav";
@@ -11,6 +12,9 @@ import { computeAlerts } from "@/lib/alerts";
 import { getPartner } from "@/lib/partnerData";
 import { getTelegramSettings } from "@/lib/telegram";
 import { env } from "@/lib/env";
+import { getVisibleModuleSlugs } from "@/lib/designer/entitlements";
+import { getWorkspaceSummary } from "@/lib/workspaceSummary";
+import type { Alert } from "@/lib/alerts";
 
 /**
  * Routes reachable with NO session at all — the Telecalling staff login and
@@ -108,6 +112,10 @@ export default async function PartnerLayout({
 }) {
   const pathname = headers().get("x-pathname");
 
+  // This exact self-service route has its own employee session guard. Never
+  // exempt employee-access (the owner credential-management page).
+  if (pathname === `/partner/${params.partnerId}/hrms/employee`) return <>{children}</>;
+
   if (STAFF_AUTH_ROUTE_SUFFIXES.some((suffix) => pathname?.endsWith(suffix))) {
     return <>{children}</>;
   }
@@ -155,12 +163,21 @@ export default async function PartnerLayout({
   // reject, but only that one Promise.all entry fails to resolve/timeout
   // together with the others now surfaces cleanly instead of masking
   // itself as this file's own logic.
+  const modules = await getVisibleModuleSlugs(params.partnerId);
+  const serviceCentre = modules.includes("service-centre");
   const [navGroups, alerts, partner, telegramSettings] = await Promise.all([
     buildPartnerAdminNavGroups(params.partnerId),
     // Alerts are computed here rather than in each page so the bell's count is
     // correct on every partner screen, and recomputed on each server render
     // rather than cached — see src/lib/alerts.ts for why nothing is stored.
-    computeAlerts(params.partnerId).catch(() => []),
+    (serviceCentre ? computeAlerts(params.partnerId) : getWorkspaceSummary(params.partnerId).then(summaries =>
+      summaries.flatMap(summary => summary.sources.flatMap((source, index): Alert[] => {
+        if (!source.state) return [];
+        const metric = summary.metrics.find(item => item.label === source.state?.label);
+        if (!metric?.value) return [];
+        return [{ id: `workspace-${summary.slug}-${index}`, severity: "info", title: summary.label,
+          detail: `${source.state.label}: ${metric.value.toLocaleString("en-IN")}`, href: summary.slug }];
+      })))).catch(() => []),
     // Used here only for sidebar branding/the trial banner — both already
     // handle a missing partner gracefully (optional chaining below), so a
     // transient failure degrades to "no branding this render" rather than
@@ -170,6 +187,16 @@ export default async function PartnerLayout({
       () => ({ partnerId: params.partnerId, chatId: null, chatTitle: null, groupChatId: null, groupChatTitle: null, routing: {}, lastReportSentAt: null })
     ),
   ]);
+  if (!serviceCentre) return (
+    <ResponsivePartnerShell sidebar={<Sidebar partnerId={params.partnerId} navGroups={navGroups} alerts={alerts}
+      logoDataUrl={partner?.logoDataUrl ?? null} partnerName={partner?.businessName ?? null} />}>
+      {partner && <PendingActionsBanner partnerId={params.partnerId} subscriptionStatus={partner.subscriptionStatus}
+        trialEndAt={partner.trialEndAt} telegramConnected={!!(telegramSettings.chatId || telegramSettings.groupChatId)}
+        telegramPath="settings/notifications" />}
+      {children}
+      <SupportWidget partnerId={params.partnerId} whatsappNumber={env.platformSupportWhatsappNumber()} />
+    </ResponsivePartnerShell>
+  );
   return (
     <div className="flex min-h-screen w-full">
       <Sidebar
@@ -186,6 +213,7 @@ export default async function PartnerLayout({
             subscriptionStatus={partner.subscriptionStatus}
             trialEndAt={partner.trialEndAt}
             telegramConnected={!!(telegramSettings.chatId || telegramSettings.groupChatId)}
+            telegramPath={serviceCentre ? "service-centre/telegram" : "settings/notifications"}
           />
         )}
         {children}

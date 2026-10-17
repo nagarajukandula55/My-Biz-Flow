@@ -2,7 +2,7 @@
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { createPartner } from "@/lib/partnerData";
+import { provisionSignup } from "@/lib/signupProvisioning";
 import { getPartnerType } from "@/lib/designer/partnerTypesData";
 import { resolveReferrer } from "@/lib/referrals";
 import { sendPartnerWelcomeEmail } from "@/lib/email";
@@ -52,6 +52,9 @@ export async function registerBusiness(formData: FormData) {
   }
 
   const partnerType = await getPartnerType(partnerTypeId);
+  if (!partnerType || partnerType.status !== "Active") {
+    throw new Error("This business type is not accepting registrations.");
+  }
 
   // Server-side validation for this type's own custom signup fields — the
   // form marks required ones with the `required` attribute, but that's
@@ -62,6 +65,9 @@ export async function registerBusiness(formData: FormData) {
     const value = String(formData.get(`custom_${field.key}`) ?? "").trim();
     if (field.required && !value) {
       throw new Error(`Missing required field: ${field.label}`);
+    }
+    if (value && field.type === "select" && !field.options?.includes(value)) {
+      throw new Error(`Invalid choice for ${field.label}`);
     }
     if (value) customFieldValues[field.key] = value;
   }
@@ -89,15 +95,19 @@ export async function registerBusiness(formData: FormData) {
   };
 
   let partnerId: string;
+  // Check signing configuration before creating an account with no usable login.
+  // This token is discarded and is never sent to a browser.
+  await createPartnerSessionToken("signup-preflight");
   try {
-    const result = await createPartner(input);
-    partnerId = result.partner.id;
-    // result.password is a real password (hashed and stored, needed so
-    // this account works with /login on another device), but it's
-    // intentionally never shown or emailed — the visitor is auto-signed-in
-    // below straight into setting their own password.
-  } catch {
-    redirect(`/signup/${encodeURIComponent(partnerTypeId)}?error=contact_taken`);
+    const result = await provisionSignup(input);
+    partnerId = result.id;
+  } catch (error) {
+    const failure = error as { code?: string; meta?: { target?: unknown } };
+    const target = failure.meta?.target;
+    const duplicateContact = failure.code === "P2002" &&
+      (Array.isArray(target) ? target.includes("loginContact") || target.includes("login_contact") :
+        typeof target === "string" && /login_?contact/i.test(target));
+    redirect(`/signup/${encodeURIComponent(partnerTypeId)}?error=${duplicateContact ? "contact_taken" : "registration_failed"}`);
   }
 
   // Best-effort — sendPartnerWelcomeEmail never throws — but awaited

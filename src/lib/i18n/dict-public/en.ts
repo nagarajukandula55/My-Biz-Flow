@@ -101,7 +101,7 @@ export const en = {
     "Billing includes tax-invoice fields and documents. Confirm your business tax details and the available reporting or provider integrations before relying on a particular compliance workflow.",
   faq5Q: "How does pricing work?",
   faq5A:
-    "Plans are tiered by how many users, locations, and modules are included, with pricing shown on the pricing page. All tiers use the same no-code platform — higher tiers unlock more modules and seats, not a different product.",
+    "Plans and included capabilities are shown on the pricing page. Availability, limits, and any module-specific options are confirmed during signup.",
   scFaq1Q: "What does the Service Centre module actually track?",
   scFaq1A:
     "Every workorder from intake to close: fault/symptom/solution details from a live catalog, brand/model selection, a Created → In Progress → Completed → Closed lifecycle, and the parts and labour line items tied to it.",

@@ -5,7 +5,8 @@ import { InquiryNewButton } from "./InquiryNewButton";
 import { RecordCsvExportButton } from "@/components/RecordCsvExportButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { inquiryColumns } from "@/lib/sample-data/service-centre-inquiry";
-import { listBusinessRecords, listBusinessRecordsPaginated } from "@/lib/businessRecords";
+import { listServiceCentrePage } from "@/lib/serviceCentreListData";
+import { loadInquiryExportRows } from "../exportActions";
 import { PaginationControls, buildPageQueryString } from "@/components/PaginationControls";
 
 registerPage({
@@ -34,13 +35,7 @@ export default async function InquiryListPage({
   searchParams: { page?: string };
 }) {
   const columns = await applyCustomizations("service-centre.inquiries.list", inquiryColumns);
-  const page = Math.max(1, Number(searchParams.page) || 1);
-  // Two reads: the CSV export must offer every inquiry, not just the
-  // current page, while the table only renders one page at a time.
-  const [allRows, { rows, total, totalPages, pageSize }] = await Promise.all([
-    listBusinessRecords(params.partnerId, "service-centre-inquiry"),
-    listBusinessRecordsPaginated(params.partnerId, "service-centre-inquiry", { page }),
-  ]);
+  const { rows, total, totalPages, pageSize, page } = await listServiceCentrePage(params.partnerId, "service-centre-inquiry", searchParams.page);
 
   return (
     <AppShell
@@ -49,7 +44,7 @@ export default async function InquiryListPage({
         <div className="flex items-center gap-3">
           <RecordCsvExportButton
             columns={columns.map((c) => ({ key: c.key, type: c.type === "date" ? "date" : c.type === "datetime" ? "datetime" : undefined }))}
-            rows={allRows}
+            loadRows={loadInquiryExportRows.bind(null, params.partnerId)}
             filename={`inquiries-${params.partnerId}-${new Date().toISOString().slice(0, 10)}.csv`}
           />
           <InquiryNewButton partnerId={params.partnerId} />

@@ -1,0 +1,109 @@
+# Module pricing decisions — 12 October 2026
+
+Prices are set in the local release proposal for 24 non-Service Centre business packages covering 25 internal modules, including Hotel added on 8 October. Nothing has been published or charged. Service Centre and all existing plan rows are excluded from changes.
+
+INR per business per month, before applicable GST. Starter / Pro / Ultimate are proposed monthly rates, not annual-equivalent prices. Field Force remains free, with its existing separate transaction-fee configuration unchanged. No automatic launch-price increase is attached to these new versions.
+
+These are conservative launch decisions based on current code scope and public competitor information, not a willingness-to-pay survey or a verified margin model. Competitor user/vehicle pricing is not directly equivalent to our business pricing. Foreign currencies are not converted. Where no reliable numeric benchmark was available, that limitation is explicit.
+
+## Pricing changes after scope and market review
+
+Reduced POS to 299/599/999, Brand to 699/1299/2499, Clinic to 399/699/999, Manufacturing to 599/1199/1999, Wholesale to 499/999/1799, Accounting + GST + Billing to 299/599/999, and Marketplace to 299/599/999. These reductions reflect narrower automation, integrations and role support than established suites. The remaining proposals are retained; additional local functionality alone does not justify raising rates before customer acceptance. Hotel and Rentals remain 499/999/1999 and 399/799/1499 respectively. HRMS remains 199/399/799 because statutory payroll is absent and a competitor offers a free tier.
+
+All tiers remain private. Starter/Pro/Ultimate are price proposals, not claims that all listed scope is included in every tier. Current page gates must be checked per package. If a package has no distinct enforced premium features, offer one verified tier at launch and keep other price points unpublished. Higher-tier prices must not be justified by unsupported unlimited users, multiple properties, dedicated support or SLA promises. User and location fields alone do not enforce entitlements; employee attendance logins are not general operational staff seats.
+
+Evidence was retrieved from official provider pages on 12 October 2026. Public prices may be localized or promotional. Fresha now returned MYR, so the former USD comparison is withdrawn. Practo was verified through the official page search result because direct extraction failed. The catalog baseline remains the read-only 7 October snapshot; refresh and compare it before any human publication.
+
+## Prices and actual scope
+
+| Module | Current stored monthly rates (launch rates in brackets) | New Starter / Pro / Ultimate | Current scope | Limitation / pricing rationale |
+| --- | --- | --- | --- | --- |
+| hotel | No standalone plans | 499 / 999 / 1999 | Owner-operated rooms, group reservations, room moves, housekeeping and two-payer manual folios | Private launch judgement for limited manual PMS scope. No verified numerical market comparison, OTA integration, statutory reporting, automatic payments or staff-role parity. |
+| pos | 699 / 999 / 2999 | 299 / 599 / 999 | Checkout, tenders, voids, stock and invoice linkage | Do not claim offline tills, hardware compatibility or omnichannel sync. |
+| billing | No standalone plans | 199 / 399 / 799 | Invoices, payments, contacts, expenses and reports | Below broader accounting suites; no bank-feed or automatic tax-filing promise. |
+| brand | No standalone plans | 699 / 1299 / 2499 | Partner/location hierarchy and oversight | Scope priced as coordination; cross-location permissions and roll-up acceptance remain required. |
+| clinic | 499 / 799 / 2499 | 399 / 699 / 999 | Patients, appointments, consultation notes and billing | Below established clinic software; no EMR, prescriptions or diagnostic integration parity. |
+| amc-field-service | 499 / 799 / 2499 | 499 / 999 / 1999 | Contracts, service visits and technician allocation | Indirect ERP benchmark; no verified like-for-like local price. No automatic routing or offline technician promise. |
+| restaurant-pos | 499 / 799 / 2499 | 499 / 999 / 1999 | Tables, KOT, checkout and billing | Price is a launch judgement; no verified local numeric benchmark. Aggregator/printer/offline acceptance outstanding. |
+| subscriptions | 499 / 799 / 2499 | 299 / 599 / 1199 | Memberships, renewals and check-in | Simple membership operations; do not market as a payment mandate, dunning or proration engine. |
+| real-estate | 499 / 799 / 2499 | 399 / 799 / 1499 | Listings, leads, visits and agreements | Quote-only comparison; launch price reflects CRM record workflows, not portal integrations. |
+| rentals | 499 / 799 / 2499 | 399 / 799 / 1499 | Pooled assets, concurrent availability, group reservations, partial pickups/returns, deposits and corrections | Currency unverified for competitor; price judgement, not claimed percentage savings. Online storefront not included. |
+| education | 499 / 799 / 2499 | 399 / 799 / 1499 | Students, batches, fees and attendance | Quote-only comparison; no LMS, live classes, exam engine or parent app promise. |
+| manufacturing | 699 / 999 / 2999 | 599 / 1199 / 1999 | BOM, production orders and material consumption | Lower scope than MRP suites; finite-capacity planning and advanced costing not promised. |
+| wholesale-b2b | 699 / 999 / 2999 | 499 / 999 / 1799 | Dealer orders, price tiers, credits and billing | ERP is an indirect upper-scope benchmark; EDI and automated logistics not included. |
+| logistics-fleet | 499 / 799 / 2499 | 399 / 799 / 1499 | Vehicles, drivers, trips and delivery status | Flat business pricing, not per-vehicle parity; no GPS/telematics/route-optimisation claim. |
+| legal | 499 / 799 / 2499 | 399 / 799 / 1499 | Matters, hours, documents and billing | No court integration, trust-account compliance or legal AI promise. |
+| event-booking | 499 / 799 / 2499 | 499 / 999 / 1999 | Venues, resources, scheduling and payment recording | Indirect rental benchmark; no ticketing, guest app or automated settlements. |
+| salon-spa | 499 / 799 / 2499 | 399 / 699 / 1299 | Service menu, staff appointments and billing | No customer-acquisition network, payment processing or marketing automation included. |
+| telecalling | 599 [299] / 999 [499] / 1999 [999] | 399 / 799 / 1499 | Lead imports, assignments, call queue and message templates | Flat business rate vs competitor per-user rate; telecom, SMS and WhatsApp usage charged separately. No unlimited dialling. |
+| inventory | No standalone plans | 299 / 599 / 1299 | Stock, warehouses, transfers, adjustments and stock take | Standalone stock tool; source workflow dependencies must be accepted before publication. |
+| accounting | No standalone plans | 299 / 599 / 999 | Accounting + GST: chart of accounts, journals, financial statements, reversals, reviewed Billing matching, tax records, ITC and HSN reports | One package includes accounting, accounting-gst and billing; retains separate records and permissions. Bank feeds, automatic source posting and government filing are not promised. |
+| loyalty-rewards | No standalone plans | 149 / 299 / 599 | Member points, earn/redeem ledger and tiers | Basic standalone ledger; no automatic omnichannel purchase sync or marketing automation. |
+| hrms | No standalone plans | 199 / 399 / 799 | Employee sign-in, geofenced attendance, leave, audited corrections and attendance-derived payroll drafts | Competitor has a free tier and statutory processing. No PF/ESI/TDS filing or full payroll parity claim. |
+| marketplace | No standalone plans | 299 / 599 / 999 | Partner aggregation and coordination | Not a full Sharetribe-style storefront/escrow/payout marketplace. Keep private pending settlement acceptance. |
+| field-force | 0 | 0 | Service catalog, bookings, dispatch and payment records | Retain free subscription; existing configured transaction fees remain separate and unchanged. Provider settlement is manual. |
+
+Current stored rates use the application’s monthly-rate convention even when the Plan billingCycle metadata says yearly. Checkout cycle discounts and tax are additional calculations. Existing Service Centre and Telecalling launch cutover rules are not modified. Accounting and GST are combined into one new signup package; existing internal routes, data and module access keys remain separate.
+
+## Recommended launch tier candidates
+
+Candidates below use registered pages from the actual bundle and the current default/stored page gates. They are not publication approval or a claim that every gate has passed end-to-end acceptance. A higher price needs distinct implemented features; capacity metadata and support promises do not qualify.
+
+| Package | Candidate tiers | Held tiers | Incremental gated page evidence |
+| --- | --- | --- | --- |
+| hotel | Starter: INR 499 | Pro, Ultimate | No separate premium page in this bundle |
+| pos | Starter: INR 299; Pro: INR 599; Ultimate: INR 999 | None | Pro: billing.credit-notes.create, billing.credit-notes.list, billing.delivery-challans.create, billing.delivery-challans.list, billing.proforma-invoices.create, billing.proforma-invoices.list, billing.quotations.create, billing.quotations.list, billing.recurring.create, billing.recurring.list, inventory.bom.create, inventory.transactions.list, pos.reports; Ultimate: billing.expenses.create, billing.expenses.list, billing.reports.profit-loss |
+| billing | Starter: INR 199; Pro: INR 399; Ultimate: INR 799 | None | Pro: billing.credit-notes.create, billing.credit-notes.list, billing.delivery-challans.create, billing.delivery-challans.list, billing.proforma-invoices.create, billing.proforma-invoices.list, billing.quotations.create, billing.quotations.list, billing.recurring.create, billing.recurring.list; Ultimate: billing.expenses.create, billing.expenses.list, billing.reports.profit-loss |
+| brand | Starter: INR 699 | Pro, Ultimate | No separate premium page in this bundle |
+| clinic | Starter: INR 399; Pro: INR 699; Ultimate: INR 999 | None | Pro: billing.credit-notes.create, billing.credit-notes.list, billing.delivery-challans.create, billing.delivery-challans.list, billing.proforma-invoices.create, billing.proforma-invoices.list, billing.quotations.create, billing.quotations.list, billing.recurring.create, billing.recurring.list; Ultimate: billing.expenses.create, billing.expenses.list, billing.reports.profit-loss |
+| amc-field-service | Starter: INR 499; Pro: INR 999; Ultimate: INR 1999 | None | Pro: billing.credit-notes.create, billing.credit-notes.list, billing.delivery-challans.create, billing.delivery-challans.list, billing.proforma-invoices.create, billing.proforma-invoices.list, billing.quotations.create, billing.quotations.list, billing.recurring.create, billing.recurring.list; Ultimate: billing.expenses.create, billing.expenses.list, billing.reports.profit-loss |
+| restaurant-pos | Starter: INR 499; Pro: INR 999; Ultimate: INR 1999 | None | Pro: billing.credit-notes.create, billing.credit-notes.list, billing.delivery-challans.create, billing.delivery-challans.list, billing.proforma-invoices.create, billing.proforma-invoices.list, billing.quotations.create, billing.quotations.list, billing.recurring.create, billing.recurring.list; Ultimate: billing.expenses.create, billing.expenses.list, billing.reports.profit-loss |
+| subscriptions | Starter: INR 299 | Pro, Ultimate | No separate premium page in this bundle |
+| real-estate | Starter: INR 399 | Pro, Ultimate | No separate premium page in this bundle |
+| rentals | Starter: INR 399 | Pro, Ultimate | No separate premium page in this bundle |
+| education | Starter: INR 399; Pro: INR 799; Ultimate: INR 1499 | None | Pro: accounting.reports.balance-sheet, accounting.reports.profit-loss, accounting.reports.trial-balance, billing.credit-notes.create, billing.credit-notes.list, billing.delivery-challans.create, billing.delivery-challans.list, billing.proforma-invoices.create, billing.proforma-invoices.list, billing.quotations.create, billing.quotations.list, billing.recurring.create, billing.recurring.list, hrms.leave.create, hrms.leave.list, hrms.payroll.create, hrms.payroll.list; Ultimate: billing.expenses.create, billing.expenses.list, billing.reports.profit-loss |
+| manufacturing | Starter: INR 599; Pro: INR 1199; Ultimate: INR 1999 | None | Pro: accounting.reports.balance-sheet, accounting.reports.profit-loss, accounting.reports.trial-balance, billing.credit-notes.create, billing.credit-notes.list, billing.delivery-challans.create, billing.delivery-challans.list, billing.proforma-invoices.create, billing.proforma-invoices.list, billing.quotations.create, billing.quotations.list, billing.recurring.create, billing.recurring.list, hrms.leave.create, hrms.leave.list, hrms.payroll.create, hrms.payroll.list, manufacturing.work-centers.create, manufacturing.work-centers.detail, manufacturing.work-centers.list; Ultimate: billing.expenses.create, billing.expenses.list, billing.reports.profit-loss |
+| wholesale-b2b | Starter: INR 499; Pro: INR 999; Ultimate: INR 1799 | None | Pro: accounting.reports.balance-sheet, accounting.reports.profit-loss, accounting.reports.trial-balance, billing.credit-notes.create, billing.credit-notes.list, billing.delivery-challans.create, billing.delivery-challans.list, billing.proforma-invoices.create, billing.proforma-invoices.list, billing.quotations.create, billing.quotations.list, billing.recurring.create, billing.recurring.list, hrms.leave.create, hrms.leave.list, hrms.payroll.create, hrms.payroll.list, wholesale-b2b.price-tiers.create, wholesale-b2b.price-tiers.detail, wholesale-b2b.price-tiers.edit, wholesale-b2b.price-tiers.list; Ultimate: billing.expenses.create, billing.expenses.list, billing.reports.profit-loss |
+| logistics-fleet | Starter: INR 399 | Pro, Ultimate | No separate premium page in this bundle |
+| legal | Starter: INR 399; Pro: INR 799; Ultimate: INR 1499 | None | Pro: accounting.reports.balance-sheet, accounting.reports.profit-loss, accounting.reports.trial-balance, billing.credit-notes.create, billing.credit-notes.list, billing.delivery-challans.create, billing.delivery-challans.list, billing.proforma-invoices.create, billing.proforma-invoices.list, billing.quotations.create, billing.quotations.list, billing.recurring.create, billing.recurring.list, hrms.leave.create, hrms.leave.list, hrms.payroll.create, hrms.payroll.list; Ultimate: billing.expenses.create, billing.expenses.list, billing.reports.profit-loss |
+| event-booking | Starter: INR 499; Pro: INR 999; Ultimate: INR 1999 | None | Pro: accounting.reports.balance-sheet, accounting.reports.profit-loss, accounting.reports.trial-balance, billing.credit-notes.create, billing.credit-notes.list, billing.delivery-challans.create, billing.delivery-challans.list, billing.proforma-invoices.create, billing.proforma-invoices.list, billing.quotations.create, billing.quotations.list, billing.recurring.create, billing.recurring.list, hrms.leave.create, hrms.leave.list, hrms.payroll.create, hrms.payroll.list; Ultimate: billing.expenses.create, billing.expenses.list, billing.reports.profit-loss |
+| salon-spa | Starter: INR 399; Pro: INR 699; Ultimate: INR 1299 | None | Pro: billing.credit-notes.create, billing.credit-notes.list, billing.delivery-challans.create, billing.delivery-challans.list, billing.proforma-invoices.create, billing.proforma-invoices.list, billing.quotations.create, billing.quotations.list, billing.recurring.create, billing.recurring.list; Ultimate: billing.expenses.create, billing.expenses.list, billing.reports.profit-loss |
+| telecalling | Starter: INR 399; Pro: INR 799 | Ultimate | Pro: telecalling.templates |
+| inventory | Starter: INR 299; Pro: INR 599 | Ultimate | Pro: inventory.bom.create, inventory.transactions.list |
+| accounting | Starter: INR 299; Pro: INR 599; Ultimate: INR 999 | None | Pro: accounting-gst.itc.create, accounting-gst.itc.detail, accounting-gst.itc.edit, accounting-gst.itc.list, accounting.reports.balance-sheet, accounting.reports.profit-loss, accounting.reports.trial-balance, billing.credit-notes.create, billing.credit-notes.list, billing.delivery-challans.create, billing.delivery-challans.list, billing.proforma-invoices.create, billing.proforma-invoices.list, billing.quotations.create, billing.quotations.list, billing.recurring.create, billing.recurring.list; Ultimate: billing.expenses.create, billing.expenses.list, billing.reports.profit-loss |
+| loyalty-rewards | Starter: INR 149 | Pro, Ultimate | No separate premium page in this bundle |
+| hrms | Starter: INR 199; Pro: INR 399 | Ultimate | Pro: hrms.leave.create, hrms.leave.list, hrms.payroll.create, hrms.payroll.list |
+| marketplace | Starter: INR 299 | Pro, Ultimate | No separate premium page in this bundle |
+| field-force | Free: INR 0 | None | No separate premium page in this bundle |
+
+Do not simply drop held plans from the runtime ladder: its two-plan top entry resolves to Ultimate, not Pro. These recommendations preserve all draft IDs and ordering. A revised public ladder requires explicit tier-mapping tests before publication. Packages with no premium pages can use one verified Starter offer; other price points stay on hold. Bundled Billing, HRMS or Accounting can justify a premium candidate even when the primary vertical has no premium-only page.
+
+## Verified market references
+
+- [hotel](https://www.hotelogix.com/faq): Verified 12 October 2026: pricing varies by room count and refers to a calculator. No numeric quote verified. Hotelogix includes broader PMS integrations; our initial owner-operated offering has no OTA sync or online payments.
+- [books](https://www.zoho.com/in/books/pricing/): Standard INR 899/month or 749/month billed annually, 3 users; includes broader accounting and tax workflows.
+- [billing](https://mybillbook.in/s/pos-billing-software/): Plus INR 349 billed monthly or INR 291/month billed annually (INR 3490/year); Pro INR 399 monthly or INR 333/month annually (INR 3990/year). POS/loyalty appear in Pro Max, starting INR 570/month annually, with 2 businesses/3 users. Entry billing plans are not a POS-equivalent comparison.
+- [clinic](https://www.practo.com/providers/clinics/ray/plans): CM Atom INR 999/month on a one-year plan; richer practice-management package.
+- [telecalling](https://telecrm.in/pricing): INR 799/user/month annually or 1099/user/month quarterly; calling automation and integrations. Provider charges separate.
+- [payroll](https://www.zoho.com/in/payroll/pricing/): Free up to 10 employees; Standard INR 1250/organisation/month monthly or 1000/month billed annually includes 25 employees; statutory payroll capabilities.
+- [manufacturing](https://www.mrpeasy.com/pricing/): Starter USD 49/user/month; Pro 69; Enterprise 99. Scheduling, costing and traceability exceed our current scope.
+- [fleet](https://www.fleetio.com/pricing): Essential USD 4/vehicle/month annually or 5 monthly; Professional 7 annually. Different vehicle-based unit and deeper maintenance.
+- [salon](https://www.fresha.com/pricing): Page localized to MYR: Independent MYR 67.95/month for one person. This is not an India or USD quote; qualitative comparison only. Marketplace and payment charges can be additional.
+- [marketplace](https://www.sharetribe.com/help/en/articles/17105170-sharetribe-pricing-plans-and-usage-based-fees): Live USD 199/month annually or 259 monthly; Build USD 39 is test-only and is not a live-business comparison.
+- [erp](https://www.zoho.com/en-in/erp/pricing/): Standard INR 1399/user/month monthly or 999 annually, minimum 5 users. Broad ERP, not equivalent to our smaller modules.
+- [rentals](https://booqable.com/pricing/): Rental-specific booking, inventory and online-store benchmark. Currency in extracted pricing was ambiguous; no numeric comparison used.
+- [education](https://www.classpro.in/): Coaching-specific attendance, fees and operations benchmark; no verifiable numeric rate obtained.
+- [property](https://www.sell.do/pricing): Real-estate CRM pricing enquiry; no public numeric rate verified.
+- [legal](https://www.clio.com/pricing/): Displays starting at USD 49/user; billing term not established in extracted page. Qualitative comparison only; trust accounting and integrations are broader.
+- [restaurant](https://www.petpooja.com/poss/pricing): Restaurant-specific POS benchmark; no numeric price verified from the displayed pricing images.
+
+## Publication gates
+
+- The proposal creates new dated plan IDs; it never updates old prices or customer subscriptions. Draft plans are private and new business types inactive. Existing signup links remain unchanged until the reviewed publication operation.
+- Starter/Pro/Ultimate differentiation must be verified against page access, seats and locations. Draft capacities are 2/10/25 users and 1/3/5 locations, not an unlimited promise. Field Force capacity needs separate review to preserve its current free offer.
+- Bundles already configured for a vertical are preserved. Bundled HRMS/accounting/marketplace capabilities must pass acceptance too; standalone prices are not added to an existing bundle bill.
+- Tax-filing, payroll compliance, provider delivery, settlements, offline support and integrations must not be advertised beyond verified implementation.
+- Measure hosting, storage, message/provider usage and support cost before publication; these figures are not a profitability guarantee. Messaging and payment usage costs are separate from subscription prices.
+- The repository forbids agents from mutating the shared live database. A human must review and apply the catalog change from their own terminal after the release gates pass.
+
+Machine-readable release proposal: `market-pricing-proposal-2026-10-12.json`. Reproduce with `node scripts/market-pricing-proposal.cjs`; this command has no database connection.

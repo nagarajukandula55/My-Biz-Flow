@@ -170,9 +170,13 @@ export async function createTemplateAction(partnerId: string, formData: FormData
   const channel = String(formData.get("channel") ?? "sms") as MessageChannel;
   const category = String(formData.get("category") ?? "General").trim();
   const body = String(formData.get("body") ?? "").trim();
+  const metaTemplateName = String(formData.get("metaTemplateName") ?? "").trim();
   if (!["sms", "whatsapp"].includes(channel)) throw new Error("Invalid message channel");
   if (!name || !body) throw new Error("Name and body are required");
-  await createTemplate(partnerId, { name, channel, category, body });
+  if (channel === "whatsapp" && !metaTemplateName) {
+    throw new Error("The Meta-approved WhatsApp template name is required for a WhatsApp template.");
+  }
+  await createTemplate(partnerId, { name, channel, category, body, metaTemplateName });
   revalidatePath(`/partner/${partnerId}/telecalling/templates`);
 }
 
@@ -183,9 +187,13 @@ export async function updateTemplateAction(partnerId: string, formData: FormData
   const channel = String(formData.get("channel") ?? "sms") as MessageChannel;
   const category = String(formData.get("category") ?? "General").trim();
   const body = String(formData.get("body") ?? "").trim();
+  const metaTemplateName = String(formData.get("metaTemplateName") ?? "").trim();
   if (!["sms", "whatsapp"].includes(channel)) throw new Error("Invalid message channel");
   if (!id || !name || !body) throw new Error("Name and body are required");
-  await updateTemplate(id, partnerId, { name, channel, category, body });
+  if (channel === "whatsapp" && !metaTemplateName) {
+    throw new Error("The Meta-approved WhatsApp template name is required for a WhatsApp template.");
+  }
+  await updateTemplate(id, partnerId, { name, channel, category, body, metaTemplateName });
   revalidatePath(`/partner/${partnerId}/telecalling/templates`);
 }
 

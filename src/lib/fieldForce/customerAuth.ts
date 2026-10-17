@@ -36,6 +36,17 @@ export async function verifyCustomerLogin(partnerId: string, phone: string, pass
   return customer;
 }
 
+/**
+ * Looks a Customer up by phone for WhatsApp OTP login — deliberately does
+ * NOT require passwordHash to be set (unlike verifyCustomerLogin), since an
+ * ops-onboarded customer with no password yet (see createCustomerAccount's
+ * "claim an existing record" branch) still has a real phone number OTP can
+ * prove ownership of on its own.
+ */
+export async function findCustomerByPhone(partnerId: string, phone: string) {
+  return prisma.customer.findUnique({ where: { partnerId_phone: { partnerId, phone } } });
+}
+
 export async function getCurrentCustomer(partnerId: string) {
   const id = cookies().get(CUSTOMER_SESSION_COOKIE)?.value;
   if (!id) return null;

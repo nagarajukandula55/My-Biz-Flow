@@ -1,6 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Allow isolated release checks to use a clean output directory when a
+  // previous build artifact is locked, while keeping the normal .next path.
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   // The Designer's page-detail view (src/app/admin/(protected)/designer/[pageId]/page.tsx)
   // reads an arbitrary registered page's source file from disk at request time via
   // fs.readFileSync(page.sourceFile) — a dynamic path Next's default output tracing

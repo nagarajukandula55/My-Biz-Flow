@@ -3,8 +3,10 @@ import Link from "next/link";
 import { BrandLogo } from "@/components/BrandLogo";
 import { registerPage } from "@/lib/designer/registry";
 import { signInAsPartner } from "./actions";
-import { env, googleOAuthConfigured, telegramLoginConfigured } from "@/lib/env";
+import { env, googleOAuthConfigured, telegramLoginConfigured, whatsappOtpLoginConfigured } from "@/lib/env";
 import { TelegramLoginWidget } from "./TelegramLoginWidget";
+import { LoginMethodTabs } from "./LoginMethodTabs";
+import { WhatsAppOtpLoginForm } from "./WhatsAppOtpLoginForm";
 
 // Defense-in-depth alongside robots.ts's existing Disallow — see the
 // identical note on src/app/signup/page.tsx's metadata export.
@@ -21,7 +23,7 @@ registerPage({
   superAdminOnly: false,
   customizableRegions: [],
   explanation:
-    "Public, non-partner-scoped login page (no AppShell/sidebar — lightweight public page shell). Real partner lookup by Partner ID (VND####) or registered contact number, real password verification against the Partner table (see src/app/login/actions.ts) — route-level session enforcement on /partner/[partnerId]/* pages doesn't exist yet.",
+    "Public, non-partner-scoped login page (no AppShell/sidebar — lightweight public page shell). Real partner lookup by Partner ID (VND####) or registered contact number, real password verification against the Partner table (see src/app/login/actions.ts) — route-level session enforcement on /partner/[partnerId]/* pages doesn't exist yet. When WHATSAPP_OTP_TEMPLATE_NAME is configured, a second \"WhatsApp OTP\" tab is also offered (same session cookie on success) — see whatsappOtpLoginConfigured() in src/lib/env.ts.",
   sourceFile: "src/app/login/page.tsx",
 });
 
@@ -45,6 +47,7 @@ export default function LoginPage({
 }) {
   const showGoogle = googleOAuthConfigured();
   const showTelegram = telegramLoginConfigured();
+  const showWhatsAppOtp = whatsappOtpLoginConfigured();
   const telegramBotId = env.telegramLoginBotId();
   const googleError = searchParams.error ? GOOGLE_ERROR_MESSAGES[searchParams.error] : undefined;
   const telegramError = searchParams.error ? TELEGRAM_ERROR_MESSAGES[searchParams.error] : undefined;
@@ -118,40 +121,50 @@ export default function LoginPage({
 
         <p className="mt-2 text-sm text-text-muted">Sign in with your Partner ID or registered contact number.</p>
 
-        <form action={signInAsPartner} className="mt-6 flex flex-col gap-3">
-          <label className="text-sm font-medium text-text">
-            <span className="flex items-center gap-2">
-              Partner ID or Contact Number
-              <span className="rounded bg-bg-sunken px-1.5 py-0.5 font-mono text-[10px] text-text-muted">
-                VND#### / 98xxxxxxxx
-              </span>
-            </span>
-            <input
-              type="text"
-              name="identifier"
-              required
-              autoFocus
-              className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text outline-none focus:border-teal"
-            />
-          </label>
-          <label className="text-sm font-medium text-text">
-            Password
-            <input
-              type="password"
-              name="password"
-              required
-              className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text outline-none focus:border-teal"
-            />
-          </label>
-          <div className="text-right">
-            <Link href="/forgot-password" className="text-xs font-semibold text-teal hover:underline">
-              Forgot password?
-            </Link>
-          </div>
-          <button type="submit" className="btn-accent mt-2 w-full">
-            Sign in
-          </button>
-        </form>
+        {(() => {
+          const passwordForm = (
+            <form action={signInAsPartner} className="flex flex-col gap-3">
+              <label className="text-sm font-medium text-text">
+                <span className="flex items-center gap-2">
+                  Partner ID or Contact Number
+                  <span className="rounded bg-bg-sunken px-1.5 py-0.5 font-mono text-[10px] text-text-muted">
+                    VND#### / 98xxxxxxxx
+                  </span>
+                </span>
+                <input
+                  type="text"
+                  name="identifier"
+                  required
+                  autoFocus={!showWhatsAppOtp}
+                  className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text outline-none focus:border-teal"
+                />
+              </label>
+              <label className="text-sm font-medium text-text">
+                Password
+                <input
+                  type="password"
+                  name="password"
+                  required
+                  className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text outline-none focus:border-teal"
+                />
+              </label>
+              <div className="text-right">
+                <Link href="/forgot-password" className="text-xs font-semibold text-teal hover:underline">
+                  Forgot password?
+                </Link>
+              </div>
+              <button type="submit" className="btn-accent mt-2 w-full">
+                Sign in
+              </button>
+            </form>
+          );
+
+          return showWhatsAppOtp ? (
+            <LoginMethodTabs passwordForm={passwordForm} otpForm={<WhatsAppOtpLoginForm />} />
+          ) : (
+            <div className="mt-6">{passwordForm}</div>
+          );
+        })()}
 
         {(showGoogle || (showTelegram && telegramBotId)) && (
           <div className="mt-6 flex flex-col gap-3">

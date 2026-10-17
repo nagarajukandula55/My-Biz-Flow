@@ -10,7 +10,7 @@ import { listActivePartnerTypes, type PartnerTypeRecord, type PlanTier } from "@
 // in pageTiers.ts alongside DEFAULT_PAGE_TIERS, so the tier this page
 // ADVERTISES for a plan and the tier the runtime gate ENFORCES for that
 // same plan are computed by one function, not two copies that can drift.
-import { TIER_LABEL, tierForPlanIndex } from "@/lib/designer/pageTiers";
+import { TIER_LABEL, tierForPlan } from "@/lib/designer/pageTiers";
 import { MODULE_TIER_FEATURES } from "@/lib/designer/moduleTiers";
 import { SITE_URL, SITE_NAME } from "@/lib/seo";
 // Real Yearly/2-Year totals (35%/55% off, AN-CRM's actual live discounts --
@@ -20,6 +20,7 @@ import { SITE_URL, SITE_NAME } from "@/lib/seo";
 import { BILLING_CYCLES, CYCLE_DISCOUNT_PCT, computeCyclePrice, currentMonthlyRate, isLaunchPricingActive, cycleLabel } from "@/lib/subscriptionData";
 import { getLocaleFromCookie } from "@/lib/i18n/cookie";
 import { tPublic } from "@/lib/i18n/publicLocales";
+import { getBusinessOffering } from "@/lib/businessOfferings";
 
 // Reads live DB-backed module label overrides / partner type + plan data —
 // must not be permanently baked into a static build. Plans/labels only
@@ -84,7 +85,7 @@ const BUSINESS_TYPE_COPY: Record<string, { heading: string; intro: string }> = {
   pos: {
     heading: "Ring up sales without losing track of stock",
     intro:
-      "A till built for a single-store checkout counter — cart, tender capture, and receipts on Basic, with real-time stock deduction and split-tender payments as you grow into Pro.",
+      "A till with multi-item checkout, tender capture, receipts and real-time stock deduction from Inventory, with sales reporting available on Pro.",
   },
   telecalling: {
     heading: "Turn a contact list into a working call floor",
@@ -161,7 +162,10 @@ export default async function PricingPage({
 }) {
   const locale = getLocaleFromCookie();
   const tp = (key: Parameters<typeof tPublic>[1], vars?: Record<string, string | number>) => tPublic(locale, key, vars);
-  const partnerTypes = await listActivePartnerTypes();
+  // Preview fixtures are deliberately never customer-facing. They are used
+  // only by the isolated homepage smoke test and must not replace the live
+  // Service Centre or other configured packages on the pricing chooser.
+  const partnerTypes = (await listActivePartnerTypes()).filter((t) => !t.id.startsWith("homepage-qa-"));
   const selectedType = searchParams.type
     ? partnerTypes.find((t) => t.id === searchParams.type)
     : undefined;
@@ -221,7 +225,9 @@ export default async function PricingPage({
       url: `${SITE_URL}/pricing${selectedType ? `?type=${encodeURIComponent(selectedType.id)}` : ""}`,
       price: currentMonthlyRate(plan),
       priceCurrency: "INR",
-      description: `Up to ${plan.maxUsers} users, ${plan.maxLocations} location${plan.maxLocations === 1 ? "" : "s"}, ${plan.includedModuleSlugs.length} module${plan.includedModuleSlugs.length === 1 ? "" : "s"} included, billed ${plan.billingCycle}.`,
+      description: plan.includedModuleSlugs.includes("service-centre")
+        ? `Up to ${plan.maxUsers} users, ${plan.maxLocations} location${plan.maxLocations === 1 ? "" : "s"}, ${plan.includedModuleSlugs.length} module${plan.includedModuleSlugs.length === 1 ? "" : "s"} included, billed ${plan.billingCycle}.`
+        : `${plan.includedModuleSlugs.length} module${plan.includedModuleSlugs.length === 1 ? "" : "s"} included, billed ${plan.billingCycle}.`,
     })),
   };
 
@@ -294,7 +300,7 @@ export default async function PricingPage({
                 href={`/pricing?type=${encodeURIComponent(t.id)}`}
                 className="mbf-glass-card flex flex-col p-5"
               >
-                <h2 className="font-display text-base font-bold text-text">{t.id}</h2>
+                <h2 className="font-display text-base font-bold text-text">{getBusinessOffering(t.id)?.title ?? t.description ?? t.id}</h2>
                 <p className="mt-1 flex-1 text-sm text-text-muted">{t.description || "—"}</p>
                 <span className="mt-4 font-semibold text-accent">{tp("seePlans")}</span>
               </Link>
@@ -308,7 +314,7 @@ export default async function PricingPage({
       ) : (
       <div className="mx-auto grid max-w-6xl grid-cols-1 gap-6 px-6 pb-20 sm:grid-cols-3">
         {PLANS.map((plan, i) => {
-          const tier = tierForPlanIndex(i, PLANS.length);
+          const tier = tierForPlan(plan.id, i, PLANS.length);
           const tierFeatures = tierFeaturesForType(selectedType, tier);
           return (
           <div
@@ -336,9 +342,9 @@ export default async function PricingPage({
             {isLaunchPricingActive() && plan.launchPrice != null && (
               <p className="mt-0.5 text-xs font-semibold text-success">{tp("launchPricing")}</p>
             )}
-            <p className="mt-2 text-sm text-text-muted">
+            {plan.includedModuleSlugs.includes("service-centre") && <p className="mt-2 text-sm text-text-muted">
               {tp("upToUsersLocations", { users: plan.maxUsers, locations: plan.maxLocations })}
-            </p>
+            </p>}
             <div className="mt-2 space-y-0.5 text-xs text-text-muted">
               {BILLING_CYCLES.map((c) => (
                 <div key={c}>

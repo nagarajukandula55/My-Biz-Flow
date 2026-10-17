@@ -47,6 +47,7 @@ export const MODULES: ModuleDefinition[] = [
   { slug: "subscriptions", label: "Subscriptions / Membership", description: "Gyms, coaching, clubs — recurring billing and check-in.", taxonomy: "vertical" },
   { slug: "real-estate", label: "Real Estate", description: "Listings, site visits, leads, agreements.", taxonomy: "vertical" },
   { slug: "rentals", label: "Rentals / Booking", description: "Equipment, venue, or asset booking calendar.", taxonomy: "vertical" },
+  { slug: "hotel", label: "Hotel Management", description: "Rooms, reservations, guest stays, housekeeping and guest folios.", taxonomy: "vertical" },
   { slug: "education", label: "Education / Coaching", description: "Student enrollment, batches, fees, attendance.", taxonomy: "vertical" },
   { slug: "manufacturing", label: "Manufacturing / Production", description: "Bill of materials, production work orders, raw material consumption.", taxonomy: "vertical" },
   { slug: "wholesale-b2b", label: "Wholesale / Distributor B2B", description: "Bulk pricing, dealer/distributor accounts, credit terms.", taxonomy: "vertical" },
@@ -335,6 +336,11 @@ export const MODULE_SUB_NAV: Record<string, PartnerNavSubItem[]> = {
     { key: "hrms.leave.list", label: "Leave", href: "hrms/leave" },
     { key: "hrms.payroll.list", label: "Payroll", href: "hrms/payroll" },
   ],
+  hotel: [
+    { key: "hotel.list", label: "Reservations", href: "hotel" },
+    { key: "hotel.create", label: "+ New Reservation", href: "hotel/new" },
+    { key: "hotel.rooms", label: "Rooms and housekeeping", href: "hotel/rooms" },
+  ],
   telecalling: [
     { key: "telecalling.leads", label: "Leads", href: "telecalling" },
     { key: "telecalling.agents", label: "Agents", href: "telecalling/agents" },
@@ -354,6 +360,7 @@ export const MODULE_SUB_NAV: Record<string, PartnerNavSubItem[]> = {
   accounting: [
     { key: "accounting.chart-of-accounts", label: "Chart of Accounts", href: "accounting/chart-of-accounts" },
     { key: "accounting.journal-entries", label: "Journal Entries", href: "accounting/journal-entries" },
+    { key: "accounting.reconciliation", label: "Billing Reconciliation", href: "accounting/reconciliation" },
     { key: "accounting.fiscal-periods", label: "Fiscal Periods", href: "accounting/fiscal-periods" },
     { key: "accounting.reports.trial-balance", label: "Trial Balance", href: "accounting/reports/trial-balance" },
     { key: "accounting.reports.profit-loss", label: "Profit & Loss", href: "accounting/reports/profit-loss" },

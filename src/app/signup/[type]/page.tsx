@@ -1,9 +1,11 @@
+import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PublicHeader } from "@/components/PublicHeader";
 import { registerPage } from "@/lib/designer/registry";
 import { getPartnerType } from "@/lib/designer/partnerTypesData";
 import { SignupForm } from "../SignupForm";
+import { getBusinessOffering } from "@/lib/businessOfferings";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +37,7 @@ export default async function SignupTypePage({
 }) {
   const partnerType = await getPartnerType(params.type);
   if (!partnerType || partnerType.status !== "Active") notFound();
+  const offering = getBusinessOffering(partnerType.id) ?? getBusinessOffering(partnerType.defaultModules[0] ?? "");
 
   return (
     <div className="min-h-screen w-full bg-bg">
@@ -42,12 +45,12 @@ export default async function SignupTypePage({
 
       <div className="mx-auto grid max-w-6xl grid-cols-1 gap-10 px-6 py-12 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div>
-          <h1 className="font-display text-3xl font-bold text-text">Register your {partnerType.id} business</h1>
+          <h1 className="font-display text-3xl font-bold text-text">Register your {offering?.title ?? partnerType.description ?? partnerType.id} business</h1>
           <p className="mt-2 max-w-xl text-sm text-text-muted">
-            You&apos;ll be assigned a Partner ID (e.g. {partnerType.idPrefix}0001) and a one-time password once
-            you submit — no password to make up here.
+            You&apos;ll be assigned a Partner ID (e.g. {partnerType.idPrefix}0001), signed in, and asked to set your password.
           </p>
 
+          <Link className="my-3 inline-flex min-h-11 items-center text-teal underline" href={`${offering ? `/business-types/${offering.slug}` : '/business-types'}${searchParams.ref ? `?ref=${encodeURIComponent(searchParams.ref)}` : ""}`}>Read features and requirements for this business</Link>
           <SignupForm partnerType={partnerType} error={searchParams.error} referralCode={searchParams.ref} />
         </div>
 
@@ -58,13 +61,13 @@ export default async function SignupTypePage({
               <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-accent-soft text-xs font-bold text-accent">
                 1
               </span>
-              We assign your Partner ID and a one-time password.
+              We create your account and assign your Partner ID.
             </li>
             <li className="flex gap-2.5">
               <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-accent-soft text-xs font-bold text-accent">
                 2
               </span>
-              Sign in with your Partner ID (or contact number) and that password.
+              You are signed in automatically.
             </li>
             <li className="flex gap-2.5">
               <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-accent-soft text-xs font-bold text-accent">

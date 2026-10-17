@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { StatusChip } from "@/components/StatusChip";
 import { Modal } from "@/components/Modal";
 import { completeProductionAction, setProductionOrderStatusAction } from "../actions";
-import { PRODUCTION_ORDER_STATUSES, type ProductionOrderStatus } from "@/lib/manufacturing";
+import { PRODUCTION_ORDER_STATUSES, type ProductionOrderStatus } from "@/lib/manufacturingTypes";
 
 const STAGE_ORDER: ProductionOrderStatus[] = ["Planned", "InProduction", "QC", "Completed"];
 

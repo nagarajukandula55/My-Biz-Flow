@@ -3,7 +3,7 @@ import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { requirePartnerSessionForPage } from "@/lib/requirePartnerSession";
-import { listEmployees, getOpenCheckInToday } from "@/lib/hrms";
+import { listEmployees, listOpenCheckIns } from "@/lib/hrms";
 import { AttendanceClient } from "./AttendanceClient";
 
 registerPage({
@@ -26,10 +26,7 @@ export default async function AttendancePage({ params }: { params: { partnerId: 
   const mod = await getModule("hrms");
   const employees = await listEmployees(params.partnerId);
 
-  const openCheckInEntries = await Promise.all(
-    employees.map(async (e) => [e.id, Boolean(await getOpenCheckInToday(e.id))] as const)
-  );
-  const openCheckIns = new Set(openCheckInEntries.filter(([, isOpen]) => isOpen).map(([id]) => id));
+  const openCheckIns = new Set((await listOpenCheckIns(params.partnerId)).map(row => row.employeeId));
 
   return (
     <AppShell
@@ -45,6 +42,9 @@ export default async function AttendancePage({ params }: { params: { partnerId: 
           Check in or out for an employee. Location is captured from this browser/device and validated against
           registered office geofences.
         </p>
+        <p className="mt-2 text-sm text-text-muted">Attendance is recorded from the business login. Device location does not verify the selected employee&apos;s identity; facial recognition is not enabled.</p>
+        <Link href={`/partner/${params.partnerId}/hrms/office-locations`} className="mt-3 inline-flex min-h-11 items-center text-teal underline">Set up office geofences</Link>
+        <Link href={`/partner/${params.partnerId}/hrms/employee-access`} className="ml-4 mt-3 inline-flex min-h-11 items-center text-teal underline">Manage employee attendance logins</Link>
         <div className="mt-6">
           <AttendanceClient
             partnerId={params.partnerId}

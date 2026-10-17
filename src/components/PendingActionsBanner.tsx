@@ -25,11 +25,13 @@ export function PendingActionsBanner({
   subscriptionStatus,
   trialEndAt,
   telegramConnected,
+  telegramPath = "service-centre/telegram",
 }: {
   partnerId: string;
   subscriptionStatus: string;
   trialEndAt: Date | null;
   telegramConnected: boolean;
+  telegramPath?: string;
 }) {
   const daysToTrialEnd = trialEndAt
     ? Math.ceil((trialEndAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
@@ -61,7 +63,7 @@ export function PendingActionsBanner({
       )}
       {!telegramConnected && (
         <Link
-          href={`/partner/${partnerId}/service-centre/telegram`}
+          href={`/partner/${partnerId}/${telegramPath}`}
           className="flex items-center justify-between gap-3 bg-warning px-4 py-2 text-sm font-medium text-black hover:bg-warning/90"
         >
           <span>Telegram isn&apos;t connected — you won&apos;t receive daily reports or alerts until you connect it.</span>

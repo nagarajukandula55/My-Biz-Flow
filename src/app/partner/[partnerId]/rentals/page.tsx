@@ -35,6 +35,7 @@ export const dynamic = "force-dynamic";
 
 const columns: Column[] = [
   { key: "assetName", label: "Asset / Venue Name", type: "text" },
+  { key: "quantity", label: "Units", type: "text" },
   { key: "renter", label: "Renter", type: "text" },
   { key: "bookingStart", label: "Booking Start", type: "date" },
   { key: "bookingEnd", label: "Booking End", type: "date" },
@@ -50,6 +51,7 @@ export default async function RentalsPage({ params }: { params: { partnerId: str
   const rows: Row[] = agreements.map((a) => ({
     id: a.id,
     assetName: a.assetName,
+    quantity: a.quantity,
     renter: a.renter,
     bookingStart: a.bookingStart.toISOString(),
     bookingEnd: a.bookingEnd.toISOString(),

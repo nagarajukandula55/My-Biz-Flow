@@ -4,6 +4,16 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import { getNextNumber } from "@/lib/designer/numbering";
+import { reverseJournal } from "@/lib/accountingReversal";
+
+export async function reverseJournalAction(partnerId: string, originalId: string, values: Record<string, unknown>): Promise<void | { error?: string }> {
+  await requireSessionPartnerId(partnerId);
+  let id: string;
+  try { id = (await reverseJournal(partnerId, originalId, values)).id; }
+  catch (error) { return { error: error instanceof Error ? error.message : "Could not reverse journal." }; }
+  revalidatePath(`/partner/${partnerId}/accounting`, "layout");
+  redirect(`/partner/${partnerId}/accounting/journal-entries/${id}`);
+}
 import {
   createChartOfAccount,
   updateChartOfAccount,
@@ -51,8 +61,8 @@ export async function createChartOfAccountAction(
   let created;
   try {
     created = await createChartOfAccount(partnerId, input);
-  } catch {
-    return { error: "An account with this Account Code already exists." };
+  } catch (error) {
+    return { error: error instanceof Error && !error.message.includes("prisma") ? error.message : "Could not save account. Check that the account code is unique." };
   }
 
   revalidatePath(`/partner/${partnerId}/accounting/chart-of-accounts`);
@@ -80,7 +90,9 @@ export async function updateChartOfAccountAction(
     isActive: values["isActive"] !== false,
   };
 
-  const updated = await updateChartOfAccount(partnerId, accountId, input);
+  let updated;
+  try { updated = await updateChartOfAccount(partnerId, accountId, input); }
+  catch (error) { return { error: error instanceof Error && !error.message.includes("prisma") ? error.message : "Could not update account." }; }
   if (!updated) return { error: "Account not found." };
 
   revalidatePath(`/partner/${partnerId}/accounting/chart-of-accounts`);
@@ -130,8 +142,8 @@ export async function reopenFiscalPeriodAction(partnerId: string, id: string): P
 function toPaiseLines(lines: { accountId: string; debit: number; credit: number }[]): JournalLineInput[] {
   return lines.map((l) => ({
     accountId: l.accountId,
-    debit: Math.round((Number(l.debit) || 0) * 100),
-    credit: Math.round((Number(l.credit) || 0) * 100),
+    debit: Math.round(Number(l.debit ?? 0) * 100),
+    credit: Math.round(Number(l.credit ?? 0) * 100),
   }));
 }
 

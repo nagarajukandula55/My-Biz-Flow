@@ -1,6 +1,7 @@
 "use client";
 
 import type { Column, Row } from "@/components/DataTable";
+import { useState } from "react";
 import { formatDateForExport } from "@/lib/format";
 
 function toCsvValue(value: unknown): string {
@@ -21,11 +22,17 @@ function formatExportCell(c: Column, row: Row): unknown {
   return value;
 }
 
-/** Client-side CSV export — only ever rendered when the OTP gate has already unlocked this page (see page.tsx), so no separate server check is needed to build the file, but the underlying data itself was only fetched server-side after the same unlock check. */
-export function CustomerDataExportButton({ columns, rows }: { columns: Column[]; rows: Row[] }) {
-  function handleExport() {
+/** The optional server loader rechecks the OTP unlock when export is clicked. */
+export function CustomerDataExportButton({ columns, rows = [], loadRows }: { columns: Column[]; rows?: Row[]; loadRows?: () => Promise<Row[]> }) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
+  async function handleExport() {
+    setLoading(true);
+    setError(false);
+    try {
+    const exportRows = loadRows ? await loadRows() : rows;
     const header = columns.map((c) => toCsvValue(c.label)).join(",");
-    const lines = rows.map((row) => columns.map((c) => toCsvValue(formatExportCell(c, row))).join(","));
+    const lines = exportRows.map((row) => columns.map((c) => toCsvValue(formatExportCell(c, row))).join(","));
     const csv = [header, ...lines].join("\n");
     const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -34,11 +41,19 @@ export function CustomerDataExportButton({ columns, rows }: { columns: Column[];
     a.download = `customers-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
-    <button type="button" onClick={handleExport} className="btn-outline">
+    <div className="flex items-center gap-2">
+    <button type="button" disabled={loading} onClick={handleExport} className="btn-outline">
       Export CSV
     </button>
+    {error && <span role="alert" className="text-xs text-text-muted">Export unavailable. Refresh and unlock customer data again.</span>}
+    </div>
   );
 }

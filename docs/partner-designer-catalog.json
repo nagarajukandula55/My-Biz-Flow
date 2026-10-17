@@ -337,6 +337,17 @@
     "sourceFile": "src/app/partner/[partnerId]/accounting/journal-entries/page.tsx"
   },
   {
+    "id": "accounting.reconciliation",
+    "moduleSlug": "accounting",
+    "title": "Accounting — Billing reconciliation",
+    "path": "/partner/[partnerId]/accounting/reconciliation",
+    "kind": "list",
+    "superAdminOnly": false,
+    "customizableRegions": [],
+    "explanation": "Owner review of invoice totals against linked ledger revenue, tax liability and asset balances. Requires Accounting and Billing. Paginates fifty invoices and never changes an invoice or creates a posting automatically.",
+    "sourceFile": "src/app/partner/[partnerId]/accounting/reconciliation/page.tsx"
+  },
+  {
     "id": "accounting.reports.balance-sheet",
     "moduleSlug": "accounting",
     "title": "Accounting — Balance Sheet",
@@ -2329,6 +2340,17 @@
     "sourceFile": "src/app/partner/[partnerId]/field-force/bookings/new/page.tsx"
   },
   {
+    "id": "field-force.companies",
+    "moduleSlug": "field-force",
+    "title": "Field Force — Companies",
+    "path": "/partner/[partnerId]/field-force/companies",
+    "kind": "list",
+    "superAdminOnly": false,
+    "customizableRegions": [],
+    "explanation": "An upstream OEM/brand this partner does job work for, distinct from the end Customer on a Booking. Each Company has its own saved CSV column mapping (columnMapping on FieldForceCompany) — set it up once, then every future job-data file from that company auto-maps and bulk-creates real Bookings tagged with that company, each one auto-dispatched to the nearest eligible engineer by pincode (see src/lib/fieldForce/companyImport.ts, matchingEngine.ts, geo.ts).",
+    "sourceFile": "src/app/partner/[partnerId]/field-force/companies/page.tsx"
+  },
+  {
     "id": "field-force.customer.book",
     "moduleSlug": "field-force",
     "title": "Field Force — Customer Booking",
@@ -2369,7 +2391,7 @@
     "kind": "form",
     "superAdminOnly": false,
     "customizableRegions": [],
-    "explanation": "Public login page for a self-signed-up Customer — verifies phone+password, sets the mbf_ff_customer_session cookie.",
+    "explanation": "Public login page for a self-signed-up Customer — verifies phone+password, sets the mbf_ff_customer_session cookie. When WHATSAPP_OTP_TEMPLATE_NAME is configured, a second \"WhatsApp OTP\" tab is also offered (same cookie on success) — see whatsappOtpLoginConfigured() in src/lib/env.ts.",
     "sourceFile": "src/app/partner/[partnerId]/field-force/customer/login/page.tsx"
   },
   {
@@ -2444,6 +2466,89 @@
     "sourceFile": "src/app/partner/[partnerId]/field-force/provider/signup/page.tsx"
   },
   {
+    "id": "field-force.provider.wallet",
+    "moduleSlug": "field-force",
+    "title": "Field Force — My Wallet",
+    "path": "/partner/[partnerId]/field-force/provider/wallet",
+    "kind": "dashboard",
+    "superAdminOnly": false,
+    "customizableRegions": [],
+    "explanation": "An engineer's own wallet — scaffolding for job-payout settlement, reusing the same generic wallet system Telecalling's agent wallet already uses (getWalletStatement/WalletPanel, keyed by ownerType \"FIELD_FORCE_PROVIDER\"). Per explicit product decision, nothing credits this automatically yet — completed-job payouts (Booking.providerPayout, src/lib/fieldForce/commission.ts) are settled manually outside the app for now; src/lib/walletClient.ts's creditProviderPayout() exists ready to wire in once automatic settlement is wanted. Reached only via the engineer's own login.",
+    "sourceFile": "src/app/partner/[partnerId]/field-force/provider/wallet/page.tsx"
+  },
+  {
+    "id": "hotel.create",
+    "moduleSlug": "hotel",
+    "title": "New hotel reservation",
+    "path": "/partner/[partnerId]/hotel/new",
+    "kind": "form",
+    "superAdminOnly": false,
+    "customizableRegions": [
+      {
+        "key": "form-fields",
+        "label": "Reservation fields"
+      }
+    ],
+    "explanation": "Reserves one room or an atomic group of up to 20 rooms. Dates, capacity, availability and nightly rate snapshots are validated together; each group room retains an independent folio.",
+    "sourceFile": "src/app/partner/[partnerId]/hotel/new/page.tsx"
+  },
+  {
+    "id": "hotel.detail",
+    "moduleSlug": "hotel",
+    "title": "Hotel stay and folio",
+    "path": "/partner/[partnerId]/hotel/[recordId]",
+    "kind": "detail",
+    "superAdminOnly": false,
+    "customizableRegions": [
+      {
+        "key": "field-grid",
+        "label": "Guest stay details"
+      },
+      {
+        "key": "table",
+        "label": "Folio entries"
+      }
+    ],
+    "explanation": "Manage linked group rooms and two-payer folios. Allocate room charges before the first financial entry; record payer-specific extras, external payments and refunds with duplicate-reference protection. Checkout requires every payer balance settled and marks the room dirty.",
+    "sourceFile": "src/app/partner/[partnerId]/hotel/[recordId]/page.tsx"
+  },
+  {
+    "id": "hotel.list",
+    "moduleSlug": "hotel",
+    "title": "Hotel reservations",
+    "path": "/partner/[partnerId]/hotel",
+    "kind": "list",
+    "superAdminOnly": false,
+    "customizableRegions": [
+      {
+        "key": "table",
+        "label": "Reservation table"
+      }
+    ],
+    "explanation": "Paginated guest reservations with room, dates, status and outstanding folio balance. Booking details provide check-in/out and payment recording.",
+    "sourceFile": "src/app/partner/[partnerId]/hotel/page.tsx"
+  },
+  {
+    "id": "hotel.rooms",
+    "moduleSlug": "hotel",
+    "title": "Hotel rooms and housekeeping",
+    "path": "/partner/[partnerId]/hotel/rooms",
+    "kind": "form",
+    "superAdminOnly": false,
+    "customizableRegions": [
+      {
+        "key": "form-fields",
+        "label": "Room configuration"
+      },
+      {
+        "key": "table",
+        "label": "Room inventory"
+      }
+    ],
+    "explanation": "Room names, types, capacity and nightly rates plus Ready/Dirty/Out of service housekeeping states. Occupied rooms cannot be edited.",
+    "sourceFile": "src/app/partner/[partnerId]/hotel/rooms/page.tsx"
+  },
+  {
     "id": "hrms.attendance",
     "moduleSlug": "hrms",
     "title": "HRMS / Payroll — Attendance",
@@ -2497,6 +2602,28 @@
     "customizableRegions": [],
     "explanation": "Edits an existing Employee row — name/contact/email/department/designation/reporting manager/joining date/status.",
     "sourceFile": "src/app/partner/[partnerId]/hrms/[recordId]/edit/page.tsx"
+  },
+  {
+    "id": "hrms.employee",
+    "moduleSlug": "hrms",
+    "title": "Employee attendance",
+    "path": "/partner/[partnerId]/hrms/employee",
+    "kind": "form",
+    "superAdminOnly": false,
+    "customizableRegions": [],
+    "explanation": "Employee-only password login and geofenced attendance. Identity comes from a dedicated revocable session. Temporary passwords must be replaced before attendance is allowed.",
+    "sourceFile": "src/app/partner/[partnerId]/hrms/employee/page.tsx"
+  },
+  {
+    "id": "hrms.employee-access",
+    "moduleSlug": "hrms",
+    "title": "Employee attendance access",
+    "path": "/partner/[partnerId]/hrms/employee-access",
+    "kind": "form",
+    "superAdminOnly": false,
+    "customizableRegions": [],
+    "explanation": "Business owners issue, reset or disable dedicated employee attendance credentials. No existing staff role or business access is modified.",
+    "sourceFile": "src/app/partner/[partnerId]/hrms/employee-access/page.tsx"
   },
   {
     "id": "hrms.leave.create",
@@ -2872,7 +2999,7 @@
         "label": "Activity timeline"
       }
     ],
-    "explanation": "Detail view of a single stock adjustment — an audit-trail document, but editable via 'Edit' (see updateStockAdjustmentAction): saving reverses the original delta against the real Stock ledger and re-applies the edited one, so the ledger stays correct rather than double-counting.",
+    "explanation": "Detail view of a single stock adjustment — an audit-trail document. Not editable after creation: a stock adjustment applies its delta to the real Stock ledger immediately on create, so it's finished the moment it exists (corrections go through a new adjustment, not an edit of the old one).",
     "sourceFile": "src/app/partner/[partnerId]/inventory/stock-adjustments/[recordId]/page.tsx"
   },
   {
@@ -3958,9 +4085,13 @@
       {
         "key": "average-tat-card",
         "label": "Average turnaround time — closed workorders (Service Centre)"
+      },
+      {
+        "key": "telecalling-section",
+        "label": "Leads/Calls summary, status breakdown, agent leaderboard (Telecalling)"
       }
     ],
-    "explanation": "Partner analytics uses the authenticated owner or administrator and active module entitlements. Queries and charts are limited to enabled modules. Combined reports require both Billing and Service Centre.",
+    "explanation": "Partner analytics uses the authenticated owner or administrator and active module entitlements. Queries and charts are limited to enabled modules. Combined reports require both Billing and Service Centre. A partner with Telecalling enabled also gets a Leads/Calls summary section (src/lib/telecalling/analyticsData.ts) — previously this page only ever queried Billing/Service Centre data, so a Telecalling-only partner saw a blank page.",
     "sourceFile": "src/app/partner/[partnerId]/analytics/page.tsx"
   },
   {
@@ -3995,7 +4126,7 @@
     "kind": "other",
     "superAdminOnly": false,
     "customizableRegions": [],
-    "explanation": "Static written help center covering this app's own features (Workorders/Service Centre, Brands/Models/Solutions, Service Centre BOM, Customers, Billing & Invoices, Settings, Telegram Alerts) — an accordion of Q&A entries grouped by topic (HelpAccordion.tsx, a small Client Component so each answer can expand/collapse), no database/model behind it, no tutorial videos yet. Written fresh for My Biz Flow's actual feature set; not a port of any other AN Group product's help content. Reached from the Partner Admin nav group (buildPartnerAdminNavGroups, src/lib/designer/partnerAdminNav.ts) alongside Settings and Subscription.",
+    "explanation": "Written help center (accordion of Q&A entries grouped by topic, HelpAccordion.tsx) covering this app's own features (Workorders/Service Centre, Brands/Models/Solutions, Service Centre BOM, Customers, Billing & Invoices, Settings, Telegram Alerts), PLUS YouTube tutorial videos pulled from the shared `tutorial_videos` table (src/lib/tutorialVideosData.ts), managed from My-Biz-Flow-Admin's /admin/tutorials. Each partner only sees videos tagged with a module they're actually subscribed to (or untagged/general ones) via getVisibleModuleSlugs — general videos show in a grid at the top, section-pinned videos render inline inside that accordion section. Written fresh for My Biz Flow's actual feature set; not a port of any other AN Group product's help content. Reached from the Partner Admin nav group (buildPartnerAdminNavGroups, src/lib/designer/partnerAdminNav.ts) alongside Settings and Subscription.",
     "sourceFile": "src/app/partner/[partnerId]/help/page.tsx"
   },
   {
@@ -4008,6 +4139,17 @@
     "customizableRegions": [],
     "explanation": "The partner's own account page — login id, business identity, and which of the platform's modules they currently have access to vs. what exists in the catalog. Entitlement-driven throughout (getVisibleModules, src/lib/designer/entitlements.ts): a module only shows as 'Active' here once both enabled for the partner's type AND an active access key has been issued.",
     "sourceFile": "src/app/partner/[partnerId]/profile/page.tsx"
+  },
+  {
+    "id": "platform.wallet",
+    "moduleSlug": "platform",
+    "title": "Wallet",
+    "path": "/partner/[partnerId]/wallet",
+    "kind": "dashboard",
+    "superAdminOnly": false,
+    "customizableRegions": [],
+    "explanation": "The partner's own ANy Pay wallet — real money, not promo credit. Shows referral commission (10% on a referred partner's first payment) and any manual adjustments, with a withdrawal request form. Balance/statement are read live from AN-Accounting's wallet ledger (src/lib/walletClient.ts); this app never stores the balance itself.",
+    "sourceFile": "src/app/partner/[partnerId]/wallet/page.tsx"
   },
   {
     "id": "pos.checkout",
@@ -5600,6 +5742,17 @@
     "sourceFile": "src/app/partner/[partnerId]/service-centre/telegram/page.tsx"
   },
   {
+    "id": "settings.module-notifications",
+    "moduleSlug": "platform",
+    "title": "Module Telegram notifications",
+    "path": "/partner/[partnerId]/settings/notifications",
+    "kind": "form",
+    "superAdminOnly": false,
+    "customizableRegions": [],
+    "explanation": "Owner-scoped Telegram routing and module digest selection. Only active modules and implemented events are offered. Service Centre uses its existing notification controls. Saving preserves connected chats and unrelated preferences.",
+    "sourceFile": "src/app/partner/[partnerId]/settings/notifications/page.tsx"
+  },
+  {
     "id": "settings.partner",
     "moduleSlug": "platform",
     "title": "Settings — Partner Profile",
@@ -5828,6 +5981,17 @@
     "customizableRegions": [],
     "explanation": "SMS/WhatsApp message templates agents can trigger for a Lead (Welcome, product info with links, follow-ups). {{name}}/{{link}} placeholders are filled in per-lead at send time. Real data — Prisma-backed (MessageTemplate table, scoped to this partner). Actual delivery uses src/lib/sms.ts / src/lib/whatsapp.ts, which no-op until real provider keys are set.",
     "sourceFile": "src/app/partner/[partnerId]/telecalling/templates/page.tsx"
+  },
+  {
+    "id": "telecalling.wallet",
+    "moduleSlug": "telecalling",
+    "title": "Telecalling — My Wallet",
+    "path": "/partner/[partnerId]/telecalling/wallet",
+    "kind": "dashboard",
+    "superAdminOnly": false,
+    "customizableRegions": [],
+    "explanation": "A Telecaller agent's own ANy Pay wallet — the 10% referral commission earned when someone they referred (their loginId entered as the referral code at /signup) makes their first plan payment. Reached only via the agent's own login, same as the call queue. Real money, read live from AN-Accounting's wallet ledger.",
+    "sourceFile": "src/app/partner/[partnerId]/telecalling/wallet/page.tsx"
   },
   {
     "id": "wholesale-b2b.create",

@@ -228,6 +228,7 @@ import "@/app/partner/[partnerId]/accounting/chart-of-accounts/page";
 import "@/app/partner/[partnerId]/accounting/chart-of-accounts/new/page";
 import "@/app/partner/[partnerId]/accounting/chart-of-accounts/[recordId]/edit/page";
 import "@/app/partner/[partnerId]/accounting/journal-entries/page";
+import "@/app/partner/[partnerId]/accounting/reconciliation/page";
 import "@/app/partner/[partnerId]/accounting/journal-entries/new/page";
 import "@/app/partner/[partnerId]/accounting/journal-entries/[recordId]/page";
 import "@/app/partner/[partnerId]/accounting/fiscal-periods/page";
@@ -391,3 +392,16 @@ import "@/app/partner/[partnerId]/billing/proforma-invoices/[recordId]/edit/page
 import "@/app/partner/[partnerId]/billing/quotations/[recordId]/document/page";
 import "@/app/partner/[partnerId]/billing/quotations/[recordId]/edit/page";
 import "@/app/partner/[partnerId]/accounting/page";
+import "@/app/partner/[partnerId]/telecalling/wallet/page";
+import "@/app/partner/[partnerId]/inventory/stock/[recordId]/edit/page";
+import "@/app/partner/[partnerId]/inventory/stock-adjustments/[recordId]/edit/page";
+import "@/app/partner/[partnerId]/settings/notifications/page";
+
+import "@/app/business-types/page";
+import "@/app/business-types/[type]/page";
+import "@/app/partner/[partnerId]/hrms/employee/page";
+import "@/app/partner/[partnerId]/hrms/employee-access/page";
+import "@/app/partner/[partnerId]/hotel/page";
+import "@/app/partner/[partnerId]/hotel/new/page";
+import "@/app/partner/[partnerId]/hotel/rooms/page";
+import "@/app/partner/[partnerId]/hotel/[recordId]/page";

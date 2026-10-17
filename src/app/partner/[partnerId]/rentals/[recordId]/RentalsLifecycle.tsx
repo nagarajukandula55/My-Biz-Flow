@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { StatusChip } from "@/components/StatusChip";
 import { Modal } from "@/components/Modal";
-import { computeOverdueDays } from "@/lib/rentals";
+import { computeOverdueDays } from "@/lib/rentalRules";
 import { returnAssetAction } from "../actions";
 
 export function RentalsLifecycle({
@@ -15,6 +16,7 @@ export function RentalsLifecycle({
   returned: initialReturned,
   refundableAmount: initialRefundableAmount,
   damageCharge: initialDamageCharge,
+  allowWholeReturn = true,
 }: {
   partnerId: string;
   bookingId: string;
@@ -24,21 +26,23 @@ export function RentalsLifecycle({
   returned?: boolean;
   refundableAmount?: number; // rupees
   damageCharge?: number; // rupees
+  allowWholeReturn?: boolean;
 }) {
+  const router = useRouter();
   const [returned, setReturned] = useState(Boolean(initialReturned));
   const [refundableAmount, setRefundableAmount] = useState(initialRefundableAmount);
   const [damageCharge, setDamageCharge] = useState(String(initialDamageCharge ?? ""));
   const [returnNotes, setReturnNotes] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [, startTransition] = useTransition();
+  const [pending, startTransition] = useTransition();
 
   const overdueDays = computeOverdueDays(bookingEnd ? new Date(bookingEnd) : undefined, returned);
 
   function confirmReturn() {
-    const damage = Number(damageCharge) || 0;
-    if (damage < 0) {
-      setError("Damage charge can't be negative.");
+    const damage = Number(damageCharge);
+    if (!Number.isFinite(damage) || damage < 0) {
+      setError("Enter a valid non-negative damage charge.");
       return;
     }
     startTransition(async () => {
@@ -51,13 +55,14 @@ export function RentalsLifecycle({
       setRefundableAmount(result.refundableAmount);
       setModalOpen(false);
       setError(null);
+      router.refresh();
     });
   }
 
   return (
     <div>
       <div className="flex flex-wrap items-center gap-2">
-        <StatusChip label={status ?? "Booking"} variant={returned ? "success" : "teal"} />
+        <StatusChip label={returned ? "Completed" : status ?? "Booking"} variant={returned ? "success" : "teal"} />
         {overdueDays > 0 && (
           <StatusChip label={`Overdue — ${overdueDays} day${overdueDays === 1 ? "" : "s"}`} variant="danger" />
         )}
@@ -77,13 +82,14 @@ export function RentalsLifecycle({
         </div>
         {refundableAmount !== undefined && (
           <div className="rounded-md border border-border bg-bg-raised px-3 py-2 text-sm">
-            <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">Refundable</div>
+            <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">Contract deposit less damage</div>
             <div className="mt-0.5 text-text">₹{refundableAmount}</div>
           </div>
         )}
       </div>
 
-      {!returned && (
+      <p className="mt-3 text-sm text-text-muted">This contract calculation assumes the full deposit was paid. Check Receipts and refunds below for the refund due from actual recorded payments.</p>
+      {allowWholeReturn && !returned && status !== "Cancelled" && (
         <div className="mt-6">
           <button type="button" className="btn-accent" onClick={() => setModalOpen(true)}>
             Return Asset
@@ -101,8 +107,8 @@ export function RentalsLifecycle({
             <button type="button" className="btn-outline" onClick={() => setModalOpen(false)}>
               Cancel
             </button>
-            <button type="button" className="btn-accent" onClick={confirmReturn}>
-              Confirm Return
+            <button type="button" className="btn-accent" disabled={pending} onClick={confirmReturn}>
+              {pending ? "Saving…" : "Confirm Return"}
             </button>
           </>
         }

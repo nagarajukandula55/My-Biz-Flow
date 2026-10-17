@@ -1,0 +1,967 @@
+{
+  "checkedAt": "2026-10-07T15:07:37.059Z",
+  "scope": "Read-only catalog; no customer data",
+  "catalog": {
+    "types": [
+      {
+        "id": "amc-field-service",
+        "status": "Active",
+        "idPrefix": "AMC",
+        "defaultModules": [
+          "amc-field-service",
+          "billing"
+        ],
+        "planIds": [
+          "PLAN-AMCFIELDSERVICE-BASIC",
+          "PLAN-AMCFIELDSERVICE-PRO",
+          "PLAN-AMCFIELDSERVICE-ULTIMATE"
+        ],
+        "planTierByPage": {}
+      },
+      {
+        "id": "billing",
+        "status": "Active",
+        "idPrefix": "BIL",
+        "defaultModules": [
+          "billing"
+        ],
+        "planIds": [],
+        "planTierByPage": {}
+      },
+      {
+        "id": "clinic",
+        "status": "Active",
+        "idPrefix": "CLN",
+        "defaultModules": [
+          "clinic",
+          "billing"
+        ],
+        "planIds": [
+          "PLAN-CLINIC-BASIC",
+          "PLAN-CLINIC-PRO",
+          "PLAN-CLINIC-ULTIMATE"
+        ],
+        "planTierByPage": {}
+      },
+      {
+        "id": "education",
+        "status": "Active",
+        "idPrefix": "EDU",
+        "defaultModules": [
+          "education",
+          "billing",
+          "hrms",
+          "marketplace",
+          "accounting"
+        ],
+        "planIds": [
+          "PLAN-EDUCATION-BASIC",
+          "PLAN-EDUCATION-PRO",
+          "PLAN-EDUCATION-ULTIMATE"
+        ],
+        "planTierByPage": {}
+      },
+      {
+        "id": "event-booking",
+        "status": "Active",
+        "idPrefix": "EVB",
+        "defaultModules": [
+          "event-booking",
+          "billing",
+          "hrms",
+          "marketplace",
+          "accounting"
+        ],
+        "planIds": [
+          "PLAN-EVENTBOOKING-BASIC",
+          "PLAN-EVENTBOOKING-PRO",
+          "PLAN-EVENTBOOKING-ULTIMATE"
+        ],
+        "planTierByPage": {}
+      },
+      {
+        "id": "field-force",
+        "status": "Active",
+        "idPrefix": "FF",
+        "defaultModules": [
+          "field-force"
+        ],
+        "planIds": [
+          "PLAN-FIELDFORCE-FREE"
+        ],
+        "planTierByPage": {}
+      },
+      {
+        "id": "legal",
+        "status": "Active",
+        "idPrefix": "LGL",
+        "defaultModules": [
+          "legal",
+          "billing",
+          "hrms",
+          "marketplace",
+          "accounting"
+        ],
+        "planIds": [
+          "PLAN-LEGAL-BASIC",
+          "PLAN-LEGAL-PRO",
+          "PLAN-LEGAL-ULTIMATE"
+        ],
+        "planTierByPage": {}
+      },
+      {
+        "id": "logistics-fleet",
+        "status": "Active",
+        "idPrefix": "LOG",
+        "defaultModules": [
+          "logistics-fleet"
+        ],
+        "planIds": [
+          "PLAN-LOGISTICSFLEET-BASIC",
+          "PLAN-LOGISTICSFLEET-PRO",
+          "PLAN-LOGISTICSFLEET-ULTIMATE"
+        ],
+        "planTierByPage": {}
+      },
+      {
+        "id": "loyalty-rewards",
+        "status": "Active",
+        "idPrefix": "LOY",
+        "defaultModules": [
+          "loyalty-rewards"
+        ],
+        "planIds": [],
+        "planTierByPage": {}
+      },
+      {
+        "id": "manufacturing",
+        "status": "Active",
+        "idPrefix": "MFG",
+        "defaultModules": [
+          "manufacturing",
+          "billing",
+          "hrms",
+          "marketplace",
+          "accounting"
+        ],
+        "planIds": [
+          "PLAN-MANUFACTURING-BASIC",
+          "PLAN-MANUFACTURING-PRO",
+          "PLAN-MANUFACTURING-ULTIMATE"
+        ],
+        "planTierByPage": {}
+      },
+      {
+        "id": "pos",
+        "status": "Active",
+        "idPrefix": "POS",
+        "defaultModules": [
+          "pos",
+          "billing",
+          "inventory"
+        ],
+        "planIds": [
+          "PLAN-POS-BASIC",
+          "PLAN-POS-PRO",
+          "PLAN-POS-ULTIMATE"
+        ],
+        "planTierByPage": {}
+      },
+      {
+        "id": "real-estate",
+        "status": "Active",
+        "idPrefix": "RLE",
+        "defaultModules": [
+          "real-estate"
+        ],
+        "planIds": [
+          "PLAN-REALESTATE-BASIC",
+          "PLAN-REALESTATE-PRO",
+          "PLAN-REALESTATE-ULTIMATE"
+        ],
+        "planTierByPage": {}
+      },
+      {
+        "id": "rentals",
+        "status": "Active",
+        "idPrefix": "RNT",
+        "defaultModules": [
+          "rentals"
+        ],
+        "planIds": [
+          "PLAN-RENTALS-BASIC",
+          "PLAN-RENTALS-PRO",
+          "PLAN-RENTALS-ULTIMATE"
+        ],
+        "planTierByPage": {}
+      },
+      {
+        "id": "restaurant-pos",
+        "status": "Active",
+        "idPrefix": "RPO",
+        "defaultModules": [
+          "restaurant-pos",
+          "billing"
+        ],
+        "planIds": [
+          "PLAN-RESTAURANTPOS-BASIC",
+          "PLAN-RESTAURANTPOS-PRO",
+          "PLAN-RESTAURANTPOS-ULTIMATE"
+        ],
+        "planTierByPage": {}
+      },
+      {
+        "id": "salon-spa",
+        "status": "Active",
+        "idPrefix": "SPA",
+        "defaultModules": [
+          "salon-spa",
+          "billing"
+        ],
+        "planIds": [
+          "PLAN-SALONSPA-BASIC",
+          "PLAN-SALONSPA-PRO",
+          "PLAN-SALONSPA-ULTIMATE"
+        ],
+        "planTierByPage": {}
+      },
+      {
+        "id": "service-centre",
+        "status": "Active",
+        "idPrefix": "SC",
+        "defaultModules": [
+          "service-centre",
+          "inventory",
+          "billing"
+        ],
+        "planIds": [
+          "PLAN-BASIC",
+          "PLAN-PRO",
+          "PLAN-ULTIMATE"
+        ],
+        "planTierByPage": {
+          "service-centre.list": "basic",
+          "inventory.bom.create": "pro",
+          "billing.expenses.list": "ultimate",
+          "service-centre.create": "basic",
+          "service-centre.detail": "basic",
+          "billing.recurring.list": "pro",
+          "service-centre.sub-scs": "ultimate",
+          "billing.expenses.create": "ultimate",
+          "billing.quotations.list": "pro",
+          "billing.recurring.create": "pro",
+          "billing.credit-notes.list": "pro",
+          "billing.quotations.create": "pro",
+          "service-centre.brands.list": "pro",
+          "service-centre.models.list": "pro",
+          "billing.credit-notes.create": "pro",
+          "billing.reports.profit-loss": "ultimate",
+          "service-centre.brands.create": "pro",
+          "service-centre.models.create": "pro",
+          "service-centre.solutions.list": "basic",
+          "billing.delivery-challans.list": "pro",
+          "billing.proforma-invoices.list": "pro",
+          "service-centre.fault-codes.list": "pro",
+          "service-centre.solutions.create": "basic",
+          "service-centre.staff-names.list": "pro",
+          "billing.delivery-challans.create": "pro",
+          "billing.proforma-invoices.create": "pro",
+          "service-centre.fault-codes.create": "pro",
+          "service-centre.staff-names.create": "pro",
+          "service-centre.symptom-codes.list": "pro",
+          "service-centre.symptom-codes.create": "pro"
+        }
+      },
+      {
+        "id": "subscriptions",
+        "status": "Active",
+        "idPrefix": "SUB",
+        "defaultModules": [
+          "subscriptions"
+        ],
+        "planIds": [
+          "PLAN-SUBSCRIPTIONS-BASIC",
+          "PLAN-SUBSCRIPTIONS-PRO",
+          "PLAN-SUBSCRIPTIONS-ULTIMATE"
+        ],
+        "planTierByPage": {}
+      },
+      {
+        "id": "telecalling",
+        "status": "Active",
+        "idPrefix": "CC",
+        "defaultModules": [
+          "telecalling"
+        ],
+        "planIds": [
+          "PLAN-TELECALLING-BASIC",
+          "PLAN-TELECALLING-PRO",
+          "PLAN-TELECALLING-ULTIMATE"
+        ],
+        "planTierByPage": {}
+      },
+      {
+        "id": "wholesale-b2b",
+        "status": "Active",
+        "idPrefix": "WSB",
+        "defaultModules": [
+          "wholesale-b2b",
+          "billing",
+          "hrms",
+          "marketplace",
+          "accounting"
+        ],
+        "planIds": [
+          "PLAN-WHOLESALEB2B-BASIC",
+          "PLAN-WHOLESALEB2B-PRO",
+          "PLAN-WHOLESALEB2B-ULTIMATE"
+        ],
+        "planTierByPage": {}
+      }
+    ],
+    "plans": [
+      {
+        "id": "PLAN-AMCFIELDSERVICE-BASIC",
+        "name": "Starter",
+        "price": 499,
+        "launchPrice": null,
+        "billingCycle": "monthly",
+        "includedModuleSlugs": [
+          "amc-field-service"
+        ],
+        "maxUsers": 2,
+        "maxLocations": 1,
+        "isPublic": true
+      },
+      {
+        "id": "PLAN-AMCFIELDSERVICE-PRO",
+        "name": "Pro",
+        "price": 799,
+        "launchPrice": null,
+        "billingCycle": "monthly",
+        "includedModuleSlugs": [
+          "amc-field-service"
+        ],
+        "maxUsers": 10,
+        "maxLocations": 3,
+        "isPublic": true
+      },
+      {
+        "id": "PLAN-AMCFIELDSERVICE-ULTIMATE",
+        "name": "Ultimate",
+        "price": 2499,
+        "launchPrice": null,
+        "billingCycle": "monthly",
+        "includedModuleSlugs": [
+          "amc-field-service"
+        ],
+        "maxUsers": 9999,
+        "maxLocations": 9999,
+        "isPublic": true
+      },
+      {
+        "id": "PLAN-BASIC",
+        "name": "Starter",
+        "price": 799,
+        "launchPrice": 349,
+        "billingCycle": "yearly",
+        "includedModuleSlugs": [
+          "service-centre"
+        ],
+        "maxUsers": 1,
+        "maxLocations": 1,
+        "isPublic": true
+      },
+      {
+        "id": "PLAN-CLINIC-BASIC",
+        "name": "Starter",
+        "price": 499,
+        "launchPrice": null,
+        "billingCycle": "monthly",
+        "includedModuleSlugs": [
+          "clinic"
+        ],
+        "maxUsers": 2,
+        "maxLocations": 1,
+        "isPublic": true
+      },
+      {
+        "id": "PLAN-CLINIC-PRO",
+        "name": "Pro",
+        "price": 799,
+        "launchPrice": null,
+        "billingCycle": "monthly",
+        "includedModuleSlugs": [
+          "clinic"
+        ],
+        "maxUsers": 10,
+        "maxLocations": 3,
+        "isPublic": true
+      },
+      {
+        "id": "PLAN-CLINIC-ULTIMATE",
+        "name": "Ultimate",
+        "price": 2499,
+        "launchPrice": null,
+        "billingCycle": "monthly",
+        "includedModuleSlugs": [
+          "clinic"
+        ],
+        "maxUsers": 9999,
+        "maxLocations": 9999,
+        "isPublic": true
+      },
+      {
+        "id": "PLAN-EDUCATION-BASIC",
+        "name": "Starter",
+        "price": 499,
+        "launchPrice": null,
+        "billingCycle": "monthly",
+        "includedModuleSlugs": [
+          "education"
+        ],
+        "maxUsers": 3,
+        "maxLocations": 1,
+        "isPublic": true
+      },
+      {
+        "id": "PLAN-EDUCATION-PRO",
+        "name": "Pro",
+        "price": 799,
+        "launchPrice": null,
+        "billingCycle": "monthly",
+        "includedModuleSlugs": [
+          "education"
+        ],
+        "maxUsers": 15,
+        "maxLocations": 3,
+        "isPublic": true
+      },
+      {
+        "id": "PLAN-EDUCATION-ULTIMATE",
+        "name": "Ultimate",
+        "price": 2499,
+        "launchPrice": null,
+        "billingCycle": "monthly",
+        "includedModuleSlugs": [
+          "education"
+        ],
+        "maxUsers": 9999,
+        "maxLocations": 9999,
+        "isPublic": true
+      },
+      {
+        "id": "PLAN-EVENTBOOKING-BASIC",
+        "name": "Starter",
+        "price": 499,
+        "launchPrice": null,
+        "billingCycle": "monthly",
+        "includedModuleSlugs": [
+          "event-booking"
+        ],
+        "maxUsers": 2,
+        "maxLocations": 1,
+        "isPublic": true
+      },
+      {
+        "id": "PLAN-EVENTBOOKING-PRO",
+        "name": "Pro",
+        "price": 799,
+        "launchPrice": null,
+        "billingCycle": "monthly",
+        "includedModuleSlugs": [
+          "event-booking"
+        ],
+        "maxUsers": 10,
+        "maxLocations": 3,
+        "isPublic": true
+      },
+      {
+        "id": "PLAN-EVENTBOOKING-ULTIMATE",
+        "name": "Ultimate",
+        "price": 2499,
+        "launchPrice": null,
+        "billingCycle": "monthly",
+        "includedModuleSlugs": [
+          "event-booking"
+        ],
+        "maxUsers": 9999,
+        "maxLocations": 9999,
+        "isPublic": true
+      },
+      {
+        "id": "PLAN-FIELDFORCE-FREE",
+        "name": "Field Force",
+        "price": 0,
+        "launchPrice": null,
+        "billingCycle": "yearly",
+        "includedModuleSlugs": [
+          "field-force"
+        ],
+        "maxUsers": 9999,
+        "maxLocations": 9999,
+        "isPublic": true
+      },
+      {
+        "id": "PLAN-LEGAL-BASIC",
+        "name": "Starter",
+        "price": 499,
+        "launchPrice": null,
+        "billingCycle": "monthly",
+        "includedModuleSlugs": [
+          "legal"
+        ],
+        "maxUsers": 3,
+        "maxLocations": 1,
+        "isPublic": true
+      },
+      {
+        "id": "PLAN-LEGAL-PRO",
+        "name": "Pro",
+        "price": 799,
+        "launchPrice": null,
+        "billingCycle": "monthly",
+        "includedModuleSlugs": [
+          "legal"
+        ],
+        "maxUsers": 15,
+        "maxLocations": 3,
+        "isPublic": true
+      },
+      {
+        "id": "PLAN-LEGAL-ULTIMATE",
+        "name": "Ultimate",
+        "price": 2499,
+        "launchPrice": null,
+        "billingCycle": "monthly",
+        "includedModuleSlugs": [
+          "legal"
+        ],
+        "maxUsers": 9999,
+        "maxLocations": 9999,
+        "isPublic": true
+      },
+      {
+        "id": "PLAN-LOGISTICSFLEET-BASIC",
+        "name": "Starter",
+        "price": 499,
+        "launchPrice": null,
+        "billingCycle": "monthly",
+        "includedModuleSlugs": [
+          "logistics-fleet"
+        ],
+        "maxUsers": 3,
+        "maxLocations": 1,
+        "isPublic": true
+      },
+      {
+        "id": "PLAN-LOGISTICSFLEET-PRO",
+        "name": "Pro",
+        "price": 799,
+        "launchPrice": null,
+        "billingCycle": "monthly",
+        "includedModuleSlugs": [
+          "logistics-fleet"
+        ],
+        "maxUsers": 15,
+        "maxLocations": 5,
+        "isPublic": true
+      },
+      {
+        "id": "PLAN-LOGISTICSFLEET-ULTIMATE",
+        "name": "Ultimate",
+        "price": 2499,
+        "launchPrice": null,
+        "billingCycle": "monthly",
+        "includedModuleSlugs": [
+          "logistics-fleet"
+        ],
+        "maxUsers": 9999,
+        "maxLocations": 9999,
+        "isPublic": true
+      },
+      {
+        "id": "PLAN-MANUFACTURING-BASIC",
+        "name": "Starter",
+        "price": 699,
+        "launchPrice": null,
+        "billingCycle": "monthly",
+        "includedModuleSlugs": [
+          "manufacturing"
+        ],
+        "maxUsers": 3,
+        "maxLocations": 1,
+        "isPublic": true
+      },
+      {
+        "id": "PLAN-MANUFACTURING-PRO",
+        "name": "Pro",
+        "price": 999,
+        "launchPrice": null,
+        "billingCycle": "monthly",
+        "includedModuleSlugs": [
+          "manufacturing"
+        ],
+        "maxUsers": 15,
+        "maxLocations": 3,
+        "isPublic": true
+      },
+      {
+        "id": "PLAN-MANUFACTURING-ULTIMATE",
+        "name": "Ultimate",
+        "price": 2999,
+        "launchPrice": null,
+        "billingCycle": "monthly",
+        "includedModuleSlugs": [
+          "manufacturing"
+        ],
+        "maxUsers": 9999,
+        "maxLocations": 9999,
+        "isPublic": true
+      },
+      {
+        "id": "PLAN-POS-BASIC",
+        "name": "Starter",
+        "price": 699,
+        "launchPrice": null,
+        "billingCycle": "monthly",
+        "includedModuleSlugs": [
+          "pos"
+        ],
+        "maxUsers": 3,
+        "maxLocations": 1,
+        "isPublic": true
+      },
+      {
+        "id": "PLAN-POS-PRO",
+        "name": "Pro",
+        "price": 999,
+        "launchPrice": null,
+        "billingCycle": "monthly",
+        "includedModuleSlugs": [
+          "pos"
+        ],
+        "maxUsers": 10,
+        "maxLocations": 3,
+        "isPublic": true
+      },
+      {
+        "id": "PLAN-POS-ULTIMATE",
+        "name": "Ultimate",
+        "price": 2999,
+        "launchPrice": null,
+        "billingCycle": "monthly",
+        "includedModuleSlugs": [
+          "pos"
+        ],
+        "maxUsers": 9999,
+        "maxLocations": 9999,
+        "isPublic": true
+      },
+      {
+        "id": "PLAN-PRO",
+        "name": "Pro",
+        "price": 1199,
+        "launchPrice": 549,
+        "billingCycle": "yearly",
+        "includedModuleSlugs": [
+          "service-centre",
+          "inventory",
+          "billing"
+        ],
+        "maxUsers": 5,
+        "maxLocations": 1,
+        "isPublic": true
+      },
+      {
+        "id": "PLAN-REALESTATE-BASIC",
+        "name": "Starter",
+        "price": 499,
+        "launchPrice": null,
+        "billingCycle": "monthly",
+        "includedModuleSlugs": [
+          "real-estate"
+        ],
+        "maxUsers": 3,
+        "maxLocations": 1,
+        "isPublic": true
+      },
+      {
+        "id": "PLAN-REALESTATE-PRO",
+        "name": "Pro",
+        "price": 799,
+        "launchPrice": null,
+        "billingCycle": "monthly",
+        "includedModuleSlugs": [
+          "real-estate"
+        ],
+        "maxUsers": 15,
+        "maxLocations": 9999,
+        "isPublic": true
+      },
+      {
+        "id": "PLAN-REALESTATE-ULTIMATE",
+        "name": "Ultimate",
+        "price": 2499,
+        "launchPrice": null,
+        "billingCycle": "monthly",
+        "includedModuleSlugs": [
+          "real-estate"
+        ],
+        "maxUsers": 9999,
+        "maxLocations": 9999,
+        "isPublic": true
+      },
+      {
+        "id": "PLAN-RENTALS-BASIC",
+        "name": "Starter",
+        "price": 499,
+        "launchPrice": null,
+        "billingCycle": "monthly",
+        "includedModuleSlugs": [
+          "rentals"
+        ],
+        "maxUsers": 2,
+        "maxLocations": 1,
+        "isPublic": true
+      },
+      {
+        "id": "PLAN-RENTALS-PRO",
+        "name": "Pro",
+        "price": 799,
+        "launchPrice": null,
+        "billingCycle": "monthly",
+        "includedModuleSlugs": [
+          "rentals"
+        ],
+        "maxUsers": 10,
+        "maxLocations": 3,
+        "isPublic": true
+      },
+      {
+        "id": "PLAN-RENTALS-ULTIMATE",
+        "name": "Ultimate",
+        "price": 2499,
+        "launchPrice": null,
+        "billingCycle": "monthly",
+        "includedModuleSlugs": [
+          "rentals"
+        ],
+        "maxUsers": 9999,
+        "maxLocations": 9999,
+        "isPublic": true
+      },
+      {
+        "id": "PLAN-RESTAURANTPOS-BASIC",
+        "name": "Starter",
+        "price": 499,
+        "launchPrice": null,
+        "billingCycle": "monthly",
+        "includedModuleSlugs": [
+          "restaurant-pos"
+        ],
+        "maxUsers": 3,
+        "maxLocations": 1,
+        "isPublic": true
+      },
+      {
+        "id": "PLAN-RESTAURANTPOS-PRO",
+        "name": "Pro",
+        "price": 799,
+        "launchPrice": null,
+        "billingCycle": "monthly",
+        "includedModuleSlugs": [
+          "restaurant-pos"
+        ],
+        "maxUsers": 10,
+        "maxLocations": 3,
+        "isPublic": true
+      },
+      {
+        "id": "PLAN-RESTAURANTPOS-ULTIMATE",
+        "name": "Ultimate",
+        "price": 2499,
+        "launchPrice": null,
+        "billingCycle": "monthly",
+        "includedModuleSlugs": [
+          "restaurant-pos"
+        ],
+        "maxUsers": 9999,
+        "maxLocations": 9999,
+        "isPublic": true
+      },
+      {
+        "id": "PLAN-SALONSPA-BASIC",
+        "name": "Starter",
+        "price": 499,
+        "launchPrice": null,
+        "billingCycle": "monthly",
+        "includedModuleSlugs": [
+          "salon-spa"
+        ],
+        "maxUsers": 2,
+        "maxLocations": 1,
+        "isPublic": true
+      },
+      {
+        "id": "PLAN-SALONSPA-PRO",
+        "name": "Pro",
+        "price": 799,
+        "launchPrice": null,
+        "billingCycle": "monthly",
+        "includedModuleSlugs": [
+          "salon-spa"
+        ],
+        "maxUsers": 10,
+        "maxLocations": 3,
+        "isPublic": true
+      },
+      {
+        "id": "PLAN-SALONSPA-ULTIMATE",
+        "name": "Ultimate",
+        "price": 2499,
+        "launchPrice": null,
+        "billingCycle": "monthly",
+        "includedModuleSlugs": [
+          "salon-spa"
+        ],
+        "maxUsers": 9999,
+        "maxLocations": 9999,
+        "isPublic": true
+      },
+      {
+        "id": "PLAN-SUBSCRIPTIONS-BASIC",
+        "name": "Starter",
+        "price": 499,
+        "launchPrice": null,
+        "billingCycle": "monthly",
+        "includedModuleSlugs": [
+          "subscriptions"
+        ],
+        "maxUsers": 2,
+        "maxLocations": 1,
+        "isPublic": true
+      },
+      {
+        "id": "PLAN-SUBSCRIPTIONS-PRO",
+        "name": "Pro",
+        "price": 799,
+        "launchPrice": null,
+        "billingCycle": "monthly",
+        "includedModuleSlugs": [
+          "subscriptions"
+        ],
+        "maxUsers": 10,
+        "maxLocations": 3,
+        "isPublic": true
+      },
+      {
+        "id": "PLAN-SUBSCRIPTIONS-ULTIMATE",
+        "name": "Ultimate",
+        "price": 2499,
+        "launchPrice": null,
+        "billingCycle": "monthly",
+        "includedModuleSlugs": [
+          "subscriptions"
+        ],
+        "maxUsers": 9999,
+        "maxLocations": 9999,
+        "isPublic": true
+      },
+      {
+        "id": "PLAN-TELECALLING-BASIC",
+        "name": "Telecalling Starter",
+        "price": 599,
+        "launchPrice": 299,
+        "billingCycle": "yearly",
+        "includedModuleSlugs": [
+          "telecalling"
+        ],
+        "maxUsers": 3,
+        "maxLocations": 1,
+        "isPublic": true
+      },
+      {
+        "id": "PLAN-TELECALLING-PRO",
+        "name": "Telecalling Pro",
+        "price": 999,
+        "launchPrice": 499,
+        "billingCycle": "yearly",
+        "includedModuleSlugs": [
+          "telecalling"
+        ],
+        "maxUsers": 10,
+        "maxLocations": 1,
+        "isPublic": true
+      },
+      {
+        "id": "PLAN-TELECALLING-ULTIMATE",
+        "name": "Telecalling Ultimate",
+        "price": 1999,
+        "launchPrice": 999,
+        "billingCycle": "yearly",
+        "includedModuleSlugs": [
+          "telecalling"
+        ],
+        "maxUsers": 9999,
+        "maxLocations": 9999,
+        "isPublic": true
+      },
+      {
+        "id": "PLAN-ULTIMATE",
+        "name": "Ultimate",
+        "price": 2499,
+        "launchPrice": 999,
+        "billingCycle": "yearly",
+        "includedModuleSlugs": [
+          "service-centre",
+          "inventory",
+          "billing",
+          "accounting-gst"
+        ],
+        "maxUsers": 9999,
+        "maxLocations": 9999,
+        "isPublic": true
+      },
+      {
+        "id": "PLAN-WHOLESALEB2B-BASIC",
+        "name": "Starter",
+        "price": 699,
+        "launchPrice": null,
+        "billingCycle": "monthly",
+        "includedModuleSlugs": [
+          "wholesale-b2b"
+        ],
+        "maxUsers": 3,
+        "maxLocations": 1,
+        "isPublic": true
+      },
+      {
+        "id": "PLAN-WHOLESALEB2B-PRO",
+        "name": "Pro",
+        "price": 999,
+        "launchPrice": null,
+        "billingCycle": "monthly",
+        "includedModuleSlugs": [
+          "wholesale-b2b"
+        ],
+        "maxUsers": 15,
+        "maxLocations": 3,
+        "isPublic": true
+      },
+      {
+        "id": "PLAN-WHOLESALEB2B-ULTIMATE",
+        "name": "Ultimate",
+        "price": 2999,
+        "launchPrice": null,
+        "billingCycle": "monthly",
+        "includedModuleSlugs": [
+          "wholesale-b2b"
+        ],
+        "maxUsers": 9999,
+        "maxLocations": 9999,
+        "isPublic": true
+      }
+    ]
+  }
+}

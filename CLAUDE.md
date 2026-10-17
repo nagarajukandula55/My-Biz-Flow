@@ -61,6 +61,28 @@ again.
   physical tables/columns already exist** — bookkeeping mismatches between
   `_prisma_migrations` and the real schema are exactly what caused this
   incident when reconciled carelessly.
+- **`_prisma_migrations` is itself a shared table** — confirmed 2026-10-03:
+  running plain `prisma migrate dev` in this repo will show migrations
+  "applied to the database but missing from the local migrations
+  directory" (e.g. `add_admin_audit_log`, `material_consumption`) that are
+  actually My-Biz-Flow-Admin's own migrations, plus an `admin_audit_logs`
+  table that's correctly absent from this repo's `schema.prisma`. This is
+  expected, not corruption — but `migrate dev`'s own fix for it is to offer
+  resetting the entire `public` schema, which would drop **both apps'**
+  data. Never accept that reset prompt. For any new additive-only change in
+  this repo, instead: (1) run `prisma migrate diff --from-url
+  $DATABASE_URL_UNPOOLED --to-schema-datamodel prisma/schema.prisma
+  --script` to get the real diff against the live DB (no shadow database,
+  so no drift/reset prompt) — (2) **read every line for a `DROP`/`ALTER
+  ... DROP` touching a table not in this repo's own schema** (the Admin
+  table drop is exactly what showed up last time) and strip it by hand
+  before anything runs, (3) hand-write the surviving SQL into a normal
+  `prisma/migrations/<timestamp>_<name>/migration.sql` file, (4) apply it
+  with `prisma db execute --file <that file> --schema prisma/schema.prisma`
+  (runs the exact SQL, no shadow DB), (5) only after verifying live that
+  the real table/columns now match, mark it applied with `prisma migrate
+  resolve --applied <timestamp>_<name>` so later migrations don't try to
+  redo it.
 - **Prefer additive-only changes** (new nullable columns, new tables) over
   anything that alters or drops existing structure. If a genuinely
   destructive change is required, stop and get explicit, separate

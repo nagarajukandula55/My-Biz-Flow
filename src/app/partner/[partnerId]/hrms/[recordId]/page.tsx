@@ -7,6 +7,9 @@ import { StatusChip } from "@/components/StatusChip";
 import { requirePartnerSessionForPage } from "@/lib/requirePartnerSession";
 import { getEmployee, listLeaveBalances, listLeaveRequests, listPayslips, listAttendanceHistory } from "@/lib/hrms";
 import { formatDate } from "@/lib/format";
+import { getAttendancePolicy, listOfficeLocations } from "@/lib/hrms";
+import { RecordForm } from "@/components/RecordForm";
+import { savePolicyAction } from "../attendance/controlActions";
 
 registerPage({
   id: "hrms.detail",
@@ -27,9 +30,10 @@ export default async function HrmsDetailPage({ params }: { params: { partnerId: 
   const mod = await getModule("hrms");
   const employee = await getEmployee(params.partnerId, params.recordId);
   if (!employee) notFound();
+  const [policy, offices] = await Promise.all([getAttendancePolicy(params.partnerId, employee.id), listOfficeLocations(params.partnerId)]);
 
   const [balances, leaveRequests, payslips, attendance] = await Promise.all([
-    listLeaveBalances(employee.id),
+    listLeaveBalances(params.partnerId, employee.id),
     listLeaveRequests(params.partnerId, employee.id),
     listPayslips(params.partnerId, employee.id),
     listAttendanceHistory(params.partnerId, { employeeId: employee.id }),
@@ -65,6 +69,15 @@ export default async function HrmsDetailPage({ params }: { params: { partnerId: 
           <StatusChip label={employee.status} variant={employee.status === "Active" ? "success" : employee.status === "OnLeave" ? "warning" : "danger"} />
         </div>
 
+        <section className="mt-8" aria-label="Attendance policy">
+          <h2 className="font-display text-xl font-bold text-text">Attendance policy</h2>
+          <p className="my-3 text-sm text-text-muted">Any office requires a registered business geofence. Assigned offices restrict check-in to the selected sites. Remote / field explicitly permits check-in away from offices; a fresh device location is still required. Changes affect future check-ins and are audited.</p>
+          <RecordForm fields={[
+            { key: "mode", label: "Work mode", type: "select", required: true, options: ["Any office", "Assigned offices", "Remote / field"] },
+            { key: "officeIds", label: "Allowed offices (assigned-office mode only)", type: "multi-select", options: offices.map(office => office.id), optionLabels: Object.fromEntries(offices.map(office => [office.id, office.name])) },
+          ]} initialValues={policy} submitLabel="Save attendance policy" action={savePolicyAction.bind(null, params.partnerId, employee.id)} />
+          <Link className="mt-3 inline-flex min-h-11 items-center text-teal underline" href={`/partner/${params.partnerId}/hrms/attendance/history?employeeId=${employee.id}`}>Attendance history and corrections</Link>
+        </section>
         <div className="mt-8 rounded-md border border-border bg-bg-raised p-4">
           <h2 className="font-display text-base font-bold text-text">Recent Attendance</h2>
           {attendance.length === 0 && <p className="mt-2 text-sm text-text-muted">No attendance records yet.</p>}

@@ -1,0 +1,35 @@
+{
+  "approval": "Fix the regressions; preserve existing workflows",
+  "externalCommits": [
+    "2e57845",
+    "c5e8efa",
+    "6e76618"
+  ],
+  "evidence": [
+    "tests/service-centre-list.test.cjs: four passing authorization, bounded pagination and exact CSV equivalence cases",
+    "tests/telegram-command-security.test.cjs: four passing authorization/menu cases"
+  ],
+  "review": "Optional Telegram transport parameters preserve existing calls; Service Centre export is deferred with current authorization and unchanged serialization.",
+  "changes": [
+    {
+      "file": "src/app/partner/[partnerId]/service-centre/customers/CustomerDataExportButton.tsx",
+      "oldHash": "007885c9e30dca21e6eee8ad1845eca1fea70c4e58df2c1c6e8052b2cd1bd2d8",
+      "newHash": "b52e69af47087388f165061e85a4ce6e128a3d0ec493b45f0f1e9be3f2bcb8d5"
+    },
+    {
+      "file": "src/app/partner/[partnerId]/service-centre/customers/page.tsx",
+      "oldHash": "c32b8c658f2831775781d4f402cd32c0db24053414703ac0eb544c50ab0ec55b",
+      "newHash": "cc7efffd9f3d8bab28357985c1fdafbbb038df95dc18a537784b61beb3970c62"
+    },
+    {
+      "file": "src/app/partner/[partnerId]/service-centre/inquiries/page.tsx",
+      "oldHash": "5b45ac3565a72b75f0f7461d7290acdd6d7ab733e1c153a0633667bdfb25d3dd",
+      "newHash": "fca15a9b23b578d9cb990148d29ae46a51bd33c4aec39d7b15218774b887c121"
+    },
+    {
+      "file": "src/lib/telegram.ts",
+      "oldHash": "0a7ba4d3ed163a4ba39589a856b569d00efcb5f0fb0650f72d18d2a21f8a934d",
+      "newHash": "0b0aa95cf7a75318aec99c9c2a086c741c2097415847f904e53dae81268fef43"
+    }
+  ]
+}

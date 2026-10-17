@@ -16,6 +16,27 @@
  * free rather than re-implementing the check per action.
  */
 import { prisma } from "@/lib/prisma";
+import { withRecordLock } from "@/lib/withRecordLock";
+import { assertModuleAccess, assertPartnerCanWrite } from "@/lib/tenant";
+
+async function accountingWrite<T>(partnerId: string, work: () => Promise<T>): Promise<T> {
+  await assertModuleAccess(partnerId, "accounting");
+  await assertPartnerCanWrite(partnerId);
+  return withRecordLock("accounting-ledger", partnerId, work);
+}
+
+async function validateAccount(partnerId: string, input: ChartOfAccountInput, id?: string) {
+  if (!input.accountCode.trim() || !input.accountName.trim() || !ACCOUNT_TYPES.includes(input.accountType)) throw new Error("Enter an account code, name and valid type.");
+  const visited = new Set(id ? [id] : []);
+  let parentId = input.parentAccountId;
+  while (parentId) {
+    if (visited.has(parentId) || visited.size > 100) throw new Error("Account hierarchy contains a cycle or is too deep.");
+    visited.add(parentId);
+    const parent = await prisma.chartOfAccount.findFirst({ where: { id: parentId, partnerId } });
+    if (!parent) throw new Error("Parent account must belong to this business.");
+    parentId = parent.parentAccountId;
+  }
+}
 
 // ---------------------------------------------------------------------
 // Chart of Accounts
@@ -38,7 +59,7 @@ export type ChartOfAccountRecord = {
 export async function listChartOfAccounts(partnerId: string): Promise<ChartOfAccountRecord[]> {
   const rows = await prisma.chartOfAccount.findMany({
     where: { partnerId },
-    include: { parentAccount: { select: { accountName: true } } },
+    include: { parentAccount: { select: { accountName: true, partnerId: true } } },
     orderBy: [{ accountType: "asc" }, { accountCode: "asc" }],
   });
   return rows.map((r) => ({
@@ -48,7 +69,7 @@ export async function listChartOfAccounts(partnerId: string): Promise<ChartOfAcc
     accountName: r.accountName,
     accountType: r.accountType,
     parentAccountId: r.parentAccountId,
-    parentAccountName: r.parentAccount?.accountName ?? null,
+    parentAccountName: r.parentAccount?.partnerId === partnerId ? r.parentAccount.accountName : null,
     isActive: r.isActive,
   }));
 }
@@ -56,7 +77,7 @@ export async function listChartOfAccounts(partnerId: string): Promise<ChartOfAcc
 export async function getChartOfAccount(partnerId: string, id: string): Promise<ChartOfAccountRecord | null> {
   const r = await prisma.chartOfAccount.findFirst({
     where: { id, partnerId },
-    include: { parentAccount: { select: { accountName: true } } },
+    include: { parentAccount: { select: { accountName: true, partnerId: true } } },
   });
   if (!r) return null;
   return {
@@ -66,7 +87,7 @@ export async function getChartOfAccount(partnerId: string, id: string): Promise<
     accountName: r.accountName,
     accountType: r.accountType,
     parentAccountId: r.parentAccountId,
-    parentAccountName: r.parentAccount?.accountName ?? null,
+    parentAccountName: r.parentAccount?.partnerId === partnerId ? r.parentAccount.accountName : null,
     isActive: r.isActive,
   };
 }
@@ -80,6 +101,8 @@ export type ChartOfAccountInput = {
 };
 
 export async function createChartOfAccount(partnerId: string, input: ChartOfAccountInput): Promise<ChartOfAccountRecord> {
+  return accountingWrite(partnerId, async () => {
+  await validateAccount(partnerId, input);
   const created = await prisma.chartOfAccount.create({
     data: {
       partnerId,
@@ -91,6 +114,7 @@ export async function createChartOfAccount(partnerId: string, input: ChartOfAcco
     },
   });
   return { ...created, parentAccountName: null };
+  });
 }
 
 export async function updateChartOfAccount(
@@ -98,8 +122,11 @@ export async function updateChartOfAccount(
   id: string,
   input: ChartOfAccountInput
 ): Promise<ChartOfAccountRecord | null> {
+  return accountingWrite(partnerId, async () => {
+  await validateAccount(partnerId, input, id);
   const existing = await prisma.chartOfAccount.findFirst({ where: { id, partnerId } });
   if (!existing) return null;
+  if (existing.accountType !== input.accountType && await prisma.journalLine.findFirst({ where: { accountId: id }, select: { id: true } })) throw new Error("An account with journal activity cannot change type. Create a new account instead.");
   // An account can't be its own parent — a plain self-check; deeper cycle
   // detection (grandparent chains) is not attempted here, same scope as
   // this pass's other modules' hierarchy fields.
@@ -115,6 +142,7 @@ export async function updateChartOfAccount(
     },
   });
   return getChartOfAccount(partnerId, updated.id);
+  });
 }
 
 // ---------------------------------------------------------------------
@@ -142,21 +170,28 @@ export async function createFiscalPeriod(
   partnerId: string,
   input: { name: string; startDate: Date; endDate: Date }
 ): Promise<FiscalPeriodRecord> {
+  return accountingWrite(partnerId, async () => {
+  if (!input.name.trim() || !Number.isFinite(input.startDate.getTime()) || !Number.isFinite(input.endDate.getTime()) || input.endDate < input.startDate) throw new Error("Enter a name and valid fiscal dates.");
   return prisma.fiscalPeriod.create({
     data: { partnerId, name: input.name, startDate: input.startDate, endDate: input.endDate, isClosed: false },
+  });
   });
 }
 
 export async function closeFiscalPeriod(partnerId: string, id: string): Promise<FiscalPeriodRecord | null> {
+  return accountingWrite(partnerId, async () => {
   const existing = await prisma.fiscalPeriod.findFirst({ where: { id, partnerId } });
   if (!existing) return null;
   return prisma.fiscalPeriod.update({ where: { id }, data: { isClosed: true } });
+  });
 }
 
 export async function reopenFiscalPeriod(partnerId: string, id: string): Promise<FiscalPeriodRecord | null> {
+  return accountingWrite(partnerId, async () => {
   const existing = await prisma.fiscalPeriod.findFirst({ where: { id, partnerId } });
   if (!existing) return null;
   return prisma.fiscalPeriod.update({ where: { id }, data: { isClosed: false } });
+  });
 }
 
 /**
@@ -166,8 +201,10 @@ export async function reopenFiscalPeriod(partnerId: string, id: string): Promise
  * "real accounting-close enforcement" requirement).
  */
 export async function isDateInClosedPeriod(partnerId: string, date: Date): Promise<boolean> {
+  // Fiscal dates and date-only journal inputs represent whole business dates.
+  const day = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
   const hit = await prisma.fiscalPeriod.findFirst({
-    where: { partnerId, isClosed: true, startDate: { lte: date }, endDate: { gte: date } },
+    where: { partnerId, isClosed: true, startDate: { lte: day }, endDate: { gte: day } },
   });
   return !!hit;
 }
@@ -209,8 +246,9 @@ function toJournalEntryRecord(row: {
   sourceType: string | null;
   sourceRecordId: string | null;
   createdAt: Date;
-  lines: { id: string; journalEntryId: string; accountId: string; debit: number; credit: number; account: { accountName: string; accountCode: string } }[];
+  lines: { id: string; journalEntryId: string; accountId: string; debit: number; credit: number; account: { accountName: string; accountCode: string; partnerId: string } }[];
 }): JournalEntryRecord {
+  if (row.lines.some(line => line.account.partnerId !== row.partnerId)) throw new Error("This legacy journal contains an account outside this business and requires review.");
   const lines = row.lines.map((l) => ({
     id: l.id,
     journalEntryId: l.journalEntryId,
@@ -235,7 +273,7 @@ function toJournalEntryRecord(row: {
   };
 }
 
-const JOURNAL_ENTRY_INCLUDE = { lines: { include: { account: { select: { accountName: true, accountCode: true } } } } } as const;
+const JOURNAL_ENTRY_INCLUDE = { lines: { include: { account: { select: { accountName: true, accountCode: true, partnerId: true } } } } } as const;
 
 // TODO: accounting/journal-entries/page.tsx renders this full list directly
 // with no pagination UI yet. Capped with a safety ceiling rather than left
@@ -271,8 +309,9 @@ export type JournalLineInput = { accountId: string; debit: number; credit: numbe
  * correctness, not optional. Returns an error string, or null if valid.
  */
 export function validateJournalLines(lines: JournalLineInput[]): string | null {
-  if (lines.length < 2) return "A journal entry needs at least two lines.";
+  if (!Array.isArray(lines) || lines.length < 2 || lines.length > 500) return "A journal entry needs between two and 500 lines.";
   for (const line of lines) {
+    if (!line || [line.debit, line.credit].some(value => !Number.isSafeInteger(value) || value < 0 || value > 2147483647)) return "Debit and credit amounts must be valid non-negative paise amounts.";
     if (!line.accountId) return "Every line must have an account selected.";
     const hasDebit = line.debit > 0;
     const hasCredit = line.credit > 0;
@@ -291,8 +330,13 @@ export async function createJournalEntry(
   partnerId: string,
   input: { entryNumber: string; entryDate: Date; narration?: string | null; sourceType?: string | null; sourceRecordId?: string | null; lines: JournalLineInput[] }
 ): Promise<{ entry?: JournalEntryRecord; error?: string }> {
+  return accountingWrite(partnerId, async () => {
+  if (!input.entryNumber.trim() || !Number.isFinite(input.entryDate.getTime())) return { error: "Enter a journal number and valid date." };
+  if (input.sourceType === "journal-reversal") return { error: "Use the audited reversal action to reverse a journal." };
   const balanceError = validateJournalLines(input.lines);
   if (balanceError) return { error: balanceError };
+  const ids = [...new Set(input.lines.map(line => line.accountId))];
+  if (await prisma.chartOfAccount.count({ where: { partnerId, id: { in: ids }, isActive: true } }) !== ids.length) return { error: "Every account must be active and belong to this business." };
 
   if (await isDateInClosedPeriod(partnerId, input.entryDate)) {
     return { error: "Entry Date falls inside a closed fiscal period — reopen the period before posting to it." };
@@ -311,6 +355,7 @@ export async function createJournalEntry(
     include: JOURNAL_ENTRY_INCLUDE,
   });
   return { entry: toJournalEntryRecord(created) };
+  });
 }
 
 /**
@@ -326,11 +371,16 @@ export async function updateJournalEntry(
   id: string,
   input: { entryDate: Date; narration?: string | null; lines: JournalLineInput[] }
 ): Promise<{ entry?: JournalEntryRecord; error?: string }> {
+  return accountingWrite(partnerId, async () => {
+  if (!Number.isFinite(input.entryDate.getTime())) return { error: "Enter a valid journal date." };
   const existing = await prisma.journalEntry.findFirst({ where: { id, partnerId } });
   if (!existing) return { error: "Journal entry not found." };
+  if (existing.sourceType === "journal-reversal" || await prisma.journalEntry.findFirst({ where: { partnerId, sourceType: "journal-reversal", sourceRecordId: id }, select: { id: true } })) return { error: "Reversed journals and their reversal entries are retained and cannot be edited." };
 
   const balanceError = validateJournalLines(input.lines);
   if (balanceError) return { error: balanceError };
+  const ids = [...new Set(input.lines.map(line => line.accountId))];
+  if (await prisma.chartOfAccount.count({ where: { partnerId, id: { in: ids }, isActive: true } }) !== ids.length) return { error: "Every account must be active and belong to this business." };
 
   if (await isDateInClosedPeriod(partnerId, existing.entryDate)) {
     return { error: "This entry's current date falls inside a closed fiscal period — it can no longer be edited." };
@@ -339,19 +389,18 @@ export async function updateJournalEntry(
     return { error: "The new Entry Date falls inside a closed fiscal period — choose a date outside a closed period." };
   }
 
-  await prisma.$transaction([
-    prisma.journalLine.deleteMany({ where: { journalEntryId: id } }),
-    prisma.journalEntry.update({
+  await prisma.journalLine.deleteMany({ where: { journalEntryId: id } });
+  await prisma.journalEntry.update({
       where: { id },
       data: {
         entryDate: input.entryDate,
         narration: input.narration || null,
         lines: { create: input.lines.map((l) => ({ accountId: l.accountId, debit: l.debit, credit: l.credit })) },
       },
-    }),
-  ]);
+    });
   const entry = await getJournalEntry(partnerId, id);
   return entry ? { entry } : { error: "Journal entry not found after update." };
+  });
 }
 
 // ---------------------------------------------------------------------
@@ -378,19 +427,18 @@ export async function getTrialBalance(
       ? { entryDate: { ...(range.from ? { gte: range.from } : {}), ...(range.to ? { lte: range.to } : {}) } }
       : {};
 
+  const grouped = await prisma.journalLine.groupBy({ by: ["accountId"], where: { account: { partnerId }, journalEntry: { partnerId, ...entryDateFilter } }, _sum: { debit: true, credit: true } });
+  const totals = new Map(grouped.map(row => [row.accountId, row._sum]));
   const rows: TrialBalanceRow[] = [];
   for (const acc of accounts) {
-    const agg = await prisma.journalLine.aggregate({
-      where: { accountId: acc.id, journalEntry: { partnerId, ...entryDateFilter } },
-      _sum: { debit: true, credit: true },
-    });
+    const sums = totals.get(acc.id);
     rows.push({
       accountId: acc.id,
       accountCode: acc.accountCode,
       accountName: acc.accountName,
       accountType: acc.accountType,
-      totalDebit: agg._sum.debit ?? 0,
-      totalCredit: agg._sum.credit ?? 0,
+      totalDebit: sums?.debit ?? 0,
+      totalCredit: sums?.credit ?? 0,
     });
   }
   return rows;
@@ -438,6 +486,10 @@ export async function getBalanceSheet(partnerId: string, asOf: Date): Promise<Ba
   const assetRows = trialBalance.filter((r) => r.accountType === "Asset");
   const liabilityRows = trialBalance.filter((r) => r.accountType === "Liability");
   const equityRows = trialBalance.filter((r) => r.accountType === "Equity");
+  // Income/expense balances not yet closed into an equity account are still
+  // part of equity. This is a report-only row, never a synthetic journal.
+  const unclosedResult = trialBalance.filter(row => row.accountType === "Income" || row.accountType === "Expense").reduce((sum, row) => sum + row.totalCredit - row.totalDebit, 0);
+  if (unclosedResult !== 0) equityRows.push({ accountId: "report-unclosed-result", accountCode: "", accountName: "Unclosed profit / (loss)", accountType: "Equity", totalDebit: Math.max(-unclosedResult, 0), totalCredit: Math.max(unclosedResult, 0) });
   const totalAssets = assetRows.reduce((s, r) => s + (r.totalDebit - r.totalCredit), 0);
   const totalLiabilities = liabilityRows.reduce((s, r) => s + (r.totalCredit - r.totalDebit), 0);
   const totalEquity = equityRows.reduce((s, r) => s + (r.totalCredit - r.totalDebit), 0);

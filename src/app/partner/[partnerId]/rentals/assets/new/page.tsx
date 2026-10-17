@@ -4,6 +4,7 @@ import { registerPage } from "@/lib/designer/registry";
 import { RecordForm, type FormFieldDef } from "@/components/RecordForm";
 import { requirePartnerSessionForPage } from "@/lib/requirePartnerSession";
 import { createAssetAction } from "../actions";
+import { rentalAssetPolicyFields } from "@/lib/rentalAssetPolicy";
 
 registerPage({
   id: "rentals.assets.create",
@@ -20,6 +21,7 @@ registerPage({
 const fields: FormFieldDef[] = [
   { key: "assetName", label: "Asset / Venue Name", type: "text", required: true },
   { key: "isActive", label: "Active", type: "boolean", required: false },
+  ...rentalAssetPolicyFields,
 ];
 
 export default async function NewRentalAssetPage({ params }: { params: { partnerId: string } }) {

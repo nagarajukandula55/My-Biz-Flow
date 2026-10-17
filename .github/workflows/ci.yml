@@ -24,7 +24,7 @@ jobs:
           POSTGRES_PASSWORD: ci
           POSTGRES_DB: ci
         ports:
-          - 5432:5432
+          - 55439:5432
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -59,15 +59,15 @@ jobs:
         # all a disposable CI build needs.
         run: npx prisma db push --skip-generate --accept-data-loss
         env:
-          DATABASE_URL: postgres://ci:ci@localhost:5432/ci
-          DATABASE_URL_UNPOOLED: postgres://ci:ci@localhost:5432/ci
+          DATABASE_URL: postgresql://ci:ci@127.0.0.1:55439/ci
+          DATABASE_URL_UNPOOLED: postgresql://ci:ci@127.0.0.1:55439/ci
 
       - name: Isolated database transaction tests
         run: npm run test:isolated-db
         env:
           MBF_ISOLATED_TEST: "1"
-          DATABASE_URL: postgres://ci:ci@localhost:5432/ci
-          DATABASE_URL_UNPOOLED: postgres://ci:ci@localhost:5432/ci
+          DATABASE_URL: postgresql://ci:ci@127.0.0.1:55439/ci
+          DATABASE_URL_UNPOOLED: postgresql://ci:ci@127.0.0.1:55439/ci
 
       - name: Build
         run: npx next build
@@ -76,7 +76,15 @@ jobs:
           # features that read them lazily (see src/lib/env.ts) — CI only
           # needs the build to succeed, not to talk to a real central-api.
           SUPER_ADMIN_SECRET: ci-placeholder-secret
-          DATABASE_URL: postgres://ci:ci@localhost:5432/ci
-          DATABASE_URL_UNPOOLED: postgres://ci:ci@localhost:5432/ci
+          DATABASE_URL: postgresql://ci:ci@127.0.0.1:55439/ci
+          DATABASE_URL_UNPOOLED: postgresql://ci:ci@127.0.0.1:55439/ci
+          PARTNER_SESSION_SECRET: isolated-build-session-secret-at-least-32-characters
           CENTRAL_API_URL: https://example.invalid
           CENTRAL_API_KEY: ci-placeholder-key
+
+      - name: Isolated page and authentication acceptance
+        run: node scripts/run-isolated-http.cjs
+        env:
+          MBF_ISOLATED_TEST: "1"
+          DATABASE_URL: postgresql://ci:ci@127.0.0.1:55439/ci
+          DATABASE_URL_UNPOOLED: postgresql://ci:ci@127.0.0.1:55439/ci

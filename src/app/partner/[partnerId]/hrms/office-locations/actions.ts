@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
-import { createOfficeLocation, updateOfficeLocation } from "@/lib/hrms";
+import { createOfficeLocation, updateOfficeLocation, validCoordinates } from "@/lib/hrms";
 
 export async function createOfficeLocationAction(
   partnerId: string,
@@ -14,8 +14,9 @@ export async function createOfficeLocationAction(
   if (!name) return { error: "Name is required." };
   const lat = Number(values["lat"]);
   const lng = Number(values["lng"]);
-  if (Number.isNaN(lat) || Number.isNaN(lng)) return { error: "Latitude and longitude are required." };
-  const geofenceRadiusMeters = values["geofenceRadiusMeters"] ? Number(values["geofenceRadiusMeters"]) : undefined;
+  if (String(values["lat"] ?? "").trim() === "" || String(values["lng"] ?? "").trim() === "" || !validCoordinates(lat, lng)) return { error: "Enter valid latitude (-90 to 90) and longitude (-180 to 180)." };
+  const geofenceRadiusMeters = values["geofenceRadiusMeters"] == null || values["geofenceRadiusMeters"] === "" ? undefined : Number(values["geofenceRadiusMeters"]);
+  if (geofenceRadiusMeters !== undefined && (!Number.isSafeInteger(geofenceRadiusMeters) || geofenceRadiusMeters < 1 || geofenceRadiusMeters > 100000)) return { error: "Enter a whole radius between 1 and 100000 metres." };
   await createOfficeLocation(partnerId, { name, lat, lng, geofenceRadiusMeters });
   revalidatePath(`/partner/${partnerId}/hrms/office-locations`);
   redirect(`/partner/${partnerId}/hrms/office-locations`);
@@ -31,8 +32,9 @@ export async function updateOfficeLocationAction(
   if (!name) return { error: "Name is required." };
   const lat = Number(values["lat"]);
   const lng = Number(values["lng"]);
-  if (Number.isNaN(lat) || Number.isNaN(lng)) return { error: "Latitude and longitude are required." };
-  const geofenceRadiusMeters = values["geofenceRadiusMeters"] ? Number(values["geofenceRadiusMeters"]) : undefined;
+  if (String(values["lat"] ?? "").trim() === "" || String(values["lng"] ?? "").trim() === "" || !validCoordinates(lat, lng)) return { error: "Enter valid latitude (-90 to 90) and longitude (-180 to 180)." };
+  const geofenceRadiusMeters = values["geofenceRadiusMeters"] == null || values["geofenceRadiusMeters"] === "" ? undefined : Number(values["geofenceRadiusMeters"]);
+  if (geofenceRadiusMeters !== undefined && (!Number.isSafeInteger(geofenceRadiusMeters) || geofenceRadiusMeters < 1 || geofenceRadiusMeters > 100000)) return { error: "Enter a whole radius between 1 and 100000 metres." };
   await updateOfficeLocation(partnerId, id, { name, lat, lng, geofenceRadiusMeters });
   revalidatePath(`/partner/${partnerId}/hrms/office-locations`);
   redirect(`/partner/${partnerId}/hrms/office-locations`);

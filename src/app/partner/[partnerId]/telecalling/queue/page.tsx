@@ -5,6 +5,7 @@ import { registerPage } from "@/lib/designer/registry";
 import { listLeadsForAgent } from "@/lib/telecalling/leadsData";
 import { getPartnerStaff } from "@/lib/partnerStaff";
 import { listTemplates } from "@/lib/telecalling/templatesData";
+import { getWhatsAppMessagingGate } from "@/lib/telecalling/whatsappGate";
 import { getStaffSession } from "@/lib/requirePartnerSession";
 import { staffLogoutAction } from "@/lib/telecalling/agentAuth";
 import { QueueClient } from "./QueueClient";
@@ -43,9 +44,10 @@ export default async function QueuePage({
 
   const view = searchParams.view === "closed" ? "closed" : "active";
 
-  const [leads, templates] = await Promise.all([
+  const [leads, templates, whatsappGate] = await Promise.all([
     listLeadsForAgent(params.partnerId, session.staffId, { view }),
     listTemplates(params.partnerId),
+    getWhatsAppMessagingGate(params.partnerId),
   ]);
 
   const boundLogout = staffLogoutAction.bind(null, params.partnerId);
@@ -77,7 +79,9 @@ export default async function QueuePage({
             agentId={session.staffId}
             view={view}
             leads={leads.map((l) => ({ ...l, createdAt: l.createdAt.toISOString(), updatedAt: l.updatedAt.toISOString() }))}
-            templates={templates.map((t) => ({ id: t.id, name: t.name, channel: t.channel, category: t.category }))}
+            templates={templates.map((t) => ({ id: t.id, name: t.name, channel: t.channel, category: t.category, metaTemplateName: t.metaTemplateName }))}
+            whatsappEnabled={whatsappGate.enabled}
+            approvedWhatsappTemplateIds={whatsappGate.approvedTemplateIds}
           />
         </div>
       </div>

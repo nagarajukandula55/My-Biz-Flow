@@ -279,6 +279,12 @@ export function tierForPlanIndex(index: number, total: number): PlanTier {
   return "pro";
 }
 
+/** Explicit tier for private launch IDs; legacy plans retain positional mapping. */
+export function tierForPlan(planId: string | undefined, index: number, total: number): PlanTier {
+  const match = planId?.match(/^MBF-LAUNCH-\d{8}-.+-(basic|pro|ultimate)$/);
+  return (match?.[1] as PlanTier | undefined) ?? tierForPlanIndex(index, total);
+}
+
 /** True when `held` satisfies a page requiring `required`. */
 export function tierSatisfies(held: PlanTier, required: PlanTier): boolean {
   return TIER_RANK[held] >= TIER_RANK[required];

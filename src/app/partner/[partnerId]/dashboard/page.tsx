@@ -5,6 +5,9 @@ import { getVisibleModuleSlugs, getVisibleModules } from "@/lib/designer/entitle
 import { getServiceCentreOverview, getInquiryOverview, getRevenueBreakdown, getCallsThisMonth, getPnaOverview } from "@/lib/analyticsData";
 import { formatCurrencyINR } from "@/lib/format";
 import { registerPage } from "@/lib/designer/registry";
+import { ModuleWorkspace } from "@/components/ModuleWorkspace";
+import { requirePartnerSessionForPage } from "@/lib/requirePartnerSession";
+import { redirect } from "next/navigation";
 
 registerPage({
   id: "platform.partner-dashboard",
@@ -26,7 +29,11 @@ registerPage({
 export const dynamic = "force-dynamic";
 
 export default async function PartnerDashboardPage({ params }: { params: { partnerId: string } }) {
+  const session = await requirePartnerSessionForPage(params.partnerId);
+  if (session.kind === "staff") redirect(`/partner/${params.partnerId}/telecalling/queue`);
   const enabledSlugs = await getVisibleModuleSlugs(params.partnerId);
+  // Preserve the live Service Centre dashboard and its existing revenue definition.
+  if (!enabledSlugs.includes("service-centre")) return <ModuleWorkspace partnerId={params.partnerId} />;
   const modules = await getVisibleModules(params.partnerId);
   // getVisibleModules() silently drops any slug getModule() can't resolve
   // (e.g. a stale/renamed module still referenced by a PartnerType or

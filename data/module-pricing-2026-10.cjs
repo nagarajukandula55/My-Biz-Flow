@@ -1,0 +1,49 @@
+// Commercial decisions for new customers only. INR per business/month, before tax.
+// Evidence informs these decisions; competitor products do not have identical scope.
+const sources = {
+  hotel: {url:'https://www.hotelogix.com/faq',benchmark:'Verified 12 October 2026: pricing varies by room count and refers to a calculator. No numeric quote verified. Hotelogix includes broader PMS integrations; our initial owner-operated offering has no OTA sync or online payments.'},
+  books: {url:'https://www.zoho.com/in/books/pricing/', benchmark:'Standard INR 899/month or 749/month billed annually, 3 users; includes broader accounting and tax workflows.'},
+  billing: {url:'https://mybillbook.in/s/pos-billing-software/', benchmark:'Plus INR 349 billed monthly or INR 291/month billed annually (INR 3490/year); Pro INR 399 monthly or INR 333/month annually (INR 3990/year). POS/loyalty appear in Pro Max, starting INR 570/month annually, with 2 businesses/3 users. Entry billing plans are not a POS-equivalent comparison.'},
+  clinic: {url:'https://www.practo.com/providers/clinics/ray/plans', benchmark:'CM Atom INR 999/month on a one-year plan; richer practice-management package.'},
+  telecalling: {url:'https://telecrm.in/pricing', benchmark:'INR 799/user/month annually or 1099/user/month quarterly; calling automation and integrations. Provider charges separate.'},
+  payroll: {url:'https://www.zoho.com/in/payroll/pricing/', benchmark:'Free up to 10 employees; Standard INR 1250/organisation/month monthly or 1000/month billed annually includes 25 employees; statutory payroll capabilities.'},
+  manufacturing: {url:'https://www.mrpeasy.com/pricing/', benchmark:'Starter USD 49/user/month; Pro 69; Enterprise 99. Scheduling, costing and traceability exceed our current scope.'},
+  fleet: {url:'https://www.fleetio.com/pricing', benchmark:'Essential USD 4/vehicle/month annually or 5 monthly; Professional 7 annually. Different vehicle-based unit and deeper maintenance.'},
+  salon: {url:'https://www.fresha.com/pricing', benchmark:'Page localized to MYR: Independent MYR 67.95/month for one person. This is not an India or USD quote; qualitative comparison only. Marketplace and payment charges can be additional.'},
+  marketplace: {url:'https://www.sharetribe.com/help/en/articles/17105170-sharetribe-pricing-plans-and-usage-based-fees', benchmark:'Live USD 199/month annually or 259 monthly; Build USD 39 is test-only and is not a live-business comparison.'},
+  erp: {url:'https://www.zoho.com/en-in/erp/pricing/', benchmark:'Standard INR 1399/user/month monthly or 999 annually, minimum 5 users. Broad ERP, not equivalent to our smaller modules.'},
+  rentals: {url:'https://booqable.com/pricing/', benchmark:'Rental-specific booking, inventory and online-store benchmark. Currency in extracted pricing was ambiguous; no numeric comparison used.'},
+  education: {url:'https://www.classpro.in/', benchmark:'Coaching-specific attendance, fees and operations benchmark; no verifiable numeric rate obtained.'},
+  property: {url:'https://www.sell.do/pricing', benchmark:'Real-estate CRM pricing enquiry; no public numeric rate verified.'},
+  legal: {url:'https://www.clio.com/pricing/', benchmark:'Displays starting at USD 49/user; billing term not established in extracted page. Qualitative comparison only; trust accounting and integrations are broader.'},
+  restaurant: {url:'https://www.petpooja.com/poss/pricing', benchmark:'Restaurant-specific POS benchmark; no numeric price verified from the displayed pricing images.'},
+};
+// Scope is implemented functionality, not a claim of completed acceptance testing.
+// All three tiers are private until limits and page permissions are verified.
+const rows = [
+ ['hotel',[499,999,1999],'hotel','Owner-operated rooms, group reservations, room moves, housekeeping and two-payer manual folios','Private launch judgement for limited manual PMS scope. No verified numerical market comparison, OTA integration, statutory reporting, automatic payments or staff-role parity.'],
+ ['pos',[299,599,999],'billing','Checkout, tenders, voids, stock and invoice linkage','Do not claim offline tills, hardware compatibility or omnichannel sync.'],
+ ['billing',[199,399,799],'billing','Invoices, payments, contacts, expenses and reports','Below broader accounting suites; no bank-feed or automatic tax-filing promise.'],
+ ['brand',[699,1299,2499],'erp','Partner/location hierarchy and oversight','Scope priced as coordination; cross-location permissions and roll-up acceptance remain required.'],
+ ['clinic',[399,699,999],'clinic','Patients, appointments, consultation notes and billing','Below established clinic software; no EMR, prescriptions or diagnostic integration parity.'],
+ ['amc-field-service',[499,999,1999],'erp','Contracts, service visits and technician allocation','Indirect ERP benchmark; no verified like-for-like local price. No automatic routing or offline technician promise.'],
+ ['restaurant-pos',[499,999,1999],'restaurant','Tables, KOT, checkout and billing','Price is a launch judgement; no verified local numeric benchmark. Aggregator/printer/offline acceptance outstanding.'],
+ ['subscriptions',[299,599,1199],'billing','Memberships, renewals and check-in','Simple membership operations; do not market as a payment mandate, dunning or proration engine.'],
+ ['real-estate',[399,799,1499],'property','Listings, leads, visits and agreements','Quote-only comparison; launch price reflects CRM record workflows, not portal integrations.'],
+ ['rentals',[399,799,1499],'rentals','Pooled assets, concurrent availability, group reservations, partial pickups/returns, deposits and corrections','Currency unverified for competitor; price judgement, not claimed percentage savings. Online storefront not included.'],
+ ['education',[399,799,1499],'education','Students, batches, fees and attendance','Quote-only comparison; no LMS, live classes, exam engine or parent app promise.'],
+ ['manufacturing',[599,1199,1999],'manufacturing','BOM, production orders and material consumption','Lower scope than MRP suites; finite-capacity planning and advanced costing not promised.'],
+ ['wholesale-b2b',[499,999,1799],'erp','Dealer orders, price tiers, credits and billing','ERP is an indirect upper-scope benchmark; EDI and automated logistics not included.'],
+ ['logistics-fleet',[399,799,1499],'fleet','Vehicles, drivers, trips and delivery status','Flat business pricing, not per-vehicle parity; no GPS/telematics/route-optimisation claim.'],
+ ['legal',[399,799,1499],'legal','Matters, hours, documents and billing','No court integration, trust-account compliance or legal AI promise.'],
+ ['event-booking',[499,999,1999],'rentals','Venues, resources, scheduling and payment recording','Indirect rental benchmark; no ticketing, guest app or automated settlements.'],
+ ['salon-spa',[399,699,1299],'salon','Service menu, staff appointments and billing','No customer-acquisition network, payment processing or marketing automation included.'],
+ ['telecalling',[399,799,1499],'telecalling','Lead imports, assignments, call queue and message templates','Flat business rate vs competitor per-user rate; telecom, SMS and WhatsApp usage charged separately. No unlimited dialling.'],
+ ['inventory',[299,599,1299],'erp','Stock, warehouses, transfers, adjustments and stock take','Standalone stock tool; source workflow dependencies must be accepted before publication.'],
+ ['accounting',[299,599,999],'books','Accounting + GST: chart of accounts, journals, financial statements, reversals, reviewed Billing matching, tax records, ITC and HSN reports','One package includes accounting, accounting-gst and billing; retains separate records and permissions. Bank feeds, automatic source posting and government filing are not promised.'],
+ ['loyalty-rewards',[149,299,599],'billing','Member points, earn/redeem ledger and tiers','Basic standalone ledger; no automatic omnichannel purchase sync or marketing automation.'],
+ ['hrms',[199,399,799],'payroll','Employee sign-in, geofenced attendance, leave, audited corrections and attendance-derived payroll drafts','Competitor has a free tier and statutory processing. No PF/ESI/TDS filing or full payroll parity claim.'],
+ ['marketplace',[299,599,999],'marketplace','Partner aggregation and coordination','Not a full Sharetribe-style storefront/escrow/payout marketplace. Keep private pending settlement acceptance.'],
+ ['field-force',[0],'marketplace','Service catalog, bookings, dispatch and payment records','Retain free subscription; existing configured transaction fees remain separate and unchanged. Provider settlement is manual.'],
+];
+module.exports = {version:'2026-10',checkedAt:'2026-10-12',currency:'INR',unit:'business/month',tax:'Exclusive of applicable GST; checkout remains authoritative',sources:Object.fromEntries(Object.entries(sources).map(([key,value])=>[key,{...value,checkedAt:'2026-10-12'}])),modules:rows.map(([slug,prices,source,scope,limitation])=>({slug,prices,source,scope,limitation}))};

@@ -3,7 +3,7 @@ import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
 import { restaurantMenuItems } from "@/lib/sample-data/restaurant-pos";
-import { findOpenOrderForTable } from "../../actions";
+import { findOpenOrderForTable } from "@/lib/restaurantPos/data";
 import { TableOrderCart } from "./TableOrderCart";
 
 registerPage({

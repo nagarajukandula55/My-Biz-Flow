@@ -10,6 +10,7 @@ type Template = {
   channel: string;
   category: string;
   body: string;
+  metaTemplateName: string | null;
 };
 
 /**
@@ -46,24 +47,20 @@ export function TemplatesClient({ partnerId, templates }: { partnerId: string; t
   const [showAdd, setShowAdd] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  // Prefills the manual "+ New Template" form below — a suggested template
+  // can no longer be added with one click now that a WhatsApp template
+  // needs its real Meta-approved name (which only the partner knows,
+  // nothing here can guess it), so "Add this template" now just opens the
+  // form with name/category/body filled in and waits for that one field.
+  const [prefill, setPrefill] = useState<{ name: string; category: string; body: string } | null>(null);
 
   const boundCreate = createTemplateAction.bind(null, partnerId);
   const boundDelete = deleteTemplateAction.bind(null, partnerId);
 
   function addSuggested(suggestion: (typeof SUGGESTED_WHATSAPP_TEMPLATES)[number]) {
     setError(null);
-    const fd = new FormData();
-    fd.set("name", suggestion.name);
-    fd.set("channel", "whatsapp");
-    fd.set("category", suggestion.category);
-    fd.set("body", suggestion.body);
-    startTransition(async () => {
-      try {
-        await boundCreate(fd);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Failed to add template");
-      }
-    });
+    setPrefill(suggestion);
+    setShowAdd(true);
   }
 
   return (
@@ -107,6 +104,7 @@ export function TemplatesClient({ partnerId, templates }: { partnerId: string; t
               try {
                 await boundCreate(fd);
                 setShowAdd(false);
+                setPrefill(null);
               } catch (e) {
                 setError(e instanceof Error ? e.message : "Failed to save template");
               }
@@ -118,14 +116,15 @@ export function TemplatesClient({ partnerId, templates }: { partnerId: string; t
             <input
               name="name"
               required
+              defaultValue={prefill?.name}
               placeholder="Template name *"
               className="rounded-md border border-border bg-bg px-3 py-2 text-sm text-text"
             />
-            <select name="channel" className="rounded-md border border-border bg-bg px-3 py-2 text-sm text-text">
+            <select name="channel" defaultValue={prefill ? "whatsapp" : "sms"} className="rounded-md border border-border bg-bg px-3 py-2 text-sm text-text">
               <option value="sms">SMS</option>
               <option value="whatsapp">WhatsApp</option>
             </select>
-            <select name="category" className="rounded-md border border-border bg-bg px-3 py-2 text-sm text-text">
+            <select name="category" defaultValue={prefill?.category} className="rounded-md border border-border bg-bg px-3 py-2 text-sm text-text">
               {TEMPLATE_CATEGORIES.map((c) => (
                 <option key={c} value={c}>
                   {c}
@@ -137,9 +136,19 @@ export function TemplatesClient({ partnerId, templates }: { partnerId: string; t
             name="body"
             required
             rows={4}
+            defaultValue={prefill?.body}
             placeholder="Hi {{name}}, welcome! Check our products here: {{link}}"
             className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text"
           />
+          <input
+            name="metaTemplateName"
+            placeholder="Meta-approved WhatsApp template name (required for WhatsApp)"
+            className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text"
+          />
+          <p className="text-xs text-text-muted">
+            Only for WhatsApp — the exact template name approved in Meta Business Manager &gt; WhatsApp Manager &gt;
+            Message Templates. The {"{{tokens}}"} above must appear in the same order as that template's variables.
+          </p>
           <button type="submit" disabled={isPending} className="btn-accent">
             Save Template
           </button>
@@ -157,6 +166,16 @@ export function TemplatesClient({ partnerId, templates }: { partnerId: string; t
                   <span className="rounded-full bg-bg-sunken px-2 py-0.5 text-xs text-text-muted">{t.category}</span>
                 </div>
                 <p className="mt-1 whitespace-pre-wrap text-sm text-text-muted">{t.body}</p>
+                {t.channel === "whatsapp" && (
+                  <p className="mt-1 text-xs text-text-muted">
+                    Meta template:{" "}
+                    {t.metaTemplateName ? (
+                      <span className="font-mono text-text">{t.metaTemplateName}</span>
+                    ) : (
+                      <span className="font-semibold text-danger">not set — this template can't be sent</span>
+                    )}
+                  </p>
+                )}
               </div>
               <form
                 action={(fd) => {

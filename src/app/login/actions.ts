@@ -10,6 +10,8 @@ import {
 import { findPartnerByLoginIdentifier, verifyPartnerPassword } from "@/lib/partnerData";
 import { getPartnerHomePath } from "@/lib/partnerHome";
 import { prisma } from "@/lib/prisma";
+import { requestLoginOtp, verifyLoginOtp } from "@/lib/whatsappOtp";
+import { isOtpLoginEnabledForPartner } from "@/lib/telecalling/whatsappGate";
 
 /**
  * Real partner login — universal across every business type. There is one
@@ -77,4 +79,70 @@ export async function signInAsPartner(formData: FormData) {
 export async function signOutAction() {
   cookies().delete(PARTNER_SESSION_COOKIE);
   redirect("/login");
+}
+
+/**
+ * Step 1 of WhatsApp OTP login — a second login METHOD alongside
+ * password/Google/Telegram above, not a replacement for any of them (see
+ * WhatsAppOtpLoginForm.tsx, rendered next to the password form on
+ * /login). Looks the phone up the same way the password form does
+ * (findPartnerByLoginIdentifier), then sends a code via requestLoginOtp.
+ * Deliberately returns `{ ok: true }` even when no partner matches this
+ * number, AND when a partner matches but Super Admin hasn't enabled OTP
+ * login for them yet (PartnerWhatsAppMessaging.otpLoginEnabled) — same
+ * "don't confirm whether an account exists" posture as any login-adjacent
+ * lookup — so the UI always just says "code sent" and lets step 2's
+ * verify fail generically instead.
+ */
+export async function requestPartnerWhatsAppOtpAction(phone: string): Promise<{ ok: boolean; error?: string }> {
+  const trimmed = phone.trim();
+  if (!trimmed) return { ok: false, error: "Enter your registered WhatsApp number." };
+
+  const partner = await findPartnerByLoginIdentifier(trimmed);
+  if (!partner) return { ok: true };
+  if (!(await isOtpLoginEnabledForPartner(partner.id))) return { ok: true };
+
+  const result = await requestLoginOtp(partner.id, "partner-login", partner.id, trimmed);
+  if (!result.sent) {
+    return {
+      ok: false,
+      error:
+        result.reason === "not_configured"
+          ? "WhatsApp OTP login isn't available right now."
+          : "Couldn't send the code — check the number and try again.",
+    };
+  }
+  return { ok: true };
+}
+
+/**
+ * Step 2 of WhatsApp OTP login — verifies the code and, on success, signs
+ * the partner in exactly like signInAsPartner above (same session cookie,
+ * same lastLoginAt stamp, same mustChangePassword/home-path redirect).
+ */
+export async function verifyPartnerWhatsAppOtpAction(phone: string, code: string): Promise<void | { error?: string }> {
+  const partner = await findPartnerByLoginIdentifier(phone.trim());
+  if (!partner) return { error: "Incorrect or expired code." };
+
+  const result = await verifyLoginOtp(partner.id, "partner-login", partner.id, code);
+  if (!result.verified) return { error: "Incorrect or expired code." };
+
+  let token: string;
+  try {
+    token = await createPartnerSessionToken(partner.id);
+  } catch {
+    return { error: "Sign-in is temporarily unavailable due to a server configuration issue." };
+  }
+  cookies().set(PARTNER_SESSION_COOKIE, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: PARTNER_SESSION_MAX_AGE_SECONDS,
+  });
+
+  await prisma.partner.update({ where: { id: partner.id }, data: { lastLoginAt: new Date() } });
+
+  if (partner.mustChangePassword) redirect("/change-password");
+  redirect(await getPartnerHomePath(partner));
 }

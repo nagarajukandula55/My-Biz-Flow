@@ -1,11 +1,15 @@
 import { LogoMark } from "@/components/LogoMark";
+import { BusinessOfferingDirectory } from "@/components/BusinessOfferingDirectory";
 import { StatusChip } from "@/components/StatusChip";
 import { DataTable } from "@/components/DataTable";
+import { LinkedRecordTable } from "@/components/LinkedRecordTable";
+import { RentalBookingForm } from "@/components/RentalBookingForm";
 import { KanbanBoard } from "@/components/KanbanBoard";
 import { RecordDetail } from "@/components/RecordDetail";
 import { DashboardWidget } from "@/components/DashboardWidget";
 import { AppShell } from "@/components/AppShell";
 import { Sidebar } from "@/components/Sidebar";
+import { ResponsivePartnerShell } from "@/components/ResponsivePartnerShell";
 import {
   workorderColumns,
   workorderRows,
@@ -50,6 +54,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 export default function DesignSystemPage() {
   return (
     <div className="mbf-page space-y-16 bg-bg">
+        <BusinessOfferingDirectory offerings={[{slug:"hotel",title:"Hotel Management",summary:"Rooms, reservations and guest stays.",features:["Reserve rooms","Manage stays"],signupOptions:[]}]} />
       <header className="flex items-center gap-3">
         <LogoMark size={40} />
         <div>
@@ -169,10 +174,14 @@ export default function DesignSystemPage() {
 
       <Section title="DataTable">
         <DataTable columns={workorderColumns} rows={workorderRows} />
+        <LinkedRecordTable columns={[{key:"name",label:"Record",type:"text"}]} rows={[{id:"reference",name:"Design system example",href:"/design-system"}]} />
       </Section>
 
       <Section title="KanbanBoard">
         <KanbanBoard stages={workorderStages} cards={workorderCards} />
+      </Section>
+      <Section title="RentalBookingForm">
+        <RentalBookingForm assets={[{ id: "tripod", assetName: "Tripod" }]} fields={[{ key: "additionalAssetIds", label: "Additional assets — select to preview price overrides", type: "multi-select", options: ["tripod"], optionLabels: { tripod: "Tripod" } }]} />
       </Section>
 
       <Section title="RecordDetail">
@@ -184,6 +193,10 @@ export default function DesignSystemPage() {
       </Section>
 
       <Section title="Sidebar + AppShell">
+        <p className="mb-4 text-sm text-text-muted">Non-Service Centre workspaces use the responsive frame below. On phones, open the business menu to navigate; content and actions retain the full available width.</p>
+        <ResponsivePartnerShell sidebar={<Sidebar partnerId="demo" navGroups={sampleNavGroups} alerts={[]} />}>
+          <AppShell topbarTitle="Responsive workspace"><p className="text-sm text-text-muted">Resize to a phone width to check the menu disclosure and action wrapping.</p></AppShell>
+        </ResponsivePartnerShell>
         <div className="overflow-hidden rounded-lg border border-border" style={{ height: 420 }}>
           <div className="flex h-full w-full overflow-auto">
             {/* alerts=[] deliberately: this is the design-system gallery, not a

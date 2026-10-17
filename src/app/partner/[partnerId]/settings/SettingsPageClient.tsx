@@ -164,7 +164,7 @@ export function SettingsPageClient({
         </div>
       )}
 
-      {visibleSet.has("inventory") && (
+      {visibleSet.has("inventory") && visibleSet.has("service-centre") && (
         <div className="mt-8 max-w-2xl">
           <h2 className="font-display text-lg font-bold text-text">Serialized Inventory</h2>
           <p className="mt-1 text-sm text-text-muted">

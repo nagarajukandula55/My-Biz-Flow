@@ -20,6 +20,7 @@ import { getTelecallingAnalyticsSummary } from "@/lib/telecalling/analyticsData"
 import { requirePartnerSessionForPage } from "@/lib/requirePartnerSession";
 import { redirect } from "next/navigation";
 import { registerPage } from "@/lib/designer/registry";
+import { ModuleWorkspace, ModuleSummarySections } from "@/components/ModuleWorkspace";
 
 registerPage({
   id: "platform.analytics",
@@ -51,6 +52,8 @@ export default async function AnalyticsPage({ params }: { params: { partnerId: s
   const session = await requirePartnerSessionForPage(params.partnerId);
   if (session.kind === "staff") redirect(`/partner/${params.partnerId}/telecalling/queue`);
   const visibleModules = await getVisibleModuleSlugs(params.partnerId);
+  // Existing Service Centre charts and calculations are deliberately unchanged.
+  if (!["service-centre", "billing", "telecalling"].some(slug => visibleModules.includes(slug))) return <ModuleWorkspace partnerId={params.partnerId} analytics />;
   const showBilling = visibleModules.includes("billing");
   const showServiceCentreReports = visibleModules.includes("service-centre");
   const showRevenueTrend = showBilling;
@@ -100,6 +103,7 @@ export default async function AnalyticsPage({ params }: { params: { partnerId: s
         </p>
 
         {!showBilling && !showServiceCentreReports && !showTelecalling && <p className="mt-6 text-sm text-text-muted">Analytics reports are available for Billing, Service Centre and Telecalling. Your other modules remain available from the menu.</p>}
+        {!showServiceCentreReports && <ModuleSummarySections partnerId={params.partnerId} exclude={["billing", "telecalling"]} analytics />}
 
         {telecalling && (
           <div className="mt-6">

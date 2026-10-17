@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { StatusChip } from "@/components/StatusChip";
 import { Modal } from "@/components/Modal";
-import { computeTier, EARN_RATE, type LoyaltyTierName, type LoyaltyTransaction } from "@/lib/loyaltyRewards";
+import { computeTier, EARN_RATE, type LoyaltyTierName, type LoyaltyTransaction } from "@/lib/loyaltyRules";
 import { earnPointsAction, redeemPointsAction } from "./actions";
 import { formatDateTime } from "@/lib/format";
 

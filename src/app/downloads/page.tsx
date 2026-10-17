@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { PublicHeader } from "@/components/PublicHeader";
 import { registerPage } from "@/lib/designer/registry";
 import { SITE_URL, SITE_NAME } from "@/lib/seo";
+import { BUSINESS_OFFERINGS } from "@/lib/businessOfferings";
 
 registerPage({
   id: "platform.downloads",
@@ -50,6 +51,12 @@ const APPS = [
     learnMore: "/solutions/field-force",
   },
 ];
+
+const MODULE_INSTALLS = BUSINESS_OFFERINGS.map((offering) => ({
+  slug: offering.slug,
+  name: offering.title,
+  summary: offering.summary,
+}));
 
 export default function DownloadsPage() {
   const jsonLd = {
@@ -101,6 +108,26 @@ export default function DownloadsPage() {
       </section>
 
       <section className="border-t border-border px-6 py-16">
+        <div className="mx-auto max-w-6xl">
+          <h2 className="text-center font-display text-2xl font-bold text-text">Install any enabled module</h2>
+          <p className="mbf-prose mx-auto mt-3 max-w-2xl text-center text-sm text-text-muted">
+            Every workspace module uses the same installable web application. Sign in to your workspace, open the
+            module you use, and install it from the browser menu. The installed app keeps your own workspace and
+            enabled modules; it does not expose another business's data.
+          </p>
+          <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {MODULE_INSTALLS.map((module) => (
+              <Link key={module.slug} href={`/business-types/${module.slug}`} className="mbf-glass-card min-w-0 p-5 hover:border-accent/60">
+                <h3 className="font-display text-base font-bold text-text">{module.name}</h3>
+                <p className="mt-1 text-sm text-text-muted">{module.summary}</p>
+                <span className="mt-3 inline-flex min-h-11 items-center text-sm font-semibold text-accent">View install guidance</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="border-t border-border px-6 py-16">
         <div className="mx-auto max-w-3xl">
           <h2 className="text-center font-display text-2xl font-bold text-text">How "Add to Home Screen" works</h2>
           <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2">
@@ -125,9 +152,9 @@ export default function DownloadsPage() {
       <footer className="flex flex-col items-center gap-3 border-t border-border px-6 py-8 text-center text-xs text-text-muted">
         <nav className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5">
           <Link href="/" className="hover:text-text">Home</Link>
-          <Link href="/solutions/service-centre" className="hover:text-text">Service Centre</Link>
-          <Link href="/solutions/telecalling" className="hover:text-text">Telecalling</Link>
-          <Link href="/solutions/field-force" className="hover:text-text">Field Force</Link>
+          <Link href="/business-types/service-centre" className="hover:text-text">Service Centre</Link>
+          <Link href="/business-types/telecalling" className="hover:text-text">Telecalling</Link>
+          <Link href="/business-types/amc-field-service" className="hover:text-text">Field Service</Link>
           <Link href="/pricing" className="hover:text-text">Pricing</Link>
           <Link href="/contact" className="hover:text-text">Contact</Link>
         </nav>
