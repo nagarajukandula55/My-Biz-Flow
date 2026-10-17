@@ -739,7 +739,7 @@ export const serviceCentreFormFields: FormFieldDef[] = [
   // Not on the reference app's intake screen at all — a returning
   // customer's email still prefills from Contacts, and it stays editable
   // on the workorder's edit page.
-  { section: "Customer", column: 1, key: "customerEmail", label: "Customer Email", type: "email", required: false, createHidden: true },
+  { section: "Customer", column: 1, key: "customerEmail", label: "Customer Email", type: "email", required: false, placeholder: "Optional — used for invoice and updates" },
   { section: "Customer", column: 1, key: "customerCompany", label: "Company (B2B customer)", type: "text", required: false },
   { section: "Customer", column: 1, key: "customerGstin", label: "Customer GSTIN", type: "text", required: false, placeholder: "22AAAAA0000A1Z5 — leave blank for a B2C job" },
 
