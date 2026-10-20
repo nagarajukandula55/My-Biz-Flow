@@ -64,6 +64,7 @@ test('signup rejects unavailable types and invalid fields before provisioning; d
   'next/headers':{cookies:()=>({set(){}})},'next/navigation':{redirect:path=>{throw new Error('REDIRECT '+path);}},
   '@/lib/signupProvisioning':{provisionSignup:async()=>{writes++;if(failure)throw failure;return {id:'TEST0001'};}},
   '@/lib/designer/partnerTypesData':{getPartnerType:async()=>type},'@/lib/referrals':{resolveReferrer:async()=>undefined},
+  '@/lib/plansData':{getPlan:async()=>undefined},'@/lib/partnerData':{getPartner:async()=>null,updatePartnerSubscription:async()=>{}},
   '@/lib/email':{sendPartnerWelcomeEmail:async()=>{}},'@/lib/partnerSession':{createPartnerSessionToken:async()=>{if(signingFailure)throw new Error('signing unavailable');return 'test-token';}},
   '@/lib/platformSettings':{notifyAdmins:async()=>{}},'@/lib/telegramTemplates':{newPartnerApplicationMessage:async()=>''},
  },{process:{env:{NODE_ENV:'test'}}});

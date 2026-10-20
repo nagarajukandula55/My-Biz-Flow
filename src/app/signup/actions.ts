@@ -3,6 +3,8 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { provisionSignup } from "@/lib/signupProvisioning";
+import { getPlan } from "@/lib/plansData";
+import { getPartner, updatePartnerSubscription } from "@/lib/partnerData";
 import { getPartnerType } from "@/lib/designer/partnerTypesData";
 import { resolveReferrer } from "@/lib/referrals";
 import { sendPartnerWelcomeEmail } from "@/lib/email";
@@ -41,6 +43,7 @@ export async function registerBusiness(formData: FormData) {
   const businessContact = String(formData.get("businessContact") ?? "").trim();
   const loginContact = String(formData.get("loginContact") ?? "").trim();
   const referralCode = String(formData.get("referralCode") ?? "").trim();
+  const selectedPlanId = String(formData.get("selectedPlanId") ?? "").trim();
   // Multi-select checkboxes — every ticked box posts under the same name.
   // Left unvalidated here on purpose: parseProductDomains() (partnerData)
   // drops anything unknown and falls back to ELECTRONICS if nothing was
@@ -101,6 +104,19 @@ export async function registerBusiness(formData: FormData) {
   try {
     const result = await provisionSignup(input);
     partnerId = result.id;
+    if (selectedPlanId) {
+      const selectedPlan = await getPlan(selectedPlanId);
+      if (!selectedPlan || !partnerType.planIds.includes(selectedPlanId)) throw new Error("Invalid plan for this business type.");
+      const createdPartner = await getPartner(partnerId);
+      await updatePartnerSubscription(partnerId, {
+        subscriptionStatus: "PastDue",
+        trialStartAt: createdPartner?.trialStartAt ?? null,
+        trialEndAt: createdPartner?.trialEndAt ?? null,
+        billingCycle: selectedPlan.billingCycle,
+        planId: selectedPlan.id,
+        offerId: null,
+      });
+    }
   } catch (error) {
     const failure = error as { code?: string; meta?: { target?: unknown } };
     const target = failure.meta?.target;

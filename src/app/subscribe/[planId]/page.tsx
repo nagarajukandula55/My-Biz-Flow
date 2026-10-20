@@ -8,17 +8,17 @@ import { SubscribeForm } from "./SubscribeForm";
 registerPage({
   id: "platform.subscribe",
   moduleSlug: "platform",
-  title: "Subscribe — Demo Checkout",
+  title: "Subscribe — Account and Payment",
   path: "/subscribe/[planId]",
   kind: "form",
   superAdminOnly: false,
   customizableRegions: [],
   explanation:
-    "Honest demo checkout stub — no real payment gateway account/keys exist for this project. Shows the chosen plan's price/details, a name/email form, and a clearly-labeled 'Simulate payment' button that shows a demo success state. No stripe/razorpay dependency, no placeholder API keys.",
+    "Public plan selection creates the business account first, carries the selected plan into the partner subscription, and then uses the existing verified Razorpay checkout.",
   sourceFile: "src/app/subscribe/[planId]/page.tsx",
 });
 
-export default async function SubscribePage({ params }: { params: { planId: string } }) {
+export default async function SubscribePage({ params, searchParams }: { params: { planId: string }; searchParams: { type?: string } }) {
   const plan = await getPlan(params.planId);
 
   if (!plan) {
@@ -71,11 +71,8 @@ export default async function SubscribePage({ params }: { params: { planId: stri
           </div>
 
           <div className="mt-6 border-t border-border pt-6">
-            <p className="mb-4 text-xs text-text-muted">
-              No real payment gateway is wired up for this project (no Stripe/Razorpay keys exist). This is an
-              honest demo — clicking below simulates a successful payment, nothing is actually charged.
-            </p>
-            <SubscribeForm planName={plan.name} />
+            <p className="mb-4 text-xs text-text-muted">Create the account first, then complete payment securely from the partner subscription page.</p>
+            <SubscribeForm planName={plan.name} planId={plan.id} partnerTypeId={searchParams.type} />
           </div>
         </div>
       </div>

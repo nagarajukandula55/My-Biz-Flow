@@ -33,7 +33,7 @@ export default async function SignupTypePage({
   searchParams,
 }: {
   params: { type: string };
-  searchParams: { error?: string; ref?: string };
+  searchParams: { error?: string; ref?: string; planId?: string };
 }) {
   const partnerType = await getPartnerType(params.type);
   if (!partnerType || partnerType.status !== "Active") notFound();
@@ -51,7 +51,7 @@ export default async function SignupTypePage({
           </p>
 
           <Link className="my-3 inline-flex min-h-11 items-center text-teal underline" href={`${offering ? `/business-types/${offering.slug}` : '/business-types'}${searchParams.ref ? `?ref=${encodeURIComponent(searchParams.ref)}` : ""}`}>Read features and requirements for this business</Link>
-          <SignupForm partnerType={partnerType} error={searchParams.error} referralCode={searchParams.ref} />
+          <SignupForm partnerType={partnerType} error={searchParams.error} referralCode={searchParams.ref} selectedPlanId={searchParams.planId} />
         </div>
 
         <aside className="h-fit rounded-lg border border-border bg-bg-raised p-6">

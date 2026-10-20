@@ -17,10 +17,11 @@ import {
  * per field def. `partnerTypeId` is a hidden input, not a dropdown: this
  * page is already scoped to one business type.
  */
-export function SignupForm({ partnerType, error, referralCode }: { partnerType: PartnerTypeRecord; error?: string; referralCode?: string }) {
+export function SignupForm({ partnerType, error, referralCode, selectedPlanId }: { partnerType: PartnerTypeRecord; error?: string; referralCode?: string; selectedPlanId?: string }) {
   return (
     <form action={registerBusiness} className="mt-8 space-y-8">
       <input type="hidden" name="partnerTypeId" value={partnerType.id} />
+      {selectedPlanId && <input type="hidden" name="selectedPlanId" value={selectedPlanId} />}
 
       {error === "contact_taken" && (
         <p className="rounded-md border border-danger bg-danger-soft px-3 py-2 text-sm text-danger">

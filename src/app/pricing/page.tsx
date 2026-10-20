@@ -382,7 +382,7 @@ export default async function PricingPage({
               )}
             </div>
 
-            <Link href={`/subscribe/${plan.id}`} className="btn-accent mt-6 w-full text-center">
+            <Link href={`/subscribe/${plan.id}?type=${encodeURIComponent(selectedType.id)}`} className="btn-accent mt-6 w-full text-center">
               {tp("choosePlanPrefix", { plan: plan.name })}
             </Link>
           </div>
