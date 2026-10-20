@@ -58,6 +58,10 @@ export async function registerBusiness(formData: FormData) {
   if (!partnerType || partnerType.status !== "Active") {
     throw new Error("This business type is not accepting registrations.");
   }
+  const selectedPlan = selectedPlanId ? await getPlan(selectedPlanId) : null;
+  if (selectedPlanId && (!selectedPlan || !partnerType.planIds.includes(selectedPlanId))) {
+    throw new Error("Invalid plan for this business type.");
+  }
 
   // Server-side validation for this type's own custom signup fields — the
   // form marks required ones with the `required` attribute, but that's
@@ -105,8 +109,6 @@ export async function registerBusiness(formData: FormData) {
     const result = await provisionSignup(input);
     partnerId = result.id;
     if (selectedPlanId) {
-      const selectedPlan = await getPlan(selectedPlanId);
-      if (!selectedPlan || !partnerType.planIds.includes(selectedPlanId)) throw new Error("Invalid plan for this business type.");
       const createdPartner = await getPartner(partnerId);
       await updatePartnerSubscription(partnerId, {
         subscriptionStatus: "PastDue",
