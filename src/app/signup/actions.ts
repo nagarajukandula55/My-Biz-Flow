@@ -108,7 +108,7 @@ export async function registerBusiness(formData: FormData) {
   try {
     const result = await provisionSignup(input);
     partnerId = result.id;
-    if (selectedPlanId) {
+    if (selectedPlanId && selectedPlan) {
       const createdPartner = await getPartner(partnerId);
       await updatePartnerSubscription(partnerId, {
         subscriptionStatus: "PastDue",
