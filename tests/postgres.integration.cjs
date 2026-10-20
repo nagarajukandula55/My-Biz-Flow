@@ -82,7 +82,7 @@ test.after(async () => {
 test('durable delivery jobs roll back with payment work and concurrent workers claim each channel once', async () => {
  const payment = { partnerId, razorpayPaymentId: partnerId, amount: 100, planName: 'Test', billingCycle: 'Monthly', capturedAt: new Date().toISOString() };
  const queueClient = new Proxy(base, { get(target, key) {
-  if (key === '$transaction') return fn => target.$transaction(async tx => { await tx.$executeRawUnsafe("SET LOCAL TIME ZONE 'Asia/Calcutta'"); return fn(tx); });
+  if (key === '$transaction') return fn => target.$transaction(async tx => { await tx.$executeRawUnsafe("SET LOCAL TIME ZONE 'Asia/Kolkata'"); return fn(tx); });
   if (key === 'subscriptionPayment') return {findUnique:async()=>({partnerId,amount:100})};
   const value=target[key]; return typeof value==='function'?value.bind(target):value;
  }});
