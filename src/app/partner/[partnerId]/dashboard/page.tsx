@@ -8,6 +8,7 @@ import { registerPage } from "@/lib/designer/registry";
 import { ModuleWorkspace } from "@/components/ModuleWorkspace";
 import { requirePartnerSessionForPage } from "@/lib/requirePartnerSession";
 import { redirect } from "next/navigation";
+import { getFieldForceReport } from "@/lib/fieldForce/reportsData";
 
 registerPage({
   id: "platform.partner-dashboard",
@@ -33,7 +34,7 @@ export default async function PartnerDashboardPage({ params }: { params: { partn
   if (session.kind === "staff") redirect(`/partner/${params.partnerId}/telecalling/queue`);
   const enabledSlugs = await getVisibleModuleSlugs(params.partnerId);
   // Preserve the live Service Centre dashboard and its existing revenue definition.
-  if (!enabledSlugs.includes("service-centre")) return <ModuleWorkspace partnerId={params.partnerId} />;
+  if (!enabledSlugs.includes("service-centre") && !enabledSlugs.includes("field-force")) return <ModuleWorkspace partnerId={params.partnerId} />;
   const modules = await getVisibleModules(params.partnerId);
   // getVisibleModules() silently drops any slug getModule() can't resolve
   // (e.g. a stale/renamed module still referenced by a PartnerType or
@@ -42,13 +43,15 @@ export default async function PartnerDashboardPage({ params }: { params: { partn
   // once they diverge. Look modules up by slug instead, so a dropped
   // module never shifts anything else.
   const hasServiceCentre = enabledSlugs.includes("service-centre");
+  const hasFieldForce = enabledSlugs.includes("field-force");
   const hasTelecalling = enabledSlugs.includes("telecalling");
-  const [scOverview, inquiryOverview, revenueBreakdown, callsThisMonth, pnaOverview] = await Promise.all([
+  const [scOverview, inquiryOverview, revenueBreakdown, callsThisMonth, pnaOverview, fieldForceReport] = await Promise.all([
     hasServiceCentre ? getServiceCentreOverview(params.partnerId) : Promise.resolve(null),
     hasServiceCentre ? getInquiryOverview(params.partnerId) : Promise.resolve(null),
     getRevenueBreakdown(params.partnerId),
     hasTelecalling ? getCallsThisMonth(params.partnerId) : Promise.resolve(null),
     hasServiceCentre ? getPnaOverview(params.partnerId) : Promise.resolve(null),
+    hasFieldForce ? getFieldForceReport(params.partnerId) : Promise.resolve(null),
   ]);
 
   return (
@@ -90,6 +93,18 @@ export default async function PartnerDashboardPage({ params }: { params: { partn
               <Link href={`/partner/${params.partnerId}/telecalling`}>
                 <DashboardWidget label="Calls This Month" value={String(callsThisMonth)} />
               </Link>
+            </div>
+          </div>
+        )}
+
+        {fieldForceReport && (
+          <div className="mt-6">
+            <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">Field Force — Marketplace Overview</div>
+            <div className="mt-2 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <Link href={`/partner/${params.partnerId}/field-force/bookings`}><DashboardWidget label="Bookings" value={String(fieldForceReport.totalBookings)} /></Link>
+              <Link href={`/partner/${params.partnerId}/field-force/bookings`}><DashboardWidget label="Assigned" value={String(fieldForceReport.assignedBookings)} /></Link>
+              <Link href={`/partner/${params.partnerId}/field-force/bookings`}><DashboardWidget label="Completed" value={String(fieldForceReport.completedBookings)} /></Link>
+              <Link href={`/partner/${params.partnerId}/field-force`}><DashboardWidget label="Available Providers" value={`${fieldForceReport.availableProviderCount}/${fieldForceReport.providerCount}`} /></Link>
             </div>
           </div>
         )}

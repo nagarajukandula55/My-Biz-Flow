@@ -19,8 +19,10 @@ import { formatTatHours } from "@/lib/sample-data/service-centre";
 import { getTelecallingAnalyticsSummary } from "@/lib/telecalling/analyticsData";
 import { requirePartnerSessionForPage } from "@/lib/requirePartnerSession";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { registerPage } from "@/lib/designer/registry";
 import { ModuleWorkspace, ModuleSummarySections } from "@/components/ModuleWorkspace";
+import { getFieldForceReport } from "@/lib/fieldForce/reportsData";
 
 registerPage({
   id: "platform.analytics",
@@ -53,7 +55,7 @@ export default async function AnalyticsPage({ params }: { params: { partnerId: s
   if (session.kind === "staff") redirect(`/partner/${params.partnerId}/telecalling/queue`);
   const visibleModules = await getVisibleModuleSlugs(params.partnerId);
   // Existing Service Centre charts and calculations are deliberately unchanged.
-  if (!["service-centre", "billing", "telecalling"].some(slug => visibleModules.includes(slug))) return <ModuleWorkspace partnerId={params.partnerId} analytics />;
+  if (!["service-centre", "billing", "telecalling", "field-force"].some(slug => visibleModules.includes(slug))) return <ModuleWorkspace partnerId={params.partnerId} analytics />;
   const showBilling = visibleModules.includes("billing");
   const showServiceCentreReports = visibleModules.includes("service-centre");
   const showRevenueTrend = showBilling;
@@ -62,6 +64,7 @@ export default async function AnalyticsPage({ params }: { params: { partnerId: s
   const showInvoiceStatus = showBilling;
   const showPeriodComparison = showBilling && showServiceCentreReports;
   const showTelecalling = visibleModules.includes("telecalling");
+  const showFieldForce = visibleModules.includes("field-force");
   const [
     revenueTrend,
     workorderStatusBreakdown,
@@ -85,6 +88,7 @@ export default async function AnalyticsPage({ params }: { params: { partnerId: s
     showServiceCentreReports ? getAverageTat(params.partnerId) : Promise.resolve({ closedCount: 0, avgHours: undefined }),
     showTelecalling ? getTelecallingAnalyticsSummary(params.partnerId) : Promise.resolve(null),
   ]);
+  const fieldForce = showFieldForce ? await getFieldForceReport(params.partnerId) : null;
 
   // IST, not server-local time (UTC in production) — matters right at
   // month-boundary midnight IST, where UTC is still the previous day.
@@ -102,7 +106,8 @@ export default async function AnalyticsPage({ params }: { params: { partnerId: s
           Reports for the modules enabled for your business.
         </p>
 
-        {!showBilling && !showServiceCentreReports && !showTelecalling && <p className="mt-6 text-sm text-text-muted">Analytics reports are available for Billing, Service Centre and Telecalling. Your other modules remain available from the menu.</p>}
+        {!showBilling && !showServiceCentreReports && !showTelecalling && !showFieldForce && <p className="mt-6 text-sm text-text-muted">Analytics reports are available for enabled modules.</p>}
+        {fieldForce && <div className="mt-6"><h2 className="font-display text-lg font-bold text-text">Field Force</h2><div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"><DashboardWidget label="Bookings" value={String(fieldForce.totalBookings)} /><DashboardWidget label="Assigned" value={String(fieldForce.assignedBookings)} /><DashboardWidget label="Completed" value={String(fieldForce.completedBookings)} /><DashboardWidget label="Available Providers" value={`${fieldForce.availableProviderCount}/${fieldForce.providerCount}`} /><DashboardWidget label="Verified Providers" value={`${fieldForce.verifiedProviderCount}/${fieldForce.providerCount}`} /><DashboardWidget label="Paid Value" value={formatCurrencyINR(fieldForce.paidValue)} /></div><p className="mt-3 text-sm text-text-muted"><Link href={`/partner/${params.partnerId}/field-force/reports`} className="text-teal hover:underline">Open full Field Force report</Link></p></div>}
         {!showServiceCentreReports && <ModuleSummarySections partnerId={params.partnerId} exclude={["billing", "telecalling"]} analytics />}
 
         {telecalling && (
