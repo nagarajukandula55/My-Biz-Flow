@@ -121,6 +121,29 @@ export default async function ServiceCentrePage({
     total = filtered.length;
     totalPages = Math.max(1, Math.ceil(total / pageSize));
     rows = filtered.slice((page - 1) * pageSize, page * pageSize);
+  } else if (status) {
+    // Status is a derived display value, not the legacy raw `data.status`
+    // field. Older workorders can retain status=REPAIR_COMPLETED after their
+    // real stage has moved to Closed, so filtering the raw field makes closed
+    // calls appear under Repair Completed. Filter against the same computed
+    // value used by the Status column instead.
+    allRows = await listBusinessRecords(params.partnerId, "service-centre");
+    const filtered = allRows.filter((row) => {
+      if (computeDisplayStatus(row).label !== status) return false;
+      if (brandName && String(row["brandName"] ?? "") !== brandName) return false;
+      if (engineerName && String(row["engineerName"] ?? "") !== engineerName) return false;
+      if (paymentMode && String(row["paymentMode"] ?? "") !== paymentMode) return false;
+      if (warrantyStatus && String(row["warrantyStatus"] ?? "") !== warrantyStatus) return false;
+      const receivedDate = String(row["receivedDate"] ?? "");
+      if (from && receivedDate < from) return false;
+      if (to && receivedDate > to) return false;
+      if (q && !SEARCH_FIELDS.some((f) => String(row[f] ?? "").toLowerCase().includes(q.toLowerCase()))) return false;
+      return true;
+    });
+    pageSize = DEFAULT_BUSINESS_RECORD_PAGE_SIZE;
+    total = filtered.length;
+    totalPages = Math.max(1, Math.ceil(total / pageSize));
+    rows = filtered.slice((page - 1) * pageSize, page * pageSize);
   } else {
     [{ rows, total, totalPages, pageSize }, allRows] = await Promise.all([
       listBusinessRecordsPaginated(params.partnerId, "service-centre", {
@@ -197,7 +220,7 @@ export default async function ServiceCentrePage({
   const openCount = cardRows.length - closedCount - cancelledCount;
 
   const distinct = (key: string) => Array.from(new Set(allRows.map((r) => String(r[key] ?? "")).filter(Boolean)));
-  const statusOptions = distinct("status");
+  const statusOptions = Array.from(new Set(allRows.map((row) => computeDisplayStatus(row).label))).filter(Boolean);
   const brandOptions = distinct("brandName");
   const engineerOptions = distinct("engineerName");
   const paymentModeOptions = distinct("paymentMode");
