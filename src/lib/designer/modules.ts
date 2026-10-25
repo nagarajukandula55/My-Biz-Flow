@@ -77,7 +77,7 @@ export const MODULES: ModuleDefinition[] = [
   // --- Special case ---
   { slug: "marketplace", label: "Marketplace / Partner Aggregator", description: "Multiple partners under one umbrella — coordinates with central-api's own vendor concept, does not duplicate it.", taxonomy: "cross-cutting" },
 
-  { slug: "field-force", label: "Field Force", description: "A full home-services booking system: priced service catalog, customer bookings, dispatch of skilled/unskilled engineers by service and pincode, payment collection, and ratings.", taxonomy: "cross-cutting" },
+  { slug: "field-force", label: "Field Force", description: "A full home-services booking system: priced service catalog, customer bookings, dispatch of skilled/unskilled service providers by service and pincode, payment collection, and ratings.", taxonomy: "cross-cutting" },
 
 ];
 
@@ -310,8 +310,8 @@ export const MODULE_SUB_NAV: Record<string, PartnerNavSubItem[]> = {
   "field-force": [
     { key: "field-force.bookings", label: "Bookings", href: "field-force/bookings" },
     { key: "field-force.bookings-new", label: "+ New Booking", href: "field-force/bookings/new" },
-    { key: "field-force.list", label: "Engineers", href: "field-force" },
-    { key: "field-force.onboard", label: "Onboard Engineer", href: "field-force/onboard" },
+    { key: "field-force.list", label: "Service Providers", href: "field-force" },
+    { key: "field-force.onboard", label: "Onboard Service Provider", href: "field-force/onboard" },
     { key: "field-force.allocations", label: "Job Allocation", href: "field-force/allocations" },
     { key: "field-force.companies", label: "Companies", href: "field-force/companies" },
   ],

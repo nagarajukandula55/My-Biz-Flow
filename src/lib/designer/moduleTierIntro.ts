@@ -126,9 +126,9 @@ export const MODULE_TIER_INTRO: Record<string, { basic: string; pro: string; ult
     "ultimate": "No additional verified feature is listed for this tier."
   },
   "field-force": {
-    "basic": "Engineer onboarding (services offered + serviceable pincodes) and a directory to see who's available.",
+    "basic": "Service-provider onboarding (services offered + serviceable pincodes) and a directory to see who's available.",
     "pro": "Adds job matching by service and pincode, plus manual job allocation for dispatch.",
-    "ultimate": "Adds automated allocation rules, engineer performance/rating tracking, and a commission/fee model (backend-ready, not yet billed)."
+    "ultimate": "Adds automated allocation rules, service-provider performance/rating tracking, and a commission/fee model (backend-ready, not yet billed)."
   }
 };
 

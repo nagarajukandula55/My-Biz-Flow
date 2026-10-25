@@ -54,7 +54,7 @@ const workflows: Record<string, string[]> = {
   "loyalty-rewards":["Enrol members","Record points earned and redeemed","Review balances, tiers and the points ledger"],
   hrms:["Register employees and office geofences","Record attendance and manage leave","Prepare payroll records and payslips"],
   marketplace:["Maintain listings and vendor settings","Review partner orders","Reconcile order status and commercial arrangements"],
-  "field-force":["Set up services, engineers and coverage","Receive customer bookings and dispatch staff","Record completion, collection and ratings"],
+  "field-force":["Set up services, service providers and coverage","Receive customer bookings and dispatch providers","Record completion, collection and ratings"],
 };
 
 export const BUSINESS_OFFERINGS = MODULES.filter(m=>m.slug!=="accounting-gst").map(module=>{
