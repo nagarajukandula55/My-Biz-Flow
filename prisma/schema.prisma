@@ -1028,6 +1028,8 @@ model Address {
   city       String
   state      String
   pincode    String
+  latitude   Float?
+  longitude  Float?
   isDefault  Boolean  @default(false)
 
   bookings Booking[]

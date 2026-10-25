@@ -12,7 +12,7 @@ export const PROVIDER_SESSION_COOKIE = "mbf_ff_provider_session";
 
 export async function verifyProviderLogin(partnerId: string, phone: string, password: string) {
   const provider = await prisma.provider.findUnique({ where: { partnerId_phone: { partnerId, phone } } });
-  if (!provider || !provider.passwordHash) return null;
+  if (!provider || !provider.passwordHash || provider.status !== "active") return null;
   if (!verifyPassword(password, provider.passwordHash)) return null;
   return provider;
 }
@@ -21,6 +21,6 @@ export async function getCurrentProvider(partnerId: string) {
   const id = cookies().get(PROVIDER_SESSION_COOKIE)?.value;
   if (!id) return null;
   const provider = await prisma.provider.findUnique({ where: { id } });
-  if (!provider || provider.partnerId !== partnerId) return null;
+  if (!provider || provider.partnerId !== partnerId || provider.status !== "active") return null;
   return provider;
 }

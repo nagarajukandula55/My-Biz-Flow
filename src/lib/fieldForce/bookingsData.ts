@@ -10,6 +10,7 @@
 import { prisma } from "@/lib/prisma";
 import { assertPartnerScope } from "@/lib/tenant";
 import { getNextNumber } from "@/lib/designer/numbering";
+import { sendPartnerTelegramAlert } from "@/lib/telegram";
 
 export const BOOKING_STATUSES = [
   "requested",
@@ -192,7 +193,9 @@ export async function createBooking(
     },
     include: INCLUDE,
   });
-  return toRecord(row);
+  const result = toRecord(row);
+  await sendPartnerTelegramAlert(partnerId, "fieldForceEvent", `Field Force booking ${result.bookingNumber} created (${result.status}).`);
+  return result;
 }
 
 /**
@@ -240,6 +243,7 @@ export async function updateBookingDetails(
       notes: input.notes,
     },
   });
+  await sendPartnerTelegramAlert(partnerId, "fieldForceEvent", `Field Force booking ${existing.bookingNumber} details updated.`);
 }
 
 export async function updateBookingStatus(id: string, partnerId: string, status: BookingStatus): Promise<void> {
@@ -249,6 +253,7 @@ export async function updateBookingStatus(id: string, partnerId: string, status:
     prisma.booking.update({ where: { id }, data: { status } }),
     prisma.jobAllocation.updateMany({ where: { bookingId: id }, data: { status } }),
   ]);
+  await sendPartnerTelegramAlert(partnerId, "fieldForceEvent", `Field Force booking ${existing.bookingNumber} status changed to ${status}.`);
 }
 
 /** Same as updateBookingStatus, but also verifies the calling Provider actually owns this booking — the
@@ -266,6 +271,7 @@ export async function updateBookingStatusAsProvider(id: string, providerId: stri
     prisma.booking.update({ where: { id }, data: { status } }),
     prisma.jobAllocation.updateMany({ where: { bookingId: id }, data: { status } }),
   ]);
+  await sendPartnerTelegramAlert(partnerId, "fieldForceEvent", `Field Force booking ${existing.bookingNumber} status changed to ${status} by provider.`);
 }
 
 /**
@@ -303,6 +309,7 @@ export async function closeBookingAsProvider(
     }),
     prisma.jobAllocation.updateMany({ where: { bookingId: id }, data: { status } }),
   ]);
+  await sendPartnerTelegramAlert(partnerId, "fieldForceEvent", `Field Force booking ${existing.bookingNumber} completed with closure evidence.`);
 }
 
 /** Directly assigns a Provider (manual ops dispatch) — creates the JobAllocation audit row and advances status. */
@@ -313,6 +320,7 @@ export async function assignProviderToBooking(bookingId: string, partnerId: stri
     prisma.booking.update({ where: { id: bookingId }, data: { providerId, status: "assigned" } }),
     prisma.jobAllocation.create({ data: { partnerId, bookingId, providerId, status: "assigned" } }),
   ]);
+  await sendPartnerTelegramAlert(partnerId, "fieldForceEvent", `Field Force booking ${existing.bookingNumber} assigned to provider ${providerId}.`);
 }
 
 /** Sets the agreed final price once Customer/Provider settle it by conversation. */
@@ -320,6 +328,7 @@ export async function setFinalPrice(bookingId: string, partnerId: string, amount
   const existing = await prisma.booking.findUniqueOrThrow({ where: { id: bookingId } });
   assertPartnerScope(partnerId, existing.partnerId);
   await prisma.booking.update({ where: { id: bookingId }, data: { finalPrice: amount } });
+  await sendPartnerTelegramAlert(partnerId, "fieldForceEvent", `Field Force booking ${existing.bookingNumber} final price updated.`);
 }
 
 export async function rateBooking(id: string, partnerId: string, ratingValue: number, ratingComment?: string, customerId?: string): Promise<void> {
@@ -328,4 +337,5 @@ export async function rateBooking(id: string, partnerId: string, ratingValue: nu
   if (customerId && existing.customerId !== customerId) throw new Error("This booking does not belong to you.");
   const clamped = Math.min(5, Math.max(1, Math.round(ratingValue)));
   await prisma.booking.update({ where: { id }, data: { ratingValue: clamped, ratingComment: ratingComment || null } });
+  await sendPartnerTelegramAlert(partnerId, "fieldForceEvent", `Field Force booking ${existing.bookingNumber} received a customer rating.`);
 }

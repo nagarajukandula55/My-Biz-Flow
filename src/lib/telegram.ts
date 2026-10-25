@@ -27,6 +27,7 @@ export const TELEGRAM_ALERT_TYPES = [
   { key: "pnaLogged", label: "Part Not Available logged" },
   { key: "subscriptionExpiring", label: "Subscription expiring" },
   { key: "generalAnnouncement", label: "General announcement" },
+  { key: "fieldForceEvent", label: "Field Force event" },
   { key: "otpVerification", label: "OTP verification codes" },
   // Legal module (see src/lib/legal.ts). "legalCourtDateUpcoming" is
   // registered here but not yet sent live — no cron job in this repo polls

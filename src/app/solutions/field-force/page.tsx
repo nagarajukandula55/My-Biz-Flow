@@ -27,7 +27,7 @@ const CUSTOMER_SIGNUP_HREF = `/partner/${FF_OPERATOR_ID}/field-force/customer/si
 export const metadata: Metadata = {
   title: "Field Force — Join as a Provider or Book a Service",
   description:
-    "Free to join. Skilled or unskilled professionals sign up as a service provider and get their own login to receive and manage jobs. Customers request home services — repairs, installs, and more — and get matched to a provider by service and pincode.",
+    "Free to join. Skilled or unskilled professionals sign up as a service provider and get their own login to receive and manage jobs. Service Requesters ask for home services — repairs, installs, and more — and get matched to a provider by service and pincode.",
   alternates: { canonical: "/solutions/field-force" },
 };
 
@@ -49,7 +49,7 @@ const PERKS = [
     description: "A request matches to a provider who actually offers that service in that area — not a random assignment.",
   },
   {
-    title: "Customers request in minutes",
+    title: "Service Requesters request in minutes",
     description: "Pick a service, describe the job, and get matched — no phone tag, no waiting for a callback quote.",
   },
   {
@@ -77,7 +77,7 @@ const FAQS = [
   { q: "Does it cost anything to join as a provider?", a: "No — signing up is free. The platform only earns a small commission per completed, paid booking." },
   { q: "Can I tell skilled and unskilled providers apart?", a: "Yes — every provider carries a real skill level, and services can require a minimum skill level, so dispatch respects it." },
   { q: "How do providers get onboarded?", a: "Self-signup is the main path — an admin or team lead can also onboard a provider directly." },
-  { q: "Do customers need an account to book?", a: "They need a lightweight customer login (separate from provider accounts), not a full business signup." },
+  { q: "Do Service Requesters need an account to book?", a: "They need a lightweight Service Requester login (separate from provider accounts), not a full business signup." },
   { q: "Is payment tracked per job?", a: "Yes — payment collection is tied to each booking, not a separate ledger to reconcile by hand." },
 ];
 
@@ -128,7 +128,7 @@ export default function FieldForceSolutionPage() {
       <section className="px-6 py-20 text-center">
         <p className="text-xs font-semibold uppercase tracking-widest text-accent">Field Force — free to join</p>
         <h1 className="mx-auto mt-2 max-w-3xl font-display text-4xl font-extrabold text-text sm:text-5xl">
-          Earn as a <span className="mbf-headline-mark">service provider</span>, or get help fast as a customer.
+          Earn as a <span className="mbf-headline-mark">service provider</span>, or get help fast as a Service Requester.
         </h1>
         <p className="mbf-prose mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-text-muted">
           Skilled or unskilled, sign up free and get your own login to receive real job requests. Need a service

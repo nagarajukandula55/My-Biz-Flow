@@ -12,6 +12,7 @@ import { listProviders } from "@/lib/fieldForce/providersData";
 import { notify } from "@/lib/fieldForce/notifications";
 import { sendSms } from "@/lib/sms";
 import { formatDate } from "@/lib/format";
+import { sendPartnerTelegramAlert } from "@/lib/telegram";
 
 const MAX_OFFERS_PER_BOOKING = 10;
 
@@ -42,6 +43,7 @@ export async function dispatchBookingRequest(bookingId: string): Promise<{ offer
     body: `${booking.service.name} in ${booking.address.pincode} — ${candidates.length} provider(s) notified.`,
     relatedBookingId: booking.id,
   });
+  await sendPartnerTelegramAlert(booking.partnerId, "fieldForceEvent", `Field Force booking ${booking.bookingNumber} dispatched to ${candidates.length} provider(s).`);
 
   if (candidates.length > 0) {
     // JobOffer rows carry no data the accept/decline flow reads back from
@@ -108,6 +110,7 @@ export async function respondToOffer(
 
   if (response === "declined") {
     await prisma.jobOffer.update({ where: { id: offerId }, data: { status: "declined", respondedAt: new Date() } });
+    await sendPartnerTelegramAlert(offer.partnerId, "fieldForceEvent", `Provider declined Field Force booking ${offer.booking.bookingNumber}.`);
 
     const remaining = await prisma.jobOffer.count({ where: { bookingId: offer.bookingId, status: "pending" } });
     if (remaining === 0) {
@@ -145,6 +148,7 @@ export async function respondToOffer(
     body: "A provider has accepted your booking. Their contact details are now visible on your booking page.",
     relatedBookingId: offer.bookingId,
   });
+  await sendPartnerTelegramAlert(offer.partnerId, "fieldForceEvent", `Field Force booking ${offer.booking.bookingNumber} accepted by a provider.`);
 }
 
 /** Used by the Provider dashboard — offers still awaiting a response for this provider. */

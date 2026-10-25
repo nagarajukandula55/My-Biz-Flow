@@ -1,0 +1,2 @@
+ALTER TABLE "addresses" ADD COLUMN "latitude" DOUBLE PRECISION;
+ALTER TABLE "addresses" ADD COLUMN "longitude" DOUBLE PRECISION;

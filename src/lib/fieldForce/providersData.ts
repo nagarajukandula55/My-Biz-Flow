@@ -117,6 +117,17 @@ export async function onboardProvider(input: {
   password?: string;
   teamLeadId?: string;
 }): Promise<ProviderRecord> {
+  const selectedServices = await prisma.service.findMany({
+    where: { id: { in: input.serviceIds }, isActive: true },
+    select: { id: true, minSkillLevel: true },
+  });
+  if (selectedServices.length !== new Set(input.serviceIds).size) {
+    throw new Error("One or more selected services are unavailable.");
+  }
+  // Classification is derived from the service catalogue, not trusted from
+  // the browser: any skilled service makes the provider Skilled; a provider
+  // selecting only unskilled services is Unskilled.
+  const skillLevel = selectedServices.some((service) => service.minSkillLevel === "skilled") ? "skilled" : "unskilled";
   const row = await prisma.provider.create({
     data: {
       partnerId: input.partnerId,
@@ -125,7 +136,7 @@ export async function onboardProvider(input: {
       email: input.email || null,
       source: input.source || null,
       pincode: input.pincode,
-      skillLevel: input.skillLevel,
+      skillLevel,
       passwordHash: input.password ? hashPassword(input.password) : null,
       teamLeadId: input.teamLeadId || null,
       services: { create: input.serviceIds.map((serviceId) => ({ serviceId })) },

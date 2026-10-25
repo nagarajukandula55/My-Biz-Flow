@@ -13,13 +13,23 @@ export type FieldForceSettingsRecord = {
 
 const DEFAULTS = (partnerId: string): FieldForceSettingsRecord => ({
   partnerId,
-  customerSignupEnabled: false,
-  providerSignupEnabled: false,
+  // Field Force is our single marketplace, operated under FF0001. Its two
+  // public self-serve entry points are open by default; other partners remain
+  // closed unless explicitly configured.
+  customerSignupEnabled: partnerId === "FF0001",
+  providerSignupEnabled: partnerId === "FF0001",
 });
 
 export async function getFieldForceSettings(partnerId: string): Promise<FieldForceSettingsRecord> {
   const row = await prisma.fieldForceSettings.findUnique({ where: { partnerId } });
-  return row ?? DEFAULTS(partnerId);
+  if (!row) return DEFAULTS(partnerId);
+  // FF0001 is the single public marketplace operator. Keep its two direct
+  // entry points available even if an older settings row was created before
+  // Field Force stopped being a Partner-registration product.
+  if (partnerId === "FF0001") {
+    return { ...row, customerSignupEnabled: true, providerSignupEnabled: true };
+  }
+  return row;
 }
 
 export async function setFieldForceSettings(

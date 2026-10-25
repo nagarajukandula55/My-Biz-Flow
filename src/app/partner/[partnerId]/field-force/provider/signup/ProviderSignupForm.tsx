@@ -40,13 +40,9 @@ export function ProviderSignupForm({
       <input name="password" type="password" placeholder={t(locale, "password")} required className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text" />
       <input name="pincode" placeholder={t(locale, "pincode")} required pattern="\d{6}" className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text" />
 
-      <div>
-        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-text-muted">{t(locale, "skillLevel")}</label>
-        <select name="skillLevel" defaultValue="skilled" className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text">
-          <option value="skilled">{t(locale, "skilled")}</option>
-          <option value="unskilled">{t(locale, "unskilled")}</option>
-        </select>
-      </div>
+      <p className="rounded-md border border-border bg-bg-raised px-3 py-2 text-sm text-text-muted">
+        Your provider category is calculated automatically from the services you select: Skilled or Unskilled Service Provider.
+      </p>
 
       <div>
         <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-text-muted">{t(locale, "selectServices")}</div>

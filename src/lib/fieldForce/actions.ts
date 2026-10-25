@@ -19,7 +19,8 @@ import {
   type BookingStatus,
 } from "@/lib/fieldForce/bookingsData";
 import { dispatchBookingRequest, respondToOffer } from "@/lib/fieldForce/matchingEngine";
-import { setFieldForceSettings } from "@/lib/fieldForce/settingsData";
+import { getFieldForceSettings, setFieldForceSettings } from "@/lib/fieldForce/settingsData";
+import { getPincodeCoordinates } from "@/lib/fieldForce/geo";
 import { setPlatformFeeConfig } from "@/lib/fieldForce/platformFeeData";
 import { createCustomerAccount, verifyCustomerLogin, findCustomerByPhone, getCurrentCustomer, CUSTOMER_SESSION_COOKIE } from "@/lib/fieldForce/customerAuth";
 import { requestLoginOtp, verifyLoginOtp } from "@/lib/whatsappOtp";
@@ -213,18 +214,23 @@ export async function createBookingAction(partnerId: string, formData: FormData)
   const city = String(formData.get("city") ?? "").trim();
   const state = String(formData.get("state") ?? "").trim();
   const pincode = String(formData.get("pincode") ?? "").trim();
+  const latitude = Number(formData.get("latitude"));
+  const longitude = Number(formData.get("longitude"));
   const serviceId = String(formData.get("serviceId") ?? "");
   const scheduledDate = String(formData.get("scheduledDate") ?? "");
   const slotLabel = String(formData.get("slotLabel") ?? "");
   const notes = String(formData.get("notes") ?? "").trim();
 
   if (!customerName || !customerPhone) throw new Error("Customer name and phone are required");
-  if (!line1 || !city || !state || !pincode) throw new Error("Full address is required");
+  if (!line1 || !city || !state || !/^\d{6}$/.test(pincode)) throw new Error("Full address and a valid six-digit pincode are required");
   if (!serviceId) throw new Error("Select a service");
   if (!scheduledDate || !slotLabel) throw new Error("Choose a date and time slot");
 
   const customer = await findOrCreateCustomer(partnerId, { name: customerName, phone: customerPhone, email: customerEmail });
-  const address = await addAddress(customer.id, partnerId, { line1, line2, landmark, city, state, pincode, isDefault: true });
+  const coords = Number.isFinite(latitude) && Number.isFinite(longitude)
+    ? { latitude, longitude }
+    : (await getPincodeCoordinates([pincode])).get(pincode);
+  const address = await addAddress(customer.id, partnerId, { line1, line2, landmark, city, state, pincode, ...coords, isDefault: true });
   const booking = await createBooking(partnerId, {
     customerId: customer.id,
     addressId: address.id,
@@ -291,6 +297,8 @@ export async function rateBookingAction(partnerId: string, formData: FormData) {
 // --- Customer self-serve auth ---
 
 export async function signupCustomerAction(partnerId: string, formData: FormData) {
+  const settings = await getFieldForceSettings(partnerId);
+  if (!settings.customerSignupEnabled) redirect(`/partner/${partnerId}/field-force/customer/signup?closed=1`);
   const name = String(formData.get("name") ?? "").trim();
   const phone = String(formData.get("phone") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim();
@@ -379,16 +387,21 @@ export async function createCustomerBookingAction(partnerId: string, customerId:
   const city = String(formData.get("city") ?? "").trim();
   const state = String(formData.get("state") ?? "").trim();
   const pincode = String(formData.get("pincode") ?? "").trim();
+  const latitude = Number(formData.get("latitude"));
+  const longitude = Number(formData.get("longitude"));
   const serviceId = String(formData.get("serviceId") ?? "");
   const scheduledDate = String(formData.get("scheduledDate") ?? "");
   const slotLabel = String(formData.get("slotLabel") ?? "");
   const notes = String(formData.get("notes") ?? "").trim();
 
-  if (!line1 || !city || !state || !pincode) throw new Error("Full address is required");
+  if (!line1 || !city || !state || !/^\d{6}$/.test(pincode)) throw new Error("Full address and a valid six-digit pincode are required");
   if (!serviceId) throw new Error("Select a service");
   if (!scheduledDate || !slotLabel) throw new Error("Choose a date and time slot");
 
-  const address = await addAddress(customerId, partnerId, { line1, line2, landmark, city, state, pincode, isDefault: true });
+  const coords = Number.isFinite(latitude) && Number.isFinite(longitude)
+    ? { latitude, longitude }
+    : (await getPincodeCoordinates([pincode])).get(pincode);
+  const address = await addAddress(customerId, partnerId, { line1, line2, landmark, city, state, pincode, ...coords, isDefault: true });
   const booking = await createBooking(partnerId, {
     customerId,
     addressId: address.id,
@@ -405,6 +418,8 @@ export async function createCustomerBookingAction(partnerId: string, customerId:
 // --- Provider self-serve auth ---
 
 export async function signupProviderAction(partnerId: string, formData: FormData) {
+  const settings = await getFieldForceSettings(partnerId);
+  if (!settings.providerSignupEnabled) redirect(`/partner/${partnerId}/field-force/provider/signup?closed=1`);
   const name = String(formData.get("name") ?? "").trim();
   const phone = String(formData.get("phone") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim();
@@ -414,10 +429,13 @@ export async function signupProviderAction(partnerId: string, formData: FormData
   const serviceIds = formData.getAll("serviceIds").map(String).filter(Boolean);
 
   if (!name || !phone || !password) throw new Error("Name, phone, and password are required");
-  if (!pincode) throw new Error("Pincode is required");
+  if (!/^\d{6}$/.test(pincode)) throw new Error("A valid six-digit pincode is required");
   if (serviceIds.length === 0) throw new Error("Select at least one service");
 
   const provider = await onboardProvider({ partnerId, name, phone, email, pincode, skillLevel, serviceIds, serviceAreas: [], password });
+  // This is the single internal Field Force marketplace: self-signups can
+  // sign in immediately, while ops retains suspend/activate controls.
+  await setProviderStatus(provider.id, partnerId, "active");
   cookies().set(PROVIDER_SESSION_COOKIE, provider.id, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 30 });
   redirect(`/partner/${partnerId}/field-force/provider/dashboard`);
 }

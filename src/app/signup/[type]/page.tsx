@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { redirect } from "next/navigation";
 import { PublicHeader } from "@/components/PublicHeader";
 import { registerPage } from "@/lib/designer/registry";
 import { getPartnerType } from "@/lib/designer/partnerTypesData";
@@ -36,6 +37,9 @@ export default async function SignupTypePage({
   searchParams: { error?: string; ref?: string; planId?: string };
 }) {
   const partnerType = await getPartnerType(params.type);
+  // Field Force is a single operator marketplace, not a Partner-registration
+  // product. Providers and customers join directly from /solutions/field-force.
+  if (params.type === "field-force") redirect("/solutions/field-force");
   if (!partnerType || partnerType.status !== "Active") notFound();
   const offering = getBusinessOffering(partnerType.id) ?? getBusinessOffering(partnerType.defaultModules[0] ?? "");
 

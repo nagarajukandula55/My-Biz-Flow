@@ -42,7 +42,7 @@ export default function FieldForceAppEntryPage() {
       <p className="text-sm text-text-muted">Book a service, or manage jobs as a provider.</p>
       <div className="flex w-full flex-col gap-3">
         <Link href={`/partner/${partnerId}/field-force/customer/login`} className="btn-accent">
-          I need a service
+          I am a Service Requester
         </Link>
         <Link href={`/partner/${partnerId}/field-force/provider/login`} className="btn-outline">
           I provide services

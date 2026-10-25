@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { INDIAN_STATES } from "@/lib/sample-data/geo";
 import { t, type Locale } from "@/lib/i18n/locales";
 
@@ -26,11 +26,21 @@ export function CustomerBookForm({
 }) {
   const [serviceId, setServiceId] = useState("");
   const [state, setState] = useState<string>(INDIAN_STATES[0]);
+  const [coordinates, setCoordinates] = useState({ latitude: "", longitude: "" });
+  useEffect(() => {
+    navigator.geolocation?.getCurrentPosition(
+      (position) => setCoordinates({ latitude: String(position.coords.latitude), longitude: String(position.coords.longitude) }),
+      () => undefined,
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 300000 }
+    );
+  }, []);
   const categories = Array.from(new Set(services.map((s) => s.category)));
   const selectedService = useMemo(() => services.find((s) => s.id === serviceId), [services, serviceId]);
 
   return (
     <form action={action} className="space-y-6">
+      <input type="hidden" name="latitude" value={coordinates.latitude} />
+      <input type="hidden" name="longitude" value={coordinates.longitude} />
       <div>
         <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-text-muted">{t(locale, "selectAddressLine1")} *</label>
         <input name="line1" required className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text" />

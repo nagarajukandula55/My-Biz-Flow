@@ -34,7 +34,7 @@ export default async function SignupPickerPage({
 }: {
   searchParams: { type?: string; error?: string; ref?: string };
 }) {
-  const partnerTypes = await listActivePartnerTypes();
+  const partnerTypes = (await listActivePartnerTypes()).filter((type) => type.id !== "field-force");
   const offerings = buildPublicBusinessCatalog(partnerTypes);
   const represented = new Set(offerings.flatMap(card => card.signupOptions.map(option => option.id)));
 

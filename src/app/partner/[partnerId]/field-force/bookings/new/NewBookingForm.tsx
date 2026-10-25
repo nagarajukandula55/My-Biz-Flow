@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { INDIAN_STATES } from "@/lib/sample-data/geo";
 
 type ServiceOption = {
@@ -18,12 +18,22 @@ const SLOTS = ["Morning (9 AM – 12 PM)", "Afternoon (12 PM – 4 PM)", "Evenin
 export function NewBookingForm({ services, action }: { services: ServiceOption[]; action: (formData: FormData) => void }) {
   const [serviceId, setServiceId] = useState("");
   const [state, setState] = useState<string>(INDIAN_STATES[0]);
+  const [coordinates, setCoordinates] = useState({ latitude: "", longitude: "" });
+  useEffect(() => {
+    navigator.geolocation?.getCurrentPosition(
+      (position) => setCoordinates({ latitude: String(position.coords.latitude), longitude: String(position.coords.longitude) }),
+      () => undefined,
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 300000 }
+    );
+  }, []);
 
   const categories = Array.from(new Set(services.map((s) => s.category)));
   const selectedService = useMemo(() => services.find((s) => s.id === serviceId), [services, serviceId]);
 
   return (
     <form action={action} className="max-w-3xl space-y-8">
+      <input type="hidden" name="latitude" value={coordinates.latitude} />
+      <input type="hidden" name="longitude" value={coordinates.longitude} />
       <div>
         <h2 className="font-display text-base font-bold text-text">Customer</h2>
         <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">

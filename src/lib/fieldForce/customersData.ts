@@ -14,6 +14,8 @@ export type AddressRecord = {
   city: string;
   state: string;
   pincode: string;
+  latitude: number | null;
+  longitude: number | null;
   isDefault: boolean;
 };
 
@@ -59,7 +61,7 @@ export async function findOrCreateCustomer(
 export async function addAddress(
   customerId: string,
   partnerId: string,
-  input: { label?: string; line1: string; line2?: string; landmark?: string; city: string; state: string; pincode: string; isDefault?: boolean }
+  input: { label?: string; line1: string; line2?: string; landmark?: string; city: string; state: string; pincode: string; latitude?: number; longitude?: number; isDefault?: boolean }
 ): Promise<AddressRecord> {
   const customer = await prisma.customer.findUniqueOrThrow({ where: { id: customerId } });
   assertPartnerScope(partnerId, customer.partnerId);
@@ -73,6 +75,8 @@ export async function addAddress(
       city: input.city,
       state: input.state,
       pincode: input.pincode,
+      latitude: input.latitude ?? null,
+      longitude: input.longitude ?? null,
       isDefault: input.isDefault ?? false,
     },
   });
