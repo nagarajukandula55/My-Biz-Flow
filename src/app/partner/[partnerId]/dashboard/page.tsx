@@ -105,6 +105,9 @@ export default async function PartnerDashboardPage({ params }: { params: { partn
               <Link href={`/partner/${params.partnerId}/field-force/bookings`}><DashboardWidget label="Assigned" value={String(fieldForceReport.assignedBookings)} /></Link>
               <Link href={`/partner/${params.partnerId}/field-force/bookings`}><DashboardWidget label="Completed" value={String(fieldForceReport.completedBookings)} /></Link>
               <Link href={`/partner/${params.partnerId}/field-force`}><DashboardWidget label="Available Providers" value={`${fieldForceReport.availableProviderCount}/${fieldForceReport.providerCount}`} /></Link>
+              <Link href={`/partner/${params.partnerId}/field-force`}><DashboardWidget label="Verified Providers" value={`${fieldForceReport.verifiedProviderCount}/${fieldForceReport.providerCount}`} /></Link>
+              <Link href={`/partner/${params.partnerId}/field-force/reports`}><DashboardWidget label="Gross Value" value={`₹${(fieldForceReport.grossValue / 100).toLocaleString("en-IN")}`} /></Link>
+              <Link href={`/partner/${params.partnerId}/field-force/reports`}><DashboardWidget label="SLA Companies" value={String(fieldForceReport.companiesWithSla)} /></Link>
             </div>
           </div>
         )}
