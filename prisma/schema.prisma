@@ -1139,6 +1139,14 @@ model FieldForceCompany {
   id            String   @id @default(cuid())
   partnerId     String
   name          String
+  companyType   String?
+  legalName     String?
+  contactName   String?
+  contactPhone  String?
+  contactEmail  String?
+  gstin         String?
+  billingEmail  String?
+  address       String? @db.Text
   isActive      Boolean  @default(true)
   slaResponseMinutes Int?
   slaResolutionHours Int?

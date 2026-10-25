@@ -39,6 +39,14 @@ export type CompanyRecord = {
   id: string;
   partnerId: string;
   name: string;
+  companyType: string | null;
+  legalName: string | null;
+  contactName: string | null;
+  contactPhone: string | null;
+  contactEmail: string | null;
+  gstin: string | null;
+  billingEmail: string | null;
+  address: string | null;
   isActive: boolean;
   slaResponseMinutes: number | null;
   slaResolutionHours: number | null;
@@ -54,6 +62,14 @@ function toRecord(row: {
   id: string;
   partnerId: string;
   name: string;
+  companyType: string | null;
+  legalName: string | null;
+  contactName: string | null;
+  contactPhone: string | null;
+  contactEmail: string | null;
+  gstin: string | null;
+  billingEmail: string | null;
+  address: string | null;
   isActive: boolean;
   slaResponseMinutes: number | null;
   slaResolutionHours: number | null;
@@ -67,6 +83,14 @@ function toRecord(row: {
     id: row.id,
     partnerId: row.partnerId,
     name: row.name,
+    companyType: row.companyType,
+    legalName: row.legalName,
+    contactName: row.contactName,
+    contactPhone: row.contactPhone,
+    contactEmail: row.contactEmail,
+    gstin: row.gstin,
+    billingEmail: row.billingEmail,
+    address: row.address,
     isActive: row.isActive,
     slaResponseMinutes: row.slaResponseMinutes,
     slaResolutionHours: row.slaResolutionHours,
@@ -90,9 +114,9 @@ export async function getCompany(id: string, partnerId: string): Promise<Company
   return toRecord(row);
 }
 
-export async function createCompany(partnerId: string, name: string): Promise<CompanyRecord> {
+export async function createCompany(partnerId: string, input: { name: string; companyType?: string; legalName?: string; contactName?: string; contactPhone?: string; contactEmail?: string; gstin?: string; billingEmail?: string; address?: string }): Promise<CompanyRecord> {
   const row = await prisma.fieldForceCompany.create({
-    data: { partnerId, name, columnMapping: {} },
+    data: { partnerId, name: input.name.trim(), companyType: input.companyType?.trim() || null, legalName: input.legalName?.trim() || null, contactName: input.contactName?.trim() || null, contactPhone: input.contactPhone?.trim() || null, contactEmail: input.contactEmail?.trim() || null, gstin: input.gstin?.trim() || null, billingEmail: input.billingEmail?.trim() || null, address: input.address?.trim() || null, columnMapping: {} },
   });
   return toRecord(row);
 }

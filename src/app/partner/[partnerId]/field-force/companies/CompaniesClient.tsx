@@ -67,10 +67,18 @@ export function CompaniesClient({
             startTransition(() => createAction(fd));
             setShowAdd(false);
           }}
-          className="flex items-end gap-3 rounded-lg border border-border bg-bg-raised p-4"
+          className="grid gap-3 rounded-lg border border-border bg-bg-raised p-4 sm:grid-cols-2"
         >
-          <input name="name" required placeholder="Company name (e.g. Samsung)" className="rounded-md border border-border bg-bg px-3 py-2 text-sm text-text" />
-          <button type="submit" disabled={isPending} className="btn-accent">
+          <input name="name" required placeholder="Company display name *" className="rounded-md border border-border bg-bg px-3 py-2 text-sm text-text" />
+          <select name="companyType" className="rounded-md border border-border bg-bg px-3 py-2 text-sm text-text"><option value="">Company type</option><option value="OEM">OEM / Brand</option><option value="B2B">B2B Customer</option><option value="Warranty">Warranty Partner</option><option value="Other">Other</option></select>
+          <input name="legalName" placeholder="Legal company name" className="rounded-md border border-border bg-bg px-3 py-2 text-sm text-text" />
+          <input name="gstin" placeholder="GSTIN" className="rounded-md border border-border bg-bg px-3 py-2 text-sm text-text" />
+          <input name="contactName" placeholder="Primary contact name" className="rounded-md border border-border bg-bg px-3 py-2 text-sm text-text" />
+          <input name="contactPhone" placeholder="Primary contact phone" className="rounded-md border border-border bg-bg px-3 py-2 text-sm text-text" />
+          <input name="contactEmail" type="email" placeholder="Primary contact email" className="rounded-md border border-border bg-bg px-3 py-2 text-sm text-text" />
+          <input name="billingEmail" type="email" placeholder="Billing email" className="rounded-md border border-border bg-bg px-3 py-2 text-sm text-text" />
+          <textarea name="address" placeholder="Registered / billing address" className="rounded-md border border-border bg-bg px-3 py-2 text-sm text-text sm:col-span-2" rows={2} />
+          <button type="submit" disabled={isPending} className="btn-accent sm:col-span-2">
             Create
           </button>
         </form>

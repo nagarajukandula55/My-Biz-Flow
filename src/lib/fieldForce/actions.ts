@@ -165,7 +165,7 @@ export async function createCompanyAction(partnerId: string, formData: FormData)
   const name = String(formData.get("name") ?? "").trim();
   if (!name) throw new Error("Company name is required");
   const { createCompany } = await import("@/lib/fieldForce/companiesData");
-  await createCompany(partnerId, name);
+  await createCompany(partnerId, { name, companyType: String(formData.get("companyType") ?? ""), legalName: String(formData.get("legalName") ?? ""), contactName: String(formData.get("contactName") ?? ""), contactPhone: String(formData.get("contactPhone") ?? ""), contactEmail: String(formData.get("contactEmail") ?? ""), gstin: String(formData.get("gstin") ?? ""), billingEmail: String(formData.get("billingEmail") ?? ""), address: String(formData.get("address") ?? "") });
   revalidatePath(`/partner/${partnerId}/field-force/companies`);
 }
 
