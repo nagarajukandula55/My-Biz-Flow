@@ -25,6 +25,8 @@ export function CustomerBookForm({
   locale: Locale;
 }) {
   const [serviceId, setServiceId] = useState("");
+  const [search, setSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all");
   const [state, setState] = useState<string>(INDIAN_STATES[0]);
   const [coordinates, setCoordinates] = useState({ latitude: "", longitude: "" });
   useEffect(() => {
@@ -35,6 +37,7 @@ export function CustomerBookForm({
     );
   }, []);
   const categories = Array.from(new Set(services.map((s) => s.category)));
+  const visibleServices = services.filter((s) => (categoryFilter === "all" || s.category === categoryFilter) && (!search.trim() || `${s.name} ${s.category}`.toLowerCase().includes(search.trim().toLowerCase())));
   const selectedService = useMemo(() => services.find((s) => s.id === serviceId), [services, serviceId]);
 
   return (
@@ -59,11 +62,15 @@ export function CustomerBookForm({
 
       <div>
         <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted">{t(locale, "selectService")}</div>
-        {categories.map((cat) => (
+        <div className="mb-3 grid gap-2 sm:grid-cols-[1fr_auto]">
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search services" className="rounded-md border border-border bg-bg px-3 py-2 text-sm text-text" />
+          <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="rounded-md border border-border bg-bg px-3 py-2 text-sm text-text"><option value="all">All categories</option>{categories.map((cat) => <option key={cat} value={cat}>{cat}</option>)}</select>
+        </div>
+        {categories.filter((cat) => visibleServices.some((s) => s.category === cat)).map((cat) => (
           <div key={cat} className="mb-3">
             <div className="mb-1.5 text-xs font-semibold text-text-muted">{cat}</div>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              {services
+              {visibleServices
                 .filter((s) => s.category === cat)
                 .map((s) => (
                   <label
@@ -85,6 +92,7 @@ export function CustomerBookForm({
             </div>
           </div>
         ))}
+        {visibleServices.length === 0 && <p className="rounded-md border border-dashed border-border p-4 text-sm text-text-muted">No matching services are available.</p>}
         {selectedService && (
           <p className="text-sm text-text-muted">{t(locale, "standardRate")}: ₹{(selectedService.basePrice / 100).toLocaleString("en-IN")}</p>
         )}
@@ -93,7 +101,7 @@ export function CustomerBookForm({
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
           <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-text-muted">{t(locale, "scheduleDate")} *</label>
-          <input name="scheduledDate" type="date" required className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text" />
+          <input name="scheduledDate" type="date" min={new Date().toISOString().slice(0, 10)} required className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text" />
         </div>
         <div>
           <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-text-muted">{t(locale, "scheduleSlot")} *</label>

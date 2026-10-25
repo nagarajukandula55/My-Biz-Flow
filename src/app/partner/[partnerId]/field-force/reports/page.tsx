@@ -1,0 +1,13 @@
+import { AppShell } from "@/components/AppShell";
+import { registerPage } from "@/lib/designer/registry";
+import { getFieldForceReport } from "@/lib/fieldForce/reportsData";
+
+registerPage({ id: "field-force.reports", moduleSlug: "field-force", title: "Field Force — Reports", path: "/partner/[partnerId]/field-force/reports", kind: "dashboard", superAdminOnly: false, customizableRegions: [], explanation: "Partner-scoped operational summary for Field Force bookings, provider capacity, verification, payment value, and Company SLA coverage.", sourceFile: "src/app/partner/[partnerId]/field-force/reports/page.tsx" });
+
+export const dynamic = "force-dynamic";
+
+export default async function FieldForceReportsPage({ params }: { params: { partnerId: string } }) {
+  const report = await getFieldForceReport(params.partnerId);
+  const money = (paise: number) => `₹${(paise / 100).toLocaleString("en-IN")}`;
+  return <AppShell topbarTitle="Field Force — Reports"><div className="mbf-page p-6"><div className="flex flex-wrap items-start justify-between gap-3"><div><h1 className="font-display text-lg font-bold text-text">Field Force reports</h1><p className="mt-1 text-sm text-text-muted">Live operational summary for this partner.</p></div><a className="btn-outline text-xs" href={`/api/field-force/reports?partnerId=${encodeURIComponent(params.partnerId)}`}>Download booking CSV</a></div><div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{[["Bookings", report.totalBookings], ["Assigned", report.assignedBookings], ["Completed", report.completedBookings], ["Cancelled", report.cancelledBookings], ["Gross value", money(report.grossValue)], ["Paid value", money(report.paidValue)], ["Available providers", `${report.availableProviderCount}/${report.providerCount}`], ["Verified providers", `${report.verifiedProviderCount}/${report.providerCount}`], ["Companies with SLA", report.companiesWithSla]].map(([label, value]) => <div key={String(label)} className="rounded-lg border border-border bg-bg-raised p-4"><div className="text-xs font-semibold uppercase tracking-wide text-text-muted">{label}</div><div className="mt-2 text-2xl font-bold text-text">{value}</div></div>)}</div><div className="mt-6 rounded-lg border border-border bg-bg-raised p-4"><h2 className="font-semibold text-text">Booking funnel</h2><div className="mt-3 grid gap-2 sm:grid-cols-3 lg:grid-cols-4">{Object.entries(report.statusCounts).map(([status, count]) => <div key={status} className="flex justify-between rounded border border-border bg-bg px-3 py-2 text-sm"><span className="text-text-muted">{status}</span><span className="font-semibold text-text">{count}</span></div>)}</div></div></div></AppShell>;
+}

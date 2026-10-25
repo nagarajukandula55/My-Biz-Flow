@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
-import { onboardProvider, setProviderStatus, type ServiceAreaInput } from "@/lib/fieldForce/providersData";
+import { onboardProvider, setProviderStatus, setProviderAvailability, setProviderVerification, type ServiceAreaInput } from "@/lib/fieldForce/providersData";
 import { createService, setServiceActive, updateServicePricing } from "@/lib/fieldForce/servicesData";
 import { allocateProvider, updateAllocationStatus } from "@/lib/fieldForce/allocationsData";
 import { findOrCreateCustomer, addAddress } from "@/lib/fieldForce/customersData";
@@ -21,9 +21,11 @@ import {
 import { dispatchBookingRequest, respondToOffer } from "@/lib/fieldForce/matchingEngine";
 import { getFieldForceSettings, setFieldForceSettings } from "@/lib/fieldForce/settingsData";
 import { getPincodeCoordinates } from "@/lib/fieldForce/geo";
+import { createCompanyVariant, setCompanyVariantPrice } from "@/lib/fieldForce/companyPricing";
+import { updateCompanySla } from "@/lib/fieldForce/companiesData";
 import { setPlatformFeeConfig } from "@/lib/fieldForce/platformFeeData";
 import { createCustomerAccount, verifyCustomerLogin, findCustomerByPhone, getCurrentCustomer, CUSTOMER_SESSION_COOKIE } from "@/lib/fieldForce/customerAuth";
-import { requestLoginOtp, verifyLoginOtp } from "@/lib/whatsappOtp";
+import { requestLoginOtp, verifyLoginOtp, requestJobOtp } from "@/lib/whatsappOtp";
 import { isOtpLoginEnabledForPartner } from "@/lib/telecalling/whatsappGate";
 import { verifyProviderLogin, getCurrentProvider, PROVIDER_SESSION_COOKIE } from "@/lib/fieldForce/providerAuth";
 import { markRead, notify } from "@/lib/fieldForce/notifications";
@@ -65,6 +67,38 @@ export async function setProviderStatusAction(partnerId: string, formData: FormD
   await setProviderStatus(id, partnerId, status);
   revalidatePath(`/partner/${partnerId}/field-force`);
   revalidatePath(`/partner/${partnerId}/field-force/admin`);
+  revalidatePath(`/partner/${partnerId}/field-force/settings`);
+}
+
+export async function setProviderAvailabilityAction(partnerId: string, formData: FormData) {
+  partnerId = await requireSessionPartnerId(partnerId);
+  const id = String(formData.get("providerId") ?? "");
+  await setProviderAvailability(id, partnerId, formData.get("isAvailable") === "true", String(formData.get("note") ?? ""));
+  revalidatePath(`/partner/${partnerId}/field-force`);
+}
+
+export async function setProviderVerificationAction(partnerId: string, formData: FormData) {
+  partnerId = await requireSessionPartnerId(partnerId);
+  await setProviderVerification(String(formData.get("providerId") ?? ""), partnerId, String(formData.get("verificationStatus") ?? "unverified") as "unverified" | "pending" | "verified" | "rejected", String(formData.get("note") ?? ""));
+  revalidatePath(`/partner/${partnerId}/field-force`);
+}
+
+export async function updateCompanySlaAction(partnerId: string, formData: FormData) {
+  partnerId = await requireSessionPartnerId(partnerId);
+  await updateCompanySla(String(formData.get("companyId") ?? ""), partnerId, { responseMinutes: Number(formData.get("responseMinutes") || 0) || undefined, resolutionHours: Number(formData.get("resolutionHours") || 0) || undefined, escalationEmail: String(formData.get("escalationEmail") ?? ""), escalationPhone: String(formData.get("escalationPhone") ?? "") });
+  revalidatePath(`/partner/${partnerId}/field-force/companies`);
+}
+
+export async function createCompanyVariantAction(partnerId: string, formData: FormData) {
+  partnerId = await requireSessionPartnerId(partnerId);
+  await createCompanyVariant(partnerId, { companyId: String(formData.get("companyId") ?? ""), brand: String(formData.get("brand") ?? ""), model: String(formData.get("model") ?? ""), variant: String(formData.get("variant") ?? "") });
+  revalidatePath(`/partner/${partnerId}/field-force/companies`);
+}
+
+export async function setCompanyVariantPriceAction(partnerId: string, formData: FormData) {
+  partnerId = await requireSessionPartnerId(partnerId);
+  await setCompanyVariantPrice(partnerId, { variantId: String(formData.get("variantId") ?? ""), serviceId: String(formData.get("serviceId") ?? ""), customerPrice: Math.round(Number(formData.get("customerPrice") ?? 0) * 100), providerPayout: Math.round(Number(formData.get("providerPayout") ?? 0) * 100) });
+  revalidatePath(`/partner/${partnerId}/field-force/companies`);
 }
 
 export async function createServiceAction(partnerId: string, formData: FormData) {
@@ -107,8 +141,11 @@ export async function updateFieldForceSettingsAction(partnerId: string, formData
   await setFieldForceSettings(partnerId, {
     customerSignupEnabled: formData.get("customerSignupEnabled") === "true",
     providerSignupEnabled: formData.get("providerSignupEnabled") === "true",
+    maxOffersPerBooking: Number(formData.get("maxOffersPerBooking") || 10),
+    offerExpiryMinutes: Number(formData.get("offerExpiryMinutes") || 15),
   });
   revalidatePath(`/partner/${partnerId}/field-force/admin`);
+  revalidatePath(`/partner/${partnerId}/field-force/settings`);
 }
 
 /** Distance in km from the job's pincode to each candidate provider's own pincode, for the Allocations page's "see all the distances" display — undefined per-provider where coordinates aren't known yet (see src/lib/fieldForce/geo.ts). */
@@ -467,10 +504,22 @@ export async function updateBookingStatusAsProviderAction(partnerId: string, pro
   }
   const bookingId = String(formData.get("bookingId") ?? "");
   const status = String(formData.get("status") ?? "") as BookingStatus;
-  await updateBookingStatusAsProvider(bookingId, providerId, partnerId, status);
+  await updateBookingStatusAsProvider(bookingId, providerId, partnerId, status, String(formData.get("otpCode") ?? ""));
 
   revalidatePath(`/partner/${partnerId}/field-force/provider/dashboard`);
   revalidatePath(`/partner/${partnerId}/field-force/customer/bookings/${bookingId}`);
+}
+
+export async function requestJobVerificationOtpAction(partnerId: string, providerId: string, formData: FormData) {
+  const sessionProvider = await getCurrentProvider(partnerId);
+  if (!sessionProvider || sessionProvider.id !== providerId) throw new Error("Not signed in as this provider.");
+  const bookingId = String(formData.get("bookingId") ?? "");
+  const purpose = String(formData.get("purpose") ?? "ff-job-start") as "ff-job-start" | "ff-job-complete";
+  const booking = await getBooking(bookingId, partnerId);
+  if (!booking || booking.providerId !== providerId) throw new Error("This booking is not assigned to you.");
+  const result = await requestJobOtp(partnerId, purpose, bookingId, booking.customerPhone);
+  if (!result.sent) throw new Error("Customer OTP could not be sent. Check WhatsApp configuration.");
+  return { ok: true };
 }
 
 /**
@@ -482,7 +531,7 @@ export async function updateBookingStatusAsProviderAction(partnerId: string, pro
 export async function closeBookingAction(
   partnerId: string,
   providerId: string,
-  input: { bookingId: string; notes: string; photoDataUrl: string; latitude: number; longitude: number }
+  input: { bookingId: string; notes: string; photoDataUrl: string; latitude: number; longitude: number; otpCode?: string }
 ): Promise<{ ok: boolean; error?: string }> {
   const sessionProvider = await getCurrentProvider(partnerId);
   if (!sessionProvider || sessionProvider.id !== providerId) {
@@ -495,6 +544,7 @@ export async function closeBookingAction(
       photoDataUrl: input.photoDataUrl,
       latitude: input.latitude,
       longitude: input.longitude,
+      otpCode: input.otpCode,
     });
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "Failed to close job." };

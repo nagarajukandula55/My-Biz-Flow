@@ -42,6 +42,7 @@ export function ProviderDashboardClient({
   advanceStatusAction,
   addTeamMemberAction,
   closeBookingAction,
+  requestOtpAction,
 }: {
   offers: OfferRow[];
   activeJobs: ActiveJobRow[];
@@ -52,7 +53,8 @@ export function ProviderDashboardClient({
   respondAction: (formData: FormData) => void;
   advanceStatusAction: (formData: FormData) => void;
   addTeamMemberAction: (formData: FormData) => void;
-  closeBookingAction: (input: { bookingId: string; notes: string; photoDataUrl: string; latitude: number; longitude: number }) => Promise<{ ok: boolean; error?: string }>;
+  closeBookingAction: (input: { bookingId: string; notes: string; photoDataUrl: string; latitude: number; longitude: number; otpCode?: string }) => Promise<{ ok: boolean; error?: string }>;
+  requestOtpAction: (formData: FormData) => Promise<{ ok: boolean }>;
 }) {
   const [showAddMember, setShowAddMember] = useState(false);
   const [selectedServiceIds, setSelectedServiceIds] = useState<Set<string>>(new Set());
@@ -142,6 +144,7 @@ export function ProviderDashboardClient({
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     <form action={advanceStatusAction} className="flex items-center gap-2">
                       <input type="hidden" name="bookingId" value={j.id} />
+                      <input name="otpCode" placeholder="Customer OTP" className="w-28 rounded-md border border-border bg-bg px-2 py-1.5 text-xs text-text" />
                       <select name="status" defaultValue={j.status === "assigned" ? "en-route" : j.status} className="rounded-md border border-border bg-bg px-2 py-1.5 text-xs text-text">
                         {STATUS_OPTIONS.map((s) => (
                           <option key={s} value={s}>
@@ -152,6 +155,9 @@ export function ProviderDashboardClient({
                       <button type="submit" className="btn-accent text-xs">
                         {t(locale, "updateStatus")}
                       </button>
+                    </form>
+                    <form action={(fd) => { fd.set("bookingId", j.id); fd.set("purpose", j.status === "in-progress" ? "ff-job-complete" : "ff-job-start"); requestOtpAction(fd); }}>
+                      <button type="submit" className="btn-outline text-xs">Send customer OTP</button>
                     </form>
                     <button type="button" onClick={() => setClosingJobId(j.id)} className="btn-accent text-xs">
                       Close Job
@@ -253,9 +259,10 @@ function CloseJobModal({
 }: {
   bookingId: string;
   onClose: () => void;
-  closeBookingAction: (input: { bookingId: string; notes: string; photoDataUrl: string; latitude: number; longitude: number }) => Promise<{ ok: boolean; error?: string }>;
+  closeBookingAction: (input: { bookingId: string; notes: string; photoDataUrl: string; latitude: number; longitude: number; otpCode?: string }) => Promise<{ ok: boolean; error?: string }>;
 }) {
   const [notes, setNotes] = useState("");
+  const [otpCode, setOtpCode] = useState("");
   const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
   const [location, setLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
@@ -297,7 +304,7 @@ function CloseJobModal({
     if (!photoDataUrl || !location) return;
     setSubmitError(null);
     setIsSubmitting(true);
-    closeBookingAction({ bookingId, notes: notes.trim(), photoDataUrl, latitude: location.lat, longitude: location.lon }).then((result) => {
+    closeBookingAction({ bookingId, notes: notes.trim(), photoDataUrl, latitude: location.lat, longitude: location.lon, otpCode }).then((result) => {
       setIsSubmitting(false);
       if (!result.ok) {
         setSubmitError(result.error ?? "Failed to close job.");
@@ -314,6 +321,7 @@ function CloseJobModal({
         <p className="mt-1 text-xs text-text-muted">Solution notes, a photo, and your current location are all required.</p>
 
         <div className="mt-3 space-y-3">
+          <input value={otpCode} onChange={(e) => setOtpCode(e.target.value)} placeholder="Customer completion OTP" className="w-full rounded-md border border-border bg-bg-raised px-3 py-2 text-sm text-text" />
           <div>
             <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-text-muted">Solution / what was done</label>
             <textarea

@@ -75,6 +75,9 @@ export async function importCompanyBookingsCsv(
       const state = cell(row, "state");
       const pincode = cell(row, "pincode");
       const serviceName = cell(row, "serviceName");
+      const brand = cell(row, "brand");
+      const model = cell(row, "model");
+      const variant = cell(row, "variant");
       const notes = cell(row, "notes");
       const scheduledAtRaw = cell(row, "scheduledAt");
 
@@ -103,9 +106,12 @@ export async function importCompanyBookingsCsv(
         scheduledAt,
         slotLabel: "Any time",
         notes: notes || undefined,
+        brand: brand || undefined,
+        model: model || undefined,
+        variant: variant || undefined,
       });
 
-      // Auto-assign to the nearest eligible engineer by pincode — same
+      // Auto-assign to the nearest eligible service provider by pincode — same
       // fan-out an end-customer's own booking gets (matchingEngine.ts).
       await dispatchBookingRequest(booking.id);
 

@@ -26,6 +26,7 @@ export function findEligibleProviders(
 ): ProviderRecord[] {
   return providers.filter((p) => {
     if (p.status !== "active") return false;
+    if (!p.isAvailable) return false;
 
     const hasAllServices = job.requiredServiceIds.every((id) => p.services.some((s) => s.id === id));
     if (!hasAllServices) return false;

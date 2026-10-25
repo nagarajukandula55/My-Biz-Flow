@@ -622,6 +622,7 @@ model Service {
 
   providerServices ProviderService[]
   bookings         Booking[]
+  companyPrices    FieldForceCompanyPrice[]
 
   @@map("services")
 }
@@ -649,6 +650,11 @@ model Provider {
   /// — see src/lib/fieldForce/matching.ts.
   skillLevel        String     @default("skilled")
   status            String     @default("pending") // pending | active | suspended
+  verificationStatus String    @default("unverified") // unverified | pending | verified | rejected
+  verificationNote  String?
+  verifiedAt        DateTime?
+  isAvailable       Boolean    @default(true)
+  availabilityNote  String?
   passwordHash      String?
   preferredLanguage String     @default("en")
   teamLeadId        String?
@@ -743,6 +749,7 @@ model JobOffer {
   partnerId   String
   status      String    @default("pending") // pending | accepted | declined | expired
   sentAt      DateTime  @default(now())
+  expiresAt   DateTime?
   respondedAt DateTime?
 
   @@index([bookingId])
@@ -778,6 +785,8 @@ model FieldForceSettings {
   partnerId             String  @id
   customerSignupEnabled Boolean @default(false)
   providerSignupEnabled Boolean @default(false)
+  maxOffersPerBooking   Int     @default(10)
+  offerExpiryMinutes    Int     @default(15)
 
   @@map("field_force_settings")
 }
@@ -1045,6 +1054,7 @@ model Booking {
   id            String @id @default(cuid())
   partnerId     String
   bookingNumber String @unique
+  publicTrackingToken String @unique @default(cuid())
 
   customerId String
   customer   Customer @relation(fields: [customerId], references: [id])
@@ -1052,6 +1062,8 @@ model Booking {
   address    Address  @relation(fields: [addressId], references: [id])
   serviceId  String
   service    Service  @relation(fields: [serviceId], references: [id])
+  companyVariantId String?
+  companyVariant   FieldForceCompanyVariant? @relation(fields: [companyVariantId], references: [id])
 
   providerId String?
   provider   Provider? @relation(fields: [providerId], references: [id])
@@ -1067,6 +1079,9 @@ model Booking {
   scheduledAt   DateTime
   slotLabel     String
   priceAmount   Int // paise, quoted standard rate from Service at booking time
+  companyPriceAmount Int?
+  providerPayoutSnapshot Int?
+  platformMarginSnapshot Int?
   /// The actually-agreed price once Customer/Provider finalize it by
   /// conversation — falls back to priceAmount if never set.
   finalPrice    Int?
@@ -1125,15 +1140,54 @@ model FieldForceCompany {
   partnerId     String
   name          String
   isActive      Boolean  @default(true)
+  slaResponseMinutes Int?
+  slaResolutionHours Int?
+  escalationEmail String?
+  escalationPhone String?
   columnMapping Json     @default("{}")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   bookings Booking[]
+  variants FieldForceCompanyVariant[]
 
   @@unique([partnerId, name])
   @@index([partnerId])
   @@map("field_force_companies")
+}
+
+model FieldForceCompanyVariant {
+  id        String   @id @default(cuid())
+  companyId String
+  company   FieldForceCompany @relation(fields: [companyId], references: [id])
+  brand     String
+  model     String
+  variant   String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  prices    FieldForceCompanyPrice[]
+  bookings  Booking[]
+  @@unique([companyId, brand, model, variant])
+  @@index([companyId, isActive])
+  @@map("field_force_company_variants")
+}
+
+model FieldForceCompanyPrice {
+  id             String   @id @default(cuid())
+  variantId      String
+  variant        FieldForceCompanyVariant @relation(fields: [variantId], references: [id])
+  serviceId      String
+  service        Service  @relation(fields: [serviceId], references: [id])
+  customerPrice  Int
+  providerPayout Int
+  platformMargin Int
+  effectiveFrom  DateTime @default(now())
+  effectiveTo    DateTime?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  @@index([variantId, serviceId, isActive])
+  @@map("field_force_company_prices")
 }
 
 /// A captured Razorpay payment for one Booking — mirrors SubscriptionPayment's

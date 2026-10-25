@@ -41,6 +41,13 @@ const columns: Column[] = [
     type: "select-chip",
     chipVariantMap: { active: "success", pending: "warning", suspended: "danger" },
   },
+  {
+    key: "availability",
+    label: "Availability",
+    type: "select-chip",
+    chipVariantMap: { available: "success", unavailable: "neutral" },
+  },
+  { key: "verification", label: "Verification", type: "select-chip", chipVariantMap: { verified: "success", pending: "warning", rejected: "danger", unverified: "neutral" } },
 ];
 
 export default async function FieldForcePage({ params }: { params: { partnerId: string } }) {
@@ -56,6 +63,8 @@ export default async function FieldForcePage({ params }: { params: { partnerId: 
     areaCount: `${p.serviceAreas.length} area${p.serviceAreas.length === 1 ? "" : "s"}`,
     skillLevel: p.skillLevel,
     status: p.status,
+    availability: p.isAvailable ? "available" : "unavailable",
+    verification: p.verificationStatus,
   }));
 
   return (

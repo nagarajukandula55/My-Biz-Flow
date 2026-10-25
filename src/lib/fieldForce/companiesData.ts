@@ -17,6 +17,9 @@ export const COMPANY_UPLOAD_FIELDS = [
   "state",
   "pincode",
   "serviceName",
+  "brand",
+  "model",
+  "variant",
   "scheduledAt",
   "notes",
 ] as const;
@@ -37,6 +40,10 @@ export type CompanyRecord = {
   partnerId: string;
   name: string;
   isActive: boolean;
+  slaResponseMinutes: number | null;
+  slaResolutionHours: number | null;
+  escalationEmail: string | null;
+  escalationPhone: string | null;
   /** CSV header text (as it appears in the file) -> CompanyUploadField. */
   columnMapping: Record<string, CompanyUploadField>;
   createdAt: Date;
@@ -48,6 +55,10 @@ function toRecord(row: {
   partnerId: string;
   name: string;
   isActive: boolean;
+  slaResponseMinutes: number | null;
+  slaResolutionHours: number | null;
+  escalationEmail: string | null;
+  escalationPhone: string | null;
   columnMapping: unknown;
   createdAt: Date;
   updatedAt: Date;
@@ -57,6 +68,10 @@ function toRecord(row: {
     partnerId: row.partnerId,
     name: row.name,
     isActive: row.isActive,
+    slaResponseMinutes: row.slaResponseMinutes,
+    slaResolutionHours: row.slaResolutionHours,
+    escalationEmail: row.escalationEmail,
+    escalationPhone: row.escalationPhone,
     columnMapping: (row.columnMapping as Record<string, CompanyUploadField>) ?? {},
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
@@ -96,4 +111,12 @@ export async function setCompanyActive(id: string, partnerId: string, isActive: 
   const existing = await prisma.fieldForceCompany.findUniqueOrThrow({ where: { id } });
   assertPartnerScope(partnerId, existing.partnerId);
   await prisma.fieldForceCompany.update({ where: { id }, data: { isActive } });
+}
+
+export async function updateCompanySla(id: string, partnerId: string, input: { responseMinutes?: number; resolutionHours?: number; escalationEmail?: string; escalationPhone?: string }): Promise<void> {
+  const existing = await prisma.fieldForceCompany.findUniqueOrThrow({ where: { id } });
+  assertPartnerScope(partnerId, existing.partnerId);
+  if (input.responseMinutes !== undefined && (!Number.isInteger(input.responseMinutes) || input.responseMinutes < 1)) throw new Error("Response SLA must be positive.");
+  if (input.resolutionHours !== undefined && (!Number.isInteger(input.resolutionHours) || input.resolutionHours < 1)) throw new Error("Resolution SLA must be positive.");
+  await prisma.fieldForceCompany.update({ where: { id }, data: { slaResponseMinutes: input.responseMinutes ?? null, slaResolutionHours: input.resolutionHours ?? null, escalationEmail: input.escalationEmail?.trim() || null, escalationPhone: input.escalationPhone?.trim() || null } });
 }

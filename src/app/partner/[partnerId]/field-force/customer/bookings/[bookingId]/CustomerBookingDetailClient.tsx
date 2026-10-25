@@ -18,6 +18,7 @@ export function CustomerBookingDetailClient({
   booking: {
     id: string;
     bookingNumber: string;
+    publicTrackingToken: string;
     serviceName: string;
     addressLine: string;
     slotLabel: string;
@@ -49,6 +50,7 @@ export function CustomerBookingDetailClient({
       </div>
       <div className="text-sm text-text">{booking.addressLine}</div>
       <div className="text-sm text-text-muted">{booking.slotLabel}</div>
+      <a href={`/field-force-track/${booking.publicTrackingToken}`} className="text-sm text-teal hover:underline">Share tracking page</a>
       <div className="font-mono text-sm tabular-nums text-text">
         ₹{((booking.finalPrice ?? booking.priceAmount) / 100).toLocaleString("en-IN")}
       </div>

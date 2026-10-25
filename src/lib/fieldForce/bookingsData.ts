@@ -11,6 +11,8 @@ import { prisma } from "@/lib/prisma";
 import { assertPartnerScope } from "@/lib/tenant";
 import { getNextNumber } from "@/lib/designer/numbering";
 import { sendPartnerTelegramAlert } from "@/lib/telegram";
+import { resolveCompanyPrice } from "@/lib/fieldForce/companyPricing";
+import { verifyJobOtp } from "@/lib/whatsappOtp";
 
 export const BOOKING_STATUSES = [
   "requested",
@@ -27,6 +29,7 @@ export type BookingRecord = {
   id: string;
   partnerId: string;
   bookingNumber: string;
+  publicTrackingToken: string;
   customerId: string;
   customerName: string;
   customerPhone: string;
@@ -71,6 +74,7 @@ function toRecord(row: {
   id: string;
   partnerId: string;
   bookingNumber: string;
+  publicTrackingToken: string;
   customerId: string;
   addressId: string;
   serviceId: string;
@@ -103,6 +107,7 @@ function toRecord(row: {
     id: row.id,
     partnerId: row.partnerId,
     bookingNumber: row.bookingNumber,
+    publicTrackingToken: row.publicTrackingToken,
     customerId: row.customerId,
     customerName: row.customer.name,
     customerPhone: row.customer.phone,
@@ -172,6 +177,12 @@ export async function getBooking(id: string, partnerId: string): Promise<Booking
   return toRecord(row);
 }
 
+export async function getPublicBookingByToken(token: string) {
+  const row = await prisma.booking.findUnique({ where: { publicTrackingToken: token }, include: INCLUDE });
+  if (!row) return null;
+  return { bookingNumber: row.bookingNumber, serviceName: row.service.name, status: row.status, scheduledAt: row.scheduledAt, slotLabel: row.slotLabel, providerName: row.provider?.name ?? null };
+}
+
 /** Creates a booking, computing priceAmount from the chosen Service and generating a bookingNumber. */
 export async function createBooking(
   partnerId: string,
@@ -206,9 +217,10 @@ export async function createBooking(
  */
 export async function createCompanyBooking(
   partnerId: string,
-  input: { customerId: string; addressId: string; serviceId: string; companyId: string; scheduledAt: Date; slotLabel: string; notes?: string }
+  input: { customerId: string; addressId: string; serviceId: string; companyId: string; scheduledAt: Date; slotLabel: string; notes?: string; brand?: string; model?: string; variant?: string }
 ): Promise<BookingRecord> {
   const service = await prisma.service.findUniqueOrThrow({ where: { id: input.serviceId } });
+  const price = await resolveCompanyPrice(input.companyId, partnerId, input.serviceId, input);
   const bookingNumber = await getNextNumber("field-force.booking", partnerId);
   const row = await prisma.booking.create({
     data: {
@@ -218,7 +230,11 @@ export async function createCompanyBooking(
       addressId: input.addressId,
       serviceId: input.serviceId,
       companyId: input.companyId,
-      priceAmount: service.basePrice,
+      priceAmount: price?.customerPrice ?? service.basePrice,
+      companyVariantId: price?.variantId,
+      companyPriceAmount: price?.customerPrice,
+      providerPayoutSnapshot: price?.providerPayout,
+      platformMarginSnapshot: price?.platformMargin,
       scheduledAt: input.scheduledAt,
       slotLabel: input.slotLabel,
       notes: input.notes || null,
@@ -260,13 +276,17 @@ export async function updateBookingStatus(id: string, partnerId: string, status:
  * standalone Provider dashboard's own status-advance control (en-route/in-progress/cancelled). "completed" is
  * NOT allowed through here any more — see closeBookingAsProvider, which requires real closure evidence
  * (solution notes, a photo, and device location) instead of a bare status flip. */
-export async function updateBookingStatusAsProvider(id: string, providerId: string, partnerId: string, status: BookingStatus): Promise<void> {
+export async function updateBookingStatusAsProvider(id: string, providerId: string, partnerId: string, status: BookingStatus, otpCode?: string): Promise<void> {
   if (status === "completed") {
     throw new Error("Use closeBookingAsProvider to complete a job — it requires closure notes, a photo, and location.");
   }
   const existing = await prisma.booking.findUniqueOrThrow({ where: { id } });
   assertPartnerScope(partnerId, existing.partnerId);
   if (existing.providerId !== providerId) throw new Error("This booking is not assigned to you.");
+  if (status === "in-progress") {
+    const verified = await verifyJobOtp(partnerId, "ff-job-start", id, otpCode ?? "");
+    if (!verified.verified) throw new Error("Customer start OTP is required and must be valid.");
+  }
   await prisma.$transaction([
     prisma.booking.update({ where: { id }, data: { status } }),
     prisma.jobAllocation.updateMany({ where: { bookingId: id }, data: { status } }),
@@ -286,11 +306,13 @@ export async function closeBookingAsProvider(
   id: string,
   providerId: string,
   partnerId: string,
-  input: { notes: string; photoDataUrl: string; latitude: number; longitude: number }
+  input: { notes: string; photoDataUrl: string; latitude: number; longitude: number; otpCode?: string }
 ): Promise<void> {
   const existing = await prisma.booking.findUniqueOrThrow({ where: { id } });
   assertPartnerScope(partnerId, existing.partnerId);
   if (existing.providerId !== providerId) throw new Error("This booking is not assigned to you.");
+  const verified = await verifyJobOtp(partnerId, "ff-job-complete", id, input.otpCode ?? "");
+  if (!verified.verified) throw new Error("Customer completion OTP is required and must be valid.");
   if (!input.notes.trim()) throw new Error("Solution notes are required to close a job.");
   if (!input.photoDataUrl) throw new Error("A photo is required to close a job.");
 

@@ -7,6 +7,10 @@ name: Scheduled jobs
 on:
   schedule:
     - cron: "7,22,37,52 * * * *"
+    # Re-dispatch Field Force bookings whose provider offers expired.
+    - cron: "*/5 * * * *"
+    # Company SLA breach monitor.
+    - cron: "*/15 * * * *"
     # Billing recurring invoices — daily 03:00 UTC (was vercel.json "0 3 * * *")
     - cron: "0 3 * * *"
     # Telegram daily/weekly/monthly partner reports — target 9:00 PM IST =
@@ -36,6 +40,30 @@ jobs:
       - name: Process durable payment delivery jobs
         run: |
           curl --max-time 120 -sf -X GET "${APP_URL}/api/cron/payment-delivery" \
+            -H "Authorization: Bearer ${CRON_SECRET}"
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+
+  field-force-offer-retry:
+    if: github.event.schedule == '*/5 * * * *' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Retry expired Field Force provider offers
+        run: |
+          curl --max-time 120 -sf -X GET "${APP_URL}/api/cron/field-force-offer-retry" \
+            -H "Authorization: Bearer ${CRON_SECRET}"
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+
+  field-force-sla-monitor:
+    if: github.event.schedule == '*/15 * * * *' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Monitor Field Force Company SLAs
+        run: |
+          curl --max-time 120 -sf -X GET "${APP_URL}/api/cron/field-force-sla-monitor" \
             -H "Authorization: Bearer ${CRON_SECRET}"
         env:
           APP_URL: ${{ secrets.APP_URL }}

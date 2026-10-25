@@ -6,6 +6,7 @@ import {
   setCompanyColumnMappingAction,
   setCompanyActiveAction,
   importCompanyBookingsAction,
+  updateCompanySlaAction,
 } from "@/lib/fieldForce/actions";
 import { CompaniesClient } from "./CompaniesClient";
 
@@ -18,7 +19,7 @@ registerPage({
   superAdminOnly: false,
   customizableRegions: [],
   explanation:
-    "An upstream OEM/brand this partner does job work for, distinct from the end Customer on a Booking. Each Company has its own saved CSV column mapping (columnMapping on FieldForceCompany) — set it up once, then every future job-data file from that company auto-maps and bulk-creates real Bookings tagged with that company, each one auto-dispatched to the nearest eligible engineer by pincode (see src/lib/fieldForce/companyImport.ts, matchingEngine.ts, geo.ts).",
+    "An upstream OEM/brand this partner does job work for, distinct from the end Customer on a Booking. Each Company has its own saved CSV column mapping (columnMapping on FieldForceCompany) — set it up once, then every future job-data file from that company auto-maps and bulk-creates real Bookings tagged with that company, each one auto-dispatched to the nearest eligible service provider by pincode (see src/lib/fieldForce/companyImport.ts, matchingEngine.ts, geo.ts).",
   sourceFile: "src/app/partner/[partnerId]/field-force/companies/page.tsx",
 });
 
@@ -45,6 +46,7 @@ export default async function CompaniesPage({ params }: { params: { partnerId: s
             setMappingAction={setCompanyColumnMappingAction.bind(null, params.partnerId)}
             setActiveAction={setCompanyActiveAction.bind(null, params.partnerId)}
             importAction={importCompanyBookingsAction.bind(null, params.partnerId)}
+            updateSlaAction={updateCompanySlaAction.bind(null, params.partnerId)}
           />
         </div>
       </div>

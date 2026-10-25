@@ -13,14 +13,16 @@ import { notify } from "@/lib/fieldForce/notifications";
 import { sendSms } from "@/lib/sms";
 import { formatDate } from "@/lib/format";
 import { sendPartnerTelegramAlert } from "@/lib/telegram";
+import { getFieldForceSettings } from "@/lib/fieldForce/settingsData";
 
-const MAX_OFFERS_PER_BOOKING = 10;
+const DEFAULT_MAX_OFFERS_PER_BOOKING = 10;
 
 export async function dispatchBookingRequest(bookingId: string): Promise<{ offeredCount: number }> {
   const booking = await prisma.booking.findUniqueOrThrow({
     where: { id: bookingId },
     include: { address: true, service: true },
   });
+  const settings = await getFieldForceSettings(booking.partnerId);
 
   const providers = await listProviders(booking.partnerId);
   const eligible = findEligibleProviders(providers, {
@@ -33,7 +35,7 @@ export async function dispatchBookingRequest(bookingId: string): Promise<{ offer
   // the MAX_OFFERS_PER_BOOKING cap favors the closest known candidates
   // without excluding anyone coordinate data hasn't reached yet.
   const ranked = await rankProvidersByDistance(booking.address.pincode, eligible);
-  const candidates = ranked.map((r) => r.provider).slice(0, MAX_OFFERS_PER_BOOKING);
+  const candidates = ranked.map((r) => r.provider).slice(0, settings.maxOffersPerBooking || DEFAULT_MAX_OFFERS_PER_BOOKING);
 
   await notify({
     partnerId: booking.partnerId,
@@ -56,6 +58,7 @@ export async function dispatchBookingRequest(bookingId: string): Promise<{ offer
         bookingId: booking.id,
         providerId: provider.id,
         partnerId: booking.partnerId,
+        expiresAt: new Date(Date.now() + (settings.offerExpiryMinutes || 15) * 60 * 1000),
       })),
     });
     // Notify + SMS per candidate are independent, best-effort side effects
@@ -95,6 +98,19 @@ export async function dispatchBookingRequest(bookingId: string): Promise<{ offer
   }
 
   return { offeredCount: candidates.length };
+}
+
+/** Expires unanswered offers and redispatches still-requested bookings. */
+export async function retryExpiredBookingOffers(): Promise<number> {
+  const expired = await prisma.jobOffer.findMany({ where: { status: "pending", expiresAt: { lte: new Date() } }, select: { id: true, bookingId: true } });
+  const ids = [...new Set(expired.map((offer) => offer.id))];
+  const bookingIds = [...new Set(expired.map((offer) => offer.bookingId))];
+  if (ids.length) await prisma.jobOffer.updateMany({ where: { id: { in: ids }, status: "pending" }, data: { status: "expired", respondedAt: new Date() } });
+  for (const bookingId of bookingIds) {
+    const booking = await prisma.booking.findUnique({ where: { id: bookingId } });
+    if (booking?.status === "requested") await dispatchBookingRequest(bookingId);
+  }
+  return bookingIds.length;
 }
 
 export async function respondToOffer(

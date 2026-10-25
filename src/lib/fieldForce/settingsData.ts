@@ -4,11 +4,14 @@
  * field-force/admin once a partner is ready to run public signup.
  */
 import { prisma } from "@/lib/prisma";
+import { normalizeAllocationControls } from "@/lib/fieldForce/allocationControls";
 
 export type FieldForceSettingsRecord = {
   partnerId: string;
   customerSignupEnabled: boolean;
   providerSignupEnabled: boolean;
+  maxOffersPerBooking: number;
+  offerExpiryMinutes: number;
 };
 
 const DEFAULTS = (partnerId: string): FieldForceSettingsRecord => ({
@@ -18,6 +21,8 @@ const DEFAULTS = (partnerId: string): FieldForceSettingsRecord => ({
   // closed unless explicitly configured.
   customerSignupEnabled: partnerId === "FF0001",
   providerSignupEnabled: partnerId === "FF0001",
+  maxOffersPerBooking: 10,
+  offerExpiryMinutes: 15,
 });
 
 export async function getFieldForceSettings(partnerId: string): Promise<FieldForceSettingsRecord> {
@@ -34,11 +39,12 @@ export async function getFieldForceSettings(partnerId: string): Promise<FieldFor
 
 export async function setFieldForceSettings(
   partnerId: string,
-  input: { customerSignupEnabled: boolean; providerSignupEnabled: boolean }
+  input: { customerSignupEnabled: boolean; providerSignupEnabled: boolean; maxOffersPerBooking?: number; offerExpiryMinutes?: number }
 ): Promise<void> {
+  const { maxOffersPerBooking, offerExpiryMinutes } = normalizeAllocationControls(input);
   await prisma.fieldForceSettings.upsert({
     where: { partnerId },
-    create: { partnerId, ...input },
-    update: input,
+    create: { partnerId, customerSignupEnabled: input.customerSignupEnabled, providerSignupEnabled: input.providerSignupEnabled, maxOffersPerBooking, offerExpiryMinutes },
+    update: { customerSignupEnabled: input.customerSignupEnabled, providerSignupEnabled: input.providerSignupEnabled, maxOffersPerBooking, offerExpiryMinutes },
   });
 }

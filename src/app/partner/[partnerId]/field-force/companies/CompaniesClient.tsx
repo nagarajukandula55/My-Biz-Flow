@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { StatusChip } from "@/components/StatusChip";
 import { COMPANY_UPLOAD_FIELDS, REQUIRED_COMPANY_UPLOAD_FIELDS, type CompanyUploadField } from "@/lib/fieldForce/companiesData";
 
@@ -9,6 +10,10 @@ type Company = {
   name: string;
   isActive: boolean;
   columnMapping: Record<string, CompanyUploadField>;
+  slaResponseMinutes: number | null;
+  slaResolutionHours: number | null;
+  escalationEmail: string | null;
+  escalationPhone: string | null;
 };
 
 const FIELD_LABEL: Record<CompanyUploadField, string> = {
@@ -19,6 +24,9 @@ const FIELD_LABEL: Record<CompanyUploadField, string> = {
   state: "State",
   pincode: "Pincode",
   serviceName: "Service Name",
+  brand: "Brand",
+  model: "Model",
+  variant: "Variant",
   scheduledAt: "Scheduled Date/Time",
   notes: "Notes",
 };
@@ -30,6 +38,7 @@ export function CompaniesClient({
   setMappingAction,
   setActiveAction,
   importAction,
+  updateSlaAction,
 }: {
   partnerId: string;
   companies: Company[];
@@ -37,6 +46,7 @@ export function CompaniesClient({
   setMappingAction: (formData: FormData) => Promise<void>;
   setActiveAction: (formData: FormData) => Promise<void>;
   importAction: (formData: FormData) => Promise<{ createdCount: number; failed: { row: number; error: string }[] }>;
+  updateSlaAction: (formData: FormData) => Promise<void>;
 }) {
   const [showAdd, setShowAdd] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -69,7 +79,7 @@ export function CompaniesClient({
       {error && <div className="rounded-md border border-danger bg-danger-soft px-3 py-2 text-sm text-danger">{error}</div>}
       {importResult && (
         <div className="rounded-md border border-border bg-bg-raised px-3 py-2 text-sm text-text">
-          Created {importResult.createdCount} booking(s), each auto-dispatched to the nearest eligible engineer.
+          Created {importResult.createdCount} booking(s), each auto-dispatched to the nearest eligible service provider.
           {importResult.failed.length > 0 && (
             <ul className="mt-2 list-disc pl-5 text-xs text-danger">
               {importResult.failed.map((f) => (
@@ -113,6 +123,17 @@ export function CompaniesClient({
                   </td>
                   <td className="px-3 py-2">
                     <div className="flex flex-wrap gap-3">
+                      <Link href={`/partner/${partnerId}/field-force/companies/${c.id}/pricing`} className="text-xs font-semibold text-teal hover:underline">Device pricing</Link>
+                      <details className="text-xs">
+                        <summary className="cursor-pointer font-semibold text-accent">SLA</summary>
+                        <form action={(fd) => { fd.set("companyId", c.id); startTransition(() => updateSlaAction(fd)); }} className="mt-2 grid gap-2 rounded-md border border-border bg-bg p-3">
+                          <input name="responseMinutes" type="number" min="1" defaultValue={c.slaResponseMinutes ?? ""} placeholder="Response minutes" className="rounded border border-border bg-bg-raised px-2 py-1 text-xs text-text" />
+                          <input name="resolutionHours" type="number" min="1" defaultValue={c.slaResolutionHours ?? ""} placeholder="Resolution hours" className="rounded border border-border bg-bg-raised px-2 py-1 text-xs text-text" />
+                          <input name="escalationEmail" type="email" defaultValue={c.escalationEmail ?? ""} placeholder="Escalation email" className="rounded border border-border bg-bg-raised px-2 py-1 text-xs text-text" />
+                          <input name="escalationPhone" defaultValue={c.escalationPhone ?? ""} placeholder="Escalation phone" className="rounded border border-border bg-bg-raised px-2 py-1 text-xs text-text" />
+                          <button type="submit" className="btn-accent text-xs">Save SLA</button>
+                        </form>
+                      </details>
                       <button type="button" onClick={() => setEditingId(editingId === c.id ? null : c.id)} className="text-xs font-semibold text-accent hover:underline">
                         {editingId === c.id ? "Close mapping" : "Set up mapping"}
                       </button>

@@ -19,7 +19,9 @@ import { sendWhatsAppTemplateMessage } from "@/lib/whatsapp";
 
 const OTP_TTL_MS = 10 * 60 * 1000; // 10 minutes — same TTL as inventoryOtp.ts
 
-export type LoginOtpPurpose = "partner-login" | "ff-customer-login";
+export type LoginOtpPurpose = "partner-login" | "ff-customer-login" | "ff-job-start" | "ff-job-complete";
+
+export type JobOtpPurpose = "ff-job-start" | "ff-job-complete";
 
 function generateSixDigitCode(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -100,4 +102,13 @@ export async function verifyLoginOtp(
     data: { consumedAt: new Date() },
   });
   return { verified: true };
+}
+
+/** Customer-consent OTP used by a provider before starting or completing a job. */
+export async function requestJobOtp(partnerId: string, purpose: JobOtpPurpose, bookingId: string, customerPhone: string): Promise<RequestLoginOtpResult> {
+  return requestLoginOtp(partnerId, purpose, bookingId, customerPhone);
+}
+
+export async function verifyJobOtp(partnerId: string, purpose: JobOtpPurpose, bookingId: string, code: string): Promise<VerifyLoginOtpResult> {
+  return verifyLoginOtp(partnerId, purpose, bookingId, code);
 }

@@ -152,7 +152,7 @@ export function NewBookingForm({ services, action }: { services: ServiceOption[]
         </div>
         <div className="mt-4">
           <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-text-muted">Notes</label>
-          <textarea name="notes" rows={3} className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text" placeholder="Anything the engineer should know before arriving" />
+          <textarea name="notes" rows={3} className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text" placeholder="Anything the service provider should know before arriving" />
         </div>
       </div>
 

@@ -44,6 +44,7 @@ export default async function CustomerBookingDetailPage({ params }: { params: { 
         booking={{
           id: booking.id,
           bookingNumber: booking.bookingNumber,
+          publicTrackingToken: booking.publicTrackingToken,
           serviceName: booking.serviceName,
           addressLine: booking.addressLine,
           slotLabel: booking.slotLabel,

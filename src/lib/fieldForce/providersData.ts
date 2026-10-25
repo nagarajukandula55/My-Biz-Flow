@@ -25,6 +25,11 @@ export type ProviderRecord = {
   pincode: string;
   skillLevel: string;
   status: string;
+  verificationStatus: string;
+  verificationNote: string | null;
+  verifiedAt: Date | null;
+  isAvailable: boolean;
+  availabilityNote: string | null;
   hasLogin: boolean;
   preferredLanguage: string;
   teamLeadId: string | null;
@@ -43,6 +48,11 @@ function toRecord(row: {
   pincode: string;
   skillLevel: string;
   status: string;
+  verificationStatus: string;
+  verificationNote: string | null;
+  verifiedAt: Date | null;
+  isAvailable: boolean;
+  availabilityNote: string | null;
   passwordHash: string | null;
   preferredLanguage: string;
   teamLeadId: string | null;
@@ -60,6 +70,11 @@ function toRecord(row: {
     pincode: row.pincode,
     skillLevel: row.skillLevel,
     status: row.status,
+    verificationStatus: row.verificationStatus,
+    verificationNote: row.verificationNote,
+    verifiedAt: row.verifiedAt,
+    isAvailable: row.isAvailable,
+    availabilityNote: row.availabilityNote,
     hasLogin: !!row.passwordHash,
     preferredLanguage: row.preferredLanguage,
     teamLeadId: row.teamLeadId,
@@ -158,4 +173,16 @@ export async function setProviderStatus(id: string, partnerId: string, status: "
   const existing = await prisma.provider.findUniqueOrThrow({ where: { id } });
   assertPartnerScope(partnerId, existing.partnerId);
   await prisma.provider.update({ where: { id }, data: { status } });
+}
+
+export async function setProviderAvailability(id: string, partnerId: string, isAvailable: boolean, note?: string): Promise<void> {
+  const existing = await prisma.provider.findUniqueOrThrow({ where: { id } });
+  assertPartnerScope(partnerId, existing.partnerId);
+  await prisma.provider.update({ where: { id }, data: { isAvailable, availabilityNote: note?.trim() || null } });
+}
+
+export async function setProviderVerification(id: string, partnerId: string, status: "unverified" | "pending" | "verified" | "rejected", note?: string): Promise<void> {
+  const existing = await prisma.provider.findUniqueOrThrow({ where: { id } });
+  assertPartnerScope(partnerId, existing.partnerId);
+  await prisma.provider.update({ where: { id }, data: { verificationStatus: status, verificationNote: note?.trim() || null, verifiedAt: status === "verified" ? new Date() : null } });
 }
