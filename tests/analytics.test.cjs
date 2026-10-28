@@ -19,8 +19,10 @@ test('analytics page denies staff and performs no disabled module report queries
  const empty=async () => { calls++; return []; };
  const page=load('src/app/partner/[partnerId]/analytics/page.tsx', {
   'react/jsx-runtime': { jsx:()=>null, jsxs:()=>null }, 'next/navigation': { redirect:()=>{throw new Error('redirect');} },
+  'next/link': { default: ()=>null },
   '@/components/AppShell': {}, '@/components/DashboardWidget': {}, '@/components/charts': {}, '@/components/charts/ComboTrendCard': {},
   '@/components/ModuleWorkspace': {}, '@/lib/telecalling/analyticsData': { getTelecallingAnalyticsSummary: empty },
+  '@/lib/fieldForce/reportsData': { getFieldForceReport: empty },
   '@/lib/designer/registry': { registerPage(){} }, '@/lib/designer/entitlements': { getVisibleModuleSlugs: async()=>[] },
   '@/lib/format': {}, '@/lib/sample-data/service-centre': {}, '@/lib/requirePartnerSession': { requirePartnerSessionForPage: async()=>({kind}) },
   '@/lib/analyticsData': { getRevenueTrend:empty,getWorkorderStatusBreakdown:empty,getPeriodComparison:empty,getRevenueBySource:empty,

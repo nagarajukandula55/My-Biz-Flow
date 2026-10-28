@@ -1,5 +1,7 @@
 import type { Column, Row } from "@/components/DataTable";
 import { PrintButton } from "@/components/PrintButton";
+import { DocumentShareButton } from "@/components/DocumentShareButton";
+import { createDocumentShareToken } from "@/lib/documentShare";
 import { PrintFrame, type PrintSize } from "@/components/PrintFrame";
 import { formatCurrencyINR, formatDate } from "@/lib/format";
 import { getDocumentTemplate, renderTemplate } from "@/lib/designer/documentTemplates";
@@ -138,11 +140,14 @@ export async function DocumentView({
         invoiceNumber: documentNumber,
       })
     : null;
+  const moduleSlug = pageId.startsWith("billing.quotations") ? "billing-quotations" : pageId.startsWith("billing.proforma") ? "billing-proforma-invoices" : pageId.startsWith("billing.delivery") ? "billing-delivery-challans" : pageId.startsWith("billing") ? "billing" : null;
+  const shareToken = moduleSlug ? await createDocumentShareToken({ partnerId, moduleSlug, recordKey: String(record.id ?? ""), documentLabel }) : null;
 
   return (
     <div className="mbf-page bg-bg-sunken">
       <div className="mx-auto flex max-w-3xl flex-col gap-4 py-8 print:max-w-none print:py-0">
-        <div className="flex justify-end print:hidden">
+        <div className="flex justify-end gap-2 print:hidden">
+          <DocumentShareButton shareUrl={shareToken ? `/share/document?token=${encodeURIComponent(shareToken)}` : undefined} />
           <PrintButton />
         </div>
 

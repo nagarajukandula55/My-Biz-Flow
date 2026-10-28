@@ -1,6 +1,6 @@
 {
   "src/app/partner/[partnerId]/service-centre/layout.tsx": "96a478cbcfd06d5d68d93a7fe0602c519068e4da12327feb3d5bf6c749fb77cd",
-  "src/app/partner/[partnerId]/service-centre/page.tsx": "bb745b62b47381812d604f6f85dbef483584551aec101e035e4d4820a5c648e0",
+  "src/app/partner/[partnerId]/service-centre/page.tsx": "c12b018e70167b5ba5c29afac7d07eaaabbfba371101431588f52fb3967bf132",
   "src/app/partner/[partnerId]/service-centre/ServiceCentreClientTable.tsx": "23324cd95fb3d789d1c35bd6c7e0cc5cfb769829cec1a2b1f6d48a53c862f533",
   "src/app/partner/[partnerId]/service-centre/ServiceCentreNewButton.tsx": "dd034596d8a9f0763d1ed1c75eb8ab6950e66cae79eb824b4401c1869e8f6380",
   "src/app/partner/[partnerId]/service-centre/brands/page.tsx": "679c92f0f883543ac76558e14215cfbd428ef0099e693c6f5b083ece313257e4",
@@ -80,7 +80,7 @@
   "src/app/partner/[partnerId]/service-centre/staff-names/[recordId]/edit/page.tsx": "a61fbfb120382166503e6804cc56f07e7dc5ce78f9d64093bfc7277fdc1f9a9d",
   "src/app/partner/[partnerId]/service-centre/symptom-codes/[recordId]/edit/page.tsx": "59396ecb1db22d5da1d52d81e9fb6fcf7284df641f64037444e1d65a9d689106",
   "src/lib/analyticsData.ts": "4c59fe2b3ad27d7e5b51bbc80ca7abad3eb332f0605cea36220e5dec372c9aff",
-  "src/lib/telegram.ts": "0b0aa95cf7a75318aec99c9c2a086c741c2097415847f904e53dae81268fef43",
+  "src/lib/telegram.ts": "056d4caf3b28cdbf145c222e9ce7b3f503b20bb5017281f84749037f68f3de5f",
   "src/lib/telegramTemplates.ts": "6ef52ad7965fca7114309d27456302e544599c001f4ad9514451a34d55d656ae",
   "src/lib/telegramTemplatesData.ts": "36c2f1fed849f9c4a125c8d9c9dd2aeb5907fab26103540dc969f433a4899688",
   "src/lib/telegramTemplateDefs.ts": "cb3fa9e7fb40b51699a00339002002186163f9650c9ad8ba1b304673f3821a68",

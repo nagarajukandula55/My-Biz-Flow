@@ -2347,8 +2347,19 @@
     "kind": "list",
     "superAdminOnly": false,
     "customizableRegions": [],
-    "explanation": "An upstream OEM/brand this partner does job work for, distinct from the end Customer on a Booking. Each Company has its own saved CSV column mapping (columnMapping on FieldForceCompany) — set it up once, then every future job-data file from that company auto-maps and bulk-creates real Bookings tagged with that company, each one auto-dispatched to the nearest eligible engineer by pincode (see src/lib/fieldForce/companyImport.ts, matchingEngine.ts, geo.ts).",
+    "explanation": "An upstream OEM/brand this partner does job work for, distinct from the end Customer on a Booking. Each Company has its own saved CSV column mapping (columnMapping on FieldForceCompany) — set it up once, then every future job-data file from that company auto-maps and bulk-creates real Bookings tagged with that company, each one auto-dispatched to the nearest eligible service provider by pincode (see src/lib/fieldForce/companyImport.ts, matchingEngine.ts, geo.ts).",
     "sourceFile": "src/app/partner/[partnerId]/field-force/companies/page.tsx"
+  },
+  {
+    "id": "field-force.company-pricing",
+    "moduleSlug": "field-force",
+    "title": "Field Force — Company Pricing",
+    "path": "/partner/[partnerId]/field-force/companies/[companyId]/pricing",
+    "kind": "other",
+    "superAdminOnly": false,
+    "customizableRegions": [],
+    "explanation": "Company-specific device variants and service pricing.",
+    "sourceFile": "src/app/partner/[partnerId]/field-force/companies/[companyId]/pricing/page.tsx"
   },
   {
     "id": "field-force.customer.book",
@@ -2475,6 +2486,28 @@
     "customizableRegions": [],
     "explanation": "An engineer's own wallet — scaffolding for job-payout settlement, reusing the same generic wallet system Telecalling's agent wallet already uses (getWalletStatement/WalletPanel, keyed by ownerType \"FIELD_FORCE_PROVIDER\"). Per explicit product decision, nothing credits this automatically yet — completed-job payouts (Booking.providerPayout, src/lib/fieldForce/commission.ts) are settled manually outside the app for now; src/lib/walletClient.ts's creditProviderPayout() exists ready to wire in once automatic settlement is wanted. Reached only via the engineer's own login.",
     "sourceFile": "src/app/partner/[partnerId]/field-force/provider/wallet/page.tsx"
+  },
+  {
+    "id": "field-force.reports",
+    "moduleSlug": "field-force",
+    "title": "Field Force — Reports",
+    "path": "/partner/[partnerId]/field-force/reports",
+    "kind": "dashboard",
+    "superAdminOnly": false,
+    "customizableRegions": [],
+    "explanation": "Partner-scoped operational summary for Field Force bookings, provider capacity, verification, payment value, and Company SLA coverage.",
+    "sourceFile": "src/app/partner/[partnerId]/field-force/reports/page.tsx"
+  },
+  {
+    "id": "field-force.settings",
+    "moduleSlug": "field-force",
+    "title": "Field Force — Settings",
+    "path": "/partner/[partnerId]/field-force/settings",
+    "kind": "form",
+    "superAdminOnly": false,
+    "customizableRegions": [],
+    "explanation": "Partner-scoped controls for public signup and automated provider offer dispatch.",
+    "sourceFile": "src/app/partner/[partnerId]/field-force/settings/page.tsx"
   },
   {
     "id": "hotel.create",
