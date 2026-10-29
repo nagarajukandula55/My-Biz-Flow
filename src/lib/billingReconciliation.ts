@@ -3,6 +3,7 @@ import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import { assertModuleAccess, assertPartnerCanWrite } from "@/lib/tenant";
 import { withRecordLock } from "@/lib/withRecordLock";
 import { billingDocumentKind, documentAmounts, reconcileDocument } from "@/lib/billingReconciliationRules";
+import { createJournalEntry } from "@/lib/accounting";
 
 async function access(partnerId: string) {
   await requireSessionPartnerId(partnerId);
@@ -59,5 +60,27 @@ export async function linkInvoiceJournal(partnerId: string, invoiceId: string, e
     const error = reconcileDocument(partnerId, kind, data, journal.entryDate, journal.lines);
     if (error) throw new Error(error);
     await prisma.journalEntry.update({ where: { id: journal.id }, data: { sourceType: kind, sourceRecordId: invoiceId } });
+  });
+}
+
+/** Explicit invoice-to-ledger posting with user-selected account roles. */
+export async function postInvoiceJournal(partnerId: string, invoiceId: string, input: { receivableAccountId: string; revenueAccountId: string; taxAccountId?: string; entryNumber: string }) {
+  await access(partnerId); await assertPartnerCanWrite(partnerId);
+  return withRecordLock("accounting-ledger", partnerId, async () => {
+    const invoice = await prisma.businessRecord.findUnique({ where: { partnerId_moduleSlug_recordKey: { partnerId, moduleSlug: "billing", recordKey: invoiceId } } });
+    if (!invoice) return { error: "Invoice not found." };
+    const existing = await prisma.journalEntry.findFirst({ where: { partnerId, sourceType: "billing", sourceRecordId: invoiceId }, select: { entryNumber: true } });
+    if (existing) return { error: `Invoice already has journal ${existing.entryNumber}.` };
+    const data = invoice.data as Record<string, unknown>; let amounts;
+    try { amounts = documentAmounts("billing", data); } catch (error) { return { error: error instanceof Error ? error.message : "Invoice is invalid." }; }
+    const ids = [input.receivableAccountId, input.revenueAccountId, input.taxAccountId].filter((id): id is string => Boolean(id));
+    const accounts = await prisma.chartOfAccount.findMany({ where: { partnerId, id: { in: ids }, isActive: true }, select: { id: true, accountType: true } });
+    const byId = new Map(accounts.map(account => [account.id, account.accountType]));
+    if (byId.get(input.receivableAccountId) !== "Asset") return { error: "Receivable account must be an active Asset account." };
+    if (byId.get(input.revenueAccountId) !== "Income") return { error: "Revenue account must be an active Income account." };
+    if (amounts.tax > 0 && (!input.taxAccountId || byId.get(input.taxAccountId) !== "Liability")) return { error: "Tax account must be an active Liability account when the invoice has tax." };
+    if (!input.entryNumber.trim()) return { error: "Journal number is required." };
+    const result = await createJournalEntry(partnerId, { entryNumber: input.entryNumber.trim(), entryDate: new Date(String(data.issueDate)), narration: `Invoice ${invoiceId}`, sourceType: "billing", sourceRecordId: invoiceId, lines: [{ accountId: input.receivableAccountId, debit: amounts.total, credit: 0 }, { accountId: input.revenueAccountId, debit: 0, credit: amounts.total - amounts.tax }, ...(amounts.tax > 0 && input.taxAccountId ? [{ accountId: input.taxAccountId, debit: 0, credit: amounts.tax }] : [])] });
+    return result.error ? { error: result.error } : { entryNumber: result.entry?.entryNumber };
   });
 }
