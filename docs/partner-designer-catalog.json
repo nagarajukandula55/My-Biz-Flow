@@ -3306,6 +3306,17 @@
     "sourceFile": "src/app/partner/[partnerId]/inventory/stock/page.tsx"
   },
   {
+    "id": "inventory.suppliers",
+    "moduleSlug": "inventory",
+    "title": "Suppliers",
+    "path": "/partner/[partnerId]/inventory/suppliers",
+    "kind": "list",
+    "superAdminOnly": false,
+    "customizableRegions": [],
+    "explanation": "Supplier master with GST/contact/payment terms, used by procurement and material purchasing workflows.",
+    "sourceFile": "src/app/partner/[partnerId]/inventory/suppliers/page.tsx"
+  },
+  {
     "id": "inventory.transactions.list",
     "moduleSlug": "inventory",
     "title": "Inventory — Transactions / Statement",
