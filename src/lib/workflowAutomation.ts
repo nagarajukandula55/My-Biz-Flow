@@ -8,7 +8,8 @@ export type WorkflowTrigger =
   | "quotation.approved"
   | "workorder.completed"
   | "dealer.credit-exceeded"
-  | "project.milestone-completed";
+  | "project.milestone-completed"
+  | "procurement.rfq-created";
 
 export type WorkflowAction =
   | { type: "create-task"; title: string; dueInDays?: number; assigneeId?: string }

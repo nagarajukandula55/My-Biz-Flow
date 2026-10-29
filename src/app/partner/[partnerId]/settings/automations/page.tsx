@@ -13,6 +13,7 @@ const triggers = [
   ["workorder.completed", "Workorder is completed", "service-centre"],
   ["dealer.credit-exceeded", "Dealer exceeds credit limit", "wholesale-b2b"],
   ["project.milestone-completed", "Project milestone is completed", "interior-design"],
+  ["procurement.rfq-created", "Procurement RFQ is created", "inventory"],
 ] as const;
 
 export default async function WorkflowAutomationsPage({ params }: { params: { partnerId: string } }) {

@@ -1,6 +1,7 @@
 import type { Row } from "@/components/DataTable";
 import { createBusinessRecord, listBusinessRecords, updateBusinessRecord } from "@/lib/businessRecords";
 import { adjustStockQty } from "@/lib/inventoryStock";
+import { runWorkflowAutomations } from "@/lib/workflowAutomation";
 
 export type PurchaseLine = { materialId: string; materialLabel: string; quantity: number; unitPrice: number; warehouseName: string };
 
@@ -10,7 +11,9 @@ export async function listRfqs(partnerId: string) { return listBusinessRecords(p
 
 export async function createRfq(partnerId: string, input: { materialLabel: string; quantity: number; dueDate?: string; supplierIds: string[] }) {
   if (!input.materialLabel.trim() || !Number.isFinite(input.quantity) || input.quantity <= 0) throw new Error("Material and quantity are required.");
-  return createBusinessRecord(partnerId, "inventory-rfq", { ...input, status: "Open", quotes: [], createdAt: new Date().toISOString() });
+  const rfq = await createBusinessRecord(partnerId, "inventory-rfq", { ...input, status: "Open", quotes: [], createdAt: new Date().toISOString() });
+  await runWorkflowAutomations(partnerId, { trigger: "procurement.rfq-created", moduleSlug: "inventory", recordId: String(rfq.id), record: rfq });
+  return rfq;
 }
 
 export async function recordRfqQuote(partnerId: string, rfqId: string, quote: { supplierId: string; supplierName: string; unitPrice: number; deliveryDays: number }) {
