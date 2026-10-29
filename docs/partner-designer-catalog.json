@@ -6325,6 +6325,22 @@
     "sourceFile": "src/app/partner/[partnerId]/wholesale-b2b/page.tsx"
   },
   {
+    "id": "wholesale-b2b.pick-list",
+    "moduleSlug": "wholesale-b2b",
+    "title": "Warehouse Pick List",
+    "path": "/partner/[partnerId]/wholesale-b2b/pick-list",
+    "kind": "list",
+    "superAdminOnly": false,
+    "customizableRegions": [
+      {
+        "key": "filters",
+        "label": "Pick-list filters"
+      }
+    ],
+    "explanation": "Aggregates material quantities from confirmed wholesale orders for warehouse picking. Read-only: it does not reserve, deduct or adjust stock; those effects remain in the existing audited inventory workflows.",
+    "sourceFile": "src/app/partner/[partnerId]/wholesale-b2b/pick-list/page.tsx"
+  },
+  {
     "id": "wholesale-b2b.portal-links",
     "moduleSlug": "wholesale-b2b",
     "title": "Dealer Portal Links",
