@@ -1,5 +1,8 @@
 import type { Row } from "@/components/DataTable";
 import { createBusinessRecord, listBusinessRecords } from "@/lib/businessRecords";
+import { updateBusinessRecord } from "@/lib/businessRecords";
+import { sendEmail } from "@/lib/email";
+import { sendPartnerTelegramAlert } from "@/lib/telegram";
 
 /** Shared, tenant-scoped automation primitives used by vertical modules. */
 export type WorkflowTrigger =
@@ -93,4 +96,25 @@ export async function runWorkflowAutomations(partnerId: string, event: WorkflowE
     }
   }
   return created;
+}
+
+/** Delivers queued notification actions without making the originating business mutation fail. */
+export async function processWorkflowActionLogs(partnerId: string): Promise<{ processed: number; delivered: number; failed: number }> {
+  const logs = (await listBusinessRecords(partnerId, "workflow-action-log")).filter(row => String(row.status) === "Pending").slice(0, 50);
+  let delivered = 0, failed = 0;
+  for (const log of logs) {
+    const action = log.action as WorkflowAction;
+    let ok = false;
+    try {
+      if (action.type === "send-notification") {
+        const message = action.template.replace(/\{\{recordId\}\}/g, String(log.sourceRecordId ?? ""));
+        ok = action.channel === "telegram"
+          ? await sendPartnerTelegramAlert(partnerId, "generalAnnouncement", message)
+          : Boolean(action.recipient) && (await sendEmail({ to: action.recipient!, subject: "Business workflow notification", html: `<p>${message}</p>`, text: message })).sent;
+      }
+    } catch { ok = false; }
+    await updateBusinessRecord(partnerId, "workflow-action-log", String(log.id), { ...log, status: ok ? "Delivered" : "Failed", processedAt: new Date().toISOString() });
+    if (ok) delivered++; else failed++;
+  }
+  return { processed: logs.length, delivered, failed };
 }
