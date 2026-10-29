@@ -17,7 +17,7 @@ export async function createRfq(partnerId: string, input: { materialLabel: strin
 }
 
 export async function recordRfqQuote(partnerId: string, rfqId: string, quote: { supplierId: string; supplierName: string; unitPrice: number; deliveryDays: number }) {
-  if (!Number.isFinite(quote.unitPrice) || quote.unitPrice < 0 || !Number.isFinite(quote.deliveryDays) || quote.deliveryDays < 0) throw new Error("Invalid supplier quote.");
+  if (!quote.supplierId.trim() || !quote.supplierName.trim() || !Number.isFinite(quote.unitPrice) || quote.unitPrice < 0 || !Number.isFinite(quote.deliveryDays) || quote.deliveryDays < 0) throw new Error("Supplier, price and delivery days are required.");
   const rfq = (await listRfqs(partnerId)).find(row => String(row.id) === rfqId);
   if (!rfq) throw new Error("RFQ not found.");
   const quotes = Array.isArray(rfq.quotes) ? rfq.quotes as Array<{ supplierId?: string }> : [];
