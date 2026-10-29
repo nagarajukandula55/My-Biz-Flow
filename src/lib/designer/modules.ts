@@ -392,6 +392,7 @@ export const MODULE_SUB_NAV: Record<string, PartnerNavSubItem[]> = {
     { key: "billing.proforma-invoices", label: "Proforma Invoices", href: "billing/proforma-invoices" },
     { key: "billing.expenses", label: "Expenses", href: "billing/expenses" },
     { key: "billing.reports", label: "Reports", href: "billing/reports" },
+    { key: "billing.customer-portal", label: "Customer Portal Links", href: "billing/customer-portal" },
     { key: "billing.recurring", label: "Recurring Invoices", href: "billing/recurring" },
   ],
   marketplace: [

@@ -22,7 +22,7 @@
     {
       "id": "billing",
       "module": "Billing",
-      "pages": 54,
+      "pages": 55,
       "entryRoute": true,
       "missingImports": [],
       "missingDefinitions": [],

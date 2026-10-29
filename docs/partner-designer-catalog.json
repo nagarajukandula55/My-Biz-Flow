@@ -720,6 +720,17 @@
     "sourceFile": "src/app/partner/[partnerId]/billing/credit-notes/page.tsx"
   },
   {
+    "id": "billing.customer-portal",
+    "moduleSlug": "billing",
+    "title": "Customer Portal Links",
+    "path": "/partner/[partnerId]/billing/customer-portal",
+    "kind": "list",
+    "superAdminOnly": false,
+    "customizableRegions": [],
+    "explanation": "Create signed, time-limited read-only customer billing portals.",
+    "sourceFile": "src/app/partner/[partnerId]/billing/customer-portal/page.tsx"
+  },
+  {
     "id": "billing.delivery-challans.create",
     "moduleSlug": "billing",
     "title": "Billing — Delivery Challans — Create",

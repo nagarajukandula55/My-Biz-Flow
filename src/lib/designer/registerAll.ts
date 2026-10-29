@@ -316,6 +316,7 @@ import "@/app/partner/[partnerId]/inventory/suppliers/page";
 import "@/app/partner/[partnerId]/inventory/procurement/page";
 import "@/app/partner/[partnerId]/wholesale-b2b/portal-links/page";
 import "@/app/partner/[partnerId]/interior-design/controls/page";
+import "@/app/partner/[partnerId]/billing/customer-portal/page";
 import "@/app/partner/[partnerId]/inventory/procurement/rfqs/page";
 import "@/app/change-password/page";
 import "@/app/pricing/page";
