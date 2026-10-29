@@ -59,6 +59,16 @@ export async function resolveServiceRequestAction(partnerId: string, contractId:
   revalidatePath(`/partner/${partnerId}/amc-field-service/${contractId}`);
 }
 
+/** Records a technician's device check-in location on the open AMC visit. */
+export async function checkInServiceVisitAction(partnerId: string, contractId: string, latitude: number, longitude: number): Promise<void> {
+  partnerId = await requireSessionPartnerId(partnerId);
+  if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90 || !Number.isFinite(longitude) || longitude < -180 || longitude > 180) throw new Error("A valid device location is required.");
+  const contract = await getAmcContract(partnerId, contractId); if (!contract) return;
+  const openVisit = findOpenVisit(contract); if (!openVisit) return;
+  await updateServiceVisit(partnerId, openVisit.id, { checkInLatitude: latitude, checkInLongitude: longitude, status: "Checked in" });
+  revalidatePath(`/partner/${partnerId}/amc-field-service/${contractId}`);
+}
+
 /**
  * Adds a service visit log entry directly (the nested ServiceVisit log's
  * manual "Add Visit" form) — technician, status, and visit date, all

@@ -13,6 +13,7 @@ import {
   resolveServiceRequestAction,
   renewContractAction,
   addServiceVisitAction,
+  checkInServiceVisitAction,
 } from "./actions";
 
 export type ServiceVisitLogEntry = {
@@ -104,6 +105,11 @@ export function AmcLifecycle({
     });
   }
 
+  function checkIn() {
+    if (!navigator.geolocation) { window.alert("Location is not available on this device."); return; }
+    navigator.geolocation.getCurrentPosition((position) => startPersist(async () => { await checkInServiceVisitAction(partnerId, contractId, position.coords.latitude, position.coords.longitude); router.refresh(); }), () => window.alert("Location permission is required to check in."), { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 });
+  }
+
   function addVisit() {
     setAddVisitOpen(false);
     const draft = visitDraft;
@@ -160,6 +166,7 @@ export function AmcLifecycle({
             Mark Request Resolved
           </button>
         )}
+        {requestOpen && technicianId && <button type="button" className="btn-outline" onClick={checkIn}>Check in at site</button>}
         {contractStatus === "Active" && (
           <button
             type="button"
