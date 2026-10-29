@@ -161,6 +161,7 @@ import "@/app/partner/[partnerId]/manufacturing/work-centers/new/page";
 import "@/app/partner/[partnerId]/manufacturing/work-centers/[recordId]/page";
 import "@/app/partner/[partnerId]/wholesale-b2b/page";
 import "@/app/partner/[partnerId]/wholesale-b2b/pick-list/page";
+import "@/app/partner/[partnerId]/wholesale-b2b/fulfilment/page";
 import "@/app/partner/[partnerId]/wholesale-b2b/new/page";
 import "@/app/partner/[partnerId]/wholesale-b2b/[recordId]/page";
 import "@/app/partner/[partnerId]/wholesale-b2b/customers/page";

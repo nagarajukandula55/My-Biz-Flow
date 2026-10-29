@@ -3,7 +3,7 @@ import { findOpenVisit, listAmcContractsWithVisits, computeSlaBreach } from "@/l
 import { listWholesaleOrders } from "@/lib/wholesaleData";
 export type WorkflowInsight = { key: string; severity: "info" | "warning" | "urgent"; title: string; reason: string; href?: string };
 export async function getWorkflowInsights(partnerId: string): Promise<WorkflowInsight[]> {
-  const [billing, stock, rfqs, changes, workorders, wholesaleOrders, projects, selections, amcContracts, wholesaleRecords, wholesaleDispatches] = await Promise.all([
+  const [billing, stock, rfqs, changes, workorders, wholesaleOrders, projects, selections, selectionResponses, amcContracts, wholesaleRecords, wholesaleDispatches, wholesaleFulfillment] = await Promise.all([
     listBusinessRecords(partnerId, "billing"),
     listBusinessRecords(partnerId, "inventory-stock"),
     listBusinessRecords(partnerId, "inventory-rfq"),
@@ -12,9 +12,11 @@ export async function getWorkflowInsights(partnerId: string): Promise<WorkflowIn
     listBusinessRecords(partnerId, "wholesale-b2b"),
     listBusinessRecords(partnerId, "interior-design"),
     listBusinessRecords(partnerId, "interior-selection"),
+    listBusinessRecords(partnerId, "interior-selection-response"),
     listAmcContractsWithVisits(partnerId),
     listWholesaleOrders(partnerId),
     listBusinessRecords(partnerId, "wholesale-dispatch"),
+    listBusinessRecords(partnerId, "wholesale-fulfillment"),
   ]);
   const insights: WorkflowInsight[] = [];
   const overdue = billing.filter(row => String(row.paymentStatus) === "Overdue" || (Number(row.amountDue ?? 0) > 0 && String(row.dueDate ?? "") < new Date().toISOString().slice(0, 10)));
@@ -49,7 +51,8 @@ export async function getWorkflowInsights(partnerId: string): Promise<WorkflowIn
   if (overdueWorkorders.length) insights.push({ key: "service-centre-sla", severity: "urgent", title: `${overdueWorkorders.length} service job${overdueWorkorders.length === 1 ? " is" : "s are"} past promised date`, reason: "Review the workorder, update the customer and record the next action.", href: "service-centre" });
   const awaitingDealerAction = wholesaleOrders.filter(row => ["Pending", "Submitted", "Requested"].includes(String(row.status ?? row.orderStatus)));
   if (awaitingDealerAction.length) insights.push({ key: "dealer-orders", severity: "info", title: `${awaitingDealerAction.length} distributor order${awaitingDealerAction.length === 1 ? " is" : "s are"} awaiting action`, reason: "Accept, reject or move dealer orders into fulfilment so portal requests do not stall.", href: "wholesale-b2b" });
-  const confirmedWholesale = wholesaleRecords.filter(order => order.status === "Confirmed");
+  const fulfillmentByOrder = new Map(wholesaleFulfillment.map(row => [String(row.orderId ?? ""), String(row.stage ?? "")]));
+  const confirmedWholesale = wholesaleRecords.filter(order => order.status === "Confirmed" && !["Picked", "Packed"].includes(fulfillmentByOrder.get(String(order.id)) ?? ""));
   if (confirmedWholesale.length) insights.push({ key: "wholesale-pick-backlog", severity: "warning", title: `${confirmedWholesale.length} confirmed distributor order${confirmedWholesale.length === 1 ? " is" : "s are"} waiting to be picked`, reason: "Prepare the warehouse pick list before dispatching these confirmed orders.", href: "wholesale-b2b/pick-list" });
   const dispatchIds = new Set(wholesaleDispatches.map(row => String(row.orderId ?? "")));
   const dispatchedWithoutHandoff = wholesaleRecords.filter(order => order.status === "Dispatched" && !dispatchIds.has(order.id));
@@ -67,6 +70,8 @@ export async function getWorkflowInsights(partnerId: string): Promise<WorkflowIn
     return !Array.isArray(lines) || !lines.some(line => Boolean(line) && typeof line === "object" && String((line as Record<string, unknown>).selectionId ?? "") === String(selection.id));
   });
   if (selectionsAwaitingBoq.length) insights.push({ key: "interior-selections-awaiting-boq", severity: "warning", title: `${selectionsAwaitingBoq.length} approved material selection${selectionsAwaitingBoq.length === 1 ? " is" : "s are"} not in the BOQ`, reason: "Enter quantity and pricing, then convert the approved selection into its project BOQ before procurement or billing.", href: "interior-design/selections" });
+  const selectionChangesRequested = selectionResponses.filter(response => String(response.response ?? "") === "Change requested");
+  if (selectionChangesRequested.length) insights.push({ key: "interior-selection-changes", severity: "warning", title: `${selectionChangesRequested.length} client material selection${selectionChangesRequested.length === 1 ? " needs" : "s need"} review`, reason: "A customer requested a change to an interior material selection; review the note before procurement or billing.", href: "interior-design/selections" });
   const openAmc = amcContracts.map(contract => ({ contract, visit: findOpenVisit(contract) })).filter(row => row.visit);
   const unassignedAmc = openAmc.filter(row => !row.visit!.technicianId);
   const slaRiskAmc = openAmc.filter(row => computeSlaBreach({ contractStatus: row.contract.contractStatus, serviceStatus: row.visit!.status, slaHours: row.contract.slaHours, renewalTermMonths: row.contract.renewalTermMonths, serviceRequestRaisedAt: row.visit!.serviceRequestRaisedAt?.toISOString(), technicianId: row.visit!.technicianId ?? undefined }));

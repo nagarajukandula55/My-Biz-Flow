@@ -1,0 +1,14 @@
+import { notFound } from "next/navigation";
+import { listBusinessRecords } from "@/lib/businessRecords";
+import { verifyCustomerPortalToken } from "@/lib/customerPortal";
+import { submitInteriorSelectionResponse } from "../actions";
+
+export default async function CustomerPortalSelectionsPage({ params }: { params: { token: string } }) {
+  let claims: { partnerId: string; customer: string };
+  try { claims = await verifyCustomerPortalToken(params.token); } catch { notFound(); }
+  const [projects, selections, responses] = await Promise.all([listBusinessRecords(claims!.partnerId, "interior-design"), listBusinessRecords(claims!.partnerId, "interior-selection"), listBusinessRecords(claims!.partnerId, "interior-selection-response")]);
+  const ids = new Set(projects.filter(p => String(p.customer ?? "").toLowerCase() === claims.customer.toLowerCase()).map(p => String(p.id)));
+  const visible = selections.filter(s => ids.has(String(s.projectId)) && ["Client Approved", "Procurement Ready"].includes(String(s.status))).slice(0, 50);
+  const ownResponses = responses.filter(r => ids.has(String(r.projectId)) && String(r.customer ?? "").toLowerCase() === claims.customer.toLowerCase());
+  return <main className="min-h-screen bg-bg p-6 text-text"><div className="mx-auto max-w-3xl space-y-6"><div><a className="text-sm text-teal underline" href={`/customer-portal/${params.token}`}>← Back to portal</a><h1 className="mt-3 font-display text-2xl font-bold">Material selection responses</h1><p className="mt-1 text-sm text-text-muted">Confirm a shared selection or request a change. Responses are recorded for the designer and do not directly change the BOQ.</p></div><div className="space-y-3">{visible.map(selection => { const response = ownResponses.find(r => String(r.selectionId) === String(selection.id)); return <article key={String(selection.id)} className="rounded-xl border border-border bg-surface p-4"><div className="font-medium">{String(selection.item)}</div><div className="mt-1 text-sm text-text-muted">{String(selection.room)} · {String(selection.status)}</div>{response ? <p className="mt-3 text-sm text-teal">Response recorded: {String(response.response)} — {String(response.note)}</p> : <form action={submitInteriorSelectionResponse.bind(null, params.token)} className="mt-4 grid gap-3"><input type="hidden" name="selectionId" value={String(selection.id)} /><select name="response" className="rounded border border-border bg-bg p-2 text-sm"><option>Confirmed</option><option>Change requested</option></select><textarea name="note" required maxLength={2000} rows={3} placeholder="Add a note for the designer" className="rounded border border-border bg-bg p-2 text-sm" /><button className="btn-accent w-fit" type="submit">Send response</button></form>}</article>; })}{visible.length === 0 && <p className="text-sm text-text-muted">No approved selections are currently shared.</p>}</div></div></main>;
+}

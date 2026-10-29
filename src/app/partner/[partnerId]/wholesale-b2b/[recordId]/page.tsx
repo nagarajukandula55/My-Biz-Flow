@@ -48,6 +48,7 @@ export default async function WholesaleB2bDetailPage({
 
   const customer = await (await import("@/lib/prisma")).prisma.wholesaleCustomer.findUnique({ where: { id: order.customerId } });
   const dispatch = (await listBusinessRecords(params.partnerId, "wholesale-dispatch")).find((row) => String(row.orderId ?? "") === order.id) ?? null;
+  const fulfillment = (await listBusinessRecords(params.partnerId, "wholesale-fulfillment")).find((row) => String(row.orderId ?? "") === order.id) ?? null;
 
   return (
     <AppShell topbarTitle={mod?.label ?? "Wholesale / Distributor B2B"}>
@@ -66,6 +67,14 @@ export default async function WholesaleB2bDetailPage({
         />
 
         <div className="mt-8">
+          <section className="mb-5 rounded-xl border border-border bg-surface p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Warehouse fulfilment</p>
+            <div className="mt-2 flex flex-wrap items-center gap-3">
+              <span className="font-medium text-text">{String(fulfillment?.stage ?? "Awaiting pick")}</span>
+              {fulfillment?.recordedAt ? <span className="text-sm text-text-muted">Recorded {String(fulfillment.recordedAt)}</span> : null}
+              {!fulfillment && <span className="text-sm text-text-muted">This confirmed order has not been picked yet.</span>}
+            </div>
+          </section>
           <RecordDetail
             fields={fields}
             recordLabel={recordLabel}

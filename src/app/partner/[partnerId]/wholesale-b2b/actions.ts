@@ -161,3 +161,30 @@ export async function createWholesaleDispatchAction(
   revalidatePath(`/partner/${partnerId}/wholesale-b2b/${orderId}`);
   return {};
 }
+
+/** Records warehouse pick/pack progress without changing inventory. Stock remains
+ * controlled by the existing audited inventory workflows; this record is the
+ * operational handoff used to prevent a confirmed order being silently skipped. */
+export async function recordWholesaleFulfillmentAction(
+  partnerId: string,
+  orderId: string,
+  stage: "Picked" | "Packed",
+): Promise<{ error?: string }> {
+  partnerId = await requireSessionPartnerId(partnerId);
+  const order = await getWholesaleOrder(partnerId, orderId);
+  if (!order) return { error: "Order not found." };
+  if (!["Confirmed", "Dispatched", "Delivered"].includes(order.status)) return { error: "Only confirmed orders can be picked or packed." };
+  const rows = await listBusinessRecords(partnerId, "wholesale-fulfillment");
+  const existing = rows.find((row) => String(row.orderId ?? "") === orderId);
+  const current = String(existing?.stage ?? "");
+  if (stage === "Picked" && current) return { error: "This order already has a fulfilment stage." };
+  if (stage === "Packed" && current !== "Picked") return { error: "Mark the order as picked before packing it." };
+  const payload = { orderId, orderNumber: order.orderNumber, customerName: order.customerName, stage, recordedAt: new Date().toISOString() };
+  if (existing) {
+    const { updateBusinessRecord } = await import("@/lib/businessRecords");
+    await updateBusinessRecord(partnerId, "wholesale-fulfillment", String(existing.id), payload);
+  } else await createBusinessRecord(partnerId, "wholesale-fulfillment", payload);
+  revalidatePath(`/partner/${partnerId}/wholesale-b2b/pick-list`);
+  revalidatePath(`/partner/${partnerId}/wholesale-b2b/${orderId}`);
+  return {};
+}

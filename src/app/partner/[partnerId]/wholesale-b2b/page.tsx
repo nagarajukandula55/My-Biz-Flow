@@ -6,6 +6,7 @@ import { WholesaleB2bClientTable } from "./WholesaleB2bClientTable";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { wholesaleB2bColumns } from "@/lib/sample-data/wholesale-b2b";
 import { listWholesaleOrders, orderToRow } from "@/lib/wholesaleData";
+import { RecordCsvExportButton } from "@/components/RecordCsvExportButton";
 
 registerPage({
   id: "wholesale-b2b.list",
@@ -33,9 +34,7 @@ export default async function WholesaleB2bPage({ params }: { params: { partnerId
     <AppShell
       topbarTitle={mod?.label ?? "Wholesale / Distributor B2B"}
       topbarActions={
-        <Link href={`/partner/${params.partnerId}/wholesale-b2b/new`} className="btn-accent">
-          + New Order
-        </Link>
+        <div className="flex items-center gap-2"><RecordCsvExportButton columns={["orderNumber", "customerName", "orderDate", "status", "totalAmount"]} rows={orders.map(order => ({ orderNumber: order.orderNumber, customerName: order.customerName, orderDate: order.orderDate.toISOString().slice(0, 10), status: order.status, totalAmount: (order.totalAmount / 100).toFixed(2) }))} filename={`wholesale-orders-${params.partnerId}-${new Date().toISOString().slice(0, 10)}.csv`} /><Link href={`/partner/${params.partnerId}/wholesale-b2b/new`} className="btn-accent">+ New Order</Link></div>
       }
     >
       <div>
