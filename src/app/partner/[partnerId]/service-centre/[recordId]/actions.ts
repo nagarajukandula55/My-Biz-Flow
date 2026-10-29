@@ -17,7 +17,7 @@ import { notifyCentralApiBillingInvoice } from "@/lib/centralApi";
 import { buildServiceCentreLines } from "@/lib/serviceCentreLines";
 import { sendWorkorderTelegramAlert, sendPartnerTelegramAlert } from "@/lib/telegram";
 import { workorderClosedMessage, workorderCancelledMessage, lowStockAlertMessage, pnaLoggedMessage } from "@/lib/telegramTemplates";
-import { findStockRecord, adjustStockQty } from "@/lib/inventoryStock";
+import { findStockRecord, adjustStockQty, moveDefectiveToGood } from "@/lib/inventoryStock";
 import { withRecordLock } from "@/lib/withRecordLock";
 import { isWorkorderReopenUnlocked, consumeWorkorderReopenUnlock } from "@/lib/workorderReopenAccess";
 
@@ -639,13 +639,10 @@ async function reverseConsumptionForWorkorder(partnerId: string, workorderId: st
     const warehouseName = String(row["warehouseName"] ?? "");
     const qty = Number(row["qty"] ?? 0);
     if (materialId && warehouseName && qty > 0) {
-      await adjustStockQty(partnerId, materialId, materialLabel, warehouseName, qty);
-      // Undo the Defective unit that was generated alongside this Good
-      // deduction — deductInventoryForWorkorderAction adds one, so reversing
-      // must remove it (not re-add to Good again — the line above already
-      // restored the Good unit) or a cancelled/reopened job leaves a phantom
-      // Defective unit behind after its Good unit is restored.
-      await adjustStockQty(partnerId, materialId, materialLabel, warehouseName, -qty, "Defective");
+      // Reverse the exact Good -> Defective movement made at consumption.
+      // Keeping both sides in one locked helper prevents duplicate Defective
+      // rows and guarantees the Good bucket is restored as one operation.
+      await moveDefectiveToGood(partnerId, materialId, materialLabel, warehouseName, qty);
       summaries.push(`${materialLabel} x${qty}`);
     }
     await updateBusinessRecord(partnerId, "inventory-consumption", String(row["id"]), {
@@ -693,14 +690,15 @@ export async function cancelWorkorderAction(
     // just a silent stock-ledger change) so anyone looking at this job
     // later can see exactly what came back and when.
     let history = appendStageHistory(record, "Cancelled");
-    if (record["inventoryDeducted"]) {
-      const returned = await reverseConsumptionForWorkorder(partnerId, workorderId);
-      if (returned.length > 0) {
-        history = [
-          ...history,
-          { at: new Date().toISOString(), stage: `Parts returned to Inventory on cancel: ${returned.join(", ")}` },
-        ];
-      }
+    // Reconcile actual consumption rows even if the legacy flag is missing
+    // or stale. The rows are the source of truth and are idempotently marked
+    // reversed, so repeated cancellation attempts cannot add stock twice.
+    const returned = await reverseConsumptionForWorkorder(partnerId, workorderId);
+    if (returned.length > 0) {
+      history = [
+        ...history,
+        { at: new Date().toISOString(), stage: `Parts returned to Inventory on cancel: ${returned.join(", ")}` },
+      ];
     }
 
     await updateBusinessRecord(partnerId, "service-centre", workorderId, {
@@ -769,16 +767,26 @@ export async function reopenWorkorderAction(partnerId: string, workorderId: stri
     if (record["stage"] !== "Completed") {
       throw new Error("Only a Completed workorder can be reopened to In Progress.");
     }
-    const history = appendStageHistory(record, "In Progress (reopened, Owner OTP verified)");
+    let history = appendStageHistory(record, "In Progress (reopened, Owner OTP verified)");
+    const returned = await reverseConsumptionForWorkorder(partnerId, workorderId);
+    if (returned.length > 0) {
+      history = [
+        ...history,
+        { at: new Date().toISOString(), stage: `Parts returned to Inventory on reopen: ${returned.join(", ")}` },
+      ];
+    }
     await updateBusinessRecord(partnerId, "service-centre", workorderId, {
       ...record,
       stage: "In Progress",
+      inventoryDeducted: false,
       stageHistory: history,
     });
   });
   await consumeWorkorderReopenUnlock(workorderId);
   revalidatePath(`/partner/${partnerId}/service-centre/${workorderId}`);
   revalidatePath(`/partner/${partnerId}/service-centre`);
+  revalidatePath(`/partner/${partnerId}/inventory/stock`);
+  revalidatePath(`/partner/${partnerId}/inventory/consumption`);
 }
 
 /**
