@@ -314,6 +314,7 @@ import "@/app/signup/pending/page";
 import "@/app/partner/[partnerId]/settings/automations/page";
 import "@/app/partner/[partnerId]/inventory/suppliers/page";
 import "@/app/partner/[partnerId]/inventory/procurement/page";
+import "@/app/partner/[partnerId]/wholesale-b2b/portal-links/page";
 import "@/app/change-password/page";
 import "@/app/pricing/page";
 import "@/app/subscribe/[planId]/page";

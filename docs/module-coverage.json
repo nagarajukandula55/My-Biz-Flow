@@ -130,7 +130,7 @@
     {
       "id": "wholesale-b2b",
       "module": "Wholesale / Distributor B2B",
-      "pages": 12,
+      "pages": 13,
       "entryRoute": true,
       "missingImports": [],
       "missingDefinitions": [],

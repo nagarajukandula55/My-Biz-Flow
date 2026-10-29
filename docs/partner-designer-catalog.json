@@ -6211,6 +6211,17 @@
     "sourceFile": "src/app/partner/[partnerId]/wholesale-b2b/page.tsx"
   },
   {
+    "id": "wholesale-b2b.portal-links",
+    "moduleSlug": "wholesale-b2b",
+    "title": "Dealer Portal Links",
+    "path": "/partner/[partnerId]/wholesale-b2b/portal-links",
+    "kind": "list",
+    "superAdminOnly": false,
+    "customizableRegions": [],
+    "explanation": "Create signed, time-limited dealer portal links scoped to one wholesale customer.",
+    "sourceFile": "src/app/partner/[partnerId]/wholesale-b2b/portal-links/page.tsx"
+  },
+  {
     "id": "wholesale-b2b.price-tiers.create",
     "moduleSlug": "wholesale-b2b",
     "title": "Wholesale B2B — Price Tiers — Create",

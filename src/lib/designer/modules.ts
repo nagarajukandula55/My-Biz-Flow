@@ -207,6 +207,7 @@ export const MODULE_SUB_NAV: Record<string, PartnerNavSubItem[]> = {
     { key: "wholesale-b2b.list", label: "Orders", href: "wholesale-b2b" },
     { key: "wholesale-b2b.new", label: "+ New Order", href: "wholesale-b2b/new" },
     { key: "wholesale-b2b.analytics", label: "Distributor Analytics", href: "wholesale-b2b/analytics" },
+    { key: "wholesale-b2b.portal-links", label: "Dealer Portal Links", href: "wholesale-b2b/portal-links" },
     { key: "wholesale-b2b.customers", label: "Customers", href: "wholesale-b2b/customers" },
     { key: "wholesale-b2b.price-tiers", label: "Price Tiers", href: "wholesale-b2b/price-tiers" },
   ],
