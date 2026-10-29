@@ -2955,6 +2955,22 @@
     "sourceFile": "src/app/partner/[partnerId]/inventory/page.tsx"
   },
   {
+    "id": "inventory.lots",
+    "moduleSlug": "inventory",
+    "title": "Lot & Serial Traceability",
+    "path": "/partner/[partnerId]/inventory/lots",
+    "kind": "list",
+    "superAdminOnly": false,
+    "customizableRegions": [
+      {
+        "key": "filters",
+        "label": "Traceability filters"
+      }
+    ],
+    "explanation": "Read-only traceability view for tracked material lots and serialized units. It shows remaining quantity, warehouse, condition, receipt source, age, batch/serial number, and source record without changing stock. This is the safe operational view for barcode/serial lookups while existing audited stock flows remain authoritative.",
+    "sourceFile": "src/app/partner/[partnerId]/inventory/lots/page.tsx"
+  },
+  {
     "id": "inventory.part-orders.detail",
     "moduleSlug": "inventory",
     "title": "Part Orders — Detail",

@@ -209,6 +209,7 @@ import "@/app/partner/[partnerId]/inventory/warehouses/new/page";
 import "@/app/partner/[partnerId]/inventory/warehouses/[recordId]/page";
 import "@/app/partner/[partnerId]/inventory/warehouses/[recordId]/edit/page";
 import "@/app/partner/[partnerId]/inventory/stock/page";
+import "@/app/partner/[partnerId]/inventory/lots/page";
 import "@/app/partner/[partnerId]/inventory/stock/[recordId]/page";
 import "@/app/partner/[partnerId]/inventory/stock-adjustments/page";
 import "@/app/partner/[partnerId]/inventory/stock-adjustments/[recordId]/page";
