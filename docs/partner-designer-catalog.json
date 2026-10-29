@@ -467,6 +467,22 @@
     "sourceFile": "src/app/partner/[partnerId]/amc-field-service/[recordId]/page.tsx"
   },
   {
+    "id": "amc-field-service.dispatch-board",
+    "moduleSlug": "amc-field-service",
+    "title": "Technician Dispatch Board",
+    "path": "/partner/[partnerId]/amc-field-service/dispatch-board",
+    "kind": "list",
+    "superAdminOnly": false,
+    "customizableRegions": [
+      {
+        "key": "filters",
+        "label": "Dispatch filters"
+      }
+    ],
+    "explanation": "A live, read-only dispatch board for open AMC service requests, showing technician assignment, status, request age and SLA risk. Assignment remains on the audited contract detail workflow.",
+    "sourceFile": "src/app/partner/[partnerId]/amc-field-service/dispatch-board/page.tsx"
+  },
+  {
     "id": "amc-field-service.document",
     "moduleSlug": "amc-field-service",
     "title": "Service Report — Document",

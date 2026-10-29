@@ -429,6 +429,7 @@ export const MODULE_SUB_NAV: Record<string, PartnerNavSubItem[]> = {
   // lives nested on each contract's own detail page rather than as a
   // separate top-level sub-nav entry.
   "amc-field-service": [
+    { key: "amc-field-service.dispatch-board", label: "Technician Dispatch Board", href: "amc-field-service/dispatch-board" },
     { key: "amc-field-service.list", label: "Contracts", href: "amc-field-service" },
     { key: "amc-field-service.new", label: "+ New Contract", href: "amc-field-service/new" },
   ],

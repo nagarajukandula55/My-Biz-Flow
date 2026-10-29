@@ -101,6 +101,7 @@ import "@/app/partner/[partnerId]/clinic/appointments/new/page";
 import "@/app/partner/[partnerId]/clinic/appointments/[recordId]/page";
 import "@/app/partner/[partnerId]/clinic/appointments/[recordId]/edit/page";
 import "@/app/partner/[partnerId]/amc-field-service/page";
+import "@/app/partner/[partnerId]/amc-field-service/dispatch-board/page";
 import "@/app/partner/[partnerId]/amc-field-service/new/page";
 import "@/app/partner/[partnerId]/amc-field-service/[recordId]/page";
 import "@/app/partner/[partnerId]/amc-field-service/[recordId]/edit/page";
