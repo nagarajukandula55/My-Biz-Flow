@@ -17,6 +17,21 @@ export async function getWorkflowInsights(partnerId: string): Promise<WorkflowIn
   if (lowStock.length) insights.push({ key: "low-stock", severity: "warning", title: `${lowStock.length} material${lowStock.length === 1 ? " is" : "s are"} at reorder level`, reason: "Review Part Planning or raise procurement before stock-outs.", href: "inventory/part-planning" });
   const openRfqs = rfqs.filter(row => String(row.status) === "Open" && (!Array.isArray(row.quotes) || row.quotes.length === 0));
   if (openRfqs.length) insights.push({ key: "rfq-no-quotes", severity: "info", title: `${openRfqs.length} RFQ${openRfqs.length === 1 ? " has" : "s have"} no supplier quote`, reason: "Follow up with suppliers or add a comparison quote.", href: "inventory/procurement/rfqs" });
+  const quotedRfqs = rfqs.filter(row => String(row.status) === "Open" && Array.isArray(row.quotes) && row.quotes.length > 1);
+  const highVarianceRfqs = quotedRfqs.filter(row => {
+    const amounts = (row.quotes as unknown[]).map(quote => Number((quote as Record<string, unknown>).totalAmount ?? (quote as Record<string, unknown>).amount ?? NaN)).filter(Number.isFinite);
+    if (amounts.length < 2) return false;
+    const lowest = Math.min(...amounts);
+    const highest = Math.max(...amounts);
+    return lowest > 0 && ((highest - lowest) / lowest) >= 0.2;
+  });
+  if (highVarianceRfqs.length) insights.push({ key: "rfq-price-variance", severity: "warning", title: `${highVarianceRfqs.length} RFQ${highVarianceRfqs.length === 1 ? " has" : "s have"} wide quote variance`, reason: "Compare supplier terms, tax, delivery and warranty before accepting the lowest amount; the price difference may reflect scope.", href: "inventory/procurement/rfqs" });
+  const collectionRisk = billing.filter(row => {
+    const due = Number(row.amountDue ?? 0);
+    const total = Number(row.totalAmount ?? 0);
+    return due > 0 && total > 0 && due / total >= 0.5 && (String(row.paymentStatus) === "Pending" || String(row.paymentStatus) === "Partial");
+  });
+  if (collectionRisk.length) insights.push({ key: "collection-risk", severity: "warning", title: `${collectionRisk.length} invoice${collectionRisk.length === 1 ? " has" : "s have"} a significant balance`, reason: "Prioritise collection follow-up for invoices with at least half of the value still outstanding.", href: "billing" });
   const pendingChanges = changes.filter(row => String(row.status) === "Pending Approval");
   if (pendingChanges.length) insights.push({ key: "change-orders", severity: "warning", title: `${pendingChanges.length} Interior change order${pendingChanges.length === 1 ? " needs" : "s need"} approval`, reason: "Approve or reject before project billing is updated.", href: "interior-design/controls" });
   const now = Date.now();
