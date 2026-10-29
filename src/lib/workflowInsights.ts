@@ -1,8 +1,9 @@
 import { listBusinessRecords } from "@/lib/businessRecords";
 import { findOpenVisit, listAmcContractsWithVisits, computeSlaBreach } from "@/lib/amcContractsData";
+import { listWholesaleOrders } from "@/lib/wholesaleData";
 export type WorkflowInsight = { key: string; severity: "info" | "warning" | "urgent"; title: string; reason: string; href?: string };
 export async function getWorkflowInsights(partnerId: string): Promise<WorkflowInsight[]> {
-  const [billing, stock, rfqs, changes, workorders, wholesaleOrders, projects, selections, amcContracts] = await Promise.all([
+  const [billing, stock, rfqs, changes, workorders, wholesaleOrders, projects, selections, amcContracts, wholesaleRecords] = await Promise.all([
     listBusinessRecords(partnerId, "billing"),
     listBusinessRecords(partnerId, "inventory-stock"),
     listBusinessRecords(partnerId, "inventory-rfq"),
@@ -12,6 +13,7 @@ export async function getWorkflowInsights(partnerId: string): Promise<WorkflowIn
     listBusinessRecords(partnerId, "interior-design"),
     listBusinessRecords(partnerId, "interior-selection"),
     listAmcContractsWithVisits(partnerId),
+    listWholesaleOrders(partnerId),
   ]);
   const insights: WorkflowInsight[] = [];
   const overdue = billing.filter(row => String(row.paymentStatus) === "Overdue" || (Number(row.amountDue ?? 0) > 0 && String(row.dueDate ?? "") < new Date().toISOString().slice(0, 10)));
@@ -46,6 +48,8 @@ export async function getWorkflowInsights(partnerId: string): Promise<WorkflowIn
   if (overdueWorkorders.length) insights.push({ key: "service-centre-sla", severity: "urgent", title: `${overdueWorkorders.length} service job${overdueWorkorders.length === 1 ? " is" : "s are"} past promised date`, reason: "Review the workorder, update the customer and record the next action.", href: "service-centre" });
   const awaitingDealerAction = wholesaleOrders.filter(row => ["Pending", "Submitted", "Requested"].includes(String(row.status ?? row.orderStatus)));
   if (awaitingDealerAction.length) insights.push({ key: "dealer-orders", severity: "info", title: `${awaitingDealerAction.length} distributor order${awaitingDealerAction.length === 1 ? " is" : "s are"} awaiting action`, reason: "Accept, reject or move dealer orders into fulfilment so portal requests do not stall.", href: "wholesale-b2b" });
+  const confirmedWholesale = wholesaleRecords.filter(order => order.status === "Confirmed");
+  if (confirmedWholesale.length) insights.push({ key: "wholesale-pick-backlog", severity: "warning", title: `${confirmedWholesale.length} confirmed distributor order${confirmedWholesale.length === 1 ? " is" : "s are"} waiting to be picked`, reason: "Prepare the warehouse pick list before dispatching these confirmed orders.", href: "wholesale-b2b/pick-list" });
   const projectsMissingMeasurement = projects.filter(row => {
     const measurements = row.measurements;
     return String(row.status ?? "").toLowerCase() !== "completed" && (!Array.isArray(measurements) || measurements.length === 0);
