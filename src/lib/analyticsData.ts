@@ -24,6 +24,23 @@ import { getAvailabilityByMaterial } from "@/lib/inventoryStock";
 import type { ComboTrendPoint } from "@/components/charts/ComboTrendCard";
 import { istDateKey } from "@/lib/format";
 
+/** Deterministic forward estimate from the trailing 90 days; never mixed with actual totals. */
+export async function getRevenueForecast(partnerId: string): Promise<{ lookbackDays: number; averageDaily: number; next30Days: number; collectionRate: number }> {
+  const since = Date.now() - 90 * 86400000;
+  const rows = await listBusinessRecords(partnerId, "billing");
+  let collected = 0;
+  let invoiced = 0;
+  for (const row of rows) {
+    if (new Date(String(row.recordCreatedAt ?? "")).getTime() < since) continue;
+    const total = Number(row.totalAmount ?? 0);
+    const paid = Number(row.amountPaid ?? (row.paymentStatus === "Paid" ? total : 0));
+    if (Number.isFinite(total) && total > 0) invoiced += total;
+    if (Number.isFinite(paid) && paid > 0) collected += paid;
+  }
+  const averageDaily = invoiced / 90;
+  return { lookbackDays: 90, averageDaily: Number(averageDaily.toFixed(2)), next30Days: Number((averageDaily * 30).toFixed(2)), collectionRate: invoiced > 0 ? Number(((collected / invoiced) * 100).toFixed(1)) : 0 };
+}
+
 export async function computeModuleStat(
   partnerId: string,
   slug: string

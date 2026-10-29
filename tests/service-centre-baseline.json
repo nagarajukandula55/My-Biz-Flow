@@ -79,7 +79,7 @@
   "src/app/partner/[partnerId]/service-centre/solutions/[recordId]/edit/page.tsx": "ee38dfe1bbf0bd92f14942a69565d7a420aaad37e07e2dd3387986a4d989afd5",
   "src/app/partner/[partnerId]/service-centre/staff-names/[recordId]/edit/page.tsx": "a61fbfb120382166503e6804cc56f07e7dc5ce78f9d64093bfc7277fdc1f9a9d",
   "src/app/partner/[partnerId]/service-centre/symptom-codes/[recordId]/edit/page.tsx": "59396ecb1db22d5da1d52d81e9fb6fcf7284df641f64037444e1d65a9d689106",
-  "src/lib/analyticsData.ts": "4c59fe2b3ad27d7e5b51bbc80ca7abad3eb332f0605cea36220e5dec372c9aff",
+  "src/lib/analyticsData.ts": "d44c8c8b0a813bed036ce4f661c7f9ac83666f0326faafddb1263004df38cd74",
   "src/lib/telegram.ts": "056d4caf3b28cdbf145c222e9ce7b3f503b20bb5017281f84749037f68f3de5f",
   "src/lib/telegramTemplates.ts": "6ef52ad7965fca7114309d27456302e544599c001f4ad9514451a34d55d656ae",
   "src/lib/telegramTemplatesData.ts": "36c2f1fed849f9c4a125c8d9c9dd2aeb5907fab26103540dc969f433a4899688",

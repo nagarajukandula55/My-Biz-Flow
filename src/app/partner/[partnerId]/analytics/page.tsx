@@ -14,6 +14,7 @@ import {
   getSixMonthTrend,
   getTopBrandsByWorkorderCount,
   getAverageTat,
+  getRevenueForecast,
 } from "@/lib/analyticsData";
 import { formatTatHours } from "@/lib/sample-data/service-centre";
 import { getTelecallingAnalyticsSummary } from "@/lib/telecalling/analyticsData";
@@ -88,6 +89,7 @@ export default async function AnalyticsPage({ params }: { params: { partnerId: s
     showServiceCentreReports ? getAverageTat(params.partnerId) : Promise.resolve({ closedCount: 0, avgHours: undefined }),
     showTelecalling ? getTelecallingAnalyticsSummary(params.partnerId) : Promise.resolve(null),
   ]);
+  const revenueForecast = showBilling ? await getRevenueForecast(params.partnerId) : null;
   const fieldForce = showFieldForce ? await getFieldForceReport(params.partnerId) : null;
 
   // IST, not server-local time (UTC in production) — matters right at
@@ -105,6 +107,7 @@ export default async function AnalyticsPage({ params }: { params: { partnerId: s
         <p className="mt-1 max-w-[65ch] text-sm text-text-muted">
           Reports for the modules enabled for your business.
         </p>
+        {revenueForecast && <div className="card mt-6 p-4"><div className="flex flex-wrap items-baseline justify-between gap-2"><h2 className="font-display text-lg font-bold text-text">Revenue forecast</h2><span className="text-xs text-text-muted">Estimate from last {revenueForecast.lookbackDays} days</span></div><div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-3"><DashboardWidget label="Estimated next 30 days" value={formatCurrencyINR(revenueForecast.next30Days)} /><DashboardWidget label="Average daily invoiced" value={formatCurrencyINR(revenueForecast.averageDaily)} /><DashboardWidget label="Collection rate" value={`${revenueForecast.collectionRate}%`} /></div><p className="mt-3 text-xs text-text-muted">This is a planning estimate, not an accounting balance or guaranteed forecast.</p></div>}
 
         {!showBilling && !showServiceCentreReports && !showTelecalling && !showFieldForce && <p className="mt-6 text-sm text-text-muted">Analytics reports are available for enabled modules.</p>}
         {fieldForce && <div className="mt-6"><h2 className="font-display text-lg font-bold text-text">Field Force</h2><div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"><DashboardWidget label="Bookings" value={String(fieldForce.totalBookings)} /><DashboardWidget label="Assigned" value={String(fieldForce.assignedBookings)} /><DashboardWidget label="Completed" value={String(fieldForce.completedBookings)} /><DashboardWidget label="Available Providers" value={`${fieldForce.availableProviderCount}/${fieldForce.providerCount}`} /><DashboardWidget label="Verified Providers" value={`${fieldForce.verifiedProviderCount}/${fieldForce.providerCount}`} /><DashboardWidget label="Paid Value" value={formatCurrencyINR(fieldForce.paidValue)} /></div><p className="mt-3 text-sm text-text-muted"><Link href={`/partner/${params.partnerId}/field-force/reports`} className="text-teal hover:underline">Open full Field Force report</Link></p></div>}
