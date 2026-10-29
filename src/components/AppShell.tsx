@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { GlobalActionBanner } from "./GlobalActionBanner";
+import { OfflineStatus } from "./OfflineStatus";
 
 // Re-exported for the handful of pages that still import nav types from
 // here — the sidebar itself now lives in src/components/Sidebar.tsx,
@@ -26,6 +27,7 @@ export function AppShell({ topbarTitle, topbarActions, children }: AppShellProps
         {topbarActions}
       </header>
       <GlobalActionBanner />
+      <OfflineStatus />
       <main className="mbf-page min-w-0 flex-1 bg-bg">{children}</main>
     </div>
   );
