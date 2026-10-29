@@ -1,7 +1,7 @@
 import { listBusinessRecords } from "@/lib/businessRecords";
 export type WorkflowInsight = { key: string; severity: "info" | "warning" | "urgent"; title: string; reason: string; href?: string };
 export async function getWorkflowInsights(partnerId: string): Promise<WorkflowInsight[]> {
-  const [billing, stock, rfqs, changes, workorders, wholesaleOrders, projects] = await Promise.all([
+  const [billing, stock, rfqs, changes, workorders, wholesaleOrders, projects, selections] = await Promise.all([
     listBusinessRecords(partnerId, "billing"),
     listBusinessRecords(partnerId, "inventory-stock"),
     listBusinessRecords(partnerId, "inventory-rfq"),
@@ -9,6 +9,7 @@ export async function getWorkflowInsights(partnerId: string): Promise<WorkflowIn
     listBusinessRecords(partnerId, "service-centre"),
     listBusinessRecords(partnerId, "wholesale-b2b"),
     listBusinessRecords(partnerId, "interior-design"),
+    listBusinessRecords(partnerId, "interior-selection"),
   ]);
   const insights: WorkflowInsight[] = [];
   const overdue = billing.filter(row => String(row.paymentStatus) === "Overdue" || (Number(row.amountDue ?? 0) > 0 && String(row.dueDate ?? "") < new Date().toISOString().slice(0, 10)));
@@ -48,5 +49,13 @@ export async function getWorkflowInsights(partnerId: string): Promise<WorkflowIn
     return String(row.status ?? "").toLowerCase() !== "completed" && (!Array.isArray(measurements) || measurements.length === 0);
   });
   if (projectsMissingMeasurement.length) insights.push({ key: "interior-measurements", severity: "info", title: `${projectsMissingMeasurement.length} interior project${projectsMissingMeasurement.length === 1 ? " is" : "s are"} missing measurements`, reason: "Capture room measurements before preparing the BOQ so quantity and material pricing stay auditable.", href: "interior-design" });
+  const projectById = new Map(projects.map(project => [String(project.id), project]));
+  const selectionsAwaitingBoq = selections.filter(selection => {
+    if (!["Client Approved", "Procurement Ready"].includes(String(selection.status))) return false;
+    const project = projectById.get(String(selection.projectId));
+    const lines = project?.boqLines;
+    return !Array.isArray(lines) || !lines.some(line => Boolean(line) && typeof line === "object" && String((line as Record<string, unknown>).selectionId ?? "") === String(selection.id));
+  });
+  if (selectionsAwaitingBoq.length) insights.push({ key: "interior-selections-awaiting-boq", severity: "warning", title: `${selectionsAwaitingBoq.length} approved material selection${selectionsAwaitingBoq.length === 1 ? " is" : "s are"} not in the BOQ`, reason: "Enter quantity and pricing, then convert the approved selection into its project BOQ before procurement or billing.", href: "interior-design/selections" });
   return insights;
 }
