@@ -2349,18 +2349,16 @@ export function WorkorderLifecycle({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-medium text-text-muted">HSN Code</label>
-              <select
+              <input
+                list="service-centre-hsn-codes"
                 value={bomDraft.hsnCode}
                 onChange={(e) => setBomDraft((d) => ({ ...d, hsnCode: e.target.value }))}
                 className="mt-1 w-full rounded-md border border-border bg-bg px-2 py-2 text-sm text-text outline-none focus:border-accent"
-              >
-                <option value="">Select…</option>
-                {HSN_CODES.map((h) => (
-                  <option key={h.code} value={h.code}>
-                    {h.code}
-                  </option>
-                ))}
-              </select>
+                placeholder="Enter or choose HSN"
+              />
+              <datalist id="service-centre-hsn-codes">
+                {HSN_CODES.map((h) => <option key={h.code} value={h.code}>{h.code}</option>)}
+              </datalist>
             </div>
             <div>
               <label className="text-xs font-medium text-text-muted">Unit</label>
