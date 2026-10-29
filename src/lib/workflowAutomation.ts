@@ -1,6 +1,5 @@
 import type { Row } from "@/components/DataTable";
-import { createBusinessRecord, listBusinessRecords } from "@/lib/businessRecords";
-import { updateBusinessRecord } from "@/lib/businessRecords";
+import { createBusinessRecord, listBusinessRecords, updateBusinessRecord } from "@/lib/businessRecords";
 import { sendEmail } from "@/lib/email";
 import { sendPartnerTelegramAlert } from "@/lib/telegram";
 
@@ -84,6 +83,12 @@ export async function runWorkflowAutomations(partnerId: string, event: WorkflowE
           assigneeId: action.assigneeId ?? "",
           createdAt: new Date().toISOString(),
         }));
+      } else if (action.type === "update-record") {
+        const target = await listBusinessRecords(partnerId, action.moduleSlug);
+        const record = target.find(candidate => String(candidate.id) === event.recordId);
+        if (!record) continue;
+        await updateBusinessRecord(partnerId, action.moduleSlug, event.recordId, { ...record, [action.field]: action.value, updatedAt: new Date().toISOString() });
+        created.push(await createBusinessRecord(partnerId, "workflow-action-log", { status: "Applied", action, sourceRuleId: rule.id, sourceModule: event.moduleSlug, sourceRecordId: event.recordId, createdAt: new Date().toISOString() }));
       } else {
         created.push(await createBusinessRecord(partnerId, "workflow-action-log", {
           status: "Pending",
