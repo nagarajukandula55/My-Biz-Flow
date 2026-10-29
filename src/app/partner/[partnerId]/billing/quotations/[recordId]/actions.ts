@@ -4,6 +4,7 @@ import { getBusinessRecord } from "@/lib/businessRecords";
 import { createBusinessRecord } from "@/lib/businessRecords";
 import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import { redirect } from "next/navigation";
+import { runWorkflowAutomations } from "@/lib/workflowAutomation";
 
 export async function convertQuotationToInvoice(partnerId: string, quotationId: string) {
   partnerId = await requireSessionPartnerId(partnerId);
@@ -28,5 +29,6 @@ export async function convertQuotationToInvoice(partnerId: string, quotationId: 
     sourceQuotationId: quotationId,
     notes: quotation.notes ?? "",
   });
+  await runWorkflowAutomations(partnerId, { trigger: "quotation.approved", moduleSlug: "billing", recordId: quotationId, record: { ...quotation, convertedInvoiceId: invoice.id } });
   redirect(`/partner/${partnerId}/billing/${invoice.id}`);
 }
