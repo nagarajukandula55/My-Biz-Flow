@@ -202,7 +202,7 @@
     {
       "id": "accounting",
       "module": "Accounting",
-      "pages": 14,
+      "pages": 15,
       "entryRoute": true,
       "missingImports": [],
       "missingDefinitions": [],

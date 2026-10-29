@@ -227,6 +227,17 @@
     "sourceFile": "src/app/partner/[partnerId]/accounting-gst/page.tsx"
   },
   {
+    "id": "accounting.bank-reconciliation",
+    "moduleSlug": "accounting",
+    "title": "Bank Reconciliation",
+    "path": "/partner/[partnerId]/accounting/bank-reconciliation",
+    "kind": "list",
+    "superAdminOnly": false,
+    "customizableRegions": [],
+    "explanation": "Import bank statement rows, match by payment reference and amount, and review unmatched transactions before posting.",
+    "sourceFile": "src/app/partner/[partnerId]/accounting/bank-reconciliation/page.tsx"
+  },
+  {
     "id": "accounting.chart-of-accounts.create",
     "moduleSlug": "accounting",
     "title": "Accounting — New Account",

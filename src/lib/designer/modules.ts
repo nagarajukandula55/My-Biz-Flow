@@ -372,6 +372,7 @@ export const MODULE_SUB_NAV: Record<string, PartnerNavSubItem[]> = {
     { key: "accounting.chart-of-accounts", label: "Chart of Accounts", href: "accounting/chart-of-accounts" },
     { key: "accounting.journal-entries", label: "Journal Entries", href: "accounting/journal-entries" },
     { key: "accounting.reconciliation", label: "Billing Reconciliation", href: "accounting/reconciliation" },
+    { key: "accounting.bank-reconciliation", label: "Bank Reconciliation", href: "accounting/bank-reconciliation" },
     { key: "accounting.fiscal-periods", label: "Fiscal Periods", href: "accounting/fiscal-periods" },
     { key: "accounting.reports.trial-balance", label: "Trial Balance", href: "accounting/reports/trial-balance" },
     { key: "accounting.reports.profit-loss", label: "Profit & Loss", href: "accounting/reports/profit-loss" },
