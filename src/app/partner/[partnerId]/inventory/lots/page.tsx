@@ -18,13 +18,19 @@ registerPage({
 
 export const dynamic = "force-dynamic";
 
-export default async function InventoryLotsPage({ params }: { params: { partnerId: string } }) {
+export default async function InventoryLotsPage({ params, searchParams }: { params: { partnerId: string }; searchParams?: { q?: string } }) {
+  const query = String(searchParams?.q ?? "").trim().toLowerCase();
   const lots = await prisma.stockLot.findMany({
     where: { partnerId: params.partnerId },
     orderBy: [{ quantityRemaining: "desc" }, { receivedAt: "desc" }],
     take: 500,
   });
-  const activeLots = lots.filter((lot) => lot.quantityRemaining > 0);
+  const activeLots = lots.filter((lot) => {
+    if (lot.quantityRemaining <= 0) return false;
+    if (!query) return true;
+    return [lot.materialId, lot.materialLabel, lot.serialNumber, lot.warehouseName, lot.sourceRecordId]
+      .some((value) => String(value ?? "").toLowerCase().includes(query));
+  });
   const serialized = activeLots.filter((lot) => lot.serialized).length;
   const trackedQuantity = activeLots.reduce((sum, lot) => sum + lot.quantityRemaining, 0);
   const now = Date.now();
@@ -37,6 +43,12 @@ export default async function InventoryLotsPage({ params }: { params: { partnerI
           <DashboardWidget label="Serialized Units" value={String(serialized)} />
           <DashboardWidget label="Tracked Qty Remaining" value={String(trackedQuantity)} />
         </div>
+        <form method="get" className="mt-6 flex flex-col gap-2 sm:flex-row">
+          <input name="q" defaultValue={searchParams?.q ?? ""} className="input flex-1" placeholder="Search material, barcode/serial, warehouse or source" aria-label="Search lots" />
+          <button className="btn-outline" type="submit">Search</button>
+          {query && <a className="btn-outline" href={`/partner/${params.partnerId}/inventory/lots`}>Clear</a>}
+        </form>
+        {query && <p className="mt-2 text-sm text-text-muted">Showing active records matching “{searchParams?.q}”.</p>}
         <div className="mt-6 overflow-x-auto rounded-md border border-border bg-bg-raised">
           <table className="w-full min-w-[900px] border-collapse text-sm">
             <thead>
