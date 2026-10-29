@@ -10,9 +10,10 @@
  * takes partnerId and filters/asserts by it — see assertPartnerScope().
  */
 import { prisma } from "@/lib/prisma";
+import { sendPartnerTelegramAlert } from "@/lib/telegram";
+import { createBusinessRecord, listBusinessRecords } from "@/lib/businessRecords";
 import { assertPartnerScope } from "@/lib/tenant";
 import { getNextNumber } from "@/lib/designer/numbering";
-import { sendPartnerTelegramAlert } from "@/lib/telegram";
 import { getPartner } from "@/lib/partnerData";
 import { legalMatterStatusChangedMessage } from "@/lib/telegramTemplates";
 import { sendLegalMatterStatusChangedEmail } from "@/lib/email/moduleEmails";
@@ -294,6 +295,20 @@ export async function listLegalCourtDates(partnerId: string, matterId: string): 
   assertPartnerScope(partnerId, matter.partnerId);
   const rows = await prisma.legalCourtDate.findMany({ where: { matterId }, orderBy: { hearingDate: "asc" } });
   return rows.map(toCourtDateRecord);
+}
+
+export async function sendUpcomingLegalCourtDateReminders(partnerId: string, now = new Date()): Promise<number> {
+  const end = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const dates = await prisma.legalCourtDate.findMany({ where: { matter: { partnerId }, hearingDate: { gte: now, lt: end }, outcome: null }, include: { matter: true }, orderBy: { hearingDate: "asc" }, take: 200 });
+  const sent = await listBusinessRecords(partnerId, "legal-court-date-reminder");
+  let delivered = 0;
+  for (const date of dates) {
+    const key = `${date.id}:${date.hearingDate.toISOString().slice(0, 10)}`;
+    if (sent.some(row => String(row.reminderKey) === key)) continue;
+    const ok = await sendPartnerTelegramAlert(partnerId, "legalCourtDateUpcoming", `Upcoming court date: ${date.matter.title} on ${date.hearingDate.toISOString().slice(0, 10)}${date.court ? ` at ${date.court}` : ""}`);
+    if (ok) { await createBusinessRecord(partnerId, "legal-court-date-reminder", { reminderKey: key, courtDateId: date.id, sentAt: new Date().toISOString(), status: "Delivered" }); delivered++; }
+  }
+  return delivered;
 }
 
 /**
