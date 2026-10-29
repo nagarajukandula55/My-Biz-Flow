@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { StatusChip } from "@/components/StatusChip";
-import { updateWholesaleOrderStatusAction } from "../actions";
+import { createWholesaleDispatchAction, updateWholesaleOrderStatusAction } from "../actions";
 
 const NEXT_STATUS: Record<string, string | null> = {
   Pending: "Confirmed",
@@ -30,6 +30,7 @@ export function WholesaleOrderActions({
   creditLimit,
   outstandingBalance,
   lines,
+  dispatch,
 }: {
   partnerId: string;
   orderId: string;
@@ -40,10 +41,12 @@ export function WholesaleOrderActions({
   creditLimit: number; // rupees
   outstandingBalance: number; // rupees
   lines: Array<{ id: string; materialLabel: string; quantity: number; unitPrice: number }>; // unitPrice in rupees (base)
+  dispatch?: { carrier: string; trackingNumber: string; dispatchedAt: string; notes?: string } | null;
 }) {
   const [currentStatus, setCurrentStatus] = useState(status);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [dispatchError, setDispatchError] = useState<string | null>(null);
 
   const nextStatus = NEXT_STATUS[currentStatus];
   const overLimit = creditLimit > 0 && outstandingBalance > creditLimit;
@@ -135,6 +138,33 @@ export function WholesaleOrderActions({
           </button>
         )}
       </div>
+      {(currentStatus === "Dispatched" || currentStatus === "Delivered") && (
+        <div className="mt-6 border-t border-border pt-4">
+          <h3 className="font-display text-sm font-bold text-text">Dispatch & Tracking</h3>
+          {dispatch ? (
+            <p className="mt-2 text-sm text-text">{dispatch.carrier} · {dispatch.trackingNumber} · {new Date(dispatch.dispatchedAt).toLocaleDateString()}</p>
+          ) : (
+            <form className="mt-3 grid gap-3 sm:grid-cols-2" action={(formData) => {
+              setDispatchError(null);
+              startTransition(async () => {
+                const result = await createWholesaleDispatchAction(partnerId, orderId, {
+                  carrier: String(formData.get("carrier") ?? ""), trackingNumber: String(formData.get("trackingNumber") ?? ""),
+                  dispatchedAt: String(formData.get("dispatchedAt") ?? ""), notes: String(formData.get("notes") ?? ""),
+                });
+                if (result.error) setDispatchError(result.error);
+                else window.location.reload();
+              });
+            }}>
+              <input name="carrier" className="input" placeholder="Carrier / transporter" required />
+              <input name="trackingNumber" className="input" placeholder="Tracking / LR number" required />
+              <input name="dispatchedAt" className="input" type="date" defaultValue={new Date().toISOString().slice(0, 10)} required />
+              <input name="notes" className="input" placeholder="Notes (optional)" />
+              <div className="sm:col-span-2"><button className="btn-outline" disabled={pending}>Save dispatch details</button></div>
+              {dispatchError && <p className="sm:col-span-2 text-sm text-danger">{dispatchError}</p>}
+            </form>
+          )}
+        </div>
+      )}
     </div>
   );
 }

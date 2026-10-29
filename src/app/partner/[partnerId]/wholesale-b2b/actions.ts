@@ -6,6 +6,7 @@ import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import { getPartner } from "@/lib/partnerData";
 import { sendPartnerTelegramAlert } from "@/lib/telegram";
 import { wholesaleLargeOrderMessage, wholesaleCreditLimitBreachMessage } from "@/lib/telegramTemplates";
+import { createBusinessRecord, listBusinessRecords } from "@/lib/businessRecords";
 import {
   checkCreditLimit,
   createWholesaleOrder,
@@ -134,4 +135,29 @@ export async function updateWholesaleOrderStatusAction(
 
   revalidatePath(`/partner/${partnerId}/wholesale-b2b`);
   revalidatePath(`/partner/${partnerId}/wholesale-b2b/${orderId}`);
+}
+
+/** Records carrier/tracking details once per order without changing stock. */
+export async function createWholesaleDispatchAction(
+  partnerId: string,
+  orderId: string,
+  values: { carrier: string; trackingNumber: string; dispatchedAt: string; notes?: string }
+): Promise<{ error?: string }> {
+  partnerId = await requireSessionPartnerId(partnerId);
+  const order = await getWholesaleOrder(partnerId, orderId);
+  if (!order) return { error: "Order not found." };
+  if (order.status !== "Dispatched" && order.status !== "Delivered") return { error: "Dispatch details are available after the order is dispatched." };
+  const carrier = String(values.carrier ?? "").trim();
+  const trackingNumber = String(values.trackingNumber ?? "").trim();
+  if (!carrier || !trackingNumber) return { error: "Carrier and tracking number are required." };
+  const existing = await listBusinessRecords(partnerId, "wholesale-dispatch");
+  if (existing.some((row) => String(row.orderId ?? "") === orderId)) return { error: "Dispatch details already exist for this order." };
+  const dispatchedAt = new Date(values.dispatchedAt);
+  if (Number.isNaN(dispatchedAt.getTime())) return { error: "Enter a valid dispatch date." };
+  await createBusinessRecord(partnerId, "wholesale-dispatch", {
+    orderId, orderNumber: order.orderNumber, customerName: order.customerName, carrier, trackingNumber,
+    dispatchedAt: dispatchedAt.toISOString(), notes: String(values.notes ?? "").trim(),
+  });
+  revalidatePath(`/partner/${partnerId}/wholesale-b2b/${orderId}`);
+  return {};
 }

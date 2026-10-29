@@ -7,6 +7,7 @@ import { RecordDetail } from "@/components/RecordDetail";
 import { getWholesaleB2bDetailFields, wholesaleB2bRelated } from "@/lib/sample-data/wholesale-b2b";
 import { WholesaleOrderActions } from "./WholesaleOrderActions";
 import { customerOutstandingBalance, getWholesaleOrder, orderToRow, paiseToRupees } from "@/lib/wholesaleData";
+import { listBusinessRecords } from "@/lib/businessRecords";
 
 registerPage({
   id: "wholesale-b2b.detail",
@@ -46,6 +47,7 @@ export default async function WholesaleB2bDetailPage({
       : outstandingExcludingThis;
 
   const customer = await (await import("@/lib/prisma")).prisma.wholesaleCustomer.findUnique({ where: { id: order.customerId } });
+  const dispatch = (await listBusinessRecords(params.partnerId, "wholesale-dispatch")).find((row) => String(row.orderId ?? "") === order.id) ?? null;
 
   return (
     <AppShell topbarTitle={mod?.label ?? "Wholesale / Distributor B2B"}>
@@ -60,6 +62,7 @@ export default async function WholesaleB2bDetailPage({
           creditLimit={paiseToRupees(customer?.creditLimit ?? 0)}
           outstandingBalance={paiseToRupees(outstandingIncludingThis)}
           lines={order.lines.map((l) => ({ ...l, unitPrice: paiseToRupees(l.unitPrice) }))}
+          dispatch={dispatch ? { carrier: String(dispatch.carrier ?? ""), trackingNumber: String(dispatch.trackingNumber ?? ""), dispatchedAt: String(dispatch.dispatchedAt ?? ""), notes: String(dispatch.notes ?? "") } : null}
         />
 
         <div className="mt-8">
