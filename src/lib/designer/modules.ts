@@ -220,6 +220,7 @@ export const MODULE_SUB_NAV: Record<string, PartnerNavSubItem[]> = {
     { key: "inventory.return-orders", label: "Return Orders", href: "inventory/return-orders" },
     { key: "inventory.part-orders", label: "Part Orders", href: "inventory/part-orders" },
     { key: "inventory.suppliers", label: "Suppliers", href: "inventory/suppliers" },
+    { key: "inventory.procurement", label: "Procurement", href: "inventory/procurement" },
     // Pro+ money ledger over the same 5 source types above — see
     // src/lib/inventoryLedger.ts / inventory.transactions.list.
     { key: "inventory.transactions", label: "Transactions", href: "inventory/transactions" },

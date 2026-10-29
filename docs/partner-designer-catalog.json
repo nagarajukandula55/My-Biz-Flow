@@ -2978,6 +2978,17 @@
     "sourceFile": "src/app/partner/[partnerId]/inventory/part-planning/page.tsx"
   },
   {
+    "id": "inventory.procurement",
+    "moduleSlug": "inventory",
+    "title": "Procurement",
+    "path": "/partner/[partnerId]/inventory/procurement",
+    "kind": "list",
+    "superAdminOnly": false,
+    "customizableRegions": [],
+    "explanation": "Create supplier purchase orders and receive materials into Good inventory with an auditable receipt record.",
+    "sourceFile": "src/app/partner/[partnerId]/inventory/procurement/page.tsx"
+  },
+  {
     "id": "inventory.return-orders.detail",
     "moduleSlug": "inventory",
     "title": "Return Orders — Detail",
