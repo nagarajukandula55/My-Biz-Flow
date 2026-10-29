@@ -2989,6 +2989,17 @@
     "sourceFile": "src/app/partner/[partnerId]/inventory/procurement/page.tsx"
   },
   {
+    "id": "inventory.procurement.rfqs",
+    "moduleSlug": "inventory",
+    "title": "Requests for Quote",
+    "path": "/partner/[partnerId]/inventory/procurement/rfqs",
+    "kind": "list",
+    "superAdminOnly": false,
+    "customizableRegions": [],
+    "explanation": "Record material requests, supplier invitations and comparable quoted prices before purchasing.",
+    "sourceFile": "src/app/partner/[partnerId]/inventory/procurement/rfqs/page.tsx"
+  },
+  {
     "id": "inventory.return-orders.detail",
     "moduleSlug": "inventory",
     "title": "Return Orders — Detail",

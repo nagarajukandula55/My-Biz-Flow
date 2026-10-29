@@ -184,7 +184,7 @@
     {
       "id": "inventory",
       "module": "Inventory / Warehouse",
-      "pages": 36,
+      "pages": 37,
       "entryRoute": true,
       "missingImports": [],
       "missingDefinitions": [],
