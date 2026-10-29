@@ -11,6 +11,7 @@ export type WorkflowTrigger =
   | "quotation.approved"
   | "workorder.completed"
   | "dealer.credit-exceeded"
+  | "dealer.order-request-accepted"
   | "project.milestone-completed"
   | "procurement.rfq-created";
 

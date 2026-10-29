@@ -12,6 +12,7 @@ const triggers = [
   ["quotation.approved", "Quotation is approved", "billing"],
   ["workorder.completed", "Workorder is completed", "service-centre"],
   ["dealer.credit-exceeded", "Dealer exceeds credit limit", "wholesale-b2b"],
+  ["dealer.order-request-accepted", "Dealer order request is accepted", "wholesale-b2b"],
   ["project.milestone-completed", "Project milestone is completed", "interior-design"],
   ["procurement.rfq-created", "Procurement RFQ is created", "inventory"],
 ] as const;
