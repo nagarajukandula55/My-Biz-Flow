@@ -18,9 +18,24 @@ import { prisma } from "@/lib/prisma";
 import { sendPartnerTelegramAlert } from "@/lib/telegram";
 import { getPartner } from "@/lib/partnerData";
 import { eventBookingConfirmedMessage, eventPaymentReceivedMessage } from "@/lib/telegramTemplates";
+import { createBusinessRecord, listBusinessRecords } from "@/lib/businessRecords";
 
 import { EVENT_BOOKING_STATUSES, type EventBookingStatus, type EventBookingType } from "@/lib/eventBookingTypes";
 export { EVENT_BOOKING_STATUSES, type EventBookingStatus, type EventBookingType } from "@/lib/eventBookingTypes";
+
+export async function sendUpcomingEventReminders(partnerId: string, now = new Date()): Promise<number> {
+  const end = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+  const bookings = await listEventBookingsInRange(partnerId, now, end);
+  const sent = await listBusinessRecords(partnerId, "event-starting-reminder");
+  let delivered = 0;
+  for (const booking of bookings.filter(item => item.status !== "Cancelled")) {
+    const key = `${booking.id}:${booking.startAt.toISOString().slice(0, 13)}`;
+    if (sent.some(row => String(row.reminderKey) === key)) continue;
+    const ok = await sendPartnerTelegramAlert(partnerId, "eventStartingSoon", `Event starting soon: ${booking.eventName} at ${booking.startAt.toISOString()}`);
+    if (ok) { await createBusinessRecord(partnerId, "event-starting-reminder", { reminderKey: key, bookingId: booking.id, sentAt: new Date().toISOString(), status: "Delivered" }); delivered++; }
+  }
+  return delivered;
+}
 
 // --- Venues ---------------------------------------------------------------
 
