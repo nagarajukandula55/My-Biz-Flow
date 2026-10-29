@@ -69,6 +69,7 @@ export default async function BillingDocumentPage({
       partnerState={partner?.state ?? ""}
       partnerPincode={partner?.pincode ?? ""}
       invoiceNumber={invoiceNumber}
+      sourceWorkorderNumber={record["sourceWorkorderId"] ? String(record["sourceWorkorderId"]) : undefined}
       invoiceDate={String(record["issueDate"] ?? new Date().toISOString())}
       dueDate={record["dueDate"] ? String(record["dueDate"]) : undefined}
       paymentMode={String(record["paymentMode"] ?? "")}

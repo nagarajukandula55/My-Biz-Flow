@@ -60,6 +60,8 @@ export type ItemOption = {
   availableQty?: number;
   /** Serialized materials can't be consumed from an invoice line — their serial numbers must be tracked elsewhere. */
   serialized?: boolean;
+  measurementMode?: "area" | "running" | "volume" | "count";
+  defaultWastagePercent?: number;
 };
 
 export function LineItemsEditor({
@@ -70,6 +72,7 @@ export function LineItemsEditor({
   itemOptions,
   interState,
   showInventory = false,
+  showMeasurementTools = false,
 }: {
   items: LineItem[];
   onChange: (items: LineItem[]) => void;
@@ -103,6 +106,8 @@ export function LineItemsEditor({
   interState?: boolean;
   /** Sales Invoice create form only — under each catalog-picked line, shows how many units Inventory has available and a "Deduct from inventory" toggle (LineItem.consumeInventory). Off by default; a line with the toggle off is just invoiced without touching stock. Needs `itemOptions`. */
   showInventory?: boolean;
+  /** Adds optional length/width/height/wastage inputs and calculates quantity for measurement-led businesses. */
+  showMeasurementTools?: boolean;
 }) {
   function updateItem(idx: number, patch: Partial<LineItem>) {
     onChange(items.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
@@ -114,6 +119,18 @@ export function LineItemsEditor({
 
   function addItem() {
     onChange([...items, { ...EMPTY_ITEM }]);
+  }
+
+  function updateMeasurement(idx: number, patch: Partial<NonNullable<LineItem["measurement"]>>) {
+    const current = items[idx].measurement ?? { mode: "count" as const };
+    const measurement = { ...current, ...patch };
+    const length = Number(measurement.length) || 0;
+    const width = Number(measurement.width) || 0;
+    const height = Number(measurement.height) || 0;
+    const wastage = Math.max(0, Number(measurement.wastagePercent) || 0);
+    const base = measurement.mode === "area" ? length * width : measurement.mode === "running" ? length : measurement.mode === "volume" ? length * width * height : Number(items[idx].quantity) || 0;
+    const quantity = measurement.mode === "count" ? base : base * (1 + wastage / 100);
+    updateItem(idx, { measurement, quantity: Number(quantity.toFixed(4)) });
   }
 
   function applyItemOption(idx: number, itemId: string) {
@@ -133,6 +150,7 @@ export function LineItemsEditor({
       hsnCode: option.hsnCode ?? "",
       // A different catalog item is a different stock pool — never carry the previous pick's toggle over.
       consumeInventory: false,
+      measurement: option.measurementMode ? { mode: option.measurementMode, wastagePercent: option.defaultWastagePercent ?? 0 } : undefined,
     });
   }
 
@@ -221,6 +239,18 @@ export function LineItemsEditor({
                             Only {stock.available} available — reduce Qty or turn off
                           </span>
                         )}
+                      </div>
+                    )}
+                    {showMeasurementTools && (
+                      <div className="mt-2 grid grid-cols-2 gap-1.5 rounded border border-border bg-bg-sunken p-2 text-[11px] sm:grid-cols-5">
+                        <select value={item.measurement?.mode ?? "count"} onChange={(e) => updateMeasurement(i, { mode: e.target.value as "area" | "running" | "volume" | "count" })} className="rounded border border-border bg-bg px-1.5 py-1 text-text">
+                          <option value="count">Count</option><option value="area">Area</option><option value="running">Running length</option><option value="volume">Volume</option>
+                        </select>
+                        <input type="number" min={0} placeholder="Length" value={item.measurement?.length ?? ""} onChange={(e) => updateMeasurement(i, { length: Number(e.target.value) || 0 })} className="rounded border border-border bg-bg px-1.5 py-1 text-text" />
+                        <input type="number" min={0} placeholder="Width" value={item.measurement?.width ?? ""} onChange={(e) => updateMeasurement(i, { width: Number(e.target.value) || 0 })} className="rounded border border-border bg-bg px-1.5 py-1 text-text" />
+                        <input type="number" min={0} placeholder="Height" value={item.measurement?.height ?? ""} onChange={(e) => updateMeasurement(i, { height: Number(e.target.value) || 0 })} className="rounded border border-border bg-bg px-1.5 py-1 text-text" />
+                        <input type="number" min={0} placeholder="Waste %" value={item.measurement?.wastagePercent ?? ""} onChange={(e) => updateMeasurement(i, { wastagePercent: Number(e.target.value) || 0 })} className="rounded border border-border bg-bg px-1.5 py-1 text-text" />
+                        <span className="col-span-2 text-text-muted sm:col-span-5">Quantity is calculated in the selected unit; dimensions use the same unit as the invoice line.</span>
                       </div>
                     )}
                   </td>

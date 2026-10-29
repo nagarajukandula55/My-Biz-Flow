@@ -2747,6 +2747,39 @@
     "sourceFile": "src/app/partner/[partnerId]/hrms/payroll/page.tsx"
   },
   {
+    "id": "interior-design.create",
+    "moduleSlug": "interior-design",
+    "title": "Interior Design — New Project / BOQ",
+    "path": "/partner/[partnerId]/interior-design/new",
+    "kind": "form",
+    "superAdminOnly": false,
+    "customizableRegions": [],
+    "explanation": "Creates a project and measurement-led BOQ. BOQ lines are stored with material, quantity, unit, unit price and wastage.",
+    "sourceFile": "src/app/partner/[partnerId]/interior-design/new/page.tsx"
+  },
+  {
+    "id": "interior-design.detail",
+    "moduleSlug": "interior-design",
+    "title": "Interior Design — Project / BOQ Detail",
+    "path": "/partner/[partnerId]/interior-design/[recordId]",
+    "kind": "detail",
+    "superAdminOnly": false,
+    "customizableRegions": [],
+    "explanation": "Project, site, room, BOQ, approval and billing summary.",
+    "sourceFile": "src/app/partner/[partnerId]/interior-design/[recordId]/page.tsx"
+  },
+  {
+    "id": "interior-design.list",
+    "moduleSlug": "interior-design",
+    "title": "Interior Design — Projects / BOQs",
+    "path": "/partner/[partnerId]/interior-design",
+    "kind": "list",
+    "superAdminOnly": false,
+    "customizableRegions": [],
+    "explanation": "Projects and measurement-led bills of quantities for interior work.",
+    "sourceFile": "src/app/partner/[partnerId]/interior-design/page.tsx"
+  },
+  {
     "id": "inventory.ageing.list",
     "moduleSlug": "inventory",
     "title": "Inventory — Material Ageing",
@@ -6025,6 +6058,17 @@
     "customizableRegions": [],
     "explanation": "A Telecaller agent's own ANy Pay wallet — the 10% referral commission earned when someone they referred (their loginId entered as the referral code at /signup) makes their first plan payment. Reached only via the agent's own login, same as the call queue. Real money, read live from AN-Accounting's wallet ledger.",
     "sourceFile": "src/app/partner/[partnerId]/telecalling/wallet/page.tsx"
+  },
+  {
+    "id": "wholesale-b2b.analytics",
+    "moduleSlug": "wholesale-b2b",
+    "title": "Wholesale B2B — Analytics",
+    "path": "/partner/[partnerId]/wholesale-b2b/analytics",
+    "kind": "dashboard",
+    "superAdminOnly": false,
+    "customizableRegions": [],
+    "explanation": "Distributor dashboard covering order funnel, dealer exposure, sales, collections and stock health.",
+    "sourceFile": "src/app/partner/[partnerId]/wholesale-b2b/analytics/page.tsx"
   },
   {
     "id": "wholesale-b2b.create",

@@ -65,7 +65,7 @@ export async function DocumentView({
   /** Optional itemized breakdown (currently: Billing invoices) — rendered
    * as its own table instead of the flat field grid when present and no
    * custom template overrides the layout. */
-  lineItems?: { description: string; quantity: number; unit: string; unitPrice: number; taxRate: number }[];
+  lineItems?: { description: string; quantity: number; unit: string; unitPrice: number; taxRate: number; measurement?: { mode?: string; length?: number; width?: number; height?: number; wastagePercent?: number } }[];
   /** Which page sizes this document offers a screen toggle for — e.g. Service Centre's
    * Sales Invoice is A4/A5 only, POS additionally offers Thermal. Defaults to A4 only. */
   printSizes?: PrintSize[];
@@ -215,7 +215,7 @@ export async function DocumentView({
                     <tbody>
                       {lineItems.map((item, i) => (
                         <tr key={i} className="border-b border-border last:border-b-0">
-                          <td className="py-2 text-text">{item.description}</td>
+                          <td className="py-2 text-text">{item.description}{item.measurement && <div className="text-[10px] text-text-muted">{item.measurement.mode ?? "measurement"}{item.measurement.length ? ` · L ${item.measurement.length}` : ""}{item.measurement.width ? ` × W ${item.measurement.width}` : ""}{item.measurement.height ? ` × H ${item.measurement.height}` : ""}{item.measurement.wastagePercent ? ` · Waste ${item.measurement.wastagePercent}%` : ""}</div>}</td>
                           <td className="py-2 text-right font-mono tabular-nums text-text">{item.quantity}</td>
                           <td className="py-2 text-text">{item.unit}</td>
                           <td className="py-2 text-right font-mono tabular-nums text-text">

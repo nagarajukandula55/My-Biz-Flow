@@ -12,6 +12,7 @@ import {
 } from "@/lib/sample-data/billing-sales-documents";
 import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
 import { getBusinessRecord } from "@/lib/businessRecords";
+import { ConvertQuotationButton } from "./ConvertQuotationButton";
 
 registerPage({
   id: "billing.quotations.detail",
@@ -72,6 +73,7 @@ export default async function QuotationDetailPage({
                 <Link href={`/partner/${params.partnerId}/billing/quotations/${params.recordId}/edit`} className="btn-outline">
                   Edit
                 </Link>
+                <ConvertQuotationButton partnerId={params.partnerId} quotationId={params.recordId} />
                 <DeleteBusinessRecordButton
                   partnerId={params.partnerId}
                   moduleSlug="billing-quotations"

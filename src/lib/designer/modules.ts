@@ -50,6 +50,7 @@ export const MODULES: ModuleDefinition[] = [
   { slug: "hotel", label: "Hotel Management", description: "Rooms, reservations, guest stays, housekeeping and guest folios.", taxonomy: "vertical" },
   { slug: "education", label: "Education / Coaching", description: "Student enrollment, batches, fees, attendance.", taxonomy: "vertical" },
   { slug: "manufacturing", label: "Manufacturing / Production", description: "Bill of materials, production work orders, raw material consumption.", taxonomy: "vertical" },
+  { slug: "interior-design", label: "Interior Design & Materials", description: "Projects, rooms, measurement-led BOQs, material pricing and progress billing.", taxonomy: "vertical" },
   { slug: "wholesale-b2b", label: "Wholesale / Distributor B2B", description: "Bulk pricing, dealer/distributor accounts, credit terms.", taxonomy: "vertical" },
   { slug: "logistics-fleet", label: "Logistics / Fleet", description: "Delivery tracking, vehicle and driver management.", taxonomy: "vertical" },
   { slug: "legal", label: "Legal / Case Management", description: "Client matters, billable hours, document tracking.", taxonomy: "vertical" },
@@ -128,6 +129,10 @@ export function taxonomyToNavDot(taxonomy: ModuleTaxonomy): NavDot {
  * module slug; a module without an entry falls back to the generic trio.
  */
 export const MODULE_SUB_NAV: Record<string, PartnerNavSubItem[]> = {
+  "interior-design": [
+    { key: "interior-design.list", label: "Projects / BOQs", href: "interior-design" },
+    { key: "interior-design.create", label: "+ New Project / BOQ", href: "interior-design/new" },
+  ],
   // Prisma-backed Property/Enquiry (see prisma/schema.prisma's Property/
   // Enquiry block and src/lib/realEstateData.ts) — Enquiry (the lead
   // pipeline) is the module's main list; Properties are their own section
@@ -201,6 +206,7 @@ export const MODULE_SUB_NAV: Record<string, PartnerNavSubItem[]> = {
   "wholesale-b2b": [
     { key: "wholesale-b2b.list", label: "Orders", href: "wholesale-b2b" },
     { key: "wholesale-b2b.new", label: "+ New Order", href: "wholesale-b2b/new" },
+    { key: "wholesale-b2b.analytics", label: "Distributor Analytics", href: "wholesale-b2b/analytics" },
     { key: "wholesale-b2b.customers", label: "Customers", href: "wholesale-b2b/customers" },
     { key: "wholesale-b2b.price-tiers", label: "Price Tiers", href: "wholesale-b2b/price-tiers" },
   ],

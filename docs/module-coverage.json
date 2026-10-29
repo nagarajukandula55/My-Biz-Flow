@@ -119,9 +119,18 @@
       "workflowStatus": "End-to-end validation required"
     },
     {
+      "id": "interior-design",
+      "module": "Interior Design & Materials",
+      "pages": 3,
+      "entryRoute": true,
+      "missingImports": [],
+      "missingDefinitions": [],
+      "workflowStatus": "End-to-end validation required"
+    },
+    {
       "id": "wholesale-b2b",
       "module": "Wholesale / Distributor B2B",
-      "pages": 11,
+      "pages": 12,
       "entryRoute": true,
       "missingImports": [],
       "missingDefinitions": [],
@@ -229,7 +238,7 @@
     {
       "id": "field-force",
       "module": "Field Force",
-      "pages": 17,
+      "pages": 20,
       "entryRoute": true,
       "missingImports": [],
       "missingDefinitions": [],

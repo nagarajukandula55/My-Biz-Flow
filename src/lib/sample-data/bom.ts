@@ -36,7 +36,8 @@ export type RateType = (typeof RATE_TYPES)[number];
 /** Standard India GST slabs. */
 export const GST_RATES = [0, 0.25, 3, 5, 12, 18, 28] as const;
 
-export const UOM_OPTIONS = ["pcs", "box", "set", "pair", "kg", "g", "ltr", "ml", "roll", "meter"];
+/** Common suggestions only. BOM forms accept any custom unit text so a material is never blocked by this list. */
+export const UOM_OPTIONS = ["pcs", "piece", "box", "pack", "set", "pair", "bundle", "carton", "pallet", "mg", "g", "kg", "tonne", "ml", "ltr", "cubic.ft", "cubic.m", "mm", "cm", "inch", "ft", "yard", "meter", "running.ft", "running.m", "sq.mm", "sq.cm", "sq.ft", "sq.m", "sq.yard", "roll", "sheet", "slab", "panel", "board", "bag", "hour", "day", "job", "visit", "project"];
 
 /**
  * Curated common HSN codes for electronics/repair/retail — not the full
@@ -208,7 +209,11 @@ export const bomFormFields: FormFieldDef[] = [
   },
   { key: "hsnCode", label: "HSN Code", type: "select", required: true, options: HSN_CODES.map((h) => h.code) },
   { key: "type", label: "Type", type: "select", required: true, options: [...MATERIAL_TYPES] },
-  { key: "uom", label: "UOM", type: "select", required: true, options: UOM_OPTIONS },
+  { key: "uom", label: "Selling Unit", type: "text", required: true, placeholder: "e.g. sq.ft, running.m, bag, hour" },
+  { key: "purchaseUnit", label: "Purchase Unit", type: "text", required: false, placeholder: "e.g. roll, carton, slab" },
+  { key: "purchaseToSellingFactor", label: "Purchase Unit Conversion", type: "number", required: false, placeholder: "How many selling units are in one purchase unit" },
+  { key: "pricingBasis", label: "Pricing Basis", type: "text", required: false, placeholder: "e.g. per sq.ft, per running.m, per piece" },
+  { key: "defaultWastagePercent", label: "Default Wastage %", type: "number", required: false, placeholder: "Optional material default" },
   { key: "rate", label: "Rate", type: "currency", required: true },
   { key: "rateType", label: "Rate Type", type: "select", required: true, options: [...RATE_TYPES] },
   { key: "taxPercent", label: "Tax %", type: "select", required: true, options: GST_RATES.map(String) },

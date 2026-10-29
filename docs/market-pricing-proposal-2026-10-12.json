@@ -2307,6 +2307,120 @@
       "releaseGate": "Business workflow acceptance, tier/page mapping, seat/location enforcement, billing and provider-cost review"
     },
     {
+      "businessType": "interior-design",
+      "operation": "create-business-type",
+      "currentPlans": [],
+      "expectedExisting": null,
+      "proposedDefaultModules": [
+        "interior-design"
+      ],
+      "draftType": {
+        "id": "interior-design",
+        "description": "Interior Design & Materials",
+        "idPrefix": "INT",
+        "defaultModules": [
+          "interior-design"
+        ],
+        "assignableRoleIds": [
+          "Owner / Admin"
+        ],
+        "planTierByPage": {},
+        "requiresApproval": false,
+        "customSignupFields": [],
+        "status": "Inactive",
+        "planIds": [
+          "PLAN-INTERIORDESIGN-202610-BASIC",
+          "PLAN-INTERIORDESIGN-202610-PRO",
+          "PLAN-INTERIORDESIGN-202610-ULTIMATE"
+        ]
+      },
+      "proposedPlanIds": [
+        "PLAN-INTERIORDESIGN-202610-BASIC",
+        "PLAN-INTERIORDESIGN-202610-PRO",
+        "PLAN-INTERIORDESIGN-202610-ULTIMATE"
+      ],
+      "plans": [
+        {
+          "id": "PLAN-INTERIORDESIGN-202610-BASIC",
+          "name": "Starter",
+          "price": 499,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "interior-design"
+          ],
+          "maxUsers": 2,
+          "maxLocations": 1,
+          "isPublic": false
+        },
+        {
+          "id": "PLAN-INTERIORDESIGN-202610-PRO",
+          "name": "Pro",
+          "price": 999,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "interior-design"
+          ],
+          "maxUsers": 10,
+          "maxLocations": 3,
+          "isPublic": false
+        },
+        {
+          "id": "PLAN-INTERIORDESIGN-202610-ULTIMATE",
+          "name": "Ultimate",
+          "price": 1999,
+          "launchPrice": null,
+          "billingCycle": "monthly",
+          "includedModuleSlugs": [
+            "interior-design"
+          ],
+          "maxUsers": 25,
+          "maxLocations": 5,
+          "isPublic": false
+        }
+      ],
+      "launchRecommendation": {
+        "evidenceBasis": "Registered non-admin pages in the actual module bundle, using DEFAULT_PAGE_TIERS plus stored type overrides. Page existence is candidate evidence; workflow and gate acceptance remain required.",
+        "tiers": [
+          {
+            "planId": "PLAN-INTERIORDESIGN-202610-BASIC",
+            "name": "Starter",
+            "price": 499,
+            "tier": "basic",
+            "status": "CANDIDATE — acceptance required",
+            "incrementalPages": []
+          },
+          {
+            "planId": "PLAN-INTERIORDESIGN-202610-PRO",
+            "name": "Pro",
+            "price": 999,
+            "tier": "pro",
+            "status": "HOLD — no distinct built gated pages",
+            "incrementalPages": []
+          },
+          {
+            "planId": "PLAN-INTERIORDESIGN-202610-ULTIMATE",
+            "name": "Ultimate",
+            "price": 1999,
+            "tier": "ultimate",
+            "status": "HOLD — no distinct built gated pages",
+            "incrementalPages": []
+          }
+        ],
+        "publicationBlock": "Do not remove held plans from the type ladder blindly: tierForPlanIndex maps a two-plan top plan to Ultimate. This recommendation changes no plan IDs, order or runtime gates. A revised public ladder needs explicit mapping tests before publication; where no premium pages exist, a verified single Starter offer is sufficient."
+      },
+      "benchmark": {
+        "url": "https://www.zoho.com/inventory/pricing/",
+        "benchmark": "Inventory pricing provides a relevant materials-control benchmark; the proposed package is narrower and adds measurement-based BOQ billing rather than full project-management parity.",
+        "checkedAt": "2026-10-12"
+      },
+      "scope": "Projects, measurement-based BOQs, material pricing, wastage, quotations, invoices and stock consumption",
+      "limitation": "Launch judgement for a focused interior-design and materials workflow; advanced CAD/BIM, supplier integrations and automated site execution are not included.",
+      "tierPublicationPolicy": "All tiers remain private. Pro/Ultimate price points are conditional proposals, not verified seat, location, staff-role or support entitlements. Publish only after the promised differences are implemented and tested.",
+      "releaseGate": "Business workflow acceptance, tier/page mapping, seat/location enforcement, billing and provider-cost review"
+    },
+    {
       "businessType": "wholesale-b2b",
       "operation": "version-plans",
       "currentPlans": [

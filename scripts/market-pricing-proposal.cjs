@@ -28,7 +28,7 @@ function buildMarketProposal(catalog) {
   const changes = policy.modules.map(row => {
     if(row.slug === 'service-centre') throw new Error('Service Centre is protected');
     const existing = catalog.types.find(t=>t.id===row.slug);
-    const draft = missing.changes.find(c=>c.businessType===row.slug) ?? (row.slug==='hotel' ? {type:{id:'hotel',description:'Hotel Management',idPrefix:'HTL',defaultModules:['hotel'],assignableRoleIds:['Owner / Admin'],planTierByPage:{},requiresApproval:false,customSignupFields:[]}} : undefined);
+    const draft = missing.changes.find(c=>c.businessType===row.slug) ?? (row.slug==='hotel' ? {type:{id:'hotel',description:'Hotel Management',idPrefix:'HTL',defaultModules:['hotel'],assignableRoleIds:['Owner / Admin'],planTierByPage:{},requiresApproval:false,customSignupFields:[]}} : row.slug==='interior-design' ? {type:{id:'interior-design',description:'Interior Design & Materials',idPrefix:'INT',defaultModules:['interior-design'],assignableRoleIds:['Owner / Admin'],planTierByPage:{},requiresApproval:false,customSignupFields:[]}} : undefined);
     const bundle = row.slug === "accounting" ? ["accounting", "accounting-gst", "billing"] : existing?.defaultModules ?? draft?.type.defaultModules;
     const existingFree = row.slug==='field-force' ? catalog.plans.find(p=>existing?.planIds.includes(p.id)&&p.price===0) : null;
     if(!bundle?.includes(row.slug) || bundle.includes('service-centre')) throw new Error(`Unsafe bundle: ${row.slug}`);

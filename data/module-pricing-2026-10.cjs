@@ -15,6 +15,7 @@ const sources = {
   rentals: {url:'https://booqable.com/pricing/', benchmark:'Rental-specific booking, inventory and online-store benchmark. Currency in extracted pricing was ambiguous; no numeric comparison used.'},
   education: {url:'https://www.classpro.in/', benchmark:'Coaching-specific attendance, fees and operations benchmark; no verifiable numeric rate obtained.'},
   property: {url:'https://www.sell.do/pricing', benchmark:'Real-estate CRM pricing enquiry; no public numeric rate verified.'},
+  interior: {url:'https://www.zoho.com/inventory/pricing/', benchmark:'Inventory pricing provides a relevant materials-control benchmark; the proposed package is narrower and adds measurement-based BOQ billing rather than full project-management parity.'},
   legal: {url:'https://www.clio.com/pricing/', benchmark:'Displays starting at USD 49/user; billing term not established in extracted page. Qualitative comparison only; trust accounting and integrations are broader.'},
   restaurant: {url:'https://www.petpooja.com/poss/pricing', benchmark:'Restaurant-specific POS benchmark; no numeric price verified from the displayed pricing images.'},
 };
@@ -33,6 +34,7 @@ const rows = [
  ['rentals',[399,799,1499],'rentals','Pooled assets, concurrent availability, group reservations, partial pickups/returns, deposits and corrections','Currency unverified for competitor; price judgement, not claimed percentage savings. Online storefront not included.'],
  ['education',[399,799,1499],'education','Students, batches, fees and attendance','Quote-only comparison; no LMS, live classes, exam engine or parent app promise.'],
  ['manufacturing',[599,1199,1999],'manufacturing','BOM, production orders and material consumption','Lower scope than MRP suites; finite-capacity planning and advanced costing not promised.'],
+ ['interior-design',[499,999,1999],'interior','Projects, measurement-based BOQs, material pricing, wastage, quotations, invoices and stock consumption','Launch judgement for a focused interior-design and materials workflow; advanced CAD/BIM, supplier integrations and automated site execution are not included.'],
  ['wholesale-b2b',[499,999,1799],'erp','Dealer orders, price tiers, credits and billing','ERP is an indirect upper-scope benchmark; EDI and automated logistics not included.'],
  ['logistics-fleet',[399,799,1499],'fleet','Vehicles, drivers, trips and delivery status','Flat business pricing, not per-vehicle parity; no GPS/telematics/route-optimisation claim.'],
  ['legal',[399,799,1499],'legal','Matters, hours, documents and billing','No court integration, trust-account compliance or legal AI promise.'],

@@ -183,7 +183,7 @@ export function SalesDocumentForm({
 
       <div className="mt-6">
         <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted">Line Items</div>
-        <LineItemsEditor items={items} onChange={setItems} showTax itemOptions={itemOptions} />
+        <LineItemsEditor items={items} onChange={setItems} showTax itemOptions={itemOptions} showMeasurementTools />
       </div>
 
       <div className="mt-6 flex items-center gap-3">

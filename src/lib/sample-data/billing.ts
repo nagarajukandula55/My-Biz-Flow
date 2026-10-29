@@ -41,6 +41,8 @@ export type LineItem = {
   consumeInventory?: boolean;
   /** Stamped server-side on an invoice line whose quantity was actually deducted from Inventory at creation — the audit trail; never set by the form. */
   inventoryConsumed?: boolean;
+  /** Optional measurement inputs used by interior/fit-out billing. Quantity remains the calculated canonical value. */
+  measurement?: { mode: "area" | "running" | "volume" | "count"; length?: number; width?: number; height?: number; wastagePercent?: number };
 };
 
 /** invoice id -> its line items — kept separate from billingRows so the

@@ -47,5 +47,7 @@ export async function getLineItemCatalogOptions(partnerId: string): Promise<Item
       // actually on the shelf before consuming it.
       availableQty: availability.get(String(m["id"]))?.total ?? 0,
       serialized: Boolean(m["serialized"]),
+      measurementMode: m["pricingBasis"] ? String(m["pricingBasis"]).toLowerCase().includes("area") || String(m["uom"]).includes("sq.") ? "area" : String(m["uom"]).includes("running") ? "running" : String(m["uom"]).includes("cubic") ? "volume" : "count" : undefined,
+      defaultWastagePercent: Number(m["defaultWastagePercent"] ?? 0),
     }));
 }

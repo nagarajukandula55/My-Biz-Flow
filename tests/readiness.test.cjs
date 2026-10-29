@@ -52,7 +52,7 @@ test('all business packages have detailed content and Accounting/GST has one can
  const modules=load('src/lib/designer/modules.ts');
  const profiles=load('src/lib/workspaceProfiles.ts',{'@/lib/designer/modules':modules});
  const catalog=load('src/lib/businessOfferings.ts',{'@/lib/designer/modules':modules,'@/lib/workspaceProfiles':profiles,'@/data/business-offering-scope.json':require('../src/data/business-offering-scope.json')});
- assert.equal(catalog.BUSINESS_OFFERINGS.length,25);
+ assert.equal(catalog.BUSINESS_OFFERINGS.length,26);
  for(const o of catalog.BUSINESS_OFFERINGS){assert.ok(o.workflow.length>=3&&o.summary&&o.limitation,o.slug);assert.ok(o.features.length>0,o.slug);}
  assert.equal(catalog.getBusinessOffering('accounting-gst').slug,'accounting');
  assert.equal(catalog.getBusinessOffering('unknown'),undefined);
@@ -94,7 +94,7 @@ test('catalog proposal fills eight gaps without rewriting existing bundles or Se
  assert.ok(projected.types.filter(t=>t.status==='Active').every(t=>t.planIds.length));
 });
 
-test('market pricing covers all modules through 24 packages and preserves existing customers and Service Centre',()=>{
+test('market pricing covers all modules through 25 packages and preserves existing customers and Service Centre',()=>{
  const {buildMarketProposal}=require('../scripts/market-pricing-proposal.cjs');
  const policy=require('../data/module-pricing-2026-10.cjs');
  const catalog=require('../docs/pricing-catalog-audit-2026-10-07.json').catalog;

@@ -43,6 +43,7 @@ export async function BillingInvoiceDocument({
   partnerState,
   partnerPincode,
   invoiceNumber,
+  sourceWorkorderNumber,
   invoiceDate,
   dueDate,
   paymentMode,
@@ -81,6 +82,7 @@ export async function BillingInvoiceDocument({
   partnerState?: string;
   partnerPincode?: string;
   invoiceNumber: string;
+  sourceWorkorderNumber?: string;
   invoiceDate: string;
   dueDate?: string;
   paymentMode?: string;
@@ -262,6 +264,11 @@ export async function BillingInvoiceDocument({
                   Invoice No:{" "}
                   <span className="font-mono font-semibold text-text">{invoiceNumber}</span>
                 </div>
+                {sourceWorkorderNumber && (
+                  <div>
+                    Workorder No: <span className="font-mono font-semibold text-text">{sourceWorkorderNumber}</span>
+                  </div>
+                )}
                 <div>
                   Invoice Date:{" "}
                   <span className="font-semibold text-text">{formatDate(invoiceDate)}</span>
@@ -347,7 +354,14 @@ export async function BillingInvoiceDocument({
                   {rows.map((r, i) => (
                     <tr key={i} className="border-b border-border last:border-b-0">
                       <td className="px-2 py-2 text-text-muted">{i + 1}</td>
-                      <td className="px-2 py-2 text-text">{r.description}</td>
+                      <td className="px-2 py-2 text-text">
+                        {r.description}
+                        {r.measurement && (
+                          <div className="mt-0.5 text-[10px] text-text-muted">
+                            Measurement: {r.measurement.mode}{r.measurement.length ? ` · L ${r.measurement.length}` : ""}{r.measurement.width ? ` × W ${r.measurement.width}` : ""}{r.measurement.height ? ` × H ${r.measurement.height}` : ""}{r.measurement.wastagePercent ? ` · Waste ${r.measurement.wastagePercent}%` : ""}
+                          </div>
+                        )}
+                      </td>
                       {hasTax && <td className="px-2 py-2 text-text-muted">{r.hsnCode || "—"}</td>}
                       <td className="px-2 py-2 text-right font-mono tabular-nums text-text">{r.quantity}</td>
                       <td className="px-2 py-2 text-text-muted">{r.unit}</td>

@@ -602,6 +602,7 @@ export function BillingInvoiceForm({
           itemOptions={itemOptions}
           interState={interState}
           showInventory={showInventory}
+          showMeasurementTools
         />
       </div>
 
