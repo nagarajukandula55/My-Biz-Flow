@@ -20,8 +20,11 @@ export async function recordRfqQuote(partnerId: string, rfqId: string, quote: { 
   if (!Number.isFinite(quote.unitPrice) || quote.unitPrice < 0 || !Number.isFinite(quote.deliveryDays) || quote.deliveryDays < 0) throw new Error("Invalid supplier quote.");
   const rfq = (await listRfqs(partnerId)).find(row => String(row.id) === rfqId);
   if (!rfq) throw new Error("RFQ not found.");
-  const quotes = Array.isArray(rfq.quotes) ? rfq.quotes : [];
-  await updateBusinessRecord(partnerId, "inventory-rfq", rfqId, { ...rfq, quotes: [...quotes, { ...quote, quotedAt: new Date().toISOString() }] });
+  const quotes = Array.isArray(rfq.quotes) ? rfq.quotes as Array<{ supplierId?: string }> : [];
+  const nextQuote = { ...quote, quotedAt: new Date().toISOString() };
+  const existingIndex = quotes.findIndex(item => String(item.supplierId ?? "") === quote.supplierId);
+  const nextQuotes = existingIndex >= 0 ? quotes.map((item, index) => index === existingIndex ? nextQuote : item) : [...quotes, nextQuote];
+  await updateBusinessRecord(partnerId, "inventory-rfq", rfqId, { ...rfq, quotes: nextQuotes });
 }
 
 export async function createPurchaseOrder(partnerId: string, input: { supplierId: string; supplierName: string; expectedDate?: string; lines: PurchaseLine[] }): Promise<Row> {
