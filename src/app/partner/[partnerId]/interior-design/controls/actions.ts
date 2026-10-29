@@ -1,0 +1,5 @@
+"use server";
+import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
+import { createBusinessRecord } from "@/lib/businessRecords";
+import { revalidatePath } from "next/cache";
+export async function createInteriorControlAction(partnerId: string, formData: FormData) { await requireSessionPartnerId(partnerId); const type = String(formData.get("type") ?? "milestone"); const title = String(formData.get("title") ?? "").trim(); const projectId = String(formData.get("projectId") ?? ""); if (!title || !projectId) throw new Error("Project and title are required."); await createBusinessRecord(partnerId, type === "change-order" ? "interior-change-order" : "interior-milestone", { projectId, title, description: String(formData.get("description") ?? "").trim(), amount: Number(formData.get("amount") ?? 0), dueDate: String(formData.get("dueDate") ?? ""), status: type === "change-order" ? "Pending Approval" : "Open", createdAt: new Date().toISOString() }); revalidatePath(`/partner/${partnerId}/interior-design/controls`); }

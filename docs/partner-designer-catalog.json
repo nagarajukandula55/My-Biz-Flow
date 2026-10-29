@@ -2747,6 +2747,17 @@
     "sourceFile": "src/app/partner/[partnerId]/hrms/payroll/page.tsx"
   },
   {
+    "id": "interior-design.controls",
+    "moduleSlug": "interior-design",
+    "title": "Project Controls",
+    "path": "/partner/[partnerId]/interior-design/controls",
+    "kind": "list",
+    "superAdminOnly": false,
+    "customizableRegions": [],
+    "explanation": "Track project milestones and client-approved change orders linked to Interior Design BOQs.",
+    "sourceFile": "src/app/partner/[partnerId]/interior-design/controls/page.tsx"
+  },
+  {
     "id": "interior-design.create",
     "moduleSlug": "interior-design",
     "title": "Interior Design — New Project / BOQ",

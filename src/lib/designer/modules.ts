@@ -131,6 +131,7 @@ export function taxonomyToNavDot(taxonomy: ModuleTaxonomy): NavDot {
 export const MODULE_SUB_NAV: Record<string, PartnerNavSubItem[]> = {
   "interior-design": [
     { key: "interior-design.list", label: "Projects / BOQs", href: "interior-design" },
+    { key: "interior-design.controls", label: "Milestones & Change Orders", href: "interior-design/controls" },
     { key: "interior-design.create", label: "+ New Project / BOQ", href: "interior-design/new" },
   ],
   // Prisma-backed Property/Enquiry (see prisma/schema.prisma's Property/

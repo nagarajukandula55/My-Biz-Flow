@@ -121,7 +121,7 @@
     {
       "id": "interior-design",
       "module": "Interior Design & Materials",
-      "pages": 3,
+      "pages": 4,
       "entryRoute": true,
       "missingImports": [],
       "missingDefinitions": [],
