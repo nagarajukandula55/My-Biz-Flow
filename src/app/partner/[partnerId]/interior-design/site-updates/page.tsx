@@ -1,0 +1,15 @@
+import { AppShell } from "@/components/AppShell";
+import { listBusinessRecords } from "@/lib/businessRecords";
+import { requirePartnerSessionForPage } from "@/lib/requirePartnerSession";
+import { registerPage } from "@/lib/designer/registry";
+import { createInteriorSiteUpdateAction } from "../controls/actions";
+
+registerPage({ id: "interior-design.site-updates", moduleSlug: "interior-design", title: "Site Updates", path: "/partner/[partnerId]/interior-design/site-updates", kind: "list", superAdminOnly: false, customizableRegions: [], explanation: "Dated project progress, blockers and decisions for Interior Design sites.", sourceFile: "src/app/partner/[partnerId]/interior-design/site-updates/page.tsx" });
+
+export default async function InteriorSiteUpdatesPage({ params }: { params: { partnerId: string } }) {
+  const session = await requirePartnerSessionForPage(params.partnerId);
+  if (session.kind === "staff") return <AppShell topbarTitle="Site Updates"><div className="mbf-page p-6">Owner access is required.</div></AppShell>;
+  const [projects, updates] = await Promise.all([listBusinessRecords(params.partnerId, "interior-design"), listBusinessRecords(params.partnerId, "interior-site-update")]);
+  const action = createInteriorSiteUpdateAction.bind(null, params.partnerId);
+  return <AppShell topbarTitle="Site Updates"><div className="mbf-page space-y-6 p-6"><div><h1 className="font-display text-xl font-bold text-text">Site Updates</h1><p className="mt-1 text-sm text-text-muted">Keep a dated, auditable record of progress, blockers and decisions at each project site.</p></div><form action={action} className="grid max-w-4xl gap-4 rounded-xl border border-border bg-surface p-5 sm:grid-cols-3"><label className="text-sm">Project<select name="projectId" required className="mt-1 w-full rounded border border-border bg-bg p-2">{projects.map(p => <option key={String(p.id)} value={String(p.id)}>{String(p.projectName)} — {String(p.customer)}</option>)}</select></label><label className="text-sm">Date<input name="updateDate" type="date" required defaultValue={new Date().toISOString().slice(0, 10)} className="mt-1 w-full rounded border border-border bg-bg p-2" /></label><label className="text-sm">Title<input name="title" required placeholder="Electrical rough-in complete" className="mt-1 w-full rounded border border-border bg-bg p-2" /></label><label className="text-sm sm:col-span-3">Notes<textarea name="notes" required rows={4} placeholder="Progress, blockers, decisions or next visit" className="mt-1 w-full rounded border border-border bg-bg p-2" /></label><div><button className="btn-accent" type="submit">Save site update</button></div></form><section><h2 className="font-semibold text-text">Recent updates</h2><div className="mt-3 grid gap-3 md:grid-cols-2">{updates.map(update => <article key={String(update.id)} className="rounded border border-border bg-surface p-4"><div className="font-medium text-text">{String(update.updateDate)} · {String(update.title)}</div><div className="mt-2 whitespace-pre-wrap text-sm text-text-muted">{String(update.notes)}</div></article>)}</div></section></div></AppShell>;
+}

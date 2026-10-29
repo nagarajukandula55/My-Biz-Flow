@@ -2813,6 +2813,17 @@
     "sourceFile": "src/app/partner/[partnerId]/interior-design/page.tsx"
   },
   {
+    "id": "interior-design.site-updates",
+    "moduleSlug": "interior-design",
+    "title": "Site Updates",
+    "path": "/partner/[partnerId]/interior-design/site-updates",
+    "kind": "list",
+    "superAdminOnly": false,
+    "customizableRegions": [],
+    "explanation": "Dated project progress, blockers and decisions for Interior Design sites.",
+    "sourceFile": "src/app/partner/[partnerId]/interior-design/site-updates/page.tsx"
+  },
+  {
     "id": "inventory.ageing.list",
     "moduleSlug": "inventory",
     "title": "Inventory — Material Ageing",

@@ -317,6 +317,7 @@ import "@/app/partner/[partnerId]/inventory/procurement/page";
 import "@/app/partner/[partnerId]/wholesale-b2b/portal-links/page";
 import "@/app/partner/[partnerId]/wholesale-b2b/portal-links/requests/page";
 import "@/app/partner/[partnerId]/interior-design/controls/page";
+import "@/app/partner/[partnerId]/interior-design/site-updates/page";
 import "@/app/partner/[partnerId]/billing/customer-portal/page";
 import "@/app/partner/[partnerId]/accounting/bank-reconciliation/page";
 import "@/app/partner/[partnerId]/inventory/procurement/rfqs/page";
