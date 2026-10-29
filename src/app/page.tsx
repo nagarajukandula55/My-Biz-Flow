@@ -10,6 +10,8 @@ import { getLocaleFromCookie } from "@/lib/i18n/cookie";
 import { tPublic } from "@/lib/i18n/publicLocales";
 import { buildPublicBusinessCatalog } from "@/lib/publicBusinessCatalog";
 import { BusinessOfferingDirectory } from "@/components/BusinessOfferingDirectory";
+import { PublicSocialLinks } from "@/components/PublicSocialLinks";
+import { getPublicSocialLinks } from "@/lib/socialLinks";
 
 // Public marketing homepage reads Super-Admin-configured partner types, so it
 // must render on request instead of querying the database during deployment.
@@ -83,6 +85,7 @@ export default async function RootPage({
 }) {
   const partnerTypes = await listActivePartnerTypes();
   const offerings = buildPublicBusinessCatalog(partnerTypes);
+  const socialLinks = await getPublicSocialLinks();
 
   const locale = getLocaleFromCookie();
   const tp = (key: Parameters<typeof tPublic>[1], vars?: Record<string, string | number>) => tPublic(locale, key, vars);
@@ -320,6 +323,7 @@ export default async function RootPage({
       </section>
 
       <footer className="flex flex-col items-center gap-3 border-t border-border px-6 py-8 text-center text-xs text-text-muted">
+        <PublicSocialLinks links={socialLinks} />
         <nav className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5">
           <Link href="/pricing" className="hover:text-text">
             {tp("navPricing")}

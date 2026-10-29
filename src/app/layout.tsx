@@ -48,12 +48,14 @@ export const metadata: Metadata = {
     title: "My Biz Flow — No-Code Business Management Platform for Every Business",
     description:
       "One platform, every module: POS, Service Centre, Telecalling, Field Force, Billing/GST, Inventory, Clinic and more — mix and match on one account, no custom development required.",
+    images: [{ url: "/logo-horizontal.png", alt: "My Biz Flow" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "My Biz Flow — No-Code Business Management Platform for Every Business",
     description:
       "One platform, every module: POS, Service Centre, Telecalling, Field Force, Billing/GST, Inventory, Clinic and more — mix and match on one account, no custom development required.",
+    images: ["/logo-horizontal.png"],
   },
   robots: { index: true, follow: true },
   // Google Search Console ownership verification (HTML tag method) — Next.js

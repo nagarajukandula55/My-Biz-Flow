@@ -33,3 +33,7 @@ The following items are intentionally held and are not represented as live capab
 - Competitor parity sign-off: requires named competitor products and an agreed feature-by-feature acceptance checklist.
 
 These held items do not block release of the completed internal workflows below them, provided the release notes clearly identify them as provider-pending.
+
+## Pricing safety
+
+Published pricing is competitive-positioned, but the application does not know hosting, messaging, payment-processing, support, or usage costs. Therefore it cannot prove a margin or promise that a price is loss-free. Before changing a public plan price, Super Admin must approve a cost baseline covering expected usage, payment fees, GST treatment, support burden, and the intended gross-margin floor. Pricing changes remain an Admin publishing decision; the public page reads the approved Plan rows and calculates only the documented billing-cycle discounts and GST-inclusive checkout amount.
