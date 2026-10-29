@@ -64,6 +64,9 @@ export default async function GenerateGstReturnPage({
         <div className="mt-4">
           <GeneratePicker periods={periods} selectedPeriod={period} selectedReturnType={returnType} />
         </div>
+        <a className="btn-outline mt-4 inline-flex" href={`/api/partner/${params.partnerId}/accounting-gst/export?period=${encodeURIComponent(period)}`}>
+          Download GST working paper (JSON)
+        </a>
 
         <div className="mt-6 max-w-2xl">
           <RecordForm
