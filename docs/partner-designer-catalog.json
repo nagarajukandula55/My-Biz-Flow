@@ -6266,6 +6266,17 @@
     "sourceFile": "src/app/partner/[partnerId]/wholesale-b2b/portal-links/page.tsx"
   },
   {
+    "id": "wholesale-b2b.portal-requests",
+    "moduleSlug": "wholesale-b2b",
+    "title": "Dealer Order Requests",
+    "path": "/partner/[partnerId]/wholesale-b2b/portal-links/requests",
+    "kind": "list",
+    "superAdminOnly": false,
+    "customizableRegions": [],
+    "explanation": "Review and update requests submitted by dealers through signed portal links.",
+    "sourceFile": "src/app/partner/[partnerId]/wholesale-b2b/portal-links/requests/page.tsx"
+  },
+  {
     "id": "wholesale-b2b.price-tiers.create",
     "moduleSlug": "wholesale-b2b",
     "title": "Wholesale B2B — Price Tiers — Create",
