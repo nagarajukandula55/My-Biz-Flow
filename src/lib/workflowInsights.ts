@@ -3,7 +3,7 @@ import { findOpenVisit, listAmcContractsWithVisits, computeSlaBreach } from "@/l
 import { listWholesaleOrders } from "@/lib/wholesaleData";
 export type WorkflowInsight = { key: string; severity: "info" | "warning" | "urgent"; title: string; reason: string; href?: string };
 export async function getWorkflowInsights(partnerId: string): Promise<WorkflowInsight[]> {
-  const [billing, stock, rfqs, changes, workorders, wholesaleOrders, projects, selections, amcContracts, wholesaleRecords] = await Promise.all([
+  const [billing, stock, rfqs, changes, workorders, wholesaleOrders, projects, selections, amcContracts, wholesaleRecords, wholesaleDispatches] = await Promise.all([
     listBusinessRecords(partnerId, "billing"),
     listBusinessRecords(partnerId, "inventory-stock"),
     listBusinessRecords(partnerId, "inventory-rfq"),
@@ -14,6 +14,7 @@ export async function getWorkflowInsights(partnerId: string): Promise<WorkflowIn
     listBusinessRecords(partnerId, "interior-selection"),
     listAmcContractsWithVisits(partnerId),
     listWholesaleOrders(partnerId),
+    listBusinessRecords(partnerId, "wholesale-dispatch"),
   ]);
   const insights: WorkflowInsight[] = [];
   const overdue = billing.filter(row => String(row.paymentStatus) === "Overdue" || (Number(row.amountDue ?? 0) > 0 && String(row.dueDate ?? "") < new Date().toISOString().slice(0, 10)));
@@ -50,6 +51,9 @@ export async function getWorkflowInsights(partnerId: string): Promise<WorkflowIn
   if (awaitingDealerAction.length) insights.push({ key: "dealer-orders", severity: "info", title: `${awaitingDealerAction.length} distributor order${awaitingDealerAction.length === 1 ? " is" : "s are"} awaiting action`, reason: "Accept, reject or move dealer orders into fulfilment so portal requests do not stall.", href: "wholesale-b2b" });
   const confirmedWholesale = wholesaleRecords.filter(order => order.status === "Confirmed");
   if (confirmedWholesale.length) insights.push({ key: "wholesale-pick-backlog", severity: "warning", title: `${confirmedWholesale.length} confirmed distributor order${confirmedWholesale.length === 1 ? " is" : "s are"} waiting to be picked`, reason: "Prepare the warehouse pick list before dispatching these confirmed orders.", href: "wholesale-b2b/pick-list" });
+  const dispatchIds = new Set(wholesaleDispatches.map(row => String(row.orderId ?? "")));
+  const dispatchedWithoutHandoff = wholesaleRecords.filter(order => order.status === "Dispatched" && !dispatchIds.has(order.id));
+  if (dispatchedWithoutHandoff.length) insights.push({ key: "wholesale-dispatch-metadata", severity: "urgent", title: `${dispatchedWithoutHandoff.length} dispatched order${dispatchedWithoutHandoff.length === 1 ? " is" : "s are"} missing tracking details`, reason: "Record the carrier and tracking/LR number before the logistics handoff is considered complete.", href: "wholesale-b2b" });
   const projectsMissingMeasurement = projects.filter(row => {
     const measurements = row.measurements;
     return String(row.status ?? "").toLowerCase() !== "completed" && (!Array.isArray(measurements) || measurements.length === 0);
