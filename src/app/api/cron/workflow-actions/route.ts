@@ -11,3 +11,5 @@ export async function POST(request: Request) {
   const results = await Promise.all(partnerIds.map(partnerId => processWorkflowActionLogs(partnerId)));
   return NextResponse.json({ partners: partnerIds.length, results });
 }
+
+export const GET = POST;

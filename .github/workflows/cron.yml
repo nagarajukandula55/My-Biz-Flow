@@ -69,6 +69,18 @@ jobs:
           APP_URL: ${{ secrets.APP_URL }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
 
+  workflow-actions:
+    if: github.event.schedule == '*/15 * * * *' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deliver queued workflow notifications
+        run: |
+          curl --max-time 120 -sf -X GET "${APP_URL}/api/cron/workflow-actions" \
+            -H "Authorization: Bearer ${CRON_SECRET}"
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+
   billing-recurring-invoices:
     if: github.event.schedule == '0 3 * * *' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
