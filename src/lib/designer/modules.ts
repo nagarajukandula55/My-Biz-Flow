@@ -371,6 +371,7 @@ export const MODULE_SUB_NAV: Record<string, PartnerNavSubItem[]> = {
     { key: "legal.clients", label: "Clients", href: "legal/clients" },
   ],
   accounting: [
+    { key: "accounting.invoice-reconciliation", label: "Invoice Reconciliation", href: "accounting/invoice-reconciliation" },
     { key: "accounting.chart-of-accounts", label: "Chart of Accounts", href: "accounting/chart-of-accounts" },
     { key: "accounting.journal-entries", label: "Journal Entries", href: "accounting/journal-entries" },
     { key: "accounting.reconciliation", label: "Billing Reconciliation", href: "accounting/reconciliation" },

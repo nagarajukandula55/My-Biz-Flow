@@ -236,6 +236,7 @@ import "@/app/partner/[partnerId]/accounting/chart-of-accounts/page";
 import "@/app/partner/[partnerId]/accounting/chart-of-accounts/new/page";
 import "@/app/partner/[partnerId]/accounting/chart-of-accounts/[recordId]/edit/page";
 import "@/app/partner/[partnerId]/accounting/journal-entries/page";
+import "@/app/partner/[partnerId]/accounting/invoice-reconciliation/page";
 import "@/app/partner/[partnerId]/accounting/reconciliation/page";
 import "@/app/partner/[partnerId]/accounting/journal-entries/new/page";
 import "@/app/partner/[partnerId]/accounting/journal-entries/[recordId]/page";

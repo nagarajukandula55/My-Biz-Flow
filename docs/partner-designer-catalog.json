@@ -315,6 +315,22 @@
     "sourceFile": "src/app/partner/[partnerId]/accounting/page.tsx"
   },
   {
+    "id": "accounting.invoice-reconciliation",
+    "moduleSlug": "accounting",
+    "title": "Invoice Reconciliation",
+    "path": "/partner/[partnerId]/accounting/invoice-reconciliation",
+    "kind": "list",
+    "superAdminOnly": false,
+    "customizableRegions": [
+      {
+        "key": "filters",
+        "label": "Reconciliation filters"
+      }
+    ],
+    "explanation": "Audits sales invoices against linked double-entry journals for amount, tax, date, account type, tenant ownership, duplicate links and reversals. Review-only; it never silently posts accounting entries.",
+    "sourceFile": "src/app/partner/[partnerId]/accounting/invoice-reconciliation/page.tsx"
+  },
+  {
     "id": "accounting.journal-entries.create",
     "moduleSlug": "accounting",
     "title": "Accounting — New Journal Entry",
