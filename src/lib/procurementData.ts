@@ -11,7 +11,13 @@ export async function listRfqs(partnerId: string) { return listBusinessRecords(p
 
 export async function createRfq(partnerId: string, input: { materialLabel: string; quantity: number; dueDate?: string; supplierIds: string[] }) {
   if (!input.materialLabel.trim() || !Number.isFinite(input.quantity) || input.quantity <= 0) throw new Error("Material and quantity are required.");
-  const rfq = await createBusinessRecord(partnerId, "inventory-rfq", { ...input, status: "Open", quotes: [], createdAt: new Date().toISOString() });
+  const supplierIds = input.supplierIds.map(id => id.trim()).filter(Boolean);
+  if (supplierIds.length) {
+    const suppliers = await listSuppliers(partnerId);
+    const validIds = new Set(suppliers.map(supplier => String(supplier.id)));
+    if (supplierIds.some(id => !validIds.has(id))) throw new Error("RFQ contains an unknown supplier.");
+  }
+  const rfq = await createBusinessRecord(partnerId, "inventory-rfq", { ...input, supplierIds, status: "Open", quotes: [], createdAt: new Date().toISOString() });
   await runWorkflowAutomations(partnerId, { trigger: "procurement.rfq-created", moduleSlug: "inventory", recordId: String(rfq.id), record: rfq });
   return rfq;
 }
