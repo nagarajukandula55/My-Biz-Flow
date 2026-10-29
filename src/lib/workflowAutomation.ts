@@ -63,10 +63,13 @@ function matches(rule: Row, event: WorkflowEvent): boolean {
 /** Evaluates rules and records durable tasks/actions; callers can dispatch notifications after commit. */
 export async function runWorkflowAutomations(partnerId: string, event: WorkflowEvent): Promise<Row[]> {
   const rules = await listWorkflowRules(partnerId);
+  const existingTasks = await listBusinessRecords(partnerId, TASK_MODULE);
   const created: Row[] = [];
   for (const rule of rules.filter((candidate) => matches(candidate, event))) {
     for (const action of (rule.actions as WorkflowAction[]) ?? []) {
       if (action.type === "create-task") {
+        const duplicate = existingTasks.some((task) => String(task.sourceRuleId ?? "") === String(rule.id ?? "") && String(task.sourceRecordId ?? "") === event.recordId && String(task.title ?? "") === action.title && String(task.status ?? "") !== "Cancelled");
+        if (duplicate) continue;
         created.push(await createBusinessRecord(partnerId, TASK_MODULE, {
           title: action.title,
           status: "Open",
