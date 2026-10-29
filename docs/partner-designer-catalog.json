@@ -3003,6 +3003,17 @@
     "sourceFile": "src/app/partner/[partnerId]/inventory/lots/page.tsx"
   },
   {
+    "id": "inventory.offline-drafts",
+    "moduleSlug": "inventory",
+    "title": "Offline Drafts",
+    "path": "/partner/[partnerId]/inventory/offline-drafts",
+    "kind": "list",
+    "superAdminOnly": false,
+    "customizableRegions": [],
+    "explanation": "Shows only drafts stored in this browser's local offline queue. Users can inspect the payload and remove a draft; this page never presents cached tenant records or claims that a draft has synchronized.",
+    "sourceFile": "src/app/partner/[partnerId]/inventory/offline-drafts/page.tsx"
+  },
+  {
     "id": "inventory.part-orders.detail",
     "moduleSlug": "inventory",
     "title": "Part Orders — Detail",
