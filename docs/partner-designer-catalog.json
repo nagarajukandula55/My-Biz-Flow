@@ -5808,6 +5808,17 @@
     "sourceFile": "src/app/partner/[partnerId]/service-centre/telegram/page.tsx"
   },
   {
+    "id": "settings.automations",
+    "moduleSlug": "platform",
+    "title": "Workflow Automations",
+    "path": "/partner/[partnerId]/settings/automations",
+    "kind": "form",
+    "superAdminOnly": false,
+    "customizableRegions": [],
+    "explanation": "Owner-configured rules that create follow-up tasks and queue notifications from billing, stock, quotation, workorder, dealer-credit and project events.",
+    "sourceFile": "src/app/partner/[partnerId]/settings/automations/page.tsx"
+  },
+  {
     "id": "settings.module-notifications",
     "moduleSlug": "platform",
     "title": "Module Telegram notifications",
