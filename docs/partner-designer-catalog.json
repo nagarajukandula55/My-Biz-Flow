@@ -2845,6 +2845,17 @@
     "sourceFile": "src/app/partner/[partnerId]/interior-design/page.tsx"
   },
   {
+    "id": "interior-design.selections",
+    "moduleSlug": "interior-design",
+    "title": "Material Selections",
+    "path": "/partner/[partnerId]/interior-design/selections",
+    "kind": "list",
+    "superAdminOnly": false,
+    "customizableRegions": [],
+    "explanation": "Project-linked room and material selections with client approval and procurement readiness status. Records are auditable and separate from the measurement BOQ until the designer is ready to convert the decision into a priced line.",
+    "sourceFile": "src/app/partner/[partnerId]/interior-design/selections/page.tsx"
+  },
+  {
     "id": "interior-design.site-updates",
     "moduleSlug": "interior-design",
     "title": "Site Updates",

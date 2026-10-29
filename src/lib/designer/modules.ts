@@ -133,6 +133,7 @@ export const MODULE_SUB_NAV: Record<string, PartnerNavSubItem[]> = {
     { key: "interior-design.list", label: "Projects / BOQs", href: "interior-design" },
     { key: "interior-design.controls", label: "Milestones & Change Orders", href: "interior-design/controls" },
     { key: "interior-design.site-updates", label: "Site Updates", href: "interior-design/site-updates" },
+    { key: "interior-design.selections", label: "Material Selections", href: "interior-design/selections" },
     { key: "interior-design.create", label: "+ New Project / BOQ", href: "interior-design/new" },
   ],
   // Prisma-backed Property/Enquiry (see prisma/schema.prisma's Property/
