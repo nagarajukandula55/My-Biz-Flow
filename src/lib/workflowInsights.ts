@@ -1,7 +1,8 @@
 import { listBusinessRecords } from "@/lib/businessRecords";
+import { findOpenVisit, listAmcContractsWithVisits, computeSlaBreach } from "@/lib/amcContractsData";
 export type WorkflowInsight = { key: string; severity: "info" | "warning" | "urgent"; title: string; reason: string; href?: string };
 export async function getWorkflowInsights(partnerId: string): Promise<WorkflowInsight[]> {
-  const [billing, stock, rfqs, changes, workorders, wholesaleOrders, projects, selections] = await Promise.all([
+  const [billing, stock, rfqs, changes, workorders, wholesaleOrders, projects, selections, amcContracts] = await Promise.all([
     listBusinessRecords(partnerId, "billing"),
     listBusinessRecords(partnerId, "inventory-stock"),
     listBusinessRecords(partnerId, "inventory-rfq"),
@@ -10,6 +11,7 @@ export async function getWorkflowInsights(partnerId: string): Promise<WorkflowIn
     listBusinessRecords(partnerId, "wholesale-b2b"),
     listBusinessRecords(partnerId, "interior-design"),
     listBusinessRecords(partnerId, "interior-selection"),
+    listAmcContractsWithVisits(partnerId),
   ]);
   const insights: WorkflowInsight[] = [];
   const overdue = billing.filter(row => String(row.paymentStatus) === "Overdue" || (Number(row.amountDue ?? 0) > 0 && String(row.dueDate ?? "") < new Date().toISOString().slice(0, 10)));
@@ -57,5 +59,9 @@ export async function getWorkflowInsights(partnerId: string): Promise<WorkflowIn
     return !Array.isArray(lines) || !lines.some(line => Boolean(line) && typeof line === "object" && String((line as Record<string, unknown>).selectionId ?? "") === String(selection.id));
   });
   if (selectionsAwaitingBoq.length) insights.push({ key: "interior-selections-awaiting-boq", severity: "warning", title: `${selectionsAwaitingBoq.length} approved material selection${selectionsAwaitingBoq.length === 1 ? " is" : "s are"} not in the BOQ`, reason: "Enter quantity and pricing, then convert the approved selection into its project BOQ before procurement or billing.", href: "interior-design/selections" });
+  const openAmc = amcContracts.map(contract => ({ contract, visit: findOpenVisit(contract) })).filter(row => row.visit);
+  const unassignedAmc = openAmc.filter(row => !row.visit!.technicianId);
+  const slaRiskAmc = openAmc.filter(row => computeSlaBreach({ contractStatus: row.contract.contractStatus, serviceStatus: row.visit!.status, slaHours: row.contract.slaHours, renewalTermMonths: row.contract.renewalTermMonths, serviceRequestRaisedAt: row.visit!.serviceRequestRaisedAt?.toISOString(), technicianId: row.visit!.technicianId ?? undefined }));
+  if (unassignedAmc.length) insights.push({ key: "amc-unassigned", severity: slaRiskAmc.length ? "urgent" : "warning", title: `${unassignedAmc.length} AMC service request${unassignedAmc.length === 1 ? " is" : "s are"} unassigned`, reason: slaRiskAmc.length ? `${slaRiskAmc.length} request${slaRiskAmc.length === 1 ? " has" : "s have"} exceeded the response SLA; assign a technician now.` : "Assign a technician before the response SLA is missed.", href: "amc-field-service/dispatch-board" });
   return insights;
 }
