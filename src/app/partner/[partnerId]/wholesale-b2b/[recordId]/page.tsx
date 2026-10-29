@@ -78,6 +78,7 @@ export default async function WholesaleB2bDetailPage({
                   <p className="mt-1 text-xs text-text-muted">Order detail</p>
                 </div>
                 <div className="flex items-center gap-3">
+                  <a href={`/api/partner/${params.partnerId}/wholesale-b2b/${params.recordId}/edi`} className="btn-outline">Export handoff JSON</a>
                   <Link href={`/partner/${params.partnerId}/wholesale-b2b`} className="btn-outline">
                     &larr; Back
                   </Link>
