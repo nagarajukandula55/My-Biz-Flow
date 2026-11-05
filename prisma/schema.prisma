@@ -118,6 +118,27 @@ model PlatformSettings {
   @@map("platform_settings")
 }
 
+/// Partner-owned external provider connection metadata. Secrets are stored
+/// encrypted by the application and are never returned to Admin UI reads.
+model PartnerIntegrationConnection {
+  id                 String   @id
+  partnerId          String
+  integrationId      String
+  status             String   @default("not_configured")
+  encryptedSecret    String?  @db.Text
+  displayMetadata    Json     @default("{}")
+  lastTestedAt       DateTime?
+  lastConnectedAt    DateTime?
+  lastErrorCode      String?
+  lastErrorMessage   String?  @db.Text
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@unique([partnerId, integrationId])
+  @@index([partnerId, status])
+  @@map("partner_integration_connections")
+}
+
 /// Mirrors data/page-access.json — pageId -> isPublic (src/lib/designer/pageAccess.ts).
 /// Only rows for pages actually marked public are stored (absence = private),
 /// same as the JSON store's "delete key when false" convention.

@@ -5983,6 +5983,17 @@
     "sourceFile": "src/app/partner/[partnerId]/settings/page.tsx"
   },
   {
+    "id": "settings.partner-integrations",
+    "moduleSlug": "platform",
+    "title": "Settings — Integrations",
+    "path": "/partner/[partnerId]/settings/integrations",
+    "kind": "form",
+    "superAdminOnly": false,
+    "customizableRegions": [],
+    "explanation": "Partner-owned integration catalog. Each business can connect its own tax, banking, payments, shipping, logistics, communication and productivity providers. Credentials are never shown in this catalog and providers remain disabled until a secure connection workflow is enabled.",
+    "sourceFile": "src/app/partner/[partnerId]/settings/integrations/page.tsx"
+  },
+  {
     "id": "subscription.partner-view",
     "moduleSlug": "platform",
     "title": "Subscription — Partner View",
