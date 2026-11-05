@@ -6,9 +6,7 @@ import { sendSupportMessageAction, getSupportThreadAction } from "@/lib/supportT
 import type { SupportTicketRecord } from "@/lib/supportTickets";
 import { SUPPORT_LANGUAGES, DEFAULT_SUPPORT_LANGUAGE, type SupportLanguage } from "@/lib/i18n/supportLanguages";
 
-const POLL_MS = 6000;
-/** Slower poll while the widget is closed — just enough to catch a new reply and show the unread badge, without polling as aggressively as the open (actively-watched) state. */
-const BACKGROUND_POLL_MS = 20000;
+const POLL_MS = 15000;
 
 /** Splits a message on any bare URL/relative path (from an auto-reply's link, see supportAutoReply.ts) and renders those as real clickable links — messages are plain text otherwise, so without this a link would just sit there unclickable. */
 function renderMessageText(text: string) {
@@ -53,9 +51,9 @@ const QUICK_SHORTCUTS = [
  * reload needed (see src/lib/supportTickets.ts / the Telegram webhook's
  * support-ticket reply case for the full mechanism).
  *
- * Polls even while closed (slower — BACKGROUND_POLL_MS) so a reply that
- * arrives while the widget is closed shows up as a red unread-count badge
- * on the floating bubble, not just silently once reopened. Seen state
+ * Refreshes once on mount and polls only while the widget is open, so an
+ * active conversation stays responsive without a background invocation on
+ * every partner page. Seen state
  * persists across reloads via localStorage (`anu-lastseen-<partnerId>`).
  *
  * QUICK_SHORTCUTS above the input send a canned message with one click, no
@@ -134,12 +132,12 @@ export function SupportWidget({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Poll always, not just while open — at a slower background rate when
-  // closed, so a reply while the widget is closed still surfaces as an
-  // unread badge on the bubble instead of only appearing once reopened.
+  // Refresh once on mount; poll only during an active conversation. This
+  // avoids a continuous serverless invocation stream from idle pages.
   useEffect(() => {
     refresh();
-    const id = setInterval(refresh, open ? POLL_MS : BACKGROUND_POLL_MS);
+    if (!open) return;
+    const id = setInterval(refresh, POLL_MS);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
