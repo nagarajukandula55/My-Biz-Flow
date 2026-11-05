@@ -459,6 +459,8 @@ model BusinessRecord {
 
   @@unique([partnerId, moduleSlug, recordKey])
   @@index([partnerId, moduleSlug])
+  // Supports bounded dashboard reads ordered by newest record.
+  @@index([partnerId, moduleSlug, createdAt])
   @@map("business_records")
 }
 

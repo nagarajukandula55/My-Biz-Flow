@@ -19,19 +19,18 @@ import {
   computeDisplayStatus,
   computeWorkorderTat,
 } from "@/lib/sample-data/service-centre";
-import { listBusinessRecords } from "@/lib/businessRecords";
+import { listBusinessRecords, listBusinessRecordsCreatedSince } from "@/lib/businessRecords";
 import { getAvailabilityByMaterial } from "@/lib/inventoryStock";
 import type { ComboTrendPoint } from "@/components/charts/ComboTrendCard";
 import { istDateKey } from "@/lib/format";
 
 /** Deterministic forward estimate from the trailing 90 days; never mixed with actual totals. */
 export async function getRevenueForecast(partnerId: string): Promise<{ lookbackDays: number; averageDaily: number; next30Days: number; collectionRate: number }> {
-  const since = Date.now() - 90 * 86400000;
-  const rows = await listBusinessRecords(partnerId, "billing");
+  const since = new Date(Date.now() - 90 * 86400000);
+  const rows = await listBusinessRecordsCreatedSince(partnerId, "billing", since);
   let collected = 0;
   let invoiced = 0;
   for (const row of rows) {
-    if (new Date(String(row.recordCreatedAt ?? "")).getTime() < since) continue;
     const total = Number(row.totalAmount ?? 0);
     const paid = Number(row.amountPaid ?? (row.paymentStatus === "Paid" ? total : 0));
     if (Number.isFinite(total) && total > 0) invoiced += total;
@@ -68,13 +67,9 @@ export async function getRevenueTrend(partnerId: string): Promise<LineSeriesPoin
   since.setHours(0, 0, 0, 0);
   since.setDate(since.getDate() - 6);
 
-  // Reads via the cached listBusinessRecords (full, unfiltered "billing"
-  // table) and filters to the last 7 days in memory, rather than its own
-  // date-scoped prisma.businessRecord.findMany — so this shares the same
-  // cached fetch as getRevenueBySource/getInvoiceStatusBreakdown/
-  // getAnalyticsSummary on the same Analytics page render instead of
-  // issuing its own separate query.
-  const rows = await listBusinessRecords(partnerId, "billing");
+  // This chart only needs seven days, so keep the read bounded by createdAt
+  // instead of transferring the partner's full billing history.
+  const rows = await listBusinessRecordsCreatedSince(partnerId, "billing", since);
 
   const buckets = new Map<string, number>();
   for (let i = 0; i < 7; i++) {
@@ -84,7 +79,6 @@ export async function getRevenueTrend(partnerId: string): Promise<LineSeriesPoin
   }
   for (const r of rows) {
     const createdAt = new Date(r["recordCreatedAt"] as string);
-    if (createdAt < since) continue;
     const key = istDateKey(createdAt);
     if (!buckets.has(key)) continue;
     const amount = typeof r["amountPaid"] === "number" ? (r["amountPaid"] as number) : r["paymentStatus"] === "Paid" && typeof r["totalAmount"] === "number" ? (r["totalAmount"] as number) : 0;

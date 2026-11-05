@@ -41,7 +41,7 @@ See `.env.example` and `src/lib/env.ts` for additional settings and feature-spec
 
 ## Shared database safety
 
-The main and Admin apps share a database. This release adds no schema changes. Do not add `prisma migrate deploy`, `migrate dev`, `db push`, reset or data-seeding commands to the production build. Follow `CLAUDE.md` for any separately reviewed database change. Keep the existing backup schedule and verify a recent successful backup before promotion.
+The main and Admin apps share a database. This release includes one additive, non-destructive index migration for bounded BusinessRecord reads. Do not add `prisma migrate deploy`, `migrate dev`, `db push`, reset or data-seeding commands to the production build. After confirming the daily backup workflow has succeeded, apply the pending migration once with the direct/unpooled production connection, then verify the index exists. Follow `CLAUDE.md` for any separately reviewed database change.
 
 ## Work-order error change
 

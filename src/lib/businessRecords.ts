@@ -69,6 +69,23 @@ export async function listBusinessRecordsSince(
   return rows.map(toRow);
 }
 
+/**
+ * Reads a recent window using the indexed record timestamp. This is preferred
+ * for dashboards/forecasts whose time window is based on when a record was
+ * created, because it avoids transferring the partner's entire history.
+ */
+export async function listBusinessRecordsCreatedSince(
+  partnerId: string,
+  moduleSlug: string,
+  since: Date,
+): Promise<Row[]> {
+  const rows = await prisma.businessRecord.findMany({
+    where: { partnerId, moduleSlug, createdAt: { gte: since } },
+    orderBy: { createdAt: "desc" },
+  });
+  return rows.map(toRow);
+}
+
 /** Default page size for `listBusinessRecordsPaginated` — one place to change it consistently. */
 export const DEFAULT_BUSINESS_RECORD_PAGE_SIZE = 25;
 

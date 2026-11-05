@@ -5314,13 +5314,8 @@
     "path": "/partner/[partnerId]/service-centre/[recordId]/estimate",
     "kind": "document",
     "superAdminOnly": false,
-    "customizableRegions": [
-      {
-        "key": "document-template",
-        "label": "Estimate HTML template (placeholders)"
-      }
-    ],
-    "explanation": "Prices a workorder's current Parts & Service Lines as a printable repair Estimate — the quote the customer approves before repair work begins, sitting between the (unpriced) Job Card and the (post-handover) Sales Invoice. Lines come from the same buildServiceCentreLines() the Sales Invoice uses, so the approved figure and the billed figure cannot drift apart; part lines still marked Pending are excluded from both. Non-chargeable warranty jobs price every line at zero. Real data — Prisma-backed (BusinessRecord table).",
+    "customizableRegions": [],
+    "explanation": "Uses the Service Record layout for a printable repair Estimate — the quote the customer approves before repair work begins, sitting between the (unpriced) Job Card and the (post-handover) Sales Invoice. Lines come from the same buildServiceCentreLines() the Sales Invoice uses, so the approved figure and the billed figure cannot drift apart; part lines still marked Pending are excluded from both. Non-chargeable warranty jobs price every line at zero. Real data — Prisma-backed (BusinessRecord table).",
     "sourceFile": "src/app/partner/[partnerId]/service-centre/[recordId]/estimate/page.tsx"
   },
   {

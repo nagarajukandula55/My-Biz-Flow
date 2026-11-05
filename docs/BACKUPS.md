@@ -1,7 +1,7 @@
 # Database backups
 
-Automated by `.github/workflows/db-backup.yml`. Runs every 6 hours
-(`0 */6 * * *`, plus manual trigger via the Actions tab), dumps both
+Automated by `.github/workflows/db-backup.yml`. Runs once daily at 02:15 UTC
+(07:45 IST), plus manual trigger via the Actions tab, and dumps both
 production databases, and uploads them together as one GitHub Release in
 this repo.
 

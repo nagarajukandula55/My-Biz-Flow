@@ -51,15 +51,17 @@ export const env = {
   centralApiUrl: () => requireEnv("CENTRAL_API_URL"),
   centralApiKey: () => requireEnv("CENTRAL_API_KEY"),
   /** AN-Accounting's wallet (ANy Pay) credit endpoint — full URL, e.g.
-   * https://your-an-accounting-app.vercel.app/api/external/wallet/credit.
+   * https://your-an-accounting-app.vercel.app/api/external/wallet. The
+   * endpoint selects the credit operation from the request action.
    * Same Bearer key as CENTRAL_API_KEY (Settings -> Sales API in that app
    * authorizes both the sales and wallet APIs for a business). Optional:
    * referral commission crediting just no-ops (logged, reviewable) until
    * this is set, same posture as Razorpay above. */
   centralApiWalletCreditUrl: () => process.env.CENTRAL_API_WALLET_CREDIT_URL,
   /** Same AN-Accounting business, read/withdraw side of the wallet API —
-   * e.g. .../api/external/wallet/statement and .../wallet/withdrawal.
-   * Used by the partner/telecalling "My Wallet" pages. */
+   * e.g. .../api/external/wallet. The current Admin app exposes statement
+   * reads on this shared route. Withdrawal requests require a separate
+   * endpoint before the withdrawal UI can be enabled. */
   centralApiWalletStatementUrl: () => process.env.CENTRAL_API_WALLET_STATEMENT_URL,
   centralApiWalletWithdrawalUrl: () => process.env.CENTRAL_API_WALLET_WITHDRAWAL_URL,
   /** ANy Pay phase toggles — the wallet code is always present and the

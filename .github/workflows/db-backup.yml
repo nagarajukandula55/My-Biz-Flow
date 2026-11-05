@@ -1,7 +1,7 @@
 name: Database backup
 
-# Dumps the production Postgres DB (Neon) and the MongoDB cluster every 3
-# hours and stores both as GitHub Release assets in this (private) repo,
+# Dumps the production Postgres DB (Neon) and the MongoDB cluster once daily
+# and stores both as GitHub Release assets in this (private) repo,
 # tagged backup-<UTC timestamp>. A cleanup job then deletes any backup-*
 # release older than 7 days, so storage stays bounded. A final job posts a
 # success/failure confirmation to a Telegram group.
@@ -45,7 +45,8 @@ name: Database backup
 
 on:
   schedule:
-    - cron: "0 */3 * * *"
+    # Daily at 02:15 UTC (07:45 IST), outside the usual overnight batch window.
+    - cron: "15 2 * * *"
   workflow_dispatch: {}
 
 permissions:

@@ -50,7 +50,34 @@ export async function getWalletStatement(ownerType: WalletOwnerType, ownerId: st
     });
     if (!res.ok) return EMPTY_STATEMENT;
     const data = await res.json();
-    return { wallet: data.wallet ?? null, balance: data.balance ?? EMPTY_STATEMENT.balance, transactions: data.transactions ?? [] };
+    const toRupees = (value: unknown) => {
+      const paise = Number(value ?? 0);
+      return Number.isFinite(paise) ? (paise / 100).toFixed(2) : "0.00";
+    };
+    const rawBalance = data.balance ?? {};
+    const rawWallet = data.wallet;
+    return {
+      wallet: rawWallet
+        ? {
+            id: String(rawWallet.id),
+            status: rawWallet.status,
+            withdrawable: rawWallet.status === "ACTIVE",
+            frozenReason: rawWallet.frozenReason ?? null,
+          }
+        : null,
+      balance: {
+        available: toRupees(rawBalance.available),
+        pending: toRupees(rawBalance.pending),
+        held: toRupees(rawBalance.held ?? rawBalance.outstanding),
+        total: toRupees(rawBalance.total),
+      },
+      transactions: Array.isArray(data.transactions)
+        ? data.transactions.map((transaction: Record<string, unknown>) => ({
+            ...transaction,
+            amount: toRupees(transaction.amount),
+          }))
+        : [],
+    };
   } catch {
     return EMPTY_STATEMENT;
   }
@@ -116,16 +143,21 @@ export async function creditReferralCommission(params: {
   }
   if (!url) return false; // Wallet credit URL not configured yet — expected pre-launch.
 
-  const commission = Number(((params.amount * COMMISSION_PERCENT) / 100).toFixed(2));
+  // SubscriptionPayment.amount is stored in whole rupees here. The Admin
+  // wallet ledger stores integer paise, so convert only at this boundary.
+  const commissionRupees = (params.amount * COMMISSION_PERCENT) / 100;
+  if (!Number.isSafeInteger(commissionRupees * 100) || commissionRupees <= 0) return false;
+  const commissionPaise = commissionRupees * 100;
 
   return postWithRetry(
     url,
     key,
     {
+      action: "credit",
       ownerType: params.referrer.type === "PARTNER" ? "PARTNER" : "TELECALLING_AGENT",
       ownerId: params.referrer.id,
       type: "REFERRAL_COMMISSION",
-      amount: commission,
+      amount: commissionPaise,
       idempotencyKey: `my-biz-flow:referral-commission:${params.razorpayPaymentId}`,
       reason: `${COMMISSION_PERCENT}% referral commission — ${params.referredPartnerId}'s first payment (${params.planName})`,
       referenceType: "subscription_payment",

@@ -1,10 +1,10 @@
-import { DocumentView } from "@/components/DocumentView";
-import { serviceCentreColumns } from "@/lib/sample-data/service-centre";
+import { ServiceCentreServiceRecordDocument } from "../service-record/ServiceCentreServiceRecordDocument";
+import { isUnderWarranty } from "@/lib/sample-data/service-centre";
 import { buildServiceCentreLines } from "@/lib/serviceCentreLines";
 import { registerPage } from "@/lib/designer/registry";
 import { notFound } from "next/navigation";
 import { getPartner, resolveDocumentTerms } from "@/lib/partnerData";
-import { getBusinessRecord, getBusinessRecordSequenceIndex } from "@/lib/businessRecords";
+import { getBusinessRecord } from "@/lib/businessRecords";
 import { appendDocumentPrintedLogEntry } from "@/lib/documentPrintLog";
 
 registerPage({
@@ -14,35 +14,19 @@ registerPage({
   path: "/partner/[partnerId]/service-centre/[recordId]/estimate",
   kind: "document",
   superAdminOnly: false,
-  customizableRegions: [{ key: "document-template", label: "Estimate HTML template (placeholders)" }],
+  customizableRegions: [],
   explanation:
-    "Prices a workorder's current Parts & Service Lines as a printable repair Estimate — the quote the customer approves before repair work begins, sitting between the (unpriced) Job Card and the (post-handover) Sales Invoice. Lines come from the same buildServiceCentreLines() the Sales Invoice uses, so the approved figure and the billed figure cannot drift apart; part lines still marked Pending are excluded from both. Non-chargeable warranty jobs price every line at zero. Real data — Prisma-backed (BusinessRecord table).",
+    "Uses the Service Record layout for a printable repair Estimate — the quote the customer approves before repair work begins, sitting between the (unpriced) Job Card and the (post-handover) Sales Invoice. Lines come from the same buildServiceCentreLines() the Sales Invoice uses, so the approved figure and the billed figure cannot drift apart; part lines still marked Pending are excluded from both. Non-chargeable warranty jobs price every line at zero. Real data — Prisma-backed (BusinessRecord table).",
   sourceFile: "src/app/partner/[partnerId]/service-centre/[recordId]/estimate/page.tsx",
 });
 
-/**
- * An estimate identifies the device and what's wrong with it, then prices
- * the fix — it is not a handover receipt, so the intake-condition fields
- * (appearance, file backup, accessories) that belong on the Job Card are
- * left off here, as are customer address/GST details, which only matter on
- * the actual tax document.
- */
-const ESTIMATE_FIELDS = [
-  "customer",
-  "customerPhone",
-  "deviceCategory",
-  "brandName",
-  "modelName",
-  "device",
-  "imeiOrSerialNumber",
-  "warrantyStatus",
-  "warrantyFlag",
-  "faultDescription",
-  "issueDescription",
-  "receivedDate",
-  "slaDate",
-  "engineerName",
-];
+function fmtDate(value?: string) {
+  if (!value) return "—";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "—" : date.toLocaleDateString("en-IN", {
+    day: "2-digit", month: "short", year: "numeric", timeZone: "Asia/Kolkata",
+  });
+}
 
 const ESTIMATE_DECLARATION =
   "This is an estimate, not a tax invoice. Prices are subject to change based on what the repair actually requires — " +
@@ -58,45 +42,42 @@ export default async function ServiceCentreEstimatePage({
   if (!record) notFound();
   await appendDocumentPrintedLogEntry(params.partnerId, params.recordId, "Estimate");
   const partner = await getPartner(params.partnerId);
-  const sequenceIndex = await getBusinessRecordSequenceIndex(params.partnerId, "service-centre", params.recordId);
   const lines = await buildServiceCentreLines(params.partnerId, record);
-
-  // Totals are derived live from the workorder's current lines, not read off
-  // the record — an estimate has no stored subtotal/tax/total of its own.
-  const subtotal = lines.reduce((sum, l) => sum + l.quantity * l.rate, 0);
-  const tax = lines.reduce((sum, l) => sum + l.quantity * l.rate * (l.gstRate / 100), 0);
+  const text = (key: string) => typeof record[key] === "string" ? record[key] as string : undefined;
+  const companyAddress = [partner?.addressLine, partner?.city, partner?.state, partner?.pincode]
+    .filter((value) => typeof value === "string" && value.trim()).join(", ");
+  const customerAddress = [text("customerAddress"), text("customerCity"), text("customerState"), text("customerPincode")]
+    .filter((value) => value?.trim()).join(", ");
 
   return (
-    <DocumentView
-      pageId="service-centre.estimate"
-      // Shares the Job Card's numbering scheme deliberately: an estimate is
-      // a view of the same workorder, not a separately numbered document, so
-      // it prints the same reference the customer already holds.
-      documentType="service-centre.document"
-      documentLabel="Repair Estimate"
-      partnerName={partner?.businessName ?? "Your Business"}
-      partnerId={params.partnerId}
-      record={record}
-      columns={serviceCentreColumns}
-      sequenceIndex={sequenceIndex}
-      fieldKeys={ESTIMATE_FIELDS}
-      lineItems={lines.map((l) => ({
-        description: l.description,
-        quantity: l.quantity,
-        unit: l.unit,
-        unitPrice: l.rate,
-        taxRate: l.gstRate,
-      }))}
-      totals={{ subtotal, tax, total: subtotal + tax }}
-      signatures={[
-        "Customer Signature (approval to proceed)",
-        `For ${partner?.businessName ?? "Your Business"} — Authorised Signatory`,
-      ]}
+    <ServiceCentreServiceRecordDocument
+      documentKind="estimate"
+      docNumber={params.recordId}
+      date={fmtDate(text("receivedDate") || text("recordCreatedAt"))}
+      companyName={partner?.businessName ?? "Your Business"}
+      companyAddress={companyAddress || undefined}
+      companyPhone={partner?.businessContact}
+      companyGstin={partner?.gstin}
+      logoUrl={partner?.showLogoOnDocuments ? partner.logoDataUrl : null}
       termsText={resolveDocumentTerms(partner, "estimate")}
-      contactBand={{ hours: partner?.serviceHours, hotline: partner?.supportHotline }}
+      customerName={text("customer") || "—"}
+      customerPhone={text("customerPhone")}
+      customerAddress={customerAddress || undefined}
+      brand={text("brandName")}
+      model={text("modelName") || text("device")}
+      imeiOrSerial={text("imeiOrSerialNumber")}
+      issueTitle={text("faultDescription") || text("issueDescription")}
+      loggedBy={text("loggedBy")}
+      technicalConsultant={text("engineerName")}
+      detailRows={[
+        { label: "Device Type", value: text("deviceCategory") },
+        { label: "Warranty Type", value: text("warrantyStatus") || (isUnderWarranty(record) ? "Under Warranty" : "Out of Warranty") },
+        { label: "Promised Delivery (SLA)", value: text("slaDate") ? fmtDate(text("slaDate")) : undefined },
+      ]}
+      lines={lines}
+      serviceHours={partner?.serviceHours}
+      supportHotline={partner?.supportHotline}
       footerNote={ESTIMATE_DECLARATION}
-      logoDataUrl={partner?.logoDataUrl}
-      printSizes={["a4", "a5"]}
     />
   );
 }

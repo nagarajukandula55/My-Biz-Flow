@@ -1,0 +1,20 @@
+{
+  "authorization": "User requested quotation/estimate in the Service Record layout.",
+  "scope": "Reuse Service Record renderer with estimate-specific wording, terms, approval and totals. Existing default Service Record output retained.",
+  "evidence": [
+    "tests/service-centre-estimate.test.cjs",
+    "Representative Service Record HTML compared byte-for-byte with HEAD output; identical."
+  ],
+  "changes": [
+    {
+      "file": "src/app/partner/[partnerId]/service-centre/[recordId]/estimate/page.tsx",
+      "oldHash": "62b1e59ffe53eaea68f3a1fffaedd37a4ae304513a595746cc0ce9d5c8088442",
+      "newHash": "23565426ea74421ddd5f7f440ef2e8a94e952a7b82f590f6c5cee6118837d177"
+    },
+    {
+      "file": "src/app/partner/[partnerId]/service-centre/[recordId]/service-record/ServiceCentreServiceRecordDocument.tsx",
+      "oldHash": "892395faca83f76843f85faae8d13b9253425ba412c425b27a915ed9e0c78239",
+      "newHash": "4740f4464f23d77931ee693d125fd2afe40f3498cb7f08b82a9f2de1ebe98840"
+    }
+  ]
+}

@@ -41,7 +41,13 @@ export async function ServiceCentreServiceRecordDocument({
   lines,
   serviceHours,
   supportHotline,
+  documentKind = "serviceRecord",
+  footerNote,
+  detailRows = [],
 }: {
+  documentKind?: "serviceRecord" | "estimate";
+  footerNote?: string;
+  detailRows?: { label: string; value?: string }[];
   docNumber: string;
   date: string;
   companyName: string;
@@ -63,6 +69,7 @@ export async function ServiceCentreServiceRecordDocument({
   serviceHours?: string | null;
   supportHotline?: string | null;
 }) {
+  const isEstimate = documentKind === "estimate";
   const subtotal = lines.reduce((s, l) => s + l.quantity * l.rate, 0);
   const tax = lines.reduce((s, l) => s + l.quantity * l.rate * (l.gstRate / 100), 0);
   const grandTotal = subtotal + tax;
@@ -101,7 +108,7 @@ export async function ServiceCentreServiceRecordDocument({
         <div className="text-sm text-gray-900">
           <div className="mb-4 border-b-2 pb-4" style={{ borderColor: "#111827" }}>
             <h1 className="mb-3 text-center text-xl font-bold tracking-tight" style={{ color: "#111827" }}>
-              SERVICE RECORD
+              {isEstimate ? "REPAIR ESTIMATE" : "SERVICE RECORD"}
             </h1>
             <div className="flex items-start justify-between">
               <div className="flex items-start gap-3">
@@ -130,6 +137,7 @@ export async function ServiceCentreServiceRecordDocument({
             {brandModel && <Row label="Brand / Model" value={brandModel} />}
             {imeiOrSerial && <Row label="IMEI / Serial No." value={imeiOrSerial} />}
             {issueTitle && <Row label="Issue Reported" value={issueTitle} />}
+            {detailRows.map((row) => <Row key={row.label} label={row.label} value={row.value} />)}
           </div>
 
           <div className="mb-4 overflow-x-auto">
@@ -164,7 +172,7 @@ export async function ServiceCentreServiceRecordDocument({
               <div className="flex justify-between"><span className="text-gray-500">Subtotal</span><span>{fmtMoney(subtotal)}</span></div>
               <div className="flex justify-between"><span className="text-gray-500">Tax</span><span>{fmtMoney(tax)}</span></div>
               <div className="mt-1 flex justify-between border-t-2 pt-1 font-semibold" style={{ borderColor: "#111827", fontSize: "0.95rem" }}>
-                <span>Paid Amount</span><span>{fmtMoney(grandTotal)}</span>
+                <span>{isEstimate ? "Estimated Total" : "Paid Amount"}</span><span>{fmtMoney(grandTotal)}</span>
               </div>
             </div>
           </div>
@@ -186,11 +194,11 @@ export async function ServiceCentreServiceRecordDocument({
           )}
 
           <div className="border-t-2 pt-4" style={{ borderColor: "#111827" }}>
-            <p className="mb-6 text-[11px] font-medium text-gray-700">Signature constitutes agreement to the above terms.</p>
+            <p className="mb-6 text-[11px] font-medium text-gray-700">{isEstimate ? "Signature authorises the repair at the estimated amount shown, subject to the above terms." : "Signature constitutes agreement to the above terms."}</p>
             <div className="flex justify-between">
               <div className="text-center text-xs text-gray-500">
                 <div className="h-10 w-40" />
-                <div className="w-40 border-t-2 border-gray-400 pt-1">Customer Signature</div>
+                <div className="w-40 border-t-2 border-gray-400 pt-1">{isEstimate ? "Customer Signature (approval to proceed)" : "Customer Signature"}</div>
               </div>
               <div className="text-center text-xs text-gray-500">
                 <div className="h-10 w-40" />
@@ -206,7 +214,7 @@ export async function ServiceCentreServiceRecordDocument({
         </div>
 
         <div className="mt-4 border-t-2 border-gray-300 pt-3 text-[10px] text-gray-400">
-          This is a service record, not a tax invoice.
+          {footerNote ?? "This is a service record, not a tax invoice."}
         </div>
         </div>
         </PrintFrame>
