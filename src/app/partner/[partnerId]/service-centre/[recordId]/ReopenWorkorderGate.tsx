@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { Modal } from "@/components/Modal";
 import { requestWorkorderReopenOtpAction, verifyWorkorderReopenOtpAction } from "./reopenOtpActions";
-import { reopenWorkorderAction } from "./actions";
+import { reopenWorkorderAction } from "./clientActions";
 
 const REASON_MESSAGE: Record<string, string> = {
   not_connected: "Connect the Owner's personal Telegram chat on the Telegram Alerts page first — the code has nowhere to send.",

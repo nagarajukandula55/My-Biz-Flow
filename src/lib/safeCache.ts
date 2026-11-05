@@ -19,7 +19,6 @@ import { inDatabaseTransaction } from "@/lib/databaseClientContext";
  */
 export function safeCache<Args extends unknown[], R>(fn: (...args: Args) => R): (...args: Args) => R {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { cache } = require("react") as { cache?: <F extends (...a: any[]) => any>(f: F) => F };
     if (typeof cache === "function") {
       const cached = cache(fn);

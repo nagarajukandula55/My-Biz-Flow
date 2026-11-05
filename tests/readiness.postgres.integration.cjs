@@ -47,7 +47,10 @@ test('rental receipts serialize competing payments, retain history and isolate r
 });
 const hrms = load('src/lib/hrms.ts', {...common, 'node:crypto':crypto, '@/lib/requirePartnerSession':{requireSessionPartnerId:async()=>{if(!ownerAllowed)throw Error('Owner required');}}, '@/lib/databaseTransaction':db, '@/lib/format':load('src/lib/format.ts'), '@/lib/telegram':{sendPartnerTelegramAlert:async()=>{}}, '@/lib/partnerData':{getPartner:async()=>null}, '@/lib/telegramTemplates':{}, '@/lib/email/moduleEmails':{}});
 let delivered = 0;
-const events = load('src/lib/eventBooking.ts', { ...common, '@/lib/databaseTransaction': db,
+const events = load('src/lib/eventBooking.ts', { ...common, '@/lib/businessRecords': {
+ createBusinessRecord: async (partnerId,moduleSlug,data) => { const recordKey=crypto.randomUUID(); await prisma.businessRecord.create({data:{partnerId,moduleSlug,recordKey,data}}); return {id:recordKey}; },
+ listBusinessRecords: async (partnerId,moduleSlug) => (await prisma.businessRecord.findMany({where:{partnerId,moduleSlug}})).map(row=>({...row.data,id:row.recordKey})),
+}, '@/lib/databaseTransaction': db,
  '@/lib/telegram': { sendPartnerTelegramAlert: async () => { assert.equal(db.inDatabaseTransaction(), false); delivered++; } },
  '@/lib/partnerData': { getPartner: async () => ({ businessName: 'Test' }) },
  '@/lib/telegramTemplates': { eventBookingConfirmedMessage: async () => 'Confirmed', eventPaymentReceivedMessage: async () => 'Payment' },
@@ -249,13 +252,13 @@ test('Signup commits owner and keys together, serializes IDs and does not collid
  await assert.rejects(signup.provisionSignup({...input,loginContact:prefix+'-inactive'}),/not accepting/);
 });
 
-test('all 25 business packages covering 26 internal modules provision an owner and exactly their own keys',async()=>{
+test('all 26 business packages covering 27 internal modules provision an owner and exactly their own keys',async()=>{
  const catalog=require('../docs/pricing-catalog-audit-2026-10-07.json').catalog;
  const {buildMarketProposal}=require('../scripts/market-pricing-proposal.cjs');
  const drafts=buildMarketProposal(catalog).changes.filter(c=>c.draftType).map(c=>c.draftType);
  const types=[...catalog.types,...drafts];
- assert.equal(types.length,25);
- assert.equal(new Set(types.flatMap(t=>t.defaultModules)).size,26);
+ assert.equal(types.length,26);
+ assert.equal(new Set(types.flatMap(t=>t.defaultModules)).size,27);
  for(const [index,type] of types.entries()){
   const id=`${prefix}-module-${index}`;
   await prisma.partnerType.create({data:{id,idPrefix:prefix,defaultModules:type.defaultModules,assignableRoleIds:['Owner'],status:'Active'}});

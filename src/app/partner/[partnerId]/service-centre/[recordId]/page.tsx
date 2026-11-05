@@ -23,7 +23,7 @@ import {
   createServiceCentreStaffNameInlineAction,
 } from "@/lib/serviceCentreCatalogActions";
 import { getAvailabilityByMaterial } from "@/lib/inventoryStock";
-import { createPnaEntryAction } from "./actions";
+import { createPnaEntryAction } from "./safeActions";
 import { isActiveMaterial } from "@/lib/materialStatus";
 
 registerPage({
@@ -152,6 +152,7 @@ export default async function ServiceCentreDetailPage({
           stageHistory={lifecycle.stageHistory}
           receivedDate={typeof record["receivedDate"] === "string" ? (record["receivedDate"] as string) : undefined}
           recordCreatedAt={typeof record["recordCreatedAt"] === "string" ? (record["recordCreatedAt"] as string) : undefined}
+          initialNowMs={Date.now()}
           bomMaterials={bomMaterials}
           solutionOptions={solutionOptions}
           partnerDefaultLaborCharge={partner?.defaultLaborCharge ?? 0}

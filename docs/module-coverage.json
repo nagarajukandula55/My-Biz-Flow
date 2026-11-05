@@ -49,7 +49,7 @@
     {
       "id": "amc-field-service",
       "module": "AMC / Field Service",
-      "pages": 5,
+      "pages": 6,
       "entryRoute": true,
       "missingImports": [],
       "missingDefinitions": [],
@@ -121,7 +121,7 @@
     {
       "id": "interior-design",
       "module": "Interior Design & Materials",
-      "pages": 4,
+      "pages": 6,
       "entryRoute": true,
       "missingImports": [],
       "missingDefinitions": [],
@@ -130,7 +130,7 @@
     {
       "id": "wholesale-b2b",
       "module": "Wholesale / Distributor B2B",
-      "pages": 14,
+      "pages": 16,
       "entryRoute": true,
       "missingImports": [],
       "missingDefinitions": [],
@@ -184,7 +184,7 @@
     {
       "id": "inventory",
       "module": "Inventory / Warehouse",
-      "pages": 37,
+      "pages": 39,
       "entryRoute": true,
       "missingImports": [],
       "missingDefinitions": [],
@@ -202,7 +202,7 @@
     {
       "id": "accounting",
       "module": "Accounting",
-      "pages": 15,
+      "pages": 16,
       "entryRoute": true,
       "missingImports": [],
       "missingDefinitions": [],

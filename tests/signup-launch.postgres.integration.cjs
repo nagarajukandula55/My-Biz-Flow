@@ -23,7 +23,8 @@ async function register(slug, included) {
 }
 test('every commercial package exposes only its own provisioned modules; revocation and pending requests fail closed', async()=>{
  const offerings=modules.MODULES.filter(m=>m.slug!=='accounting-gst');
- assert.equal(offerings.length,25);
+ assert.equal(offerings.length,26);
+ assert.equal(new Set(offerings.map(module=>module.slug)).size,26);
  for(const module of offerings){
   const included=module.slug==='accounting'?['accounting','accounting-gst','billing']:[module.slug];
   const p=await register(module.slug,included);
@@ -75,6 +76,8 @@ test('public signup action creates its owner and bundle keys before issuing the 
  const action=load('src/app/signup/actions.ts',{
   'next/headers':{cookies:()=>({set:(_name,value)=>cookie=value})},
   'next/navigation':{redirect:path=>{throw Error('REDIRECT '+path);}},
+  '@/lib/plansData':{getPlan:id=>prisma.plan.findUnique({where:{id}})},
+  '@/lib/partnerData':{...partnerData,updatePartnerSubscription:async()=>{throw Error('Unexpected subscription change without a selected plan');}},
   '@/lib/signupProvisioning':signup,'@/lib/designer/partnerTypesData':typeData,
   '@/lib/referrals':{resolveReferrer:async()=>undefined},'@/lib/email':{sendPartnerWelcomeEmail:async()=>{}},
   '@/lib/platformSettings':{notifyAdmins:async()=>{}},'@/lib/telegramTemplates':{newPartnerApplicationMessage:async()=>''},

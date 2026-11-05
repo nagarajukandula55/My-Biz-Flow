@@ -1,5 +1,6 @@
 "use client";
 
+import { unwrapWorkorderResult, type WorkorderActionResult } from "@/lib/workorderActionResult";
 import { useState, useTransition, useEffect, useRef } from "react";
 import Link from "next/link";
 import { Check, Trash2 } from "lucide-react";
@@ -32,7 +33,7 @@ import {
   cancelWorkorderAction,
   deductInventoryForWorkorderAction,
   patchServiceCentreWorkorderAction,
-} from "./actions";
+} from "./clientActions";
 import { getServiceCentreBrandOptionsAction } from "@/lib/serviceCentreCatalogActions";
 
 const STAGE_VARIANT: Record<WorkorderStage, "neutral" | "warning" | "teal" | "success"> = {
@@ -88,7 +89,15 @@ function fmtStepDate(d?: string): string | null {
   if (!d) return null;
   const parsed = new Date(d);
   if (Number.isNaN(parsed.getTime())) return null;
-  return parsed.toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+  return parsed.toLocaleString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    // Pin the timezone so server rendering (often UTC) matches the partner's
+    // browser and doesn't shift milestone labels during hydration.
+    timeZone: "Asia/Kolkata",
+  });
 }
 
 /** First stageHistory timestamp recorded for a given milestone's underlying WorkorderStage, mirroring AN-CRM's per-step stepDates (repairInProgressAt/completedAt/handedOverAt). */
@@ -247,6 +256,7 @@ export function WorkorderLifecycle({
   stageHistory,
   receivedDate,
   recordCreatedAt,
+  initialNowMs,
   bomMaterials,
   solutionOptions,
   brandOptions,
@@ -332,6 +342,8 @@ export function WorkorderLifecycle({
    * job sheet's real `createdAt`, not a user-entered date).
    */
   recordCreatedAt?: string;
+  /** Shared server timestamp used to render the running TAT identically during hydration. */
+  initialNowMs: number;
   /**
    * This partner's own live BOM materials (Inventory > Material Catalog) —
    * not the global sample catalog. `rate`/`taxPercent` are the material's
@@ -397,7 +409,7 @@ export function WorkorderLifecycle({
     customerName?: string;
     customerPhone?: string;
     brandJobNo?: string;
-  }) => Promise<void>;
+  }) => Promise<WorkorderActionResult>;
 }) {
   const [stage, setStage] = useState<WorkorderStage>(initialStage);
   const [partLines, setPartLines] = useState<PartLine[]>(initialPartLines);
@@ -524,7 +536,7 @@ export function WorkorderLifecycle({
   // Ticks once a minute so the running TAT badge advances without a page
   // reload, matching AN-CRM's "TAT: 47.7h (running)" badge — frozen once
   // the job is Closed/Cancelled (closedAt below stops changing then).
-  const [nowTick, setNowTick] = useState(() => Date.now());
+  const [nowTick, setNowTick] = useState(initialNowMs);
   useEffect(() => {
     if (stage === "Closed" || cancelledAt) return;
     const id = setInterval(() => setNowTick(Date.now()), 60_000);
@@ -880,7 +892,7 @@ export function WorkorderLifecycle({
     setActionError(null);
     setPnaSubmitting(true);
     try {
-      await createPnaAction({
+      unwrapWorkorderResult(await createPnaAction({
         workorderId,
         materialId: line.materialId || line.materialLabel,
         materialLabel: line.materialLabel,
@@ -888,7 +900,7 @@ export function WorkorderLifecycle({
         customerName,
         customerPhone,
         brandJobNo,
-      });
+      }));
       // Marking a part PNA is a real job-level hold, not just a per-line
       // flag — the workorder itself moves to Part Pending (same
       // setWorkorderHoldAction confirmHold's "Mark Part Pending" button

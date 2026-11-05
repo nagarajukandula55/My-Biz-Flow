@@ -1,0 +1,31 @@
+{
+  "authorization": "User requested investigation and clearance of recurring work-order errors, then preparation for deployment.",
+  "scope": "Readable action failures, server-side diagnostics, and existing local hydration fixes. No schema or database changes.",
+  "evidence": [
+    "tests/workorder-errors.test.cjs",
+    "tests/transactions.test.cjs",
+    "tests/service-centre-list.test.cjs"
+  ],
+  "changes": [
+    {
+      "file": "src/app/partner/[partnerId]/service-centre/[recordId]/actions.ts",
+      "oldHash": "af641f9493c0517257804314ddccab7d2180bde19f9f5450e6a35f93e87bff26",
+      "newHash": "dba9dde92a651e9442d58fa2b843eacecb481e142506e4af4d9dc8a8053895ab"
+    },
+    {
+      "file": "src/app/partner/[partnerId]/service-centre/[recordId]/WorkorderLifecycle.tsx",
+      "oldHash": "86d2a464b8a3438ee8b2e7662d49d35ef212b5bf35fdafce3cb9cff5a4c71c41",
+      "newHash": "745105612dd96ae5e22758c2fa0a34b5f308e399b82df75f6cb9c9db7017e093"
+    },
+    {
+      "file": "src/app/partner/[partnerId]/service-centre/[recordId]/ReopenWorkorderGate.tsx",
+      "oldHash": "7c37f8b7dedf6f2e2aff28c5da8040514f88de0cb368833f89b304257150a594",
+      "newHash": "c4b6ab355808b278dc7785263458ff8ecaf3aee9a6facc73b00c976497c31750"
+    },
+    {
+      "file": "src/app/partner/[partnerId]/service-centre/[recordId]/page.tsx",
+      "oldHash": "685cc5cb0e0a2175f43f9f26382084d907ec00a0605dbd6977cc27c4bb99145f",
+      "newHash": "4d7f041581da3e6fd4a6c8345aa73b3b3b9dcfc4156fe0916d39bfe67771d2b8"
+    }
+  ]
+}

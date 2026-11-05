@@ -1,5 +1,6 @@
 "use server";
 
+import { WorkorderValidationError } from "@/lib/workorderActionResult";
 import { revalidatePath } from "next/cache";
 import { createBusinessRecord, updateBusinessRecord, getBusinessRecord, listBusinessRecords } from "@/lib/businessRecords";
 import {
@@ -45,7 +46,7 @@ function withWorkorderLock<T>(workorderId: string, fn: () => Promise<T>): Promis
 async function requireWorkorder(partnerId: string, workorderId: string): Promise<Record<string, unknown>> {
   const existing = await getBusinessRecord(partnerId, "service-centre", workorderId);
   if (!existing) {
-    throw new Error(`Workorder "${workorderId}" not found — it may have been moved or deleted.`);
+    throw new WorkorderValidationError(`Workorder "${workorderId}" not found — it may have been moved or deleted.`);
   }
   return existing;
 }
@@ -99,13 +100,13 @@ function assertLegalStageTransition(
   // Completed alike, so it's exempt from the "next stage only" rule below.
   // It is still terminal: nothing moves out of Cancelled (or Closed).
   if (existing["cancelledAt"]) {
-    throw new Error("This workorder has been cancelled — its stage can no longer be changed.");
+    throw new WorkorderValidationError("This workorder has been cancelled — its stage can no longer be changed.");
   }
 
   const currentIdx = WORKORDER_STAGES.indexOf(currentStage);
   const nextIdx = WORKORDER_STAGES.indexOf(nextStage);
   if (nextIdx !== currentIdx + 1) {
-    throw new Error(`Cannot move workorder from "${currentStage}" directly to "${nextStage}" — stages can't be skipped or reversed.`);
+    throw new WorkorderValidationError(`Cannot move workorder from "${currentStage}" directly to "${nextStage}" — stages can't be skipped or reversed.`);
   }
 
   // Estimate approval is intentionally NOT a precondition for entering "In
@@ -129,7 +130,7 @@ function assertLegalStageTransition(
     // itself (solutionId/solutionLabel), NOT stored on a ServiceLine —
     // a diagnosis is not a billable line item.
     if (!existing["solutionId"]) {
-      throw new Error(
+      throw new WorkorderValidationError(
         "Select a Solution before marking the repair completed — the fault diagnosis/solution is required."
       );
     }
@@ -149,7 +150,7 @@ function assertLegalStageTransition(
       const partLines = (existing["partLines"] as { serialized?: boolean; serial?: string; pending?: boolean }[] | undefined) ?? [];
       const unresolvedSerials = partLines.filter((p) => p.serialized && !p.serial && !p.pending);
       if (unresolvedSerials.length > 0) {
-        throw new Error(
+        throw new WorkorderValidationError(
           `${unresolvedSerials.length} part line(s) are serialized but missing a Serial/IMEI number. Enter the serial or mark the line Pending before closing.`
         );
       }
@@ -295,7 +296,7 @@ export async function deductInventoryForWorkorderAction(partnerId: string, worko
         }
       }
       if (shortages.length > 0) {
-        throw new Error(`Not enough stock to complete this job — ${shortages.join("; ")}.`);
+        throw new WorkorderValidationError(`Not enough stock to complete this job — ${shortages.join("; ")}.`);
       }
     }
 
@@ -672,15 +673,15 @@ export async function cancelWorkorderAction(
   await assertCanActOnServiceCentre(partnerId);
   const trimmedReason = (reason ?? "").trim();
   if (!trimmedReason) {
-    throw new Error("A cancellation reason is required.");
+    throw new WorkorderValidationError("A cancellation reason is required.");
   }
   await withWorkorderLock(workorderId, async () => {
     const record = await requireWorkorder(partnerId, workorderId);
     if (record["cancelledAt"]) {
-      throw new Error("This workorder has already been cancelled.");
+      throw new WorkorderValidationError("This workorder has already been cancelled.");
     }
     if (record["stage"] === "Closed") {
-      throw new Error("A closed workorder can no longer be cancelled.");
+      throw new WorkorderValidationError("A closed workorder can no longer be cancelled.");
     }
 
     // A job cancelled AFTER it was already Completed already had its parts
@@ -757,15 +758,15 @@ export async function reopenWorkorderAction(partnerId: string, workorderId: stri
   await assertCanActOnServiceCentre(partnerId);
   const unlocked = await isWorkorderReopenUnlocked(workorderId);
   if (!unlocked) {
-    throw new Error("Enter the Telegram OTP sent to the Owner's chat before reopening this workorder.");
+    throw new WorkorderValidationError("Enter the Telegram OTP sent to the Owner's chat before reopening this workorder.");
   }
   await withWorkorderLock(workorderId, async () => {
     const record = await requireWorkorder(partnerId, workorderId);
     if (record["cancelledAt"] || record["stage"] === "Closed") {
-      throw new Error("This workorder can no longer be reopened.");
+      throw new WorkorderValidationError("This workorder can no longer be reopened.");
     }
     if (record["stage"] !== "Completed") {
-      throw new Error("Only a Completed workorder can be reopened to In Progress.");
+      throw new WorkorderValidationError("Only a Completed workorder can be reopened to In Progress.");
     }
     let history = appendStageHistory(record, "In Progress (reopened, Owner OTP verified)");
     const returned = await reverseConsumptionForWorkorder(partnerId, workorderId);
