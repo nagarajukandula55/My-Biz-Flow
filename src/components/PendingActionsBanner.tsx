@@ -43,7 +43,7 @@ export function PendingActionsBanner({
   if (!planPending && telegramConnected) return null;
 
   return (
-    <div className="flex flex-col gap-px">
+    <div className="flex flex-col gap-px print:hidden">
       {planPending && (
         <Link
           href={`/partner/${partnerId}/admin/subscription`}
