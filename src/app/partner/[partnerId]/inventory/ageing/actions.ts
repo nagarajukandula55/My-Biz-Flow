@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import { getBusinessRecord, createBusinessRecord, updateBusinessRecord } from "@/lib/businessRecords";
 
@@ -24,4 +25,5 @@ export async function setAgeingThresholdAction(partnerId: string, formData: Form
   }
 
   revalidatePath(`/partner/${partnerId}/inventory/ageing`);
+  redirect(`/partner/${partnerId}/inventory/ageing?saved=1`);
 }

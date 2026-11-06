@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import { getBusinessRecord, createBusinessRecord, updateBusinessRecord } from "@/lib/businessRecords";
 
@@ -27,4 +28,5 @@ export async function setForecastWindowAction(partnerId: string, formData: FormD
   }
 
   revalidatePath(`/partner/${partnerId}/inventory/part-planning`);
+  redirect(`/partner/${partnerId}/inventory/part-planning?saved=1`);
 }

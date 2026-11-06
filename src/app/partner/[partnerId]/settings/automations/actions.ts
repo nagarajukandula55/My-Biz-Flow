@@ -3,6 +3,7 @@
 import { requirePartnerSessionForPage } from "@/lib/requirePartnerSession";
 import { saveWorkflowRule } from "@/lib/workflowAutomation";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 export async function createAutomationAction(partnerId: string, formData: FormData) {
   const session = await requirePartnerSessionForPage(partnerId);
@@ -24,4 +25,5 @@ export async function createAutomationAction(partnerId: string, formData: FormDa
     actions: [action],
   });
   revalidatePath(`/partner/${partnerId}/settings/automations`);
+  redirect(`/partner/${partnerId}/settings/automations?saved=1`);
 }
