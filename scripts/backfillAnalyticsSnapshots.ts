@@ -54,17 +54,38 @@ async function main() {
       });
       if (rows.length === 0) break;
 
+      const daily = new Map<string, {
+        snapshotDate: Date;
+        recordCount: number;
+        paidCount: number;
+        paidAmount: number;
+        closedCount: number;
+        cancelledCount: number;
+        processedUntil: Date;
+      }>();
+      for (const row of rows) {
+        const data = (row.data ?? {}) as Record<string, unknown>;
+        const paid = typeof data.amountPaid === "number" ? data.amountPaid : data.paymentStatus === "Paid" && typeof data.totalAmount === "number" ? data.totalAmount : 0;
+        const isClosed = moduleSlug === "service-centre" && (data.stage === "Closed" || Array.isArray(data.stageHistory) && data.stageHistory.some((entry: any) => entry?.stage === "Closed"));
+        const isCancelled = moduleSlug === "service-centre" && Boolean(data.cancelledAt);
+        const snapshotDate = dayUtc(row.createdAt);
+        const key = snapshotDate.toISOString();
+        const current = daily.get(key) ?? { snapshotDate, recordCount: 0, paidCount: 0, paidAmount: 0, closedCount: 0, cancelledCount: 0, processedUntil: row.createdAt };
+        current.recordCount += 1;
+        current.paidCount += paid > 0 ? 1 : 0;
+        current.paidAmount += paid;
+        current.closedCount += isClosed ? 1 : 0;
+        current.cancelledCount += isCancelled ? 1 : 0;
+        if (row.createdAt > current.processedUntil) current.processedUntil = row.createdAt;
+        daily.set(key, current);
+      }
+
       await prisma.$transaction(async (tx) => {
-        for (const row of rows) {
-          const data = (row.data ?? {}) as Record<string, unknown>;
-          const paid = typeof data.amountPaid === "number" ? data.amountPaid : data.paymentStatus === "Paid" && typeof data.totalAmount === "number" ? data.totalAmount : 0;
-          const isClosed = moduleSlug === "service-centre" && (data.stage === "Closed" || Array.isArray(data.stageHistory) && data.stageHistory.some((entry: any) => entry?.stage === "Closed"));
-          const isCancelled = moduleSlug === "service-centre" && Boolean(data.cancelledAt);
-          const snapshotDate = dayUtc(row.createdAt);
+        for (const item of daily.values()) {
           await tx.partnerAnalyticsSnapshot.upsert({
-            where: { partnerId_moduleSlug_snapshotDate: { partnerId, moduleSlug, snapshotDate } },
-            create: { partnerId, moduleSlug, snapshotDate, recordCount: 1, paidCount: paid > 0 ? 1 : 0, paidAmount: paid, closedCount: isClosed ? 1 : 0, cancelledCount: isCancelled ? 1 : 0, processedUntil: row.createdAt },
-            update: { recordCount: { increment: 1 }, paidCount: { increment: paid > 0 ? 1 : 0 }, paidAmount: { increment: paid }, closedCount: { increment: isClosed ? 1 : 0 }, cancelledCount: { increment: isCancelled ? 1 : 0 }, processedUntil: row.createdAt },
+            where: { partnerId_moduleSlug_snapshotDate: { partnerId, moduleSlug, snapshotDate: item.snapshotDate } },
+            create: { partnerId, moduleSlug, snapshotDate: item.snapshotDate, recordCount: item.recordCount, paidCount: item.paidCount, paidAmount: item.paidAmount, closedCount: item.closedCount, cancelledCount: item.cancelledCount, processedUntil: item.processedUntil },
+            update: { recordCount: { increment: item.recordCount }, paidCount: { increment: item.paidCount }, paidAmount: { increment: item.paidAmount }, closedCount: { increment: item.closedCount }, cancelledCount: { increment: item.cancelledCount }, processedUntil: item.processedUntil },
           });
         }
         const last = rows[rows.length - 1];
