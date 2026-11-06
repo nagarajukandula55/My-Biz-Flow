@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import { getBusinessRecord, updateBusinessRecord, listBusinessRecords } from "@/lib/businessRecords";
 import { createPartOrderAction } from "@/app/partner/[partnerId]/inventory/part-orders/actions";
@@ -20,6 +21,7 @@ export async function resolvePnaEntryAction(partnerId: string, recordId: string)
   if (!existing) return;
   await updateBusinessRecord(partnerId, "service-centre-pna", recordId, { ...existing, status: "Fulfilled" });
   revalidatePath(`/partner/${partnerId}/service-centre/pna`);
+  redirect(`/partner/${partnerId}/service-centre/pna?saved=1`);
 }
 
 /**
