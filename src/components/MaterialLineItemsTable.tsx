@@ -281,6 +281,10 @@ export function MaterialLineItemsTable({
                           type="number"
                           min={0}
                           value={item.expectedQty ?? 0}
+                          onWheel={(e) => e.currentTarget.blur()}
+                          onFocus={(e) => {
+                            if (e.currentTarget.value === "0") e.currentTarget.value = "";
+                          }}
                           onChange={(e) => updateRow(i, { expectedQty: Number(e.target.value) || 0 })}
                           className="w-full rounded-md border border-border bg-bg px-2.5 py-1.5 text-right text-sm text-text tabular-nums outline-none focus:border-accent"
                         />
@@ -307,6 +311,10 @@ export function MaterialLineItemsTable({
                           type="number"
                           min={0}
                           value={item.quantity}
+                          onWheel={(e) => e.currentTarget.blur()}
+                          onFocus={(e) => {
+                            if (e.currentTarget.value === "0") e.currentTarget.value = "";
+                          }}
                           onChange={(e) => updateRow(i, { quantity: Number(e.target.value) || 0 })}
                           className="w-full rounded-md border border-border bg-bg px-2.5 py-1.5 text-right text-sm text-text tabular-nums outline-none focus:border-accent"
                         />
@@ -329,6 +337,10 @@ export function MaterialLineItemsTable({
                           min={0}
                           step="0.01"
                           value={item.unitPrice ?? 0}
+                          onWheel={(e) => e.currentTarget.blur()}
+                          onFocus={(e) => {
+                            if (e.currentTarget.value === "0") e.currentTarget.value = "";
+                          }}
                           onChange={(e) => updateRow(i, { unitPrice: Number(e.target.value) || 0 })}
                           className="w-full rounded-md border border-border bg-bg px-2.5 py-1.5 text-right text-sm text-text tabular-nums outline-none focus:border-accent"
                         />

@@ -644,10 +644,15 @@ function renderInput(
         <input
           id={field.key}
           type="number"
+          step="any"
           className={`${baseClass} font-mono tabular-nums`}
           value={value === "" || value === undefined ? "" : String(value)}
           placeholder={field.placeholder ?? (field.type === "currency" ? "0" : undefined)}
           required={field.required}
+          onWheel={(e) => e.currentTarget.blur()}
+          onFocus={(e) => {
+            if (e.currentTarget.value === "0") e.currentTarget.value = "";
+          }}
           onChange={(e) => setValue(field.key, e.target.value === "" ? "" : Number(e.target.value))}
         />
       );
@@ -737,11 +742,16 @@ function renderInput(
           <input
             id={field.key}
             type="number"
+            step="any"
             min={0}
             max={100}
             className={`${baseClass} pr-8 font-mono tabular-nums`}
             value={value === "" || value === undefined ? "" : String(value)}
             required={field.required}
+            onWheel={(e) => e.currentTarget.blur()}
+            onFocus={(e) => {
+              if (e.currentTarget.value === "0") e.currentTarget.value = "";
+            }}
             onChange={(e) => setValue(field.key, e.target.value === "" ? "" : Number(e.target.value))}
           />
           <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-text-muted">
