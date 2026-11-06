@@ -37,6 +37,9 @@ jobs:
       - name: Install dependencies
         run: npm ci --ignore-scripts
 
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
       - name: Run bounded resumable backfill
         run: npx tsx scripts/backfillAnalyticsSnapshots.ts --partner "$PARTNER_ID" --module "$MODULE_SLUG"
         env:
