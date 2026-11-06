@@ -6,6 +6,8 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 const MESSAGES: Record<string, string> = {
   deleted: "Record deleted.",
   saved: "Saved.",
+  created: "Created successfully.",
+  updated: "Updated successfully.",
 };
 
 /**
@@ -36,7 +38,7 @@ function GlobalActionBannerInner() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const key = (["deleted", "saved"] as const).find((k) => searchParams.get(k));
+  const key = (["deleted", "saved", "created", "updated"] as const).find((k) => searchParams.get(k));
   const [visible, setVisible] = useState(Boolean(key));
 
   useEffect(() => {
