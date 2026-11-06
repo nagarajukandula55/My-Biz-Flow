@@ -3,6 +3,7 @@
 import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import { createBusinessRecord } from "@/lib/businessRecords";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 export async function createSupplierAction(partnerId: string, formData: FormData) {
   await requireSessionPartnerId(partnerId);
@@ -19,4 +20,5 @@ export async function createSupplierAction(partnerId: string, formData: FormData
     createdAt: new Date().toISOString(),
   });
   revalidatePath(`/partner/${partnerId}/inventory/suppliers`);
+  redirect(`/partner/${partnerId}/inventory/suppliers?saved=1`);
 }
