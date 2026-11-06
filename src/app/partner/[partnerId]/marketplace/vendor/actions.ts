@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import { setMarketplaceVendorActive } from "@/lib/marketplace";
 
@@ -13,4 +14,5 @@ export async function setMarketplaceVendorActiveAction(partnerId: string, formDa
   const isActive = formData.get("isActive") === "on";
   await setMarketplaceVendorActive(partnerId, isActive);
   revalidatePath(`/partner/${partnerId}/marketplace/vendor`);
+  redirect(`/partner/${partnerId}/marketplace/vendor?saved=1`);
 }

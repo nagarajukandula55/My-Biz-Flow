@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { createBusinessRecord, getBusinessRecord, updateBusinessRecord } from "@/lib/businessRecords";
 import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import { computeCommission, PAYOUT_STAGES, type MarketplaceOrder } from "@/lib/sample-data/marketplace";
@@ -53,4 +54,5 @@ export async function advancePayoutStatusAction(partnerId: string, orderId: stri
   });
   revalidatePath(`/partner/${partnerId}/marketplace/${orderId}`);
   revalidatePath(`/partner/${partnerId}/marketplace/${String(record["vendorId"])}`);
+  redirect(`/partner/${partnerId}/marketplace/${orderId}?saved=1`);
 }
