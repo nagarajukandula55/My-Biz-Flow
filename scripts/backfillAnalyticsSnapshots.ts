@@ -83,4 +83,10 @@ async function main() {
   }
 }
 
-main().catch(() => process.exitCode = 1);
+main().catch((error) => {
+  // Keep the workflow failure actionable. The job row already records the
+  // bounded operation's last error; this also exposes the exact Prisma
+  // failure in GitHub Actions without logging connection-string values.
+  console.error(error instanceof Error ? error.stack ?? error.message : error);
+  process.exitCode = 1;
+});
