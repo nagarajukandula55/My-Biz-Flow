@@ -62,16 +62,12 @@ export function shouldSendReportToday(frequency: ReportFrequency, now: Date): bo
 }
 
 /**
- * True whenever a send is allowed to happen at all: 20:30 IST through 06:00
- * IST the next calendar day — one contiguous ~9.5h window instead of a
- * narrow slot plus a separate catch-up, since GitHub Actions' drift has
- * been observed spanning that whole range. Anything landing inside it
- * resolves to the correct reportDay() above; alreadySentToday is still the
- * real idempotency guard against the repeated 10-15 min firings inside it.
+ * True only during the requested 20:30-21:00 IST delivery slot. The workflow
+ * fires twice in this slot and alreadySentToday provides idempotency.
  */
 export function isWithinReportWindow(now: Date): boolean {
   const minutesSinceMidnight = istMinutesSinceMidnight(now);
-  return minutesSinceMidnight >= 20 * 60 + 30 || minutesSinceMidnight < 6 * 60; // 20:30 IST -> 06:00 IST next day
+  return minutesSinceMidnight >= 20 * 60 + 30 && minutesSinceMidnight < 21 * 60; // 20:30-21:00 IST
 }
 
 /** True once this partner has already gotten (or had an attempted) send today for this cadence — Vercel Cron doesn't guarantee exactly-once, so this is the idempotency check. Each cadence only ever triggers once per calendar day (see shouldSendReportToday), so a same-day check per cadence is sufficient. `lastReportSentAt` is TelegramSettingsRecord's per-cadence stamp map (src/lib/telegram.ts). Compared as an IST calendar day, not the server/runner's local zone — otherwise a UTC-day rollover mid-window could misclassify a send as "not today" or vice versa. */

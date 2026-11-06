@@ -14,22 +14,11 @@ on:
     - cron: "*/30 4-13 * * *"
     # Billing recurring invoices — daily 03:00 UTC (was vercel.json "0 3 * * *")
     - cron: "0 5 * * *"
-    # Telegram daily/weekly/monthly partner reports — target 9:00 PM IST =
-    # 15:30 UTC. GitHub Actions `schedule` triggers are best-effort — run
-    # history has shown delays past midnight IST into the next calendar day
-    # (observed as late as 01:47 IST). A single scheduled entry, or even a
-    # 75-90 min spread, isn't reliable enough. Fire hourly across
-    # 15:00 UTC -> 00:00 UTC (20:30 IST -> 05:30 IST next day) instead —
-    # this now matches isWithinReportWindow's full window in
-    # src/lib/telegramReportData.ts, which also resolves a late-landing run
-    # back to the correct business day (see reportDay() there) rather than
-    # misjudging "today". alreadySentToday makes repeated triggers inside
-    # the window a no-op once a cadence has sent. shouldSendReportToday()
-    # decides whether today is a send day for each cadence: DAILY every
-    # day, WEEKLY only Saturday, MONTHLY only the last calendar day of the
-    # month.
-    - cron: "0 15,16,17,18,19,20,21,22,23,0 * * *"
-    # Trial-expiry Telegram warnings — daily 9:30 PM IST = 16:00 UTC
+    # Telegram daily/weekly/monthly partner reports — two low-load attempts
+    # at 20:30 and 20:45 IST (15:00 and 15:15 UTC). The endpoint is
+    # idempotent per partner/cadence, so a retry cannot duplicate a report.
+    - cron: "0,15 15 * * *"
+    # Trial-expiry Telegram warnings — daily 18:30 IST = 13:00 UTC
     - cron: "0 13 * * *"
   workflow_dispatch: {}
 
@@ -143,7 +132,7 @@ jobs:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
 
   telegram-reports:
-    if: github.event.schedule == '0 15,16,17,18,19,20,21,22,23,0 * * *' || github.event_name == 'workflow_dispatch'
+    if: github.event.schedule == '0,15 15 * * *' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - name: Trigger telegram-reports (daily/weekly/monthly partner digests)

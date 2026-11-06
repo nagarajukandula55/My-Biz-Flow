@@ -40,14 +40,11 @@ export async function GET(request: Request) {
   // evening and overnight (see .github/workflows/cron.yml) since its
   // `schedule` trigger is best-effort and has been observed landing as
   // late as ~01:47 IST the next calendar day for a run meant to fire at
-  // 20:30-23:00 IST. isWithinReportWindow() now covers the whole observed
-  // drift range (20:30 IST -> 06:00 IST next day) as one window, with
-  // shouldSendReportToday/alreadySentToday resolving a late-landing run
-  // back to the correct business day — see reportDay() in
-  // telegramReportData.ts. Invocations outside that window are a cheap
-  // no-op; alreadySentToday makes repeated in-window firings a no-op too.
+  // Reports are intentionally limited to the 20:30-21:00 IST delivery slot.
+  // GitHub Actions fires twice in that slot for resilience; the per-partner
+  // cadence stamp makes the second attempt a cheap no-op after success.
   if (!isWithinReportWindow(now)) {
-    return NextResponse.json({ ok: true, skipped: "Outside 20:30 IST - 06:00 IST report window" });
+    return NextResponse.json({ ok: true, skipped: "Outside 20:30 IST - 21:00 IST report window" });
   }
 
   const result = await runTelegramReportsNow(now, "cron");
