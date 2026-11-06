@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { getPartner, updatePartnerSubscription } from "@/lib/partnerData";
 import { BILLING_CYCLES, type BillingCycle } from "@/lib/subscriptionData";
 import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
@@ -48,4 +49,5 @@ export async function chooseSubscriptionAction(partnerId: string, formData: Form
 
   revalidatePath(`/partner/${partnerId}/admin/subscription`);
   revalidatePath("/admin/subscribers");
+  redirect(`/partner/${partnerId}/admin/subscription?saved=1`);
 }
