@@ -67,6 +67,10 @@ export default async function AnalyticsPage({ params }: { params: { partnerId: s
   const showPeriodComparison = showBilling && showServiceCentreReports;
   const showTelecalling = visibleModules.includes("telecalling");
   const showFieldForce = visibleModules.includes("field-force");
+  // Load the optional snapshot reader only when rendering the page. Keeping
+  // this lazy preserves the existing page/module graph and its test seams
+  // while the feature remains disabled by default.
+  const { getSnapshotSixMonthTrendOrNull, getSnapshotSummaryOrNull } = await import("@/lib/analyticsSnapshotReader");
   const [
     revenueTrend,
     workorderStatusBreakdown,
@@ -81,8 +85,8 @@ export default async function AnalyticsPage({ params }: { params: { partnerId: s
     showRevenueBySource ? getRevenueBySource(params.partnerId) : Promise.resolve([]),
     showInvoiceStatus ? getInvoiceStatusBreakdown(params.partnerId) : Promise.resolve([]),
     showPeriodComparison ? getPeriodComparison(params.partnerId) : Promise.resolve(null),
-    getAnalyticsSummary(params.partnerId, visibleModules),
-    showPeriodComparison ? getSixMonthTrend(params.partnerId) : Promise.resolve([]),
+    getSnapshotSummaryOrNull(params.partnerId, visibleModules).then((snapshot) => snapshot ?? getAnalyticsSummary(params.partnerId, visibleModules)),
+    showPeriodComparison ? getSnapshotSixMonthTrendOrNull(params.partnerId).then((snapshot) => snapshot ?? getSixMonthTrend(params.partnerId)) : Promise.resolve([]),
   ]);
 
   const [topBrands, averageTat, telecalling] = await Promise.all([

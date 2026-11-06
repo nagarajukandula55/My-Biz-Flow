@@ -485,6 +485,66 @@ model BusinessRecord {
   @@map("business_records")
 }
 
+/// Additive analytics snapshot. This is intentionally separate from
+/// BusinessRecord so the existing source-of-truth and Service Centre flows
+/// remain untouched. It is populated by the resumable backfill/refresh job and
+/// is read only after the Admin feature flag is enabled.
+model PartnerAnalyticsSnapshot {
+  id             String   @id @default(cuid())
+  partnerId      String
+  moduleSlug     String
+  snapshotDate   DateTime @db.Date
+  sourceVersion  Int      @default(1)
+  recordCount    Int      @default(0)
+  paidCount      Int      @default(0)
+  paidAmount     Decimal  @default(0) @db.Decimal(18, 2)
+  closedCount    Int      @default(0)
+  cancelledCount Int      @default(0)
+  processedUntil DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([partnerId, moduleSlug, snapshotDate])
+  @@index([partnerId, moduleSlug, snapshotDate])
+  @@map("partner_analytics_snapshots")
+}
+
+/// Checkpoint for a bounded, resumable snapshot backfill. A job never needs
+/// to scan the same source rows twice after a successful batch commit.
+model PartnerAnalyticsBackfillJob {
+  id              String   @id @default(cuid())
+  partnerId       String
+  moduleSlug      String
+  sourceVersion   Int      @default(1)
+  cursorCreatedAt DateTime?
+  cursorId        String?
+  status          String   @default("PENDING")
+  rowsProcessed   Int      @default(0)
+  lastError       String?
+  startedAt       DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([partnerId, moduleSlug, sourceVersion])
+  @@index([status, updatedAt])
+  @@map("partner_analytics_backfill_jobs")
+}
+
+/// Super Admin rollout switch. Defaults to shadow/compare mode; the existing
+/// analytics path remains authoritative until an operator explicitly enables
+/// snapshot reads after reconciliation.
+model PlatformAnalyticsSettings {
+  id             String   @id @default("default")
+  snapshotReads  Boolean  @default(false)
+  compareMode    Boolean  @default(true)
+  updatedBy      String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("platform_analytics_settings")
+}
+
 /// A captured Razorpay payment for a partner's subscription. Previously
 /// nothing persisted this — the webhook/verify routes only flipped
 /// Partner.subscriptionStatus and discarded the amount/payment id/date from

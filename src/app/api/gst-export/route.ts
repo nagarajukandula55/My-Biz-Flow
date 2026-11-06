@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSessionPartnerId, PartnerAuthorizationError } from "@/lib/requirePartnerSession";
 import { buildGstExportJson, gstRowsToSheetData, type GstFilter } from "@/lib/gstExport";
+import { beginExpensiveOperation } from "@/lib/expensiveOperationGuard";
+import { exportLimitMessage, maxExportRows } from "@/lib/exportLimits";
 
 /**
  * The GST Export ZIP is built here, in its own Route Handler, rather than
@@ -34,10 +36,17 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: message }, { status: 401 });
   }
 
-  const json = await buildGstExportJson(partnerId, from, to, filter);
-  if (json.invoiceCount === 0) {
-    return NextResponse.json({ error: "No invoices match this date range / filter.", count: 0 }, { status: 200 });
-  }
+  const finish = beginExpensiveOperation(`gst-export:${partnerId}`);
+  if (!finish) return NextResponse.json({ error: "Another export was just started. Please wait before retrying." }, { status: 429 });
+
+  try {
+    const json = await buildGstExportJson(partnerId, from, to, filter);
+    if (json.invoiceCount === 0) {
+      return NextResponse.json({ error: "No invoices match this date range / filter.", count: 0 }, { status: 200 });
+    }
+    if (json.invoiceCount > maxExportRows()) {
+      return NextResponse.json({ error: exportLimitMessage("GST export", json.invoiceCount), count: json.invoiceCount }, { status: 413 });
+    }
 
   // Dynamic imports keep xlsx/jszip out of this route's top-level module
   // graph too, so `next build`'s trace only pulls them in for requests
@@ -58,10 +67,13 @@ export async function GET(request: NextRequest) {
   const label = filter === "all" ? "all" : filter;
   const filename = `gst-export-${label}-${from || "start"}-to-${to || "end"}.zip`;
 
-  return new NextResponse(new Uint8Array(zipBuffer), {
-    headers: {
-      "Content-Type": "application/zip",
-      "Content-Disposition": `attachment; filename="${filename}"`,
-    },
-  });
+    return new NextResponse(new Uint8Array(zipBuffer), {
+      headers: {
+        "Content-Type": "application/zip",
+        "Content-Disposition": `attachment; filename="${filename}"`,
+      },
+    });
+  } finally {
+    finish();
+  }
 }

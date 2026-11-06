@@ -1,0 +1,46 @@
+name: Backfill analytics snapshots
+
+on:
+  workflow_dispatch:
+    inputs:
+      partner_id:
+        description: "Partner ID to backfill"
+        required: true
+        type: string
+      module_slug:
+        description: "billing or service-centre"
+        required: true
+        type: choice
+        options:
+          - billing
+          - service-centre
+
+permissions:
+  contents: read
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Run bounded resumable backfill
+        run: npx tsx scripts/backfillAnalyticsSnapshots.ts --partner "$PARTNER_ID" --module "$MODULE_SLUG"
+        env:
+          DATABASE_URL: ${{ secrets.MIGRATION_DATABASE_URL }}
+          DATABASE_URL_UNPOOLED: ${{ secrets.MIGRATION_DATABASE_URL }}
+          PARTNER_ID: ${{ inputs.partner_id }}
+          MODULE_SLUG: ${{ inputs.module_slug }}

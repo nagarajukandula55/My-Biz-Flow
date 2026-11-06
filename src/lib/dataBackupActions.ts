@@ -3,6 +3,8 @@
 import { prisma } from "@/lib/prisma";
 import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import { getPartner } from "@/lib/partnerData";
+import { beginExpensiveOperation } from "@/lib/expensiveOperationGuard";
+import { exportLimitMessage, maxExportRows } from "@/lib/exportLimits";
 
 /**
  * Self-service "export my own data" download for a partner's peace of mind
@@ -23,14 +25,19 @@ export async function downloadDataBackupAction(
   partnerId: string
 ): Promise<{ json: string; filename: string; recordCount: number }> {
   await requireSessionPartnerId(partnerId);
+  const finish = beginExpensiveOperation(`partner-data-backup:${partnerId}`);
+  if (!finish) throw new Error("Another data backup was just started. Please wait before retrying.");
 
-  const [partner, records] = await Promise.all([
-    getPartner(partnerId),
-    prisma.businessRecord.findMany({
-      where: { partnerId },
-      orderBy: [{ moduleSlug: "asc" }, { createdAt: "asc" }],
-    }),
-  ]);
+  try {
+    const [partner, records] = await Promise.all([
+      getPartner(partnerId),
+      prisma.businessRecord.findMany({
+        where: { partnerId },
+        orderBy: [{ moduleSlug: "asc" }, { createdAt: "asc" }],
+        take: maxExportRows() + 1,
+      }),
+    ]);
+    if (records.length > maxExportRows()) throw new Error(exportLimitMessage("Data backup", records.length));
 
   const byModule: Record<string, Record<string, unknown>[]> = {};
   for (const r of records) {
@@ -48,5 +55,8 @@ export async function downloadDataBackupAction(
 
   const json = JSON.stringify(payload, null, 2);
   const filename = `my-biz-flow-backup-${partnerId}-${new Date().toISOString().slice(0, 10)}.json`;
-  return { json, filename, recordCount: records.length };
+    return { json, filename, recordCount: records.length };
+  } finally {
+    finish();
+  }
 }
