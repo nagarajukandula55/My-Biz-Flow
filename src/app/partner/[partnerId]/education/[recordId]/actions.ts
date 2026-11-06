@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { createBusinessRecord, updateBusinessRecord, getBusinessRecord } from "@/lib/businessRecords";
 import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import type { AttendanceEntry } from "@/lib/sample-data/education";
@@ -41,6 +42,7 @@ export async function recordFeePaymentAction(partnerId: string, enrollmentId: st
     feeInvoiceId: invoice.id,
   });
   revalidatePath(`/partner/${partnerId}/education/${enrollmentId}`);
+  redirect(`/partner/${partnerId}/education/${enrollmentId}?saved=1`);
 }
 
 /**
@@ -66,4 +68,5 @@ export async function markAttendanceAction(
     attendanceLog: nextLog,
   });
   revalidatePath(`/partner/${partnerId}/education/${enrollmentId}`);
+  redirect(`/partner/${partnerId}/education/${enrollmentId}?saved=1`);
 }

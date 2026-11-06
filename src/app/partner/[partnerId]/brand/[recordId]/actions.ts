@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { getBusinessRecord, updateBusinessRecord } from "@/lib/businessRecords";
 import type { AccessScope } from "@/lib/sample-data/brand";
 import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
@@ -17,4 +18,5 @@ export async function setUserAccessScopeAction(
   if (!user) return;
   await updateBusinessRecord(partnerId, "users", userId, { ...user, accessScope });
   revalidatePath(`/partner/${partnerId}/brand/${brandRecordId}`);
+  redirect(`/partner/${partnerId}/brand/${brandRecordId}?saved=1`);
 }
