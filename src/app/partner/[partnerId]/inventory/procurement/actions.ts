@@ -3,6 +3,7 @@
 import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import { createPurchaseOrder, receivePurchaseOrder } from "@/lib/procurementData";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 export async function createPurchaseOrderAction(partnerId: string, formData: FormData) {
   await requireSessionPartnerId(partnerId);
@@ -11,6 +12,7 @@ export async function createPurchaseOrderAction(partnerId: string, formData: For
     lines: [{ materialId: String(formData.get("materialId") ?? ""), materialLabel: String(formData.get("materialLabel") ?? ""), quantity: Number(formData.get("quantity") ?? 0), unitPrice: Number(formData.get("unitPrice") ?? 0), warehouseName: String(formData.get("warehouseName") ?? "Main Warehouse") }],
   });
   revalidatePath(`/partner/${partnerId}/inventory/procurement`);
+  redirect(`/partner/${partnerId}/inventory/procurement?saved=1`);
 }
 
 export async function receivePurchaseOrderAction(partnerId: string, formData: FormData) {
@@ -18,4 +20,5 @@ export async function receivePurchaseOrderAction(partnerId: string, formData: Fo
   await receivePurchaseOrder(partnerId, String(formData.get("purchaseOrderId") ?? ""));
   revalidatePath(`/partner/${partnerId}/inventory/procurement`);
   revalidatePath(`/partner/${partnerId}/inventory/stock`);
+  redirect(`/partner/${partnerId}/inventory/procurement?saved=1`);
 }
