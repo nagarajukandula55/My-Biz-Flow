@@ -189,7 +189,10 @@ export async function createBooking(
   input: { customerId: string; addressId: string; serviceId: string; scheduledAt: Date; slotLabel: string; notes?: string }
 ): Promise<BookingRecord> {
   const service = await prisma.service.findUniqueOrThrow({ where: { id: input.serviceId } });
-  const bookingNumber = await getNextNumber("field-force.booking", partnerId);
+  const now = new Date();
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(now);
+  const dayKey = `${parts.find((p) => p.type === "year")?.value}${parts.find((p) => p.type === "month")?.value}${parts.find((p) => p.type === "day")?.value}`;
+  const bookingNumber = await getNextNumber(`field-force.booking.${dayKey}`, partnerId, { prefix: "FFB", separator: "none", financialYearFormat: "none", sequenceDigits: 3, sequenceStart: 1, suffix: "", template: "{prefix}{yyyy}{mm}{dd}{seq}" });
   const row = await prisma.booking.create({
     data: {
       partnerId,
@@ -221,7 +224,10 @@ export async function createCompanyBooking(
 ): Promise<BookingRecord> {
   const service = await prisma.service.findUniqueOrThrow({ where: { id: input.serviceId } });
   const price = await resolveCompanyPrice(input.companyId, partnerId, input.serviceId, input);
-  const bookingNumber = await getNextNumber("field-force.booking", partnerId);
+  const now = new Date();
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(now);
+  const dayKey = `${parts.find((p) => p.type === "year")?.value}${parts.find((p) => p.type === "month")?.value}${parts.find((p) => p.type === "day")?.value}`;
+  const bookingNumber = await getNextNumber(`field-force.booking.${dayKey}`, partnerId, { prefix: "FFB", separator: "none", financialYearFormat: "none", sequenceDigits: 3, sequenceStart: 1, suffix: "", template: "{prefix}{yyyy}{mm}{dd}{seq}" });
   const row = await prisma.booking.create({
     data: {
       partnerId,

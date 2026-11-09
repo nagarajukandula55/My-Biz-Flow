@@ -720,6 +720,7 @@ model Service {
 /// happens — ops can onboard a Provider with no login ability yet.
 model Provider {
   id                String     @id @default(cuid())
+  providerCode      String     @unique
   partnerId         String
   name              String
   phone             String
@@ -1089,6 +1090,7 @@ model PlatformFeeConfig {
 /// passwordHash is null until self-signup (or a later "set password" step).
 model Customer {
   id                String   @id @default(cuid())
+  customerCode      String   @unique
   partnerId         String
   name              String
   phone             String

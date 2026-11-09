@@ -4,6 +4,7 @@
  */
 import { prisma } from "@/lib/prisma";
 import { assertPartnerScope } from "@/lib/tenant";
+import { getNextNumber } from "@/lib/designer/numbering";
 
 export type AddressRecord = {
   id: string;
@@ -53,7 +54,10 @@ export async function findOrCreateCustomer(
   });
   if (existing) return existing;
   return prisma.customer.create({
-    data: { partnerId, name: input.name, phone: input.phone, email: input.email || null },
+    data: {
+      customerCode: await getNextNumber("field-force.customer", partnerId, { prefix: "SS", separator: "none", financialYearFormat: "none", sequenceDigits: 4, sequenceStart: 1, suffix: "" }),
+      partnerId, name: input.name, phone: input.phone, email: input.email || null,
+    },
     include: INCLUDE,
   });
 }

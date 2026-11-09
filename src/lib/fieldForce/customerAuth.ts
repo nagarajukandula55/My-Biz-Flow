@@ -8,6 +8,7 @@
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { hashPassword, verifyPassword } from "@/lib/passwords";
+import { getNextNumber } from "@/lib/designer/numbering";
 
 export const CUSTOMER_SESSION_COOKIE = "mbf_ff_customer_session";
 
@@ -25,7 +26,10 @@ export async function createCustomerAccount(
     });
   }
   return prisma.customer.create({
-    data: { partnerId, name: input.name, phone: input.phone, email: input.email || null, passwordHash: hashPassword(input.password) },
+    data: {
+      customerCode: await getNextNumber("field-force.customer", partnerId, { prefix: "SS", separator: "none", financialYearFormat: "none", sequenceDigits: 4, sequenceStart: 1, suffix: "" }),
+      partnerId, name: input.name, phone: input.phone, email: input.email || null, passwordHash: hashPassword(input.password),
+    },
   });
 }
 

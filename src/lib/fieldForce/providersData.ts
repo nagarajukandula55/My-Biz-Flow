@@ -7,6 +7,7 @@
 import { prisma } from "@/lib/prisma";
 import { assertPartnerScope } from "@/lib/tenant";
 import { hashPassword } from "@/lib/passwords";
+import { getNextNumber } from "@/lib/designer/numbering";
 
 export type ServiceAreaInput = {
   state: string;
@@ -145,6 +146,7 @@ export async function onboardProvider(input: {
   const skillLevel = selectedServices.some((service) => service.minSkillLevel === "skilled") ? "skilled" : "unskilled";
   const row = await prisma.provider.create({
     data: {
+      providerCode: await getNextNumber("field-force.provider", input.partnerId, { prefix: "SP", separator: "none", financialYearFormat: "none", sequenceDigits: 4, sequenceStart: 1, suffix: "" }),
       partnerId: input.partnerId,
       name: input.name,
       phone: input.phone,
