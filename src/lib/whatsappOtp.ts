@@ -16,6 +16,7 @@
 import { prisma } from "@/lib/prisma";
 import { env } from "@/lib/env";
 import { sendWhatsAppTemplateMessage } from "@/lib/whatsapp";
+import { sendEmail, emailShell, emailInfoBox } from "@/lib/email";
 
 const OTP_TTL_MS = 10 * 60 * 1000; // 10 minutes — same TTL as inventoryOtp.ts
 
@@ -105,8 +106,21 @@ export async function verifyLoginOtp(
 }
 
 /** Customer-consent OTP used by a provider before starting or completing a job. */
-export async function requestJobOtp(partnerId: string, purpose: JobOtpPurpose, bookingId: string, customerPhone: string): Promise<RequestLoginOtpResult> {
-  return requestLoginOtp(partnerId, purpose, bookingId, customerPhone);
+export async function requestJobOtp(partnerId: string, purpose: JobOtpPurpose, bookingId: string, customerPhone: string, customerEmail?: string | null): Promise<RequestLoginOtpResult> {
+  const whatsapp = await requestLoginOtp(partnerId, purpose, bookingId, customerPhone);
+  if (whatsapp.sent || !customerEmail) return whatsapp;
+  const code = generateSixDigitCode();
+  const now = new Date();
+  await prisma.otpCode.deleteMany({ where: { partnerId, targetRecordId: bookingId, purpose, consumedAt: null } });
+  await prisma.otpCode.create({ data: { partnerId, purpose, targetRecordId: bookingId, code, expiresAt: new Date(now.getTime() + OTP_TTL_MS) } });
+  const label = purpose === "ff-job-start" ? "Job start OTP" : "Job completion OTP";
+  const result = await sendEmail({
+    to: customerEmail,
+    subject: `${label} - My Biz Flow`,
+    html: emailShell(`<h1 style="font-size:18px;color:#111827;">${label}</h1>${emailInfoBox([{ label: "OTP", value: code }, { label: "Validity", value: "10 minutes" }])}<p>Share this OTP with your service provider only when appropriate.</p>`),
+    text: `${label}: ${code}\nValid for 10 minutes. Share this OTP with your service provider only when appropriate.`,
+  });
+  return result.sent ? { sent: true } : { sent: false, reason: "send_failed" };
 }
 
 export async function verifyJobOtp(partnerId: string, purpose: JobOtpPurpose, bookingId: string, code: string): Promise<VerifyLoginOtpResult> {

@@ -148,8 +148,8 @@ export function BookingDetailClient({
             </p>
           ) : (
             <>
-              <button type="button" onClick={() => setShowAssign((v) => !v)} className="btn-accent text-xs">
-                {showAssign ? "Hide matches" : "Find & assign provider"}
+                <button type="button" onClick={() => setShowAssign((v) => !v)} className="btn-accent text-xs">
+                  {showAssign ? "Hide matches" : booking.providerName ? "Reassign provider" : "Find & assign provider"}
               </button>
               {showAssign && (
                 <div className="mt-3 space-y-2">

@@ -13,6 +13,8 @@ export type JobAllocationRecord = {
   id: string;
   providerId: string;
   providerName: string;
+  providerPincode: string;
+  bookingPincode: string;
   partnerId: string;
   bookingId: string;
   bookingNumber: string;
@@ -25,13 +27,15 @@ export type JobAllocationRecord = {
 export async function listAllocationsForPartner(partnerId: string): Promise<JobAllocationRecord[]> {
   const rows = await prisma.jobAllocation.findMany({
     where: { partnerId },
-    include: { provider: true, booking: true },
+    include: { provider: true, booking: { include: { address: true } } },
     orderBy: { assignedAt: "desc" },
   });
   return rows.map((r) => ({
     id: r.id,
     providerId: r.providerId,
     providerName: r.provider.name,
+    providerPincode: r.provider.pincode,
+    bookingPincode: r.booking.address.pincode,
     partnerId: r.partnerId,
     bookingId: r.bookingId,
     bookingNumber: r.booking.bookingNumber,

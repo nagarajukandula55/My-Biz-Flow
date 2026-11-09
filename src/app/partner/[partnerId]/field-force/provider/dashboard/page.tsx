@@ -56,6 +56,21 @@ export default async function ProviderDashboardPage({ params }: { params: { part
         </div>
       </div>
 
+      <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="rounded-md border border-border bg-bg-raised p-3">
+          <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">Provider ID</div>
+          <div className="mt-1 font-mono text-lg font-bold text-text">{provider.providerCode}</div>
+        </div>
+        <div className="rounded-md border border-border bg-bg-raised p-3">
+          <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">Account status</div>
+          <div className="mt-1 text-sm font-semibold text-text">{provider.status === "active" ? "Active" : provider.status}</div>
+        </div>
+        <div className="rounded-md border border-border bg-bg-raised p-3">
+          <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">Verification</div>
+          <div className="mt-1 text-sm font-semibold text-text">{provider.verificationStatus === "unverified" ? "Unverified - review pending" : provider.verificationStatus}</div>
+        </div>
+      </div>
+
       <ProviderDashboardClient
         offers={offers.map((o) => ({
           offerId: o.offerId,
@@ -72,6 +87,8 @@ export default async function ProviderDashboardPage({ params }: { params: { part
           bookingNumber: j.bookingNumber,
           serviceName: j.serviceName,
           customerName: j.customerName,
+          customerPhone: j.customerPhone,
+          customerEmail: j.customerEmail,
           addressLine: j.addressLine,
           status: j.status,
           slotLabel: j.slotLabel,

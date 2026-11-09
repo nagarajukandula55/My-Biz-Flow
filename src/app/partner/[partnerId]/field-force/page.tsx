@@ -24,6 +24,7 @@ registerPage({
 export const dynamic = "force-dynamic";
 
 const columns: Column[] = [
+  { key: "providerCode", label: "Provider ID", type: "text" },
   { key: "name", label: "Name", type: "text" },
   { key: "phone", label: "Phone", type: "phone" },
   { key: "pincode", label: "Pincode", type: "text" },
@@ -56,6 +57,7 @@ export default async function FieldForcePage({ params }: { params: { partnerId: 
   const qrDataUrl = await generateProviderInviteQrDataUrl(signupLink);
   const rows = providers.map((p) => ({
     id: p.id,
+    providerCode: p.providerCode,
     name: p.name,
     phone: p.phone,
     pincode: p.pincode,

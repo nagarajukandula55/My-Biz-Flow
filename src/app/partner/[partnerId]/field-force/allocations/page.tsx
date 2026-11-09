@@ -4,6 +4,7 @@ import { listProviders } from "@/lib/fieldForce/providersData";
 import { listAllocationsForPartner } from "@/lib/fieldForce/allocationsData";
 import { listBookingsForPartner } from "@/lib/fieldForce/bookingsData";
 import { allocateProviderAction, updateAllocationStatusAction } from "@/lib/fieldForce/actions";
+import { distancesFromPincode } from "@/lib/fieldForce/geo";
 import { AllocationsClient } from "./AllocationsClient";
 
 registerPage({
@@ -42,6 +43,17 @@ export default async function AllocationsPage({ params }: { params: { partnerId:
 
   const allocateAction = allocateProviderAction.bind(null, params.partnerId);
   const updateStatusAction = updateAllocationStatusAction.bind(null, params.partnerId);
+  const allocationRows = await Promise.all(allocations.map(async (a) => ({
+    id: a.id,
+    providerName: a.providerName,
+    providerPincode: a.providerPincode,
+    bookingPincode: a.bookingPincode,
+    distanceKm: (await distancesFromPincode(a.bookingPincode, [a.providerPincode])).get(a.providerPincode),
+    bookingId: a.bookingId,
+    bookingNumber: a.bookingNumber,
+    status: a.status,
+    assignedAt: a.assignedAt.toISOString(),
+  })));
 
   return (
     <AppShell topbarTitle="Job Allocation">
@@ -55,14 +67,7 @@ export default async function AllocationsPage({ params }: { params: { partnerId:
             providers={providers}
             unassignedBookings={unassignedBookings}
             partnerId={params.partnerId}
-            allocations={allocations.map((a) => ({
-              id: a.id,
-              providerName: a.providerName,
-              bookingId: a.bookingId,
-              bookingNumber: a.bookingNumber,
-              status: a.status,
-              assignedAt: a.assignedAt.toISOString(),
-            }))}
+            allocations={allocationRows}
             allocateAction={allocateAction}
             updateStatusAction={updateStatusAction}
           />

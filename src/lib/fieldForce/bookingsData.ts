@@ -19,6 +19,7 @@ export const BOOKING_STATUSES = [
   "confirmed",
   "assigned",
   "en-route",
+  "arrived",
   "in-progress",
   "completed",
   "cancelled",
@@ -33,6 +34,7 @@ export type BookingRecord = {
   customerId: string;
   customerName: string;
   customerPhone: string;
+  customerEmail: string | null;
   addressId: string;
   addressLine: string;
   addressState: string;
@@ -59,6 +61,12 @@ export type BookingRecord = {
   closureLatitude: number | null;
   closureLongitude: number | null;
   closedAt: Date | null;
+  enRouteAt: Date | null;
+  arrivedAt: Date | null;
+  inProgressAt: Date | null;
+  currentLatitude: number | null;
+  currentLongitude: number | null;
+  currentLocationAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -96,9 +104,15 @@ function toRecord(row: {
   closureLatitude: number | null;
   closureLongitude: number | null;
   closedAt: Date | null;
+  enRouteAt: Date | null;
+  arrivedAt: Date | null;
+  inProgressAt: Date | null;
+  currentLatitude: number | null;
+  currentLongitude: number | null;
+  currentLocationAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
-  customer: { name: string; phone: string };
+  customer: { name: string; phone: string; email: string | null };
   address: { line1: string; city: string; state: string; pincode: string };
   service: { name: string };
   provider: { name: string; phone: string } | null;
@@ -111,6 +125,7 @@ function toRecord(row: {
     customerId: row.customerId,
     customerName: row.customer.name,
     customerPhone: row.customer.phone,
+    customerEmail: row.customer.email,
     addressId: row.addressId,
     addressLine: `${row.address.line1}, ${row.address.city}, ${row.address.state} ${row.address.pincode}`,
     addressState: row.address.state,
@@ -137,6 +152,12 @@ function toRecord(row: {
     closureLatitude: row.closureLatitude,
     closureLongitude: row.closureLongitude,
     closedAt: row.closedAt,
+    enRouteAt: row.enRouteAt,
+    arrivedAt: row.arrivedAt,
+    inProgressAt: row.inProgressAt,
+    currentLatitude: row.currentLatitude,
+    currentLongitude: row.currentLongitude,
+    currentLocationAt: row.currentLocationAt,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -282,7 +303,7 @@ export async function updateBookingStatus(id: string, partnerId: string, status:
  * standalone Provider dashboard's own status-advance control (en-route/in-progress/cancelled). "completed" is
  * NOT allowed through here any more — see closeBookingAsProvider, which requires real closure evidence
  * (solution notes, a photo, and device location) instead of a bare status flip. */
-export async function updateBookingStatusAsProvider(id: string, providerId: string, partnerId: string, status: BookingStatus, otpCode?: string): Promise<void> {
+export async function updateBookingStatusAsProvider(id: string, providerId: string, partnerId: string, status: BookingStatus, otpCode?: string, location?: { latitude?: number; longitude?: number }): Promise<void> {
   if (status === "completed") {
     throw new Error("Use closeBookingAsProvider to complete a job — it requires closure notes, a photo, and location.");
   }
@@ -293,8 +314,9 @@ export async function updateBookingStatusAsProvider(id: string, providerId: stri
     const verified = await verifyJobOtp(partnerId, "ff-job-start", id, otpCode ?? "");
     if (!verified.verified) throw new Error("Customer start OTP is required and must be valid.");
   }
+  const now = new Date();
   await prisma.$transaction([
-    prisma.booking.update({ where: { id }, data: { status } }),
+    prisma.booking.update({ where: { id }, data: { status, ...(status === "en-route" ? { enRouteAt: now } : {}), ...(status === "arrived" ? { arrivedAt: now } : {}), ...(status === "in-progress" ? { inProgressAt: now } : {}), ...(location?.latitude !== undefined && location?.longitude !== undefined ? { currentLatitude: location.latitude, currentLongitude: location.longitude, currentLocationAt: now } : {}) } }),
     prisma.jobAllocation.updateMany({ where: { bookingId: id }, data: { status } }),
   ]);
   await sendPartnerTelegramAlert(partnerId, "fieldForceEvent", `Field Force booking ${existing.bookingNumber} status changed to ${status} by provider.`);
@@ -345,6 +367,7 @@ export async function assignProviderToBooking(bookingId: string, partnerId: stri
   const existing = await prisma.booking.findUniqueOrThrow({ where: { id: bookingId } });
   assertPartnerScope(partnerId, existing.partnerId);
   await prisma.$transaction([
+    prisma.jobAllocation.updateMany({ where: { bookingId, partnerId, status: { notIn: ["completed", "cancelled"] } }, data: { status: "cancelled" } }),
     prisma.booking.update({ where: { id: bookingId }, data: { providerId, status: "assigned" } }),
     prisma.jobAllocation.create({ data: { partnerId, bookingId, providerId, status: "assigned" } }),
   ]);

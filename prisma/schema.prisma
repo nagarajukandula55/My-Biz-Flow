@@ -1196,6 +1196,12 @@ model Booking {
   closureLatitude  Float?
   closureLongitude Float?
   closedAt         DateTime?
+  enRouteAt        DateTime?
+  arrivedAt        DateTime?
+  inProgressAt     DateTime?
+  currentLatitude  Float?
+  currentLongitude Float?
+  currentLocationAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

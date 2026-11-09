@@ -18,6 +18,7 @@ export type ServiceAreaInput = {
 
 export type ProviderRecord = {
   id: string;
+  providerCode: string;
   partnerId: string;
   name: string;
   phone: string;
@@ -41,6 +42,7 @@ export type ProviderRecord = {
 
 function toRecord(row: {
   id: string;
+  providerCode: string;
   partnerId: string;
   name: string;
   phone: string;
@@ -63,6 +65,7 @@ function toRecord(row: {
 }): ProviderRecord {
   return {
     id: row.id,
+    providerCode: row.providerCode,
     partnerId: row.partnerId,
     name: row.name,
     phone: row.phone,

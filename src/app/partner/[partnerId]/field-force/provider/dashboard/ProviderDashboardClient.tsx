@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import type { FormEvent } from "react";
 import { StatusChip } from "@/components/StatusChip";
 import { t, type Locale } from "@/lib/i18n/locales";
 
@@ -20,6 +21,8 @@ type ActiveJobRow = {
   bookingNumber: string;
   serviceName: string;
   customerName: string;
+  customerPhone: string;
+  customerEmail: string | null;
   addressLine: string;
   status: string;
   slotLabel: string;
@@ -29,7 +32,7 @@ type TeamMemberRow = { id: string; name: string; phone: string; skillLevel: stri
 type ServiceOption = { id: string; name: string; category: string };
 type NotificationRow = { id: string; title: string; body: string; createdAt: string; isRead: boolean };
 
-const STATUS_OPTIONS = ["en-route", "in-progress", "cancelled"] as const;
+const STATUS_OPTIONS = ["en-route", "arrived", "in-progress", "cancelled"] as const;
 
 export function ProviderDashboardClient({
   offers,
@@ -142,13 +145,28 @@ export function ProviderDashboardClient({
                 </div>
                 {j.status !== "completed" && j.status !== "cancelled" && (
                   <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <form action={advanceStatusAction} className="flex items-center gap-2">
+                    <a href={`tel:${j.customerPhone}`} className="btn-outline text-xs">Call customer</a>
+                    <a href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(j.addressLine)}`} target="_blank" rel="noreferrer" className="btn-outline text-xs">Navigate</a>
+                    <form action={advanceStatusAction} className="flex items-center gap-2" onSubmit={async (event: FormEvent<HTMLFormElement>) => {
+                      const form = event.currentTarget;
+                      if (form.dataset.locationReady === "1") { delete form.dataset.locationReady; return; }
+                      event.preventDefault();
+                      if (!navigator.geolocation) { form.dataset.locationReady = "1"; form.requestSubmit(); return; }
+                      navigator.geolocation.getCurrentPosition((position) => {
+                        (form.elements.namedItem("latitude") as HTMLInputElement).value = String(position.coords.latitude);
+                        (form.elements.namedItem("longitude") as HTMLInputElement).value = String(position.coords.longitude);
+                        form.dataset.locationReady = "1";
+                        form.requestSubmit();
+                      }, () => { form.dataset.locationReady = "1"; form.requestSubmit(); });
+                    }}>
                       <input type="hidden" name="bookingId" value={j.id} />
+                      <input type="hidden" name="latitude" />
+                      <input type="hidden" name="longitude" />
                       <input name="otpCode" placeholder="Customer OTP" className="w-28 rounded-md border border-border bg-bg px-2 py-1.5 text-xs text-text" />
                       <select name="status" defaultValue={j.status === "assigned" ? "en-route" : j.status} className="rounded-md border border-border bg-bg px-2 py-1.5 text-xs text-text">
                         {STATUS_OPTIONS.map((s) => (
                           <option key={s} value={s}>
-                            {t(locale, s === "en-route" ? "statusEnRoute" : s === "in-progress" ? "statusInProgress" : "statusCancelled")}
+                            {s === "arrived" ? "Arrived at location" : t(locale, s === "en-route" ? "statusEnRoute" : s === "in-progress" ? "statusInProgress" : "statusCancelled")}
                           </option>
                         ))}
                       </select>

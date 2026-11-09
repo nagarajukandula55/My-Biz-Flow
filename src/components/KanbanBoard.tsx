@@ -16,9 +16,10 @@ export type KanbanCard = {
 type KanbanBoardProps = {
   stages: KanbanStage[];
   cards: KanbanCard[];
+  onCardClick?: (card: KanbanCard) => void;
 };
 
-export function KanbanBoard({ stages, cards }: KanbanBoardProps) {
+export function KanbanBoard({ stages, cards, onCardClick }: KanbanBoardProps) {
   return (
     <div className="flex w-full gap-4 overflow-x-auto pb-2">
       {stages.map((stage) => {
@@ -40,7 +41,16 @@ export function KanbanBoard({ stages, cards }: KanbanBoardProps) {
               {stageCards.map((card) => (
                 <div
                   key={card.id}
-                  className="rounded-md border border-border bg-bg-raised p-3 shadow-sm"
+                  role={onCardClick ? "button" : undefined}
+                  tabIndex={onCardClick ? 0 : undefined}
+                  onClick={() => onCardClick?.(card)}
+                  onKeyDown={(event) => {
+                    if (onCardClick && (event.key === "Enter" || event.key === " ")) {
+                      event.preventDefault();
+                      onCardClick(card);
+                    }
+                  }}
+                  className={`rounded-md border border-border bg-bg-raised p-3 shadow-sm ${onCardClick ? "cursor-pointer transition hover:border-teal hover:shadow-md" : ""}`}
                 >
                   <div className="text-sm font-semibold text-text">{card.title}</div>
                   <div className="mt-1 text-xs text-text-muted">{card.meta}</div>

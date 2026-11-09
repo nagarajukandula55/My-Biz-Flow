@@ -32,6 +32,7 @@ import { markRead, notify } from "@/lib/fieldForce/notifications";
 import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import { ADMIN_COOKIE_NAME, isValidAdminCookie } from "@/lib/adminAuth";
 import { prisma } from "@/lib/prisma";
+import { sendFieldForceRegistrationEmail } from "@/lib/fieldForce/registrationEmails";
 
 export async function onboardProviderAction(partnerId: string, formData: FormData) {
   partnerId = await requireSessionPartnerId(partnerId);
@@ -42,7 +43,6 @@ export async function onboardProviderAction(partnerId: string, formData: FormDat
   const pincode = String(formData.get("pincode") ?? "").trim();
   const skillLevel = String(formData.get("skillLevel") ?? "skilled") as "unskilled" | "skilled";
   const serviceIds = formData.getAll("serviceIds").map(String).filter(Boolean);
-
   const areasRaw = String(formData.get("serviceAreas") ?? "[]");
   let serviceAreas: ServiceAreaInput[] = [];
   try {
@@ -343,6 +343,7 @@ export async function signupCustomerAction(partnerId: string, formData: FormData
   if (!name || !phone || !password) throw new Error("Name, phone, and password are required");
 
   const customer = await createCustomerAccount(partnerId, { name, phone, email, password });
+  await sendFieldForceRegistrationEmail({ to: email, name, publicId: customer.customerCode, role: "Customer", loginPath: `/partner/${partnerId}/field-force/customer/login` });
   cookies().set(CUSTOMER_SESSION_COOKIE, customer.id, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 30 });
   redirect(`/partner/${partnerId}/field-force/customer/book`);
 }
@@ -464,12 +465,16 @@ export async function signupProviderAction(partnerId: string, formData: FormData
   const pincode = String(formData.get("pincode") ?? "").trim();
   const skillLevel = String(formData.get("skillLevel") ?? "skilled") as "unskilled" | "skilled";
   const serviceIds = formData.getAll("serviceIds").map(String).filter(Boolean);
+  const areasRaw = String(formData.get("serviceAreas") ?? "[]");
+  let serviceAreas: ServiceAreaInput[] = [];
+  try { serviceAreas = JSON.parse(areasRaw); } catch { serviceAreas = []; }
 
   if (!name || !phone || !password) throw new Error("Name, phone, and password are required");
   if (!/^\d{6}$/.test(pincode)) throw new Error("A valid six-digit pincode is required");
   if (serviceIds.length === 0) throw new Error("Select at least one service");
 
-  const provider = await onboardProvider({ partnerId, name, phone, email, pincode, skillLevel, serviceIds, serviceAreas: [], password });
+  const provider = await onboardProvider({ partnerId, name, phone, email, pincode, skillLevel, serviceIds, serviceAreas, password });
+  await sendFieldForceRegistrationEmail({ to: email, name, publicId: provider.providerCode, role: "Service Provider", loginPath: `/partner/${partnerId}/field-force/provider/login` });
   // This is the single internal Field Force marketplace: self-signups can
   // sign in immediately, while ops retains suspend/activate controls.
   await setProviderStatus(provider.id, partnerId, "active");
@@ -504,7 +509,9 @@ export async function updateBookingStatusAsProviderAction(partnerId: string, pro
   }
   const bookingId = String(formData.get("bookingId") ?? "");
   const status = String(formData.get("status") ?? "") as BookingStatus;
-  await updateBookingStatusAsProvider(bookingId, providerId, partnerId, status, String(formData.get("otpCode") ?? ""));
+  const latitude = Number(formData.get("latitude"));
+  const longitude = Number(formData.get("longitude"));
+  await updateBookingStatusAsProvider(bookingId, providerId, partnerId, status, String(formData.get("otpCode") ?? ""), Number.isFinite(latitude) && Number.isFinite(longitude) ? { latitude, longitude } : undefined);
 
   revalidatePath(`/partner/${partnerId}/field-force/provider/dashboard`);
   revalidatePath(`/partner/${partnerId}/field-force/customer/bookings/${bookingId}`);
@@ -517,8 +524,8 @@ export async function requestJobVerificationOtpAction(partnerId: string, provide
   const purpose = String(formData.get("purpose") ?? "ff-job-start") as "ff-job-start" | "ff-job-complete";
   const booking = await getBooking(bookingId, partnerId);
   if (!booking || booking.providerId !== providerId) throw new Error("This booking is not assigned to you.");
-  const result = await requestJobOtp(partnerId, purpose, bookingId, booking.customerPhone);
-  if (!result.sent) throw new Error("Customer OTP could not be sent. Check WhatsApp configuration.");
+  const result = await requestJobOtp(partnerId, purpose, bookingId, booking.customerPhone, booking.customerEmail);
+  if (!result.sent) throw new Error("Customer OTP could not be sent. Check WhatsApp or Resend email configuration.");
   return { ok: true };
 }
 

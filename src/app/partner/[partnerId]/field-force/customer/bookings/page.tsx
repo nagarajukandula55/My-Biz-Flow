@@ -48,6 +48,11 @@ export default async function CustomerBookingsPage({ params }: { params: { partn
         </div>
       </div>
 
+      <div className="mb-5 rounded-md border border-border bg-bg-raised p-3">
+        <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">Customer ID</div>
+        <div className="mt-1 font-mono text-lg font-bold text-text">{customer.customerCode}</div>
+      </div>
+
       {notifications.some((n) => !n.isRead) && (
         <div className="mb-4 space-y-1.5">
           {notifications

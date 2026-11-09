@@ -19,6 +19,9 @@ type BookingOption = {
 type AllocationRow = {
   id: string;
   providerName: string;
+  providerPincode: string;
+  bookingPincode: string;
+  distanceKm?: number;
   bookingId: string;
   bookingNumber: string;
   status: string;
@@ -169,7 +172,7 @@ export function AllocationsClient({
                   <Link href={`/partner/${partnerId}/field-force/bookings/${a.bookingId}`} className="text-sm font-semibold text-teal hover:underline">
                     {a.bookingNumber}
                   </Link>
-                  <div className="text-xs text-text-muted">{a.providerName}</div>
+                  <div className="text-xs text-text-muted">{a.providerName} · provider {a.providerPincode} · job {a.bookingPincode} · {a.distanceKm !== undefined ? `${a.distanceKm.toFixed(1)} km away` : "distance unavailable"}</div>
                 </div>
                 <div className="flex items-center gap-3">
                   <StatusChip
@@ -189,6 +192,9 @@ export function AllocationsClient({
                       Update
                     </button>
                   </form>
+                  {a.status !== "completed" && a.status !== "cancelled" && (
+                    <Link href={`/partner/${partnerId}/field-force/bookings/${a.bookingId}`} className="btn-outline text-xs">Reassign</Link>
+                  )}
                 </div>
               </div>
             ))}
