@@ -45,11 +45,15 @@ const APPS = [
   },
   {
     slug: "field-force",
-    name: "Field Force",
-    tagline: "For providers and customers — bookings, dispatch, job tracking.",
-    installFrom: "Free to join. Sign up as a provider or request a service, then use \"Add to Home Screen\" from your browser.",
+    name: "Field Force PWA",
+    tagline: "For providers and customers - bookings, dispatch, job tracking.",
+    installFrom: "Open the Customer or Provider link, sign in, then use your browser's \"Add to Home Screen\" or \"Install app\" option.",
     cta: { label: "Join as a Provider", href: "/partner/FF0001/field-force/provider/signup" },
     learnMore: "/solutions/field-force",
+    extraLinks: [
+      { label: "Provider Login / Install", href: "/partner/FF0001/field-force/provider/login" },
+      { label: "Customer Login / Install", href: "/partner/FF0001/field-force/customer/login" },
+    ],
   },
 ];
 
@@ -103,7 +107,20 @@ export default function DownloadsPage() {
                     Learn more
                   </Link>
                 )}
+                {app.extraLinks?.map((link) => (
+                  <Link key={link.href} href={link.href} className="text-center text-sm font-semibold text-accent hover:underline">
+                    {link.label}
+                  </Link>
+                ))}
               </div>
+              {app.slug === "field-force" && (
+                <div className="mt-5 rounded-md border border-border bg-bg/60 p-3 text-xs leading-relaxed text-text-muted">
+                  <strong className="text-text">Install steps:</strong> open a link, complete login or signup, then
+                  choose <strong className="text-text">Add to Home Screen</strong> on Android/iPhone or
+                  <strong className="text-text"> Install app</strong> in Chrome/Edge. The PWA uses the same web
+                  account and backend; no APK is required.
+                </div>
+              )}
             </div>
           ))}
         </div>
