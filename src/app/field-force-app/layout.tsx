@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 
 export const metadata: Metadata = {
-  manifest: "/field-force-manifest.json",
+  manifest: "/field-force-customer-manifest.json",
   appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "Field Force" },
 };
 

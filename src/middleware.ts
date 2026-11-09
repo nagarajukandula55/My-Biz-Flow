@@ -33,6 +33,9 @@ export async function middleware(request: NextRequest) {
     const partnerId = env.fieldForcePartnerId();
     const allowed =
       pathname === "/field-force-app" ||
+      pathname === "/field-force-sw.js" ||
+      pathname === "/field-force-customer-manifest.json" ||
+      pathname === "/field-force-provider-manifest.json" ||
       pathname.startsWith("/api/field-force/") ||
       (partnerId &&
         (pathname.startsWith(`/partner/${partnerId}/field-force/customer`) ||

@@ -38,6 +38,11 @@ const STAFF_AUTH_ROUTE_SUFFIXES = ["/telecalling/login", "/telecalling/change-pa
  */
 const STAFF_ONLY_MODULE_PREFIXES = ["/pos"];
 
+// Field Force Customer and Provider are public self-service surfaces with
+// separate sessions. They must not be forced through the partner-owner login
+// before their own login/signup pages can render.
+const FIELD_FORCE_PUBLIC_PREFIXES = ["/field-force/customer", "/field-force/provider"];
+
 /**
  * Per-role home path a staff session lands on when it tries to reach a page
  * outside the module its role belongs to (see PageSession's "staff" doc
@@ -121,6 +126,10 @@ export default async function PartnerLayout({
   }
 
   if (STAFF_ONLY_MODULE_PREFIXES.some((prefix) => pathname?.startsWith(`/partner/${params.partnerId}${prefix}`))) {
+    return <>{children}</>;
+  }
+
+  if (FIELD_FORCE_PUBLIC_PREFIXES.some((prefix) => pathname?.startsWith(`/partner/${params.partnerId}${prefix}`))) {
     return <>{children}</>;
   }
 
