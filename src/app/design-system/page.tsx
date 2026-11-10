@@ -21,6 +21,12 @@ import {
   sampleNavGroups,
 } from "@/lib/sample-data";
 
+// This is an interactive component gallery, not a public static document.
+// Keep it out of the production static-generation queue so a slow/demo-only
+// widget cannot block the whole Vercel build.
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 const SWATCHES: { name: string; varName: string }[] = [
   { name: "Background", varName: "--bg" },
   { name: "Background Raised", varName: "--bg-raised" },

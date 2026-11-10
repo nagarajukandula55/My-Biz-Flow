@@ -12,6 +12,8 @@ import { getPartnerHomePath } from "@/lib/partnerHome";
 import { prisma } from "@/lib/prisma";
 import { requestLoginOtp, verifyLoginOtp } from "@/lib/whatsappOtp";
 import { isOtpLoginEnabledForPartner } from "@/lib/telecalling/whatsappGate";
+import { verifyCustomerLogin, CUSTOMER_SESSION_COOKIE } from "@/lib/fieldForce/customerAuth";
+import { verifyProviderLogin, PROVIDER_SESSION_COOKIE } from "@/lib/fieldForce/providerAuth";
 
 /**
  * Real partner login — universal across every business type. There is one
@@ -73,6 +75,31 @@ export async function signInAsPartner(formData: FormData) {
   }
 
   redirect(await getPartnerHomePath(partner));
+}
+
+/** Lightweight unified login dispatcher. Role-specific sessions remain isolated. */
+export async function signInFromUnifiedLogin(formData: FormData) {
+  const role = String(formData.get("role") ?? "business");
+  const partnerId = String(formData.get("partnerId") ?? "").trim();
+  const identifier = String(formData.get("identifier") ?? "").trim();
+  const password = String(formData.get("password") ?? "");
+
+  if (role === "customer") {
+    const customer = await verifyCustomerLogin(partnerId, identifier, password);
+    if (!customer) redirect("/login?error=invalid_credentials&role=customer");
+    cookies().set(CUSTOMER_SESSION_COOKIE, customer.id, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 30 });
+    redirect(`/partner/${partnerId}/field-force/customer/bookings`);
+  }
+
+  if (role === "provider") {
+    const provider = await verifyProviderLogin(partnerId, identifier, password);
+    if (!provider) redirect("/login?error=invalid_credentials&role=provider");
+    cookies().set(PROVIDER_SESSION_COOKIE, provider.id, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 30 });
+    await prisma.provider.update({ where: { id: provider.id }, data: { lastLoginAt: new Date() } });
+    redirect(`/partner/${partnerId}/field-force/provider/dashboard`);
+  }
+
+  return signInAsPartner(formData);
 }
 
 /** Clears the partner session cookie and returns to the public login page. */
