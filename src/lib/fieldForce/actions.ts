@@ -346,11 +346,6 @@ export async function signupCustomerAction(partnerId: string, formData: FormData
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
   if (!name || !phone || !password) throw new Error("Name, phone, and password are required");
-  if (!/^\d{12}$/.test(aadhaarNumber)) throw new Error("A valid 12-digit Aadhaar number is required");
-  if (!(aadhaarFront instanceof File) || !(aadhaarBack instanceof File) || !(selfie instanceof File) || !aadhaarFront.size || !aadhaarBack.size || !selfie.size) throw new Error("Aadhaar front, Aadhaar back, and selfie are required");
-  for (const file of [aadhaarFront, aadhaarBack, selfie]) {
-    if (file.size > 10 * 1024 * 1024 || !file.type.startsWith("image/")) throw new Error("Identity files must be images under 10 MB each");
-  }
 
   const customer = await createCustomerAccount(partnerId, { name, phone, email, password });
   await sendFieldForceRegistrationEmail({ to: email, name, publicId: customer.customerCode, role: "Customer", loginPath: `/partner/${partnerId}/field-force/customer/login` });
@@ -475,11 +470,20 @@ export async function signupProviderAction(partnerId: string, formData: FormData
   const pincode = String(formData.get("pincode") ?? "").trim();
   const skillLevel = String(formData.get("skillLevel") ?? "skilled") as "unskilled" | "skilled";
   const serviceIds = formData.getAll("serviceIds").map(String).filter(Boolean);
+  const aadhaarNumber = String(formData.get("aadhaarNumber") ?? "").replace(/\s/g, "");
+  const aadhaarFront = formData.get("aadhaarFront");
+  const aadhaarBack = formData.get("aadhaarBack");
+  const selfie = formData.get("selfie");
   const areasRaw = String(formData.get("serviceAreas") ?? "[]");
   let serviceAreas: ServiceAreaInput[] = [];
   try { serviceAreas = JSON.parse(areasRaw); } catch { serviceAreas = []; }
 
   if (!name || !phone || !password) throw new Error("Name, phone, and password are required");
+  if (!/^\d{12}$/.test(aadhaarNumber)) throw new Error("A valid 12-digit Aadhaar number is required");
+  if (!(aadhaarFront instanceof File) || !(aadhaarBack instanceof File) || !(selfie instanceof File) || !aadhaarFront.size || !aadhaarBack.size || !selfie.size) throw new Error("Aadhaar front, Aadhaar back, and selfie are required");
+  for (const file of [aadhaarFront, aadhaarBack, selfie]) {
+    if (file.size > 10 * 1024 * 1024 || !file.type.startsWith("image/")) throw new Error("Identity files must be images under 10 MB each");
+  }
   if (!/^\d{6}$/.test(pincode)) throw new Error("A valid six-digit pincode is required");
   if (serviceIds.length === 0) throw new Error("Select at least one service");
 
