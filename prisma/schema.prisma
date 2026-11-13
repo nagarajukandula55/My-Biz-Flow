@@ -737,6 +737,11 @@ model Provider {
   verificationStatus String    @default("unverified") // unverified | pending | verified | rejected
   verificationNote  String?
   verifiedAt        DateTime?
+  aadhaarNumber     String?
+  aadhaarFrontDriveFileId String?
+  aadhaarBackDriveFileId  String?
+  selfieDriveFileId       String?
+  identitySubmittedAt     DateTime?
   isAvailable       Boolean    @default(true)
   availabilityNote  String?
   passwordHash      String?

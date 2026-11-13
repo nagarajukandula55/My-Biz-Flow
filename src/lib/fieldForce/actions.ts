@@ -33,6 +33,7 @@ import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import { ADMIN_COOKIE_NAME, isValidAdminCookie } from "@/lib/adminAuth";
 import { prisma } from "@/lib/prisma";
 import { sendFieldForceRegistrationEmail } from "@/lib/fieldForce/registrationEmails";
+import { googleDriveFolderId, uploadPrivateDriveFile } from "@/lib/googleDrive";
 
 export async function onboardProviderAction(partnerId: string, formData: FormData) {
   partnerId = await requireSessionPartnerId(partnerId);
@@ -43,6 +44,10 @@ export async function onboardProviderAction(partnerId: string, formData: FormDat
   const pincode = String(formData.get("pincode") ?? "").trim();
   const skillLevel = String(formData.get("skillLevel") ?? "skilled") as "unskilled" | "skilled";
   const serviceIds = formData.getAll("serviceIds").map(String).filter(Boolean);
+  const aadhaarNumber = String(formData.get("aadhaarNumber") ?? "").replace(/\s/g, "");
+  const aadhaarFront = formData.get("aadhaarFront");
+  const aadhaarBack = formData.get("aadhaarBack");
+  const selfie = formData.get("selfie");
   const areasRaw = String(formData.get("serviceAreas") ?? "[]");
   let serviceAreas: ServiceAreaInput[] = [];
   try {
@@ -341,6 +346,11 @@ export async function signupCustomerAction(partnerId: string, formData: FormData
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
   if (!name || !phone || !password) throw new Error("Name, phone, and password are required");
+  if (!/^\d{12}$/.test(aadhaarNumber)) throw new Error("A valid 12-digit Aadhaar number is required");
+  if (!(aadhaarFront instanceof File) || !(aadhaarBack instanceof File) || !(selfie instanceof File) || !aadhaarFront.size || !aadhaarBack.size || !selfie.size) throw new Error("Aadhaar front, Aadhaar back, and selfie are required");
+  for (const file of [aadhaarFront, aadhaarBack, selfie]) {
+    if (file.size > 10 * 1024 * 1024 || !file.type.startsWith("image/")) throw new Error("Identity files must be images under 10 MB each");
+  }
 
   const customer = await createCustomerAccount(partnerId, { name, phone, email, password });
   await sendFieldForceRegistrationEmail({ to: email, name, publicId: customer.customerCode, role: "Customer", loginPath: `/partner/${partnerId}/field-force/customer/login` });
@@ -474,10 +484,18 @@ export async function signupProviderAction(partnerId: string, formData: FormData
   if (serviceIds.length === 0) throw new Error("Select at least one service");
 
   const provider = await onboardProvider({ partnerId, name, phone, email, pincode, skillLevel, serviceIds, serviceAreas, password });
+  const folder = googleDriveFolderId();
+  const prefix = `${provider.providerCode}-${name.replace(/[^a-z0-9]+/gi, "-").slice(0, 40)}`;
+  const [front, back, face] = await Promise.all([
+    uploadPrivateDriveFile({ name: `${prefix}-aadhaar-front`, mimeType: aadhaarFront.type, bytes: new Uint8Array(await aadhaarFront.arrayBuffer()) }, folder),
+    uploadPrivateDriveFile({ name: `${prefix}-aadhaar-back`, mimeType: aadhaarBack.type, bytes: new Uint8Array(await aadhaarBack.arrayBuffer()) }, folder),
+    uploadPrivateDriveFile({ name: `${prefix}-selfie`, mimeType: selfie.type, bytes: new Uint8Array(await selfie.arrayBuffer()) }, folder),
+  ]);
+  await prisma.provider.update({ where: { id: provider.id }, data: { aadhaarNumber, aadhaarFrontDriveFileId: front.id, aadhaarBackDriveFileId: back.id, selfieDriveFileId: face.id, identitySubmittedAt: new Date(), verificationStatus: "pending" } });
   await sendFieldForceRegistrationEmail({ to: email, name, publicId: provider.providerCode, role: "Service Provider", loginPath: `/partner/${partnerId}/field-force/provider/login` });
   // This is the single internal Field Force marketplace: self-signups can
   // sign in immediately, while ops retains suspend/activate controls.
-  await setProviderStatus(provider.id, partnerId, "active");
+  await setProviderStatus(provider.id, partnerId, "pending");
   cookies().set(PROVIDER_SESSION_COOKIE, provider.id, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 30 });
   redirect(`/partner/${partnerId}/field-force/provider/dashboard`);
 }

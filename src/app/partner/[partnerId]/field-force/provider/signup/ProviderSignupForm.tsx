@@ -50,11 +50,19 @@ export function ProviderSignupForm({
   function addArea() { setAreas((current) => [...current, { mode: "pincode", state: location?.state ?? "", district: location?.city ?? "", locality: "", pincode: "" }]); }
 
   return (
-    <form action={handleSubmit} className="space-y-4">
+    <form action={handleSubmit} encType="multipart/form-data" className="space-y-4">
       <input name="name" placeholder={t(locale, "name")} required className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text" />
       <input name="phone" placeholder={t(locale, "phone")} required className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text" />
       <input name="email" type="email" placeholder={t(locale, "email")} className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text" />
       <input name="password" type="password" placeholder={t(locale, "password")} required className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text" />
+      <div className="rounded-md border border-border bg-bg-raised p-3">
+        <div className="text-sm font-semibold text-text">Identity verification</div>
+        <p className="mt-1 text-xs text-text-muted">Aadhaar details and selfie are required. Your files are stored privately for verification and are not made public.</p>
+        <input name="aadhaarNumber" inputMode="numeric" pattern="\d{12}" maxLength={12} placeholder="Aadhaar number (12 digits)" required className="mt-3 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text" />
+        <label className="mt-3 block text-xs text-text-muted">Aadhaar front image<input name="aadhaarFront" type="file" accept="image/*" required className="mt-1 block w-full text-sm text-text" /></label>
+        <label className="mt-3 block text-xs text-text-muted">Aadhaar back image<input name="aadhaarBack" type="file" accept="image/*" required className="mt-1 block w-full text-sm text-text" /></label>
+        <label className="mt-3 block text-xs text-text-muted">Recent selfie<input name="selfie" type="file" accept="image/*" capture="user" required className="mt-1 block w-full text-sm text-text" /></label>
+      </div>
       <div>
         <input name="pincode" value={pincode} onChange={(e) => setPincode(e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder={t(locale, "pincode")} required pattern="\d{6}" className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text" />
         {location && <p className="mt-1 text-xs text-success">Primary location: {location.city}, {location.state}</p>}
