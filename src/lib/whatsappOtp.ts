@@ -20,7 +20,7 @@ import { sendEmail, emailShell, emailInfoBox } from "@/lib/email";
 
 const OTP_TTL_MS = 10 * 60 * 1000; // 10 minutes — same TTL as inventoryOtp.ts
 
-export type LoginOtpPurpose = "partner-login" | "ff-customer-login" | "ff-job-start" | "ff-job-complete";
+export type LoginOtpPurpose = "partner-login" | "ff-customer-login" | "unified-customer-login" | "unified-provider-login" | "ff-job-start" | "ff-job-complete";
 
 export type JobOtpPurpose = "ff-job-start" | "ff-job-complete";
 

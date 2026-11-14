@@ -195,12 +195,14 @@ export async function requestUnifiedWhatsAppOtpAction(role: string, phone: strin
 export async function verifyUnifiedWhatsAppOtpAction(role: string, phone: string, code: string): Promise<void | { error?: string }> {
   const trimmed = phone.trim();
   if (role === "business") return verifyPartnerWhatsAppOtpAction(trimmed, code);
+  if (role !== "customer" && role !== "provider") return { error: "Incorrect or expired code." };
   const matches = role === "customer"
     ? await prisma.customer.findMany({ where: { phone: trimmed }, select: { id: true, partnerId: true } })
     : await prisma.provider.findMany({ where: { phone: trimmed, status: "active" }, select: { id: true, partnerId: true } });
   if (matches.length !== 1) return { error: "Incorrect or expired code." };
   const account = matches[0];
-  const result = await verifyLoginOtp(account.partnerId, `unified-${role}-login`, account.id, code);
+  const purpose = role === "customer" ? "unified-customer-login" : "unified-provider-login";
+  const result = await verifyLoginOtp(account.partnerId, purpose, account.id, code);
   if (!result.verified) return { error: "Incorrect or expired code." };
   if (role === "customer") {
     cookies().set(CUSTOMER_SESSION_COOKIE, account.id, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 30 });
