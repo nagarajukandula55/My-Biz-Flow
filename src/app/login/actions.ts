@@ -173,3 +173,40 @@ export async function verifyPartnerWhatsAppOtpAction(phone: string, code: string
   if (partner.mustChangePassword) redirect("/change-password");
   redirect(await getPartnerHomePath(partner));
 }
+
+/** Unified OTP actions. Phone-only login is allowed only when the number maps
+ * to exactly one active account of the selected role; this avoids guessing a
+ * tenant when the same number exists under multiple businesses. */
+export async function requestUnifiedWhatsAppOtpAction(role: string, phone: string): Promise<{ ok: boolean; error?: string }> {
+  const trimmed = phone.trim();
+  if (!trimmed) return { ok: false, error: "Enter your registered WhatsApp number." };
+  if (role === "business") return requestPartnerWhatsAppOtpAction(trimmed);
+  if (!(role === "customer" || role === "provider")) return { ok: false, error: "Select a valid account type." };
+  const matches = role === "customer"
+    ? await prisma.customer.findMany({ where: { phone: trimmed }, select: { id: true, partnerId: true } })
+    : await prisma.provider.findMany({ where: { phone: trimmed, status: "active" }, select: { id: true, partnerId: true } });
+  if (matches.length !== 1) return { ok: true };
+  const account = matches[0];
+  if (!(await isOtpLoginEnabledForPartner(account.partnerId))) return { ok: true };
+  const result = await requestLoginOtp(account.partnerId, `unified-${role}-login`, account.id, trimmed);
+  return result.sent ? { ok: true } : { ok: false, error: result.reason === "not_configured" ? "WhatsApp OTP login is not available right now." : "Could not send OTP." };
+}
+
+export async function verifyUnifiedWhatsAppOtpAction(role: string, phone: string, code: string): Promise<void | { error?: string }> {
+  const trimmed = phone.trim();
+  if (role === "business") return verifyPartnerWhatsAppOtpAction(trimmed, code);
+  const matches = role === "customer"
+    ? await prisma.customer.findMany({ where: { phone: trimmed }, select: { id: true, partnerId: true } })
+    : await prisma.provider.findMany({ where: { phone: trimmed, status: "active" }, select: { id: true, partnerId: true } });
+  if (matches.length !== 1) return { error: "Incorrect or expired code." };
+  const account = matches[0];
+  const result = await verifyLoginOtp(account.partnerId, `unified-${role}-login`, account.id, code);
+  if (!result.verified) return { error: "Incorrect or expired code." };
+  if (role === "customer") {
+    cookies().set(CUSTOMER_SESSION_COOKIE, account.id, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 30 });
+    redirect(`/partner/${account.partnerId}/field-force/customer/bookings`);
+  }
+  cookies().set(PROVIDER_SESSION_COOKIE, account.id, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 30 });
+  await prisma.provider.update({ where: { id: account.id }, data: { lastLoginAt: new Date() } });
+  redirect(`/partner/${account.partnerId}/field-force/provider/dashboard`);
+}
