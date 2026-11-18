@@ -211,8 +211,8 @@ export default async function PricingPage({
   // it rather than staying generic.
   const jsonLd = {
     "@context": "https://schema.org",
-    "@type": "Product",
-    name: selectedType ? `${SITE_NAME} plans for ${selectedType.id}` : `${SITE_NAME} plans`,
+    "@type": "SoftwareApplication",
+    name: selectedType ? `${SITE_NAME} plans for ${selectedType.id}` : `${SITE_NAME} plans`, applicationCategory: "BusinessApplication", operatingSystem: "Web",
     // Real per-type intro copy (same BUSINESS_TYPE_COPY/fallback used in the
     // "What you get" section below) instead of a generic line, so an
     // AI-answer-engine reading this structured data gets the same
@@ -423,3 +423,4 @@ const PRICING_FAQ_KEYS = [
   ["pricingFaq3Q", "pricingFaq3A"],
   ["pricingFaq4Q", "pricingFaq4A"],
 ] as const;
+
