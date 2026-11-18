@@ -33,6 +33,7 @@ import {
   cancelWorkorderAction,
   deductInventoryForWorkorderAction,
   patchServiceCentreWorkorderAction,
+  voidWorkorderWarrantyAction,
 } from "./clientActions";
 import { getServiceCentreBrandOptionsAction } from "@/lib/serviceCentreCatalogActions";
 
@@ -250,6 +251,7 @@ export function WorkorderLifecycle({
   brandJobNoForPartOrder,
   estimateApproved,
   underWarranty,
+  warrantyStatus,
   invoiceId,
   cancelledAt,
   cancelReason,
@@ -325,6 +327,7 @@ export function WorkorderLifecycle({
   brandJobNoForPartOrder?: string;
   estimateApproved?: boolean;
   underWarranty: boolean;
+  warrantyStatus?: string;
   invoiceId?: string;
   /** Set once the job has been cancelled (terminal — see cancelWorkorderAction). */
   cancelledAt?: string;
@@ -477,6 +480,8 @@ export function WorkorderLifecycle({
   const [pnaSubmitting, setPnaSubmitting] = useState(false);
   const [closeBlockedMessage, setCloseBlockedMessage] = useState<string | null>(null);
   const [confirmCloseOpen, setConfirmCloseOpen] = useState(false);
+  const [voidWarrantyOpen, setVoidWarrantyOpen] = useState(false);
+  const [warrantyIsActive, setWarrantyIsActive] = useState(underWarranty);
   const [handoverNotes, setHandoverNotes] = useState(initialHandoverNotes ?? "");
   const [remarkText, setRemarkText] = useState(remark ?? "");
   const [engineerRemarkText, setEngineerRemarkText] = useState(engineerRemark ?? "");
@@ -671,14 +676,16 @@ export function WorkorderLifecycle({
   // unconditionally, but taxTotal (the only place they feed the footer/
   // chargeableSubtotal math) collapses to 0 the moment taxApply is off or
   // the job is under warranty.
-  const taxTotal = underWarranty || !taxApply ? 0 : laborTax + partsTax;
-  const chargeableSubtotal = underWarranty ? 0 : estimateTotal;
+  const taxTotal = warrantyIsActive || !taxApply ? 0 : laborTax + partsTax;
+  const chargeableSubtotal = warrantyIsActive ? 0 : estimateTotal;
   const inr = (value: number) =>
     value.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const editable = stage === "In Progress" && !hold && !cancelled;
   const terminal = cancelled || stage === "Closed";
   const unresolvedSerials = partLines.filter((p) => p.serialized && !p.serial && !p.pending);
+  const oowChargeableTotal = chargeableSubtotal + taxTotal;
+  const canVoidWarranty = stage === "In Progress" && !cancelled && warrantyStatus === "IW" && warrantyIsActive;
 
   // TAT — elapsed time since intake, running until Closed/Cancelled (then
   // frozen at the terminal timestamp), mirroring AN-CRM's "TAT: 47.7h
@@ -1226,7 +1233,7 @@ export function WorkorderLifecycle({
    * this is safe even if it somehow fires twice.
    */
   function createInvoice() {
-    const collected = !underWarranty;
+    const collected = !warrantyIsActive;
     run(
       () =>
         createInvoiceFromWorkorderAction(partnerId, workorderId, {
@@ -1293,6 +1300,10 @@ export function WorkorderLifecycle({
       return;
     }
     if (next === "Closed") {
+      if (!warrantyIsActive && oowChargeableTotal <= 0) {
+        setCloseBlockedMessage("Out-of-warranty workorders require a billable part or service line greater than ₹0 before they can be closed.");
+        return;
+      }
       if (unresolvedSerials.length > 0) {
         setCloseBlockedMessage(
           `${unresolvedSerials.length} part line(s) are serialized but missing a Serial/IMEI number. Enter the serial or mark the line Pending before closing — this validates against warehouse stock.`
@@ -1350,7 +1361,7 @@ export function WorkorderLifecycle({
       setActionError("Collected By is required before a workorder can be closed.");
       return;
     }
-    const collected = !underWarranty;
+    const collected = !warrantyIsActive;
     setConfirmCloseOpen(false);
     run(
       async () => {
@@ -1430,7 +1441,7 @@ export function WorkorderLifecycle({
   // Same eligibility AN-CRM's own "Generate Estimate" greys out on: there's
   // nothing to estimate on a non-chargeable warranty job, once cancelled,
   // or before any part/service line exists.
-  const canGenerateEstimate = !underWarranty && !cancelled && (serviceLines.length > 0 || partLines.length > 0);
+  const canGenerateEstimate = !warrantyIsActive && !cancelled && (serviceLines.length > 0 || partLines.length > 0);
 
   const deviceLabel = [brand.name, model.name].filter(Boolean).join(" · ") || "Not set";
 
@@ -1499,6 +1510,11 @@ export function WorkorderLifecycle({
                 Mark Part Pending
               </button>
             )
+          )}
+          {canVoidWarranty && (
+            <button type="button" className="btn-outline text-danger" onClick={() => setVoidWarrantyOpen(true)}>
+              Void Warranty
+            </button>
           )}
           {!terminal && primaryStageLabel && (
             <button
@@ -1617,8 +1633,8 @@ export function WorkorderLifecycle({
           47.7h (running)" pair. */}
       <div className="flex flex-wrap items-center gap-2">
         <StatusChip
-          label={underWarranty ? "In Warranty" : "Out of Warranty (OOW)"}
-          variant={underWarranty ? "teal" : "amber"}
+          label={warrantyIsActive ? "In Warranty" : "Out of Warranty (OOW)"}
+          variant={warrantyIsActive ? "teal" : "amber"}
         />
         {tatHours !== undefined && (
           <StatusChip
@@ -1738,7 +1754,7 @@ export function WorkorderLifecycle({
               <input
                 type="checkbox"
                 checked={taxApply}
-                disabled={underWarranty}
+                disabled={warrantyIsActive}
                 onChange={(e) => setTaxApply(e.target.checked)}
                 className="h-4 w-4 rounded border-border"
               />
@@ -1800,7 +1816,7 @@ export function WorkorderLifecycle({
               const qty = line.qty || 1;
               const taxRate = line.taxRate ?? 18;
               const base = baseRateOf(line.laborCharge || 0, taxRate, line.rateMode, line.discountPercent);
-              const lineTotal = cancelled ? 0 : (base + (!underWarranty && taxApply ? base * (taxRate / 100) : 0)) * qty;
+              const lineTotal = cancelled ? 0 : (base + (!warrantyIsActive && taxApply ? base * (taxRate / 100) : 0)) * qty;
               return (
                 <div key={line.id} className="flex flex-wrap items-end gap-2 rounded-md border border-border bg-bg px-3 py-2 text-sm">
                   <input
@@ -1905,7 +1921,7 @@ export function WorkorderLifecycle({
               const base = baseRateOf(line.unitPrice || 0, taxRate, line.rateMode, line.discountPercent);
               const lineTotal = cancelled
                 ? 0
-                : (base + (!underWarranty && taxApply && !line.pending ? base * (taxRate / 100) : 0)) * qty;
+                : (base + (!warrantyIsActive && taxApply && !line.pending ? base * (taxRate / 100) : 0)) * qty;
               return (
                 <div key={line.id} className="rounded-md border border-border bg-bg px-3 py-2 text-sm">
                   <div className="flex flex-wrap items-end gap-2">
@@ -2046,7 +2062,7 @@ export function WorkorderLifecycle({
               <span>Subtotal</span>
               <span className="tabular-nums">₹{inr(chargeableSubtotal)}</span>
             </div>
-            {!underWarranty && taxApply && (
+            {!warrantyIsActive && taxApply && (
               <>
                 <div className="flex items-center justify-between text-xs text-text-muted">
                   <span>CGST</span>
@@ -2062,7 +2078,7 @@ export function WorkorderLifecycle({
               <span>Total</span>
               <span className="tabular-nums">₹{inr(chargeableSubtotal + taxTotal)}</span>
             </div>
-            {underWarranty && (
+            {warrantyIsActive && (
               <p className="text-xs text-text-muted">
                 Costs above are for internal tracking only — this job is under warranty and non-chargeable, so every
                 invoice line bills at zero.
@@ -2230,7 +2246,7 @@ export function WorkorderLifecycle({
               <dt className="text-xs font-semibold uppercase tracking-wide text-text-muted">Collected By</dt>
               <dd className="mt-0.5 text-text">{collectedBy || "—"}</dd>
             </div>
-            {!underWarranty && (
+            {!warrantyIsActive && (
               <div>
                 <dt className="text-xs font-semibold uppercase tracking-wide text-text-muted">Mode of Payment</dt>
                 <dd className="mt-0.5 text-text">{paymentMode || "—"}</dd>
@@ -2652,6 +2668,36 @@ export function WorkorderLifecycle({
         <CustomerDataOtpGate partnerId={partnerId} />
       </Modal>
       <Modal
+        open={voidWarrantyOpen}
+        onClose={() => setVoidWarrantyOpen(false)}
+        title="Void Warranty"
+        size="sm"
+        footer={
+          <>
+            <button type="button" className="btn-outline" onClick={() => setVoidWarrantyOpen(false)}>Cancel</button>
+            <button
+              type="button"
+              className="btn-danger"
+              onClick={() => run(
+                () => voidWorkorderWarrantyAction(partnerId, workorderId),
+                () => {
+                  setWarrantyIsActive(false);
+                  setTaxApply(true);
+                  setVoidWarrantyOpen(false);
+                  announceSuccess("Warranty voided. OOW billing is now required before closure.");
+                }
+              )}
+            >
+              Void Warranty Once
+            </button>
+          </>
+        }
+      >
+        <p className="text-sm text-text-muted">
+          This permanently changes this repair from IW to OOW. It cannot be reversed or changed again by the partner, and a billable amount greater than ₹0 is required before closing the workorder.
+        </p>
+      </Modal>
+      <Modal
         open={confirmCloseOpen}
         onClose={() => setConfirmCloseOpen(false)}
         title="Close Workorder"
@@ -2675,7 +2721,7 @@ export function WorkorderLifecycle({
         <p className="text-sm text-text-muted">
           All serialized parts are accounted for. Confirm who did the work, then record who handed the unit over
           and how payment was taken before closing this workorder.
-          {!underWarranty && (
+           {!warrantyIsActive && (
             <>
               {" "}Chargeable lines total <span className="font-semibold text-text">₹{estimateTotal}</span> before
               GST — the invoice is generated the moment this workorder closes, treated as paid in full at handover.
@@ -2717,7 +2763,7 @@ export function WorkorderLifecycle({
               figure) — Mode of Payment is the only thing to record. Nothing
               to collect on a warranty job, so the whole section is skipped
               for one, same as createInvoice's rule. */}
-          {!underWarranty && (
+          {!warrantyIsActive && (
             <label className="text-xs font-semibold uppercase tracking-wide text-text-muted sm:col-span-2">
               Mode of Payment
               <select

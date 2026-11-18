@@ -87,11 +87,12 @@ async function assertCanActOnServiceCentre(partnerId: string): Promise<void> {
  * (kept in sync deliberately) so the UI and the server never disagree, but
  * the server's copy is the one that can't be bypassed.
  */
-function assertLegalStageTransition(
+async function assertLegalStageTransition(
+  partnerId: string,
   existing: Record<string, unknown>,
   nextStage: WorkorderStage,
   serializedInventoryEnabled: boolean
-): void {
+): Promise<void> {
   const currentStage = (existing["stage"] as WorkorderStage | undefined) ?? "Created";
   if (nextStage === currentStage) return; // no-op patch (e.g. re-saving other fields alongside the current stage)
 
@@ -137,6 +138,23 @@ function assertLegalStageTransition(
   }
 
   if (nextStage === "Closed") {
+    // An out-of-warranty repair is chargeable.  Do not let a partner close
+    // it with blank/zero lines and thereby bypass billing entirely.  This is
+    // deliberately checked at the state-transition boundary as well as in
+    // the UI, so a crafted Server Action request cannot create a free OOW
+    // closure.
+    if (!isUnderWarranty(existing)) {
+      const chargeableLines = await buildServiceCentreLines(partnerId, existing);
+      const chargeableTotal = chargeableLines.reduce(
+        (sum, line) => sum + line.quantity * line.rate * (1 + line.gstRate / 100),
+        0
+      );
+      if (chargeableTotal <= 0) {
+        throw new WorkorderValidationError(
+          "Out-of-warranty workorders require a billable part or service line greater than ₹0 before they can be closed."
+        );
+      }
+    }
     // `serialized` is stamped onto a part line from the BOM catalog match
     // (WorkorderLifecycle.tsx's setPartLabel) regardless of whether this
     // partner has Serialized Inventory turned on — it's a property of the
@@ -179,12 +197,21 @@ export async function patchServiceCentreWorkorderAction(
     if (typeof patch["stage"] === "string") {
       const nextStage = patch["stage"] as WorkorderStage;
       const partner = await getPartner(partnerId);
-      assertLegalStageTransition(existing, nextStage, Boolean(partner?.serializedInventoryEnabled));
+      await assertLegalStageTransition(partnerId, existing, nextStage, Boolean(partner?.serializedInventoryEnabled));
       if (nextStage !== existing["stage"]) {
         // Log the real transition so the activity timeline has something
         // true to render instead of fabricating a history.
         extra["stageHistory"] = appendStageHistory(existing, nextStage);
       }
+    }
+    // Warranty is an intake decision.  Once repair has started it cannot be
+    // changed through the generic patch action; the narrowly-scoped,
+    // auditable void action below is the one exception (IW -> OOW only).
+    if (
+      (Object.prototype.hasOwnProperty.call(patch, "warrantyStatus") || Object.prototype.hasOwnProperty.call(patch, "warrantyFlag")) &&
+      existing["stage"] !== "Created"
+    ) {
+      throw new WorkorderValidationError("Warranty status is locked once repair has started. Use the one-time Void Warranty action for an IW workorder.");
     }
     if (patch["estimateApproved"] === true && !existing["estimateApproved"]) {
       extra["customerApprovalAt"] = new Date().toISOString();
@@ -201,6 +228,38 @@ export async function patchServiceCentreWorkorderAction(
   if (patch["stage"] === "Closed") {
     await closeLinkedPnaEntries(partnerId, workorderId);
   }
+}
+
+/**
+ * One-time conversion of an in-warranty repair into an out-of-warranty
+ * repair.  Kept separate from the generic patch endpoint so a partner cannot
+ * toggle warranty status back and forth or alter it after the event.
+ */
+export async function voidWorkorderWarrantyAction(partnerId: string, workorderId: string): Promise<void> {
+  await assertCanActOnServiceCentre(partnerId);
+  await withWorkorderLock(workorderId, async () => {
+    const record = await requireWorkorder(partnerId, workorderId);
+    if (record["cancelledAt"] || record["stage"] === "Closed") {
+      throw new WorkorderValidationError("Warranty cannot be voided for a cancelled or closed workorder.");
+    }
+    if (record["stage"] !== "In Progress") {
+      throw new WorkorderValidationError("Warranty can be voided only after repair has been started.");
+    }
+    if (record["warrantyStatus"] !== "IW" || record["warrantyVoidedAt"]) {
+      throw new WorkorderValidationError("Only an active IW warranty can be voided, and it can be voided only once.");
+    }
+    const at = new Date().toISOString();
+    await updateBusinessRecord(partnerId, "service-centre", workorderId, {
+      ...record,
+      warrantyStatus: "OOW",
+      warrantyFlag: false,
+      warrantyVoidedAt: at,
+      warrantyVoidedFrom: "IW",
+      stageHistory: [...appendStageHistory(record, "Warranty voided (IW → OOW)"), { at, stage: "OOW billing now required before closure" }],
+    });
+  });
+  revalidatePath(`/partner/${partnerId}/service-centre/${workorderId}`);
+  revalidatePath(`/partner/${partnerId}/service-centre`);
 }
 
 async function closeLinkedPnaEntries(partnerId: string, workorderId: string): Promise<void> {

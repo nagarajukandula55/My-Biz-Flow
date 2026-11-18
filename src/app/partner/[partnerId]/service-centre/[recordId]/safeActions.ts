@@ -23,6 +23,10 @@ export async function patchServiceCentreWorkorderAction(...args: Parameters<type
   return runWorkorderAction(`patchServiceCentreWorkorderAction:${args[0]}`, () => actions.patchServiceCentreWorkorderAction(...args));
 }
 
+export async function voidWorkorderWarrantyAction(...args: Parameters<typeof actions.voidWorkorderWarrantyAction>) {
+  return runWorkorderAction(`voidWorkorderWarrantyAction:${args[0]}`, () => actions.voidWorkorderWarrantyAction(...args));
+}
+
 export async function reopenWorkorderAction(...args: Parameters<typeof actions.reopenWorkorderAction>) {
   return runWorkorderAction(`reopenWorkorderAction:${args[0]}`, () => actions.reopenWorkorderAction(...args));
 }

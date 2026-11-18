@@ -146,6 +146,7 @@ export default async function ServiceCentreDetailPage({
           brandJobNoForPartOrder={lifecycle.brandJobNoForPartOrder}
           estimateApproved={lifecycle.estimateApproved}
           underWarranty={isUnderWarranty(record)}
+          warrantyStatus={typeof record["warrantyStatus"] === "string" ? (record["warrantyStatus"] as string) : undefined}
           invoiceId={lifecycle.invoiceId}
           cancelledAt={lifecycle.cancelledAt}
           cancelReason={lifecycle.cancelReason}
