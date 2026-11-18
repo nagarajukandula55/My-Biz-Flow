@@ -62,12 +62,12 @@ export default async function ServiceCentreEstimatePage({
       termsText={resolveDocumentTerms(partner, "estimate")}
       customerName={text("customer") || "—"}
       customerPhone={text("customerPhone")}
+      customerEmail={text("customerEmail")}
       customerAddress={customerAddress || undefined}
       brand={text("brandName")}
       model={text("modelName") || text("device")}
       imeiOrSerial={text("imeiOrSerialNumber")}
       issueTitle={text("faultDescription") || text("issueDescription")}
-      loggedBy={text("loggedBy")}
       technicalConsultant={text("engineerName")}
       detailRows={[
         { label: "Device Type", value: text("deviceCategory") },

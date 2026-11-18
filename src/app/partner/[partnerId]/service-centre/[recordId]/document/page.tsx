@@ -65,6 +65,7 @@ export default async function ServiceCentreDocumentPage({
       termsText={resolveDocumentTerms(partner, "workorder")}
       customerName={(r.customer as string) || "—"}
       customerPhone={r.customerPhone as string | undefined}
+      customerEmail={r.customerEmail as string | undefined}
       customerAddress={customerAddress || undefined}
       brand={r.brandName as string | undefined}
       model={(r.modelName as string) || (r.device as string) || undefined}

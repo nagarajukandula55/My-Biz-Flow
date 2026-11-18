@@ -28,6 +28,7 @@ export async function ServiceCentreJobCardDocument({
   termsText,
   customerName,
   customerPhone,
+  customerEmail,
   customerAddress,
   brand,
   model,
@@ -50,6 +51,7 @@ export async function ServiceCentreJobCardDocument({
   termsText?: string | null;
   customerName: string;
   customerPhone?: string;
+  customerEmail?: string;
   customerAddress?: string;
   brand?: string;
   model?: string;
@@ -113,6 +115,7 @@ export async function ServiceCentreJobCardDocument({
           <div className="mb-4">
             <Row label="Customer Name" value={customerName} />
             <Row label="Contact No." value={customerPhone} />
+            <Row label="Email" value={customerEmail} />
             {customerAddress && <Row label="Address" value={customerAddress} />}
             {brandModel && <Row label="Brand / Model" value={brandModel} />}
             {imeiOrSerial && <Row label="IMEI / Serial No." value={imeiOrSerial} />}

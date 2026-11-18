@@ -8,6 +8,7 @@ import { notifyCentralApiBillingInvoice } from "@/lib/centralApi";
 import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import { withRecordLock } from "@/lib/withRecordLock";
 import { applyInvoiceConsumption, finalizeInvoiceItems, hasInventoryLines, planInvoiceConsumption } from "@/lib/invoiceInventory";
+import { syncBomMaterialToInventoryStock } from "@/lib/inventoryStock";
 
 /**
  * Every page whose material picker is built from getBomOptionsForPartner
@@ -21,6 +22,7 @@ import { applyInvoiceConsumption, finalizeInvoiceItems, hasInventoryLines, planI
 export async function revalidateBomConsumerPaths(partnerId: string): Promise<void> {
   for (const path of [
     "inventory/stock-adjustments",
+    "inventory/stock",
     "inventory/stock-take",
     "inventory/stock-transfers",
     "inventory/return-orders",
@@ -228,6 +230,12 @@ export async function updateBusinessRecordAction(
   }
 
   await updateBusinessRecord(partnerId, moduleSlug, recordKey, values);
+  if (moduleSlug === "inventory-bom") {
+    // Keep the stock ledger's material snapshot current after a BOM/catalogue
+    // edit. The synchronizer only updates material metadata, never stock
+    // quantities, reservations, warehouse allocation, or history.
+    await syncBomMaterialToInventoryStock(partnerId, recordKey, values);
+  }
   revalidatePath(`/partner/${partnerId}/${urlPath}`);
   revalidatePath(`/partner/${partnerId}/${urlPath}/${recordKey}`);
   if (moduleSlug === "inventory-bom") {

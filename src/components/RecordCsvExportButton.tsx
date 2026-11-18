@@ -38,7 +38,7 @@ function formatExportCell(c: ExportColumn, row: Row): unknown {
  * Downloads existing rows, or calls an authorized server loader on demand.
  * Existing callers retain the same CSV serialization and download behavior.
  */
-export function RecordCsvExportButton({ columns, rows = [], loadRows, filename }: { columns: ExportColumn[]; rows?: Row[]; loadRows?: () => Promise<Row[]>; filename: string }) {
+export function RecordCsvExportButton({ columns, rows = [], loadRows, filename, includeAllRowFields = true }: { columns: ExportColumn[]; rows?: Row[]; loadRows?: () => Promise<Row[]>; filename: string; includeAllRowFields?: boolean }) {
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -50,9 +50,30 @@ export function RecordCsvExportButton({ columns, rows = [], loadRows, filename }
       setMessage("Nothing to export.");
       return;
     }
-    const lines = [columns.map((c) => toCsvValue(columnKey(c))).join(",")];
+    // A report must not silently omit a saved form field just because a
+    // page's table configuration has not been updated yet. Keep the page's
+    // deliberate column order first, then append every remaining stored
+    // field found in the export rows. A caller can still opt out for a
+    // purpose-built aggregate report.
+    const exportColumns: ExportColumn[] = [...columns];
+    if (includeAllRowFields) {
+      const included = new Set(exportColumns.map(columnKey));
+      for (const row of exportRows) {
+        for (const key of Object.keys(row)) {
+          // `id` and `recordCreatedAt` are persistence metadata injected by
+          // the generic record store, not partner-entered form fields. A
+          // page that deliberately needs either can still list it explicitly.
+          if (key === "id" || key === "recordCreatedAt") continue;
+          if (!included.has(key)) {
+            exportColumns.push(key);
+            included.add(key);
+          }
+        }
+      }
+    }
+    const lines = [exportColumns.map((c) => toCsvValue(columnKey(c))).join(",")];
     for (const row of exportRows) {
-      lines.push(columns.map((c) => toCsvValue(formatExportCell(c, row))).join(","));
+      lines.push(exportColumns.map((c) => toCsvValue(formatExportCell(c, row))).join(","));
     }
     // Leading BOM so Excel on Windows reads this as UTF-8 instead of
     // defaulting to the system ANSI codepage (which turns "—" into "â€”").

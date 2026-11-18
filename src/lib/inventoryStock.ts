@@ -18,7 +18,50 @@ import { withRecordLock } from "@/lib/withRecordLock";
  * Stock Adjustments/Part Orders/Stock Take) should call these instead of
  * touching `inventory-stock` BusinessRecords directly.
  */
-import { updateBusinessRecord, createBusinessRecord } from "@/lib/businessRecords";
+import { updateBusinessRecord, createBusinessRecord, listBusinessRecords } from "@/lib/businessRecords";
+import { splitMaterialLabel } from "@/lib/materialLabel";
+
+/**
+ * Mirrors the editable BOM catalogue details onto each existing stock-ledger
+ * row for that material. This is deliberately metadata-only: it never
+ * changes warehouse, condition, quantities, reservations, availability, or
+ * stock ageing fields. A material rename/rate/category change must not
+ * accidentally mutate physical stock.
+ */
+export async function syncBomMaterialToInventoryStock(
+  partnerId: string,
+  materialCode: string,
+  material: Record<string, unknown>
+): Promise<void> {
+  const description = String(material["description"] ?? "").trim();
+  const materialId = description ? `${materialCode} - ${description}` : materialCode;
+  const materialSnapshot = {
+    materialId,
+    materialName: description,
+    materialCategory: String(material["category"] ?? ""),
+    materialType: String(material["type"] ?? ""),
+    materialUom: String(material["uom"] ?? ""),
+    materialRate: material["rate"] ?? "",
+    materialRateType: String(material["rateType"] ?? ""),
+    materialTaxPercent: material["taxPercent"] ?? "",
+    materialMrp: material["mrp"] ?? "",
+    materialBarcode: String(material["barcode"] ?? ""),
+    materialHsnCode: String(material["hsnCode"] ?? ""),
+    serialized: Boolean(material["serialized"]),
+    reorderLevel: material["reorderLevel"] ?? "",
+  };
+
+  await withRecordLock("inventory-partner", partnerId, async () => {
+    const stockRows = await listBusinessRecords(partnerId, "inventory-stock");
+    for (const stock of stockRows) {
+      if (splitMaterialLabel(stock["materialId"]).code !== materialCode) continue;
+      await updateBusinessRecord(partnerId, "inventory-stock", String(stock["id"]), {
+        ...stock,
+        ...materialSnapshot,
+      });
+    }
+  });
+}
 
 /**
  * Applies `delta` (positive to add, negative to consume) to a material's

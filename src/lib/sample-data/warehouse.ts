@@ -186,6 +186,11 @@ const STOCK_STATUS_VARIANT: Record<string, StatusVariant> = {
 
 export const stockColumns: Column[] = [
   { key: "materialId", label: "Material", type: "text" },
+  { key: "materialCategory", label: "Material Category", type: "text" },
+  { key: "materialType", label: "Material Type (BOM)", type: "text" },
+  { key: "materialRate", label: "Current Material Rate", type: "text" },
+  { key: "materialUom", label: "Unit", type: "text" },
+  { key: "materialHsnCode", label: "HSN Code", type: "text" },
   { key: "warehouseName", label: "Warehouse", type: "text" },
   // Rows with no `condition` value predate this field and are Good stock —
   // see src/lib/inventoryStock.ts's rowCondition(); every write path this

@@ -43,6 +43,7 @@ export function ServiceCentreInvoiceDocument({
   collectedByName,
   customerName,
   customerPhone,
+  customerEmail,
   customerGstin,
   customerAddress,
   customerCity,
@@ -79,6 +80,7 @@ export function ServiceCentreInvoiceDocument({
   collectedByName?: string;
   customerName: string;
   customerPhone?: string;
+  customerEmail?: string;
   /** Present => the job was billed to a GST-registered party, i.e. B2B. */
   customerGstin?: string;
   customerAddress?: string;
@@ -181,8 +183,13 @@ export function ServiceCentreInvoiceDocument({
     const html = renderTemplate(customTemplate, {
       documentNumber: invoiceNumber,
       invoiceDate,
+      partnerName,
+      partnerPhone: partnerPhone ?? "",
+      partnerGstin: partnerGstin ?? "",
+      partnerAddress: companyAddress,
       customerName,
       customerPhone: customerPhone ?? "",
+      customerEmail: customerEmail ?? "",
       customerGstin: customerGstin ?? "",
       customerAddress: customerFullAddress,
       documentType: isB2B ? "B2B" : "B2C",
@@ -290,6 +297,7 @@ export function ServiceCentreInvoiceDocument({
           <div className="ric-sectionTitle">BILL TO</div>
           <div>{safe(customerName)}</div>
           <div>{safe(customerPhone)}</div>
+          {customerEmail && <div>Email: {customerEmail}</div>}
           <div>{safe(customerFullAddress)}</div>
           {isB2B && (
             <div>
