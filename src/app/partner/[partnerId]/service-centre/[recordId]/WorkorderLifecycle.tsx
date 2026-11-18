@@ -1205,6 +1205,10 @@ export function WorkorderLifecycle({
 
   /** Completes the IMEI-was-missing detour from advanceStage() above, then finishes the same Mark Completed transition it would otherwise have run directly. */
   function confirmMarkCompleted() {
+    if (!warrantyIsActive && oowChargeableTotal <= 0) {
+      setCloseBlockedMessage("Out-of-warranty workorders require a billable part or service line greater than ₹0 before the repair can be marked completed.");
+      return;
+    }
     const value = imeiDraft.trim();
     if (!value) return;
     setCompleteModalOpen(false);
@@ -1286,6 +1290,10 @@ export function WorkorderLifecycle({
       setCloseBlockedMessage(
         "Select a Solution before marking the repair completed — the fault diagnosis/solution is required."
       );
+      return;
+    }
+    if (next === "Completed" && !warrantyIsActive && oowChargeableTotal <= 0) {
+      setCloseBlockedMessage("Out-of-warranty workorders require a billable part or service line greater than ₹0 before the repair can be marked completed.");
       return;
     }
     if (next === "Completed" && !engineer.trim()) {

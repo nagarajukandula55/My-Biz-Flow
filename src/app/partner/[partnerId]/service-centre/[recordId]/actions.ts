@@ -118,6 +118,23 @@ async function assertLegalStageTransition(
   // card, Generate/Print Estimate) is unaffected — it simply no longer
   // blocks stage progression.
 
+  // OOW repairs must have a real, positive bill BEFORE they can be marked
+  // completed. This deliberately applies to both Completed and Closed: it
+  // protects the normal lifecycle as well as any direct request that tries
+  // to skip ahead.
+  if ((nextStage === "Completed" || nextStage === "Closed") && !isUnderWarranty(existing)) {
+    const chargeableLines = await buildServiceCentreLines(partnerId, existing);
+    const chargeableTotal = chargeableLines.reduce(
+      (sum, line) => sum + line.quantity * line.rate * (1 + line.gstRate / 100),
+      0
+    );
+    if (chargeableTotal <= 0) {
+      throw new WorkorderValidationError(
+        "Out-of-warranty workorders require a billable part or service line greater than ₹0 before the repair can be marked completed."
+      );
+    }
+  }
+
   if (nextStage === "Completed") {
     // No line-item requirement here: plenty of calls resolve without
     // consuming a part or a billable service (guidance-only, no-fault-found,
@@ -138,23 +155,6 @@ async function assertLegalStageTransition(
   }
 
   if (nextStage === "Closed") {
-    // An out-of-warranty repair is chargeable.  Do not let a partner close
-    // it with blank/zero lines and thereby bypass billing entirely.  This is
-    // deliberately checked at the state-transition boundary as well as in
-    // the UI, so a crafted Server Action request cannot create a free OOW
-    // closure.
-    if (!isUnderWarranty(existing)) {
-      const chargeableLines = await buildServiceCentreLines(partnerId, existing);
-      const chargeableTotal = chargeableLines.reduce(
-        (sum, line) => sum + line.quantity * line.rate * (1 + line.gstRate / 100),
-        0
-      );
-      if (chargeableTotal <= 0) {
-        throw new WorkorderValidationError(
-          "Out-of-warranty workorders require a billable part or service line greater than ₹0 before they can be closed."
-        );
-      }
-    }
     // `serialized` is stamped onto a part line from the BOM catalog match
     // (WorkorderLifecycle.tsx's setPartLabel) regardless of whether this
     // partner has Serialized Inventory turned on — it's a property of the
