@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { verifyPasswordResetToken } from "@/lib/partnerSession";
+import { consumePasswordResetToken, verifyPasswordResetToken } from "@/lib/partnerSession";
 import { setPartnerPassword } from "@/lib/partnerData";
 
 /**
@@ -16,8 +16,8 @@ export async function resetPasswordAction(formData: FormData) {
   const newPassword = String(formData.get("newPassword") ?? "");
   const confirmPassword = String(formData.get("confirmPassword") ?? "");
 
-  const partnerId = await verifyPasswordResetToken(token);
-  if (!partnerId) {
+  const validPartnerId = await verifyPasswordResetToken(token);
+  if (!validPartnerId) {
     redirect(`/reset-password?token=${encodeURIComponent(token)}&error=invalid_token`);
   }
 
@@ -28,7 +28,12 @@ export async function resetPasswordAction(formData: FormData) {
     redirect(`/reset-password?token=${encodeURIComponent(token)}&error=mismatch`);
   }
 
-  // setPartnerPassword also clears mustChangePassword — a partner who
+  const partnerId = await consumePasswordResetToken(token);
+  if (!partnerId) {
+    redirect(`/reset-password?token=${encodeURIComponent(token)}&error=invalid_token`);
+  }
+
+  // setPartnerPassword also clears mustChangePassword - a partner who
   // resets their password this way has, by definition, already changed it
   // from whatever generated/forgotten one they started with.
   await setPartnerPassword(partnerId, newPassword);

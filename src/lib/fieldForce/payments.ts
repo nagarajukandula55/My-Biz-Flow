@@ -8,26 +8,28 @@
  * the platform's own commission split — see commission.ts), not the raw
  * quoted price.
  */
-import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { assertPartnerScope } from "@/lib/tenant";
-import { createOrder, verifyPaymentSignature } from "@/lib/razorpay";
+import { createOrder, fetchPaymentAndOrder, verifyPaymentSignature } from "@/lib/razorpay";
 import { settleBooking } from "@/lib/fieldForce/commission";
-import { CUSTOMER_SESSION_COOKIE } from "@/lib/fieldForce/customerAuth";
+import { getCurrentCustomer } from "@/lib/fieldForce/customerAuth";
+import { getSessionPartnerId } from "@/lib/requirePartnerSession";
 
-/** If the caller is a logged-in Customer, the session must belong to this booking's own customer —
- * called from both API routes below, since a Customer can now trigger these directly (not just ops). */
-function assertCallerOwnsBooking(booking: { customerId: string }): void {
-  const customerSessionId = cookies().get(CUSTOMER_SESSION_COOKIE)?.value;
-  if (customerSessionId && customerSessionId !== booking.customerId) {
-    throw new Error("This booking does not belong to you.");
-  }
+/** Authorizes either the booking's customer or its partner owner. Never permit anonymous payment mutations. */
+async function requireBookingPaymentAccess(booking: { partnerId: string; customerId: string }): Promise<void> {
+  const ownerPartnerId = await getSessionPartnerId();
+  if (ownerPartnerId === booking.partnerId) return;
+  const customer = await getCurrentCustomer(booking.partnerId);
+  if (customer?.id === booking.customerId) return;
+  throw new Error("Not authorized to pay for this booking.");
 }
 
 export async function createBookingPaymentOrder(bookingId: string, partnerId: string) {
   const booking = await prisma.booking.findUniqueOrThrow({ where: { id: bookingId } });
   assertPartnerScope(partnerId, booking.partnerId);
-  assertCallerOwnsBooking(booking);
+  await requireBookingPaymentAccess(booking);
+
+  if (booking.paymentStatus === "paid") throw new Error("This booking is already paid.");
 
   const settlement = await settleBooking(bookingId);
 
@@ -50,16 +52,35 @@ export async function verifyBookingPayment(
 ): Promise<void> {
   const booking = await prisma.booking.findUniqueOrThrow({ where: { id: bookingId } });
   assertPartnerScope(partnerId, booking.partnerId);
-  assertCallerOwnsBooking(booking);
+  await requireBookingPaymentAccess(booking);
 
   const valid = verifyPaymentSignature(razorpayOrderId, razorpayPaymentId, razorpaySignature);
   if (!valid) throw new Error("Invalid payment signature");
 
-  await prisma.$transaction([
-    prisma.bookingPayment.updateMany({
-      where: { bookingId, razorpayOrderId },
+  const paymentRecord = await prisma.bookingPayment.findFirst({ where: { bookingId, razorpayOrderId } });
+  if (!paymentRecord) throw new Error("Payment order does not belong to this booking.");
+  if (paymentRecord.status === "paid") {
+    if (paymentRecord.razorpayPaymentId === razorpayPaymentId) return;
+    throw new Error("Payment order was already completed.");
+  }
+
+  const { payment, order } = await fetchPaymentAndOrder(razorpayPaymentId, razorpayOrderId);
+  if (
+    payment.status !== "captured" || !payment.captured || payment.amount_refunded > 0 ||
+    payment.amount !== paymentRecord.amount || payment.currency !== paymentRecord.currency ||
+    order.id !== paymentRecord.razorpayOrderId || order.amount !== paymentRecord.amount ||
+    order.currency !== paymentRecord.currency || order.amount_paid !== paymentRecord.amount ||
+    order.amount_due !== 0 || order.notes?.bookingId !== bookingId || order.notes?.partnerId !== booking.partnerId
+  ) {
+    throw new Error("Payment does not match this booking.");
+  }
+
+  await prisma.$transaction(async (tx) => {
+    const updated = await tx.bookingPayment.updateMany({
+      where: { id: paymentRecord.id, status: "created", razorpayPaymentId: null },
       data: { razorpayPaymentId, status: "paid" },
-    }),
-    prisma.booking.update({ where: { id: bookingId }, data: { paymentStatus: "paid" } }),
-  ]);
+    });
+    if (updated.count !== 1) throw new Error("Payment was already processed. Refresh the booking before retrying.");
+    await tx.booking.update({ where: { id: bookingId }, data: { paymentStatus: "paid" } });
+  });
 }

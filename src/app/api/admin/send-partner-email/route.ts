@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { env } from "@/lib/env";
+import { secureEqual } from "@/lib/secureCompare";
 import { sendPasswordResetEmail, sendPlatformSubscriptionPaymentEmail, sendPartnerWelcomeEmail } from "@/lib/email";
 import {
   sendAdminIssuedCredentialsEmail,
@@ -28,7 +29,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, error: "ADMIN_BRIDGE_SECRET is not set on this deployment" }, { status: 500 });
   }
   const authHeader = req.headers.get("authorization");
-  if (authHeader !== `Bearer ${secret}`) {
+  if (!secureEqual(authHeader, `Bearer ${secret}`)) {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
   }
 

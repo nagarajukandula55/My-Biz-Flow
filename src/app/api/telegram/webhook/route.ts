@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { env } from "@/lib/env";
+import { secureEqual } from "@/lib/secureCompare";
 import { getPartner } from "@/lib/partnerData";
 import { getBusinessRecord } from "@/lib/businessRecords";
 import {
@@ -449,7 +450,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Telegram webhook not configured — missing TELEGRAM_WEBHOOK_SECRET" }, { status: 502 });
   }
   const receivedSecret = request.headers.get("x-telegram-bot-api-secret-token");
-  if (receivedSecret !== expectedSecret) {
+  if (!secureEqual(receivedSecret, expectedSecret)) {
     return NextResponse.json({ error: "Invalid or missing secret token" }, { status: 401 });
   }
 

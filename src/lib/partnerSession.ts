@@ -1,5 +1,7 @@
+import { createHash, randomUUID } from "crypto";
 import { SignJWT, jwtVerify } from "jose";
 import { env } from "./env";
+import { prisma } from "./prisma";
 
 /**
  * Partner session cookie. Previously this stored the partner id as a plain,
@@ -70,11 +72,42 @@ const RESET_TOKEN_TTL_SECONDS = 30 * 60; // 30 minutes
 
 /** Signs a short-lived, single-purpose password-reset token for the given partner id. */
 export async function createPasswordResetToken(partnerId: string): Promise<string> {
-  return new SignJWT({ partnerId, purpose: RESET_TOKEN_PURPOSE })
+  const now = new Date();
+  const recentCount = await prisma.otpCode.count({
+    where: { partnerId, targetRecordId: partnerId, purpose: RESET_TOKEN_PURPOSE, createdAt: { gte: new Date(now.getTime() - 60 * 60 * 1000) } },
+  });
+  if (recentCount >= 5) throw new Error("Password reset request is temporarily limited.");
+  const resetId = randomUUID();
+  const expiresAt = new Date(Date.now() + RESET_TOKEN_TTL_SECONDS * 1000);
+  await prisma.otpCode.updateMany({
+    where: { partnerId, targetRecordId: partnerId, purpose: RESET_TOKEN_PURPOSE, consumedAt: null },
+    data: { consumedAt: now },
+  });
+  await prisma.otpCode.create({
+    data: { partnerId, targetRecordId: partnerId, purpose: RESET_TOKEN_PURPOSE, code: "", codeHash: createHash("sha256").update(resetId).digest("hex"), expiresAt },
+  });
+  return new SignJWT({ partnerId, purpose: RESET_TOKEN_PURPOSE, resetId })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(`${RESET_TOKEN_TTL_SECONDS}s`)
     .sign(secretKey());
+}
+
+/** Atomically consumes a valid reset link. A link can reset a password once only. */
+export async function consumePasswordResetToken(token: string | undefined | null): Promise<string | undefined> {
+  if (!token) return undefined;
+  try {
+    const { payload } = await jwtVerify(token, secretKey());
+    if (payload.purpose !== RESET_TOKEN_PURPOSE || typeof payload.partnerId !== "string" || typeof payload.resetId !== "string") return undefined;
+    const hash = createHash("sha256").update(payload.resetId).digest("hex");
+    const consumed = await prisma.otpCode.updateMany({
+      where: { partnerId: payload.partnerId, targetRecordId: payload.partnerId, purpose: RESET_TOKEN_PURPOSE, codeHash: hash, consumedAt: null, expiresAt: { gte: new Date() } },
+      data: { consumedAt: new Date() },
+    });
+    return consumed.count === 1 ? payload.partnerId : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /**

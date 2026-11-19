@@ -7,6 +7,7 @@ function harness(){
  const mocks={
   'next/server':{NextResponse:{json:(body,options)=>({body,status:options?.status??200})}},
   '@/lib/env':{env:{telegramWebhookSecret:()=> 'synthetic',telegramBotToken:()=>undefined}},
+  '@/lib/secureCompare':{secureEqual:(received,expected)=>received===expected},
   '@/lib/partnerData':{getPartner:async()=>({id:'partner',businessName:'Synthetic'})},
   '@/lib/businessRecords':{getBusinessRecord:async()=>({id:'WO1'})},
   '@/lib/telegram':{

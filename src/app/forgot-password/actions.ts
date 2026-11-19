@@ -26,9 +26,14 @@ export async function requestPasswordReset(formData: FormData) {
   if (identifier) {
     const partner = await findPartnerForPasswordReset(identifier);
     if (partner) {
-      const token = await createPasswordResetToken(partner.id);
-      const resetUrl = `${SITE_URL}/reset-password?token=${encodeURIComponent(token)}`;
-      await sendPasswordResetEmail({ to: partner.businessEmail, resetUrl });
+      try {
+        const token = await createPasswordResetToken(partner.id);
+        const resetUrl = `${SITE_URL}/reset-password?token=${encodeURIComponent(token)}`;
+        await sendPasswordResetEmail({ to: partner.businessEmail, resetUrl });
+      } catch {
+        // Keep the public response indistinguishable and avoid turning a
+        // delivery/rate-limit condition into account-enumeration feedback.
+      }
     }
   }
 

@@ -7,6 +7,15 @@ const nextConfig = {
   async headers() {
     return [
       {
+        source: "/(.*)",
+        headers: [
+          { key: "Content-Security-Policy", value: "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: blob: https:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://checkout.razorpay.com https://telegram.org; connect-src 'self' https://api.razorpay.com https://api.telegram.org https://graph.facebook.com; frame-src https://api.razorpay.com https://checkout.razorpay.com https://telegram.org; upgrade-insecure-requests" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(self), payment=(self)" },
+        ],
+      },
+      {
         source: "/(logo-full.png|logo-horizontal.png|logo-mark.png|screenshots/:path*)",
         headers: [{ key: "Cache-Control", value: "public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400" }],
       },

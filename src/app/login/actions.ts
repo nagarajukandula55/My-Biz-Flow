@@ -12,8 +12,8 @@ import { getPartnerHomePath } from "@/lib/partnerHome";
 import { prisma } from "@/lib/prisma";
 import { requestLoginOtp, verifyLoginOtp } from "@/lib/whatsappOtp";
 import { isOtpLoginEnabledForPartner } from "@/lib/telecalling/whatsappGate";
-import { verifyCustomerLogin, CUSTOMER_SESSION_COOKIE } from "@/lib/fieldForce/customerAuth";
-import { verifyProviderLogin, PROVIDER_SESSION_COOKIE } from "@/lib/fieldForce/providerAuth";
+import { verifyCustomerLogin, setCustomerSession } from "@/lib/fieldForce/customerAuth";
+import { verifyProviderLogin, setProviderSession } from "@/lib/fieldForce/providerAuth";
 
 /**
  * Real partner login — universal across every business type. There is one
@@ -87,14 +87,14 @@ export async function signInFromUnifiedLogin(formData: FormData) {
   if (role === "customer") {
     const customer = await verifyCustomerLogin(partnerId, identifier, password);
     if (!customer) redirect("/login?error=invalid_credentials&role=customer");
-    cookies().set(CUSTOMER_SESSION_COOKIE, customer.id, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 30 });
+    await setCustomerSession(partnerId, customer.id);
     redirect(`/partner/${partnerId}/field-force/customer/bookings`);
   }
 
   if (role === "provider") {
     const provider = await verifyProviderLogin(partnerId, identifier, password);
     if (!provider) redirect("/login?error=invalid_credentials&role=provider");
-    cookies().set(PROVIDER_SESSION_COOKIE, provider.id, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 30 });
+    await setProviderSession(partnerId, provider.id);
     await prisma.provider.update({ where: { id: provider.id }, data: { lastLoginAt: new Date() } });
     redirect(`/partner/${partnerId}/field-force/provider/dashboard`);
   }
@@ -205,10 +205,10 @@ export async function verifyUnifiedWhatsAppOtpAction(role: string, phone: string
   const result = await verifyLoginOtp(account.partnerId, purpose, account.id, code);
   if (!result.verified) return { error: "Incorrect or expired code." };
   if (role === "customer") {
-    cookies().set(CUSTOMER_SESSION_COOKIE, account.id, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 30 });
+    await setCustomerSession(account.partnerId, account.id);
     redirect(`/partner/${account.partnerId}/field-force/customer/bookings`);
   }
-  cookies().set(PROVIDER_SESSION_COOKIE, account.id, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 30 });
+  await setProviderSession(account.partnerId, account.id);
   await prisma.provider.update({ where: { id: account.id }, data: { lastLoginAt: new Date() } });
   redirect(`/partner/${account.partnerId}/field-force/provider/dashboard`);
 }

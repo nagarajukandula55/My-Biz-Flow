@@ -1,7 +1,10 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
 const load = require('./loadModule.cjs');
-const policy = load('src/lib/cronAuthorization.ts');
+const policy = load('src/lib/cronAuthorization.ts', {
+  '@/lib/secureCompare': { secureEqual: (received, expected) => received === expected },
+});
+const fs = require('node:fs');
 
 test('cron rejects absent, empty and incorrect secrets', () => {
   for (const secret of [undefined, '', '   ']) {
@@ -47,6 +50,21 @@ test('staff mutations reject suspended, missing and cross-partner staff', async 
   staff = { status: 'Active' };
   assert.equal(await gate.requireSessionOrStaffPartnerId('SC0001'), 'SC0001');
   await assert.rejects(gate.requireSessionOrStaffPartnerId('SC0002'));
+});
+
+test('Field Force sessions are signed and booking payments require bound captured orders', () => {
+  const customerAuth = fs.readFileSync('src/lib/fieldForce/customerAuth.ts', 'utf8');
+  const providerAuth = fs.readFileSync('src/lib/fieldForce/providerAuth.ts', 'utf8');
+  const payments = fs.readFileSync('src/lib/fieldForce/payments.ts', 'utf8');
+  const otp = fs.readFileSync('src/lib/whatsappOtp.ts', 'utf8');
+  assert.match(customerAuth, /verifyCustomerSessionToken/);
+  assert.match(providerAuth, /verifyProviderSessionToken/);
+  assert.match(payments, /requireBookingPaymentAccess/);
+  assert.match(payments, /fetchPaymentAndOrder/);
+  assert.match(payments, /Payment order does not belong to this booking/);
+  assert.match(payments, /order\.notes\?\.bookingId !== bookingId/);
+  assert.match(otp, /OTP_MAX_ATTEMPTS = 5/);
+  assert.match(otp, /codeHash: hashOtp\(code\)/);
 });
 
 

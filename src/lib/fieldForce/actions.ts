@@ -24,10 +24,10 @@ import { getPincodeCoordinates } from "@/lib/fieldForce/geo";
 import { createCompanyVariant, setCompanyVariantPrice } from "@/lib/fieldForce/companyPricing";
 import { updateCompanySla } from "@/lib/fieldForce/companiesData";
 import { setPlatformFeeConfig } from "@/lib/fieldForce/platformFeeData";
-import { createCustomerAccount, verifyCustomerLogin, findCustomerByPhone, getCurrentCustomer, CUSTOMER_SESSION_COOKIE } from "@/lib/fieldForce/customerAuth";
+import { createCustomerAccount, verifyCustomerLogin, findCustomerByPhone, getCurrentCustomer, CUSTOMER_SESSION_COOKIE, setCustomerSession } from "@/lib/fieldForce/customerAuth";
 import { requestLoginOtp, verifyLoginOtp, requestJobOtp } from "@/lib/whatsappOtp";
 import { isOtpLoginEnabledForPartner } from "@/lib/telecalling/whatsappGate";
-import { verifyProviderLogin, getCurrentProvider, PROVIDER_SESSION_COOKIE } from "@/lib/fieldForce/providerAuth";
+import { verifyProviderLogin, getCurrentProvider, PROVIDER_SESSION_COOKIE, setProviderSession } from "@/lib/fieldForce/providerAuth";
 import { markRead, notify } from "@/lib/fieldForce/notifications";
 import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import { ADMIN_COOKIE_NAME, isValidAdminCookie } from "@/lib/adminAuth";
@@ -349,7 +349,7 @@ export async function signupCustomerAction(partnerId: string, formData: FormData
 
   const customer = await createCustomerAccount(partnerId, { name, phone, email, password });
   await sendFieldForceRegistrationEmail({ to: email, name, publicId: customer.customerCode, role: "Customer", loginPath: `/partner/${partnerId}/field-force/customer/login` });
-  cookies().set(CUSTOMER_SESSION_COOKIE, customer.id, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 30 });
+  await setCustomerSession(partnerId, customer.id);
   redirect(`/partner/${partnerId}/field-force/customer/book`);
 }
 
@@ -360,7 +360,7 @@ export async function loginCustomerAction(partnerId: string, formData: FormData)
   if (!customer) redirect(`/partner/${partnerId}/field-force/customer/login?error=1`);
 
   await prisma.customer.update({ where: { id: customer.id }, data: { lastLoginAt: new Date() } });
-  cookies().set(CUSTOMER_SESSION_COOKIE, customer.id, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 30 });
+  await setCustomerSession(partnerId, customer.id);
   redirect(`/partner/${partnerId}/field-force/customer/bookings`);
 }
 
@@ -412,7 +412,7 @@ export async function verifyCustomerWhatsAppOtpAction(partnerId: string, phone: 
   if (!result.verified) return { error: "Incorrect or expired code." };
 
   await prisma.customer.update({ where: { id: customer.id }, data: { lastLoginAt: new Date() } });
-  cookies().set(CUSTOMER_SESSION_COOKIE, customer.id, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 30 });
+  await setCustomerSession(partnerId, customer.id);
   redirect(`/partner/${partnerId}/field-force/customer/bookings`);
 }
 
@@ -500,7 +500,7 @@ export async function signupProviderAction(partnerId: string, formData: FormData
   // This is the single internal Field Force marketplace: self-signups can
   // sign in immediately, while ops retains suspend/activate controls.
   await setProviderStatus(provider.id, partnerId, "pending");
-  cookies().set(PROVIDER_SESSION_COOKIE, provider.id, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 30 });
+  await setProviderSession(partnerId, provider.id);
   redirect(`/partner/${partnerId}/field-force/provider/dashboard`);
 }
 
@@ -511,7 +511,7 @@ export async function loginProviderAction(partnerId: string, formData: FormData)
   if (!provider) redirect(`/partner/${partnerId}/field-force/provider/login?error=1`);
 
   await prisma.provider.update({ where: { id: provider.id }, data: { lastLoginAt: new Date() } });
-  cookies().set(PROVIDER_SESSION_COOKIE, provider.id, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 30 });
+  await setProviderSession(partnerId, provider.id);
   redirect(`/partner/${partnerId}/field-force/provider/dashboard`);
 }
 

@@ -9,8 +9,20 @@ import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { hashPassword, verifyPassword } from "@/lib/passwords";
 import { getNextNumber } from "@/lib/designer/numbering";
+import { FIELD_FORCE_SESSION_MAX_AGE_SECONDS, createCustomerSessionToken, verifyCustomerSessionToken } from "@/lib/fieldForce/session";
 
 export const CUSTOMER_SESSION_COOKIE = "mbf_ff_customer_session";
+
+export async function setCustomerSession(partnerId: string, customerId: string): Promise<void> {
+  const token = await createCustomerSessionToken(partnerId, customerId);
+  cookies().set(CUSTOMER_SESSION_COOKIE, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: FIELD_FORCE_SESSION_MAX_AGE_SECONDS,
+  });
+}
 
 export async function createCustomerAccount(
   partnerId: string,
@@ -52,9 +64,9 @@ export async function findCustomerByPhone(partnerId: string, phone: string) {
 }
 
 export async function getCurrentCustomer(partnerId: string) {
-  const id = cookies().get(CUSTOMER_SESSION_COOKIE)?.value;
-  if (!id) return null;
-  const customer = await prisma.customer.findUnique({ where: { id } });
+  const session = await verifyCustomerSessionToken(cookies().get(CUSTOMER_SESSION_COOKIE)?.value);
+  if (!session || session.partnerId !== partnerId) return null;
+  const customer = await prisma.customer.findUnique({ where: { id: session.principalId } });
   if (!customer || customer.partnerId !== partnerId) return null;
   return customer;
 }

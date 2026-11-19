@@ -11,7 +11,7 @@ test('payment delivery cron denies unauthorized callers before claiming jobs',as
  const denied=()=>{throw new Error('worker called');};
  const route=load('src/app/api/cron/payment-delivery/route.ts',{
   'next/server':{NextResponse:{json:(body,options)=>({body,...options})}},'@/lib/env':{env:{cronSecret:()=>undefined}},
-  '@/lib/cronAuthorization':load('src/lib/cronAuthorization.ts'),'@/lib/paymentDeliveryQueue':{processPaymentDelivery:denied},
+  '@/lib/cronAuthorization':load('src/lib/cronAuthorization.ts',{'@/lib/secureCompare':{secureEqual:(received,expected)=>received===expected}}),'@/lib/paymentDeliveryQueue':{processPaymentDelivery:denied},
   '@/lib/subscriptionPaymentReceipt':{sendPaymentDelivery:denied},
  });
  assert.equal((await route.GET({headers:{get:()=>null}})).status,401);
