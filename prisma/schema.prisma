@@ -1475,7 +1475,7 @@ model OtpCode {
   code           String
   /// SHA-256 hash of the current OTP. `code` remains only for short-lived
   /// legacy rows created before this security migration.
-  codeHash       String?
+  codeHash       String?   @map("code_hash")
   attempts       Int       @default(0)
   expiresAt      DateTime
   consumedAt     DateTime?
