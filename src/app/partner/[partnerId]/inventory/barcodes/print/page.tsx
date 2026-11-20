@@ -4,10 +4,15 @@ import { assertPosBarcodeAccess, getBarcodeSettings } from "@/lib/barcodeCatalog
 import { renderTierGate } from "@/lib/pageTierGate";
 import { registerPage } from "@/lib/designer/registry";
 import { BatchLabelPrint } from "./BatchLabelPrint";
+import { redirect } from "next/navigation";
+import { getVisibleModuleSlugs } from "@/lib/designer/entitlements";
 
 registerPage({ id: "inventory.barcodes.print", moduleSlug: "inventory", title: "Print Barcode Labels", path: "/partner/[partnerId]/inventory/barcodes/print", kind: "form", superAdminOnly: false, customizableRegions: [], explanation: "POS-only batch product-label print queue. The owner selects product quantities; output uses the partner's Barcode & Labels series, fields and dimensions.", sourceFile: "src/app/partner/[partnerId]/inventory/barcodes/print/page.tsx" });
 export const dynamic = "force-dynamic";
 export default async function BatchLabelPrintPage({ params }: { params: { partnerId: string } }) {
+  if (!(await getVisibleModuleSlugs(params.partnerId)).includes("pos")) {
+    redirect(`/partner/${params.partnerId}/inventory`);
+  }
   await assertPosBarcodeAccess(params.partnerId);
   const gate = await renderTierGate(params.partnerId, "inventory.barcodes", "Barcode & Labels");
   if (gate) return <AppShell topbarTitle="Print Barcode Labels">{gate}</AppShell>;

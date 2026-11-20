@@ -59,7 +59,12 @@ export async function sendWhatsAppTemplateMessage(
   to: string,
   templateName: string,
   languageCode: string,
-  bodyParams: string[]
+  bodyParams: string[],
+  options?: {
+    /** Dynamic template buttons require their value in a separate component.
+     * Meta represents Authentication/Copy-code OTP buttons as URL buttons. */
+    buttonParams?: Array<{ index: number; subType: "url"; text: string }>;
+  }
 ): Promise<boolean> {
   const phoneNumberId = env.whatsappBusinessPhoneNumberId();
   const accessToken = env.whatsappAccessToken();
@@ -81,16 +86,24 @@ export async function sendWhatsAppTemplateMessage(
         template: {
           name: templateName,
           language: { code: languageCode },
-          components:
-            bodyParams.length > 0
+          components: [
+            ...(bodyParams.length > 0
               ? [{ type: "body", parameters: bodyParams.map((text) => ({ type: "text", text })) }]
-              : undefined,
+              : []),
+            ...(options?.buttonParams?.map((button) => ({
+              type: "button",
+              sub_type: button.subType,
+              index: String(button.index),
+              parameters: [{ type: "text", text: button.text }],
+            })) ?? []),
+          ],
         },
       }),
     });
     const body = await res.json().catch(() => null);
     if (!res.ok || !body?.messages?.[0]?.id) {
-      console.error(`[whatsapp] template "${templateName}" send failed for ${maskPhoneForLog(to)}:`, body?.error?.message ?? res.status);
+      const detail = body?.error?.error_data?.details;
+      console.error(`[whatsapp] template "${templateName}" send failed for ${maskPhoneForLog(to)}:`, detail ? `${body?.error?.message ?? res.status} — ${detail}` : body?.error?.message ?? res.status);
       return false;
     }
     return true;

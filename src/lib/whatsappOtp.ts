@@ -89,7 +89,16 @@ export async function requestLoginOtp(
     },
   });
 
-  const delivered = await sendWhatsAppTemplateMessage(toPhone, templateName, env.whatsappOtpTemplateLang(), [code]);
+  // Meta Authentication templates with a Copy Code button are sent as a
+  // dynamic URL button. The OTP must be supplied both in the body and in
+  // that button's parameter; omitting the latter is rejected as #131008.
+  const delivered = await sendWhatsAppTemplateMessage(
+    toPhone,
+    templateName,
+    env.whatsappOtpTemplateLang(),
+    [code],
+    { buttonParams: [{ index: 0, subType: "url", text: code }] },
+  );
   if (delivered) return { sent: true };
   // A provider rejection must not create a fake pending OTP or cause the next
   // genuine attempt to hit the cooldown/hourly limiter. The code was never

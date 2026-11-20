@@ -4,6 +4,7 @@ import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { Boxes, Warehouse, ClipboardList, SlidersHorizontal, ArrowLeftRight, ClipboardCheck, Undo2, PackageCheck, TrendingDown, LineChart, Barcode } from "lucide-react";
 import { listBusinessRecords } from "@/lib/businessRecords";
+import { getVisibleModuleSlugs } from "@/lib/designer/entitlements";
 
 registerPage({
   id: "inventory.hub",
@@ -103,8 +104,13 @@ export const dynamic = "force-dynamic";
 
 export default async function InventoryHubPage({ params }: { params: { partnerId: string } }) {
   const mod = await getModule("inventory");
+  // Inventory is shared with Service Centre, but retail barcode generation is
+  // intentionally a POS-only Pro feature. Do not advertise a route that this
+  // partner cannot use (the sidebar applies the same rule).
+  const hasPos = (await getVisibleModuleSlugs(params.partnerId)).includes("pos");
+  const visibleSections = hasPos ? SECTIONS : SECTIONS.filter((section) => section.href !== "barcodes");
   const counts = await Promise.all(
-    SECTIONS.map(async (s) => [s.href, (await listBusinessRecords(params.partnerId, s.moduleSlug)).length] as const)
+    visibleSections.map(async (s) => [s.href, (await listBusinessRecords(params.partnerId, s.moduleSlug)).length] as const)
   );
   const countByHref = new Map(counts);
 
@@ -113,7 +119,7 @@ export default async function InventoryHubPage({ params }: { params: { partnerId
       <div>
         <p className="text-sm text-text-muted">{mod?.description}</p>
         <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {SECTIONS.map((s) => {
+          {visibleSections.map((s) => {
             const Icon = s.icon;
             return (
               <Link

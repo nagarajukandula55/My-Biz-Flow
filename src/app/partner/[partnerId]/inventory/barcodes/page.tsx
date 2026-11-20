@@ -4,6 +4,8 @@ import { assertPosBarcodeAccess, getBarcodeSettings } from "@/lib/barcodeCatalog
 import { BarcodeSettingsForm } from "./BarcodeSettingsForm";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { getVisibleModuleSlugs } from "@/lib/designer/entitlements";
 
 registerPage({
   id: "inventory.barcodes",
@@ -19,6 +21,9 @@ registerPage({
 
 export const dynamic = "force-dynamic";
 export default async function BarcodeSettingsPage({ params }: { params: { partnerId: string } }) {
+  if (!(await getVisibleModuleSlugs(params.partnerId)).includes("pos")) {
+    redirect(`/partner/${params.partnerId}/inventory`);
+  }
   await assertPosBarcodeAccess(params.partnerId);
   const gate = await renderTierGate(params.partnerId, "inventory.barcodes", "Barcode & Labels");
   if (gate) return <AppShell topbarTitle="Barcode & Labels">{gate}</AppShell>;
