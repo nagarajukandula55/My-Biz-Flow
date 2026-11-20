@@ -10,6 +10,9 @@ export function validatePosInput(input: { lines: SaleLine[]; tenders: Tender[] }
       !Number.isFinite(line.taxRate) || line.taxRate < 0 || line.taxRate > 100 || !Number.isFinite(line.qty * line.unitPrice)) {
       throw new Error("Invalid sale quantity, price, discount or tax rate.");
     }
+    if (line.serialNumber && (line.qty !== 1 || !line.serialLotId)) {
+      throw new Error("A serialized unit must be sold once and include its stock identity.");
+    }
   }
   if (!Array.isArray(input.tenders) || !input.tenders.length || input.tenders.some(tender =>
     !tender || !["Cash", "UPI", "Card", "Wallet"].includes(tender.method) || !Number.isFinite(tender.amount) || tender.amount < 0)) {

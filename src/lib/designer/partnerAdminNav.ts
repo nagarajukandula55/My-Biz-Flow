@@ -58,5 +58,16 @@ export async function buildPartnerAdminNavGroups(partnerId: string): Promise<Par
   // Business Settings renders LAST, after every module group — an account/
   // settings section reads better near the bottom of the sidebar, next to
   // Sign out, than pinned right under Overview.
-  return [commonGroup, ...(await buildPartnerNavGroups(visibleSlugs)), partnerAdminGroup];
+  const moduleGroups = await buildPartnerNavGroups(visibleSlugs);
+  // Barcode labels only make sense for a retail POS business. Inventory is
+  // also used by Service Centre and other workflows, so don't expose a
+  // misleading retail-label setting to those partners.
+  if (!visibleSlugs.includes("pos")) {
+    for (const group of moduleGroups) {
+      group.items = group.items.map((item) => item.key !== "inventory"
+        ? item
+        : { ...item, subItems: item.subItems?.filter((sub) => !sub.key.startsWith("inventory.barcodes")) });
+    }
+  }
+  return [commonGroup, ...moduleGroups, partnerAdminGroup];
 }

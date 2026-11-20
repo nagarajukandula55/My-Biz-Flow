@@ -28,6 +28,8 @@ const TYPE_VARIANT: Record<string, StatusVariant> = {
 };
 
 export const MATERIAL_TYPES = ["Spare Part", "Consumable", "Product (Finished Goods)"] as const;
+/** Retail barcode data is available only when the business has an active POS module. */
+export const POS_BARCODE_FIELD_KEYS = new Set(["barcode", "barcodeType", "variant", "packSize", "offerPrice", "manufacturedOn", "expiryDate", "labelNote"]);
 export type MaterialType = (typeof MATERIAL_TYPES)[number];
 
 export const RATE_TYPES = ["With Tax", "Without Tax"] as const;
@@ -65,6 +67,7 @@ export const bomColumns: Column[] = [
   { key: "id", label: "Material Code", type: "text" },
   { key: "description", label: "Material Description", type: "text" },
   { key: "barcode", label: "Barcode (SKU)", type: "text" },
+  { key: "barcodeType", label: "Barcode Type", type: "text" },
   { key: "hsnCode", label: "HSN Code", type: "text" },
   { key: "type", label: "Type", type: "select-chip", chipVariantMap: TYPE_VARIANT },
   { key: "uom", label: "UOM", type: "text" },
@@ -202,11 +205,18 @@ export const bomFormFields: FormFieldDef[] = [
   { key: "description", label: "Material Description", type: "text", required: true },
   {
     key: "barcode",
-    label: "Barcode (SKU)",
+    label: "Barcode / SKU",
     type: "text",
     required: false,
-    placeholder: "This material's own product barcode (one per material type) — NOT a per-unit serial/IMEI. Serial numbers are captured later, when stock actually moves (Part Orders, Stock Transfers, Stock Take).",
+    placeholder: "Enter an existing supplier/GS1 barcode, or save then generate your business series from Barcode & Labels.",
   },
+  { key: "barcodeType", label: "Barcode Type", type: "select", required: false, options: ["CODE128", "EAN13"] },
+  { key: "variant", label: "Variant / Colour / Style", type: "text", required: false },
+  { key: "packSize", label: "Pack Size / Net Quantity", type: "text", required: false, placeholder: "e.g. 500 g, XL, 12 pcs" },
+  { key: "offerPrice", label: "Offer / Sale Price", type: "currency", required: false },
+  { key: "manufacturedOn", label: "Manufactured On", type: "date", required: false },
+  { key: "expiryDate", label: "Expiry / Best Before", type: "date", required: false },
+  { key: "labelNote", label: "Label Note", type: "text", required: false, placeholder: "Optional short line to print on labels" },
   { key: "hsnCode", label: "HSN Code", type: "select", required: true, options: HSN_CODES.map((h) => h.code) },
   { key: "type", label: "Type", type: "select", required: true, options: [...MATERIAL_TYPES] },
   { key: "uom", label: "Selling Unit", type: "text", required: true, placeholder: "e.g. sq.ft, running.m, bag, hour" },
@@ -257,6 +267,13 @@ export function getBomDetailFields(record: Row): RecordField[] {
     { label: "Material Code", value: r["id"], type: "text" },
     { label: "Material Description", value: r["description"], type: "text" },
     { label: "Barcode (SKU)", value: r["barcode"], type: "text" },
+    { label: "Barcode Type", value: r["barcodeType"], type: "text" },
+    { label: "Variant / Colour / Style", value: r["variant"], type: "text" },
+    { label: "Pack Size / Net Quantity", value: r["packSize"], type: "text" },
+    { label: "Offer / Sale Price", value: r["offerPrice"], type: "currency" },
+    { label: "Manufactured On", value: r["manufacturedOn"], type: "date" },
+    { label: "Expiry / Best Before", value: r["expiryDate"], type: "date" },
+    { label: "Label Note", value: r["labelNote"], type: "text" },
     { label: "HSN Code", value: r["hsnCode"], type: "text" },
     { label: "Type", value: r["type"], type: "select", chipVariant: TYPE_VARIANT[String(r["type"])] ?? "neutral" },
     { label: "UOM", value: r["uom"], type: "text" },

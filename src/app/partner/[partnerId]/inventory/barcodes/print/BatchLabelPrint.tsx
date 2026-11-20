@@ -1,0 +1,17 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { BarcodeLabel } from "@/components/inventory/BarcodeLabel";
+import type { BarcodeSettings } from "@/lib/barcodes";
+import { recordBarcodePrintAction } from "../actions";
+
+type Material = Record<string, unknown>;
+export function BatchLabelPrint({ partnerId, materials, settings }: { partnerId: string; materials: Material[]; settings: BarcodeSettings }) {
+  const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const selected = useMemo(() => materials.flatMap((material) => Array.from({ length: Math.min(500, Math.max(0, quantities[String(material.id)] ?? 0)) }, () => material)), [materials, quantities]);
+  const print = () => { if (selected.length) void recordBarcodePrintAction(partnerId, selected.map((material) => String(material.id)), selected.length, "batch"); document.body.classList.add("printing-barcode-label"); window.print(); window.setTimeout(() => document.body.classList.remove("printing-barcode-label"), 500); };
+  return <div className="space-y-6">
+    <section className="rounded-lg border border-border bg-bg-raised p-5"><h2 className="font-display text-lg font-bold">Choose labels</h2><p className="mt-1 text-sm text-text-muted">Select quantity for each product. The selected label size and fields come from Barcode &amp; Labels settings.</p><div className="mt-4 overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b"><th className="p-2 text-left">Product</th><th className="p-2 text-left">Barcode</th><th className="p-2 text-right">Labels</th></tr></thead><tbody>{materials.map(material => <tr key={String(material.id)} className="border-b last:border-0"><td className="p-2">{String(material.description ?? material.id)}</td><td className="p-2 font-mono text-xs">{String(material.barcode)}</td><td className="p-2 text-right"><input aria-label={`Label quantity for ${String(material.description ?? material.id)}`} type="number" min="0" max="500" value={quantities[String(material.id)] ?? ""} onChange={e => setQuantities(old => ({ ...old, [String(material.id)]: Math.min(500, Math.max(0, Number(e.target.value) || 0)) }))} className="w-20 rounded border bg-bg p-1.5 text-right" /></td></tr>)}</tbody></table></div><button type="button" disabled={!selected.length} onClick={print} className="btn-accent mt-4 disabled:opacity-50">Print {selected.length} label{selected.length === 1 ? "" : "s"}</button></section>
+    {selected.length > 0 && <section className="label-print-sheet flex flex-wrap gap-2 rounded-lg border border-dashed border-border bg-bg-raised p-5">{selected.map((material, index) => <BarcodeLabel key={`${String(material.id)}-${index}`} label={{ code: String(material.barcode), type: (material.barcodeType || settings.barcodeType) as BarcodeSettings["barcodeType"], description: String(material.description ?? material.id), variant: String(material.variant ?? ""), packSize: String(material.packSize ?? ""), mrp: Number(material.mrp ?? 0), offerPrice: Number(material.offerPrice ?? material.mrp ?? 0), batchNumber: String(material.batchNumber ?? ""), manufacturedOn: String(material.manufacturedOn ?? ""), expiryDate: String(material.expiryDate ?? ""), labelNote: String(material.labelNote ?? ""), widthMm: settings.labelWidthMm, heightMm: settings.labelHeightMm, priceDisplay: settings.priceDisplay, fields: settings.labelFields }} />)}</section>}
+  </div>;
+}

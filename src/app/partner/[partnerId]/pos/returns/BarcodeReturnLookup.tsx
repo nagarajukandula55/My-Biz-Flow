@@ -1,0 +1,11 @@
+"use client";
+
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { findReturnableSalesByBarcodeAction } from "./actions";
+
+export function BarcodeReturnLookup({ partnerId }: { partnerId: string }) {
+  const router = useRouter(); const [barcode, setBarcode] = useState(""); const [matches, setMatches] = useState<Array<{ saleId: string; timestamp: string; productName: string; serialNumber?: string }>>([]); const [message, setMessage] = useState(""); const [pending, startTransition] = useTransition();
+  const lookup = () => startTransition(async () => { try { const found = await findReturnableSalesByBarcodeAction(partnerId, barcode); setMatches(found); setMessage(found.length ? "Choose the original sale to review the return." : "No returnable completed sale was found for this barcode."); } catch (error) { setMessage(error instanceof Error ? error.message : "Could not look up the barcode."); } });
+  return <section className="max-w-2xl rounded-lg border border-border bg-bg-raised p-5"><h1 className="font-display text-2xl font-bold">Return by barcode</h1><p className="mt-1 text-sm text-text-muted">Scan a shared product label or an individual serialized-unit label. For a shared barcode, choose the correct sale after checking the receipt time.</p><div className="mt-5 flex gap-2"><input value={barcode} onChange={(event) => setBarcode(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); lookup(); } }} placeholder="Scan barcode" className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text" autoFocus /><button type="button" onClick={lookup} disabled={pending} className="btn-accent">{pending ? "Finding." : "Find sale"}</button></div>{message && <p className="mt-3 text-sm text-text-muted">{message}</p>}{matches.length > 0 && <div className="mt-4 space-y-2">{matches.map((match) => <button type="button" key={match.saleId} onClick={() => router.push(`/partner/${partnerId}/pos/${match.saleId}/return`)} className="block w-full rounded-md border border-border p-3 text-left text-sm hover:bg-bg-sunken"><strong>{match.saleId}</strong> · {match.productName}{match.serialNumber ? ` · Unit ${match.serialNumber}` : ""}<span className="block text-xs text-text-muted">{match.timestamp}</span></button>)}</div>}</section>;
+}

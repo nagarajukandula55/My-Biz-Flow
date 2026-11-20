@@ -272,6 +272,18 @@ export default async function RootPage({
         </div>
       </section>
 
+      {!isServiceCentre && <section className="border-t border-border bg-bg-raised px-6 py-16" aria-labelledby="barcode-title">
+        <div className="mx-auto max-w-5xl">
+          <p className="text-center text-xs font-semibold uppercase tracking-widest text-accent">Retail inventory, without a second system</p>
+          <h2 id="barcode-title" className="mt-2 text-center font-display text-2xl font-bold text-text">Create your own barcode series and sell by scan</h2>
+          <p className="mbf-prose mx-auto mt-2 text-center text-base text-text-muted">Pro POS businesses can define their own prefix, starting number, barcode type, printed fields, price display and label dimensions. Scan the same label at checkout to find the product and deduct outlet stock.</p>
+          <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-3">
+            {[{ title: "Your series", body: "Use your own prefix, sequence and number length. Keep GS1 EAN-13 codes when your products already have them." }, { title: "Your label", body: "Choose MRP, offer price, product details and a label size suitable for A4 or thermal printing." }, { title: "Your checkout", body: "A barcode scanner adds the exact available product to the POS cart; stock and invoice records remain connected." }].map((item) => <div key={item.title} className="mbf-glass-card p-5"><h3 className="font-display text-lg font-bold text-text">{item.title}</h3><p className="mt-2 text-sm text-text-muted">{item.body}</p></div>)}
+          </div>
+          <div className="mt-8 text-center"><Link href="/pricing?type=pos" className="btn-outline">See POS Pro features</Link></div>
+        </div>
+      </section>}
+
       <section className="border-t border-border px-6 py-16">
         <div className="mx-auto max-w-5xl">
           <h2 className="text-center font-display text-2xl font-bold text-text">{tp("seeItInActionTitle")}</h2>

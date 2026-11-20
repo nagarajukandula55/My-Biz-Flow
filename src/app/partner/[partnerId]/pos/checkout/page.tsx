@@ -6,6 +6,7 @@ import { listBusinessRecords } from "@/lib/businessRecords";
 import { requirePosStaff } from "@/lib/pos/posAuth";
 import { getOpenTillSession } from "@/lib/pos/posTill";
 import { PosCheckout } from "./PosCheckout";
+import { listAvailableSerializedUnits } from "@/lib/stockLots";
 
 registerPage({
   id: "pos.checkout",
@@ -70,6 +71,7 @@ export default async function PosCheckoutPage({
       return {
         sku: String(r["id"]),
         label: String(r["materialId"] ?? r["id"]),
+        barcode: String(material?.["barcode"] ?? r["materialBarcode"] ?? "").trim() || undefined,
         // Prefer the Material Catalog's real sale rate/tax when this stock item
         // has a matching entry there; fall back to unit cost + a standard GST
         // rate for stock items that aren't in the BOM catalog (e.g. pure retail
@@ -77,8 +79,15 @@ export default async function PosCheckoutPage({
         unitPrice: Number(material?.["rate"] ?? r["unitCost"] ?? 0),
         taxRate: Number(material?.["taxPercent"] ?? 18),
         available: Number(r["qtyOnHand"] ?? 0),
+        serialized: Boolean(material?.["serialized"] ?? r["serialized"]),
       };
     });
+  const serialUnits = selectedWarehouse
+    ? (await listAvailableSerializedUnits(params.partnerId, selectedWarehouse)).flatMap((unit) => {
+        const stock = stockItems.find((item) => item.serialized && String(item.label).split(" - ")[0] === unit.materialId);
+        return stock ? [{ ...unit, sku: stock.sku, label: stock.label, unitPrice: stock.unitPrice, taxRate: stock.taxRate }] : [];
+      })
+    : [];
 
   return (
     <AppShell topbarTitle={`New Sale — ${mod?.label ?? "POS"}`}>
@@ -133,6 +142,7 @@ export default async function PosCheckoutPage({
                 <PosCheckout
                   partnerId={params.partnerId}
                   stockItems={stockItems}
+                  serialUnits={serialUnits}
                   cashier={`${staff.name} (${staff.staffCode})`}
                   branch={selectedLocation ? String(selectedLocation["locationName"]) : undefined}
                   locationId={selectedLocation ? String(selectedLocation["id"]) : undefined}

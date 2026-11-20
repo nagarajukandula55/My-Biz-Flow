@@ -6,7 +6,9 @@ import { BomSearchButton } from "./BomSearchButton";
 import { BomBulkUploadButton } from "./BomBulkUploadButton";
 import { RecordCsvExportButton } from "@/components/RecordCsvExportButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
-import { bomColumns } from "@/lib/sample-data/bom";
+import { bomColumns, POS_BARCODE_FIELD_KEYS } from "@/lib/sample-data/bom";
+import { getVisibleModuleSlugs } from "@/lib/designer/entitlements";
+import { getPageTierAccess } from "@/lib/tenant";
 import { listBusinessRecords, listBusinessRecordsPaginated } from "@/lib/businessRecords";
 import { isActiveMaterial } from "@/lib/materialStatus";
 import { PaginationControls, buildPageQueryString } from "@/components/PaginationControls";
@@ -35,7 +37,9 @@ export default async function BomPage({
   params: { partnerId: string };
   searchParams: { page?: string };
 }) {
-  const columns = await applyCustomizations("inventory.bom.list", bomColumns);
+  const hasPos = (await getVisibleModuleSlugs(params.partnerId)).includes("pos");
+  const barcodeFeatureEnabled = hasPos && (await getPageTierAccess(params.partnerId, "inventory.barcodes")).allowed;
+  const columns = (await applyCustomizations("inventory.bom.list", bomColumns)).filter((column) => barcodeFeatureEnabled || !POS_BARCODE_FIELD_KEYS.has(column.key));
   const page = Math.max(1, Number(searchParams.page) || 1);
   // Two reads: BomSearchButton's typeahead and the CSV export both need
   // every material, not just the current page, while the table itself

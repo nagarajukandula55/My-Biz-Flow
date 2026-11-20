@@ -10,6 +10,7 @@ import { withRecordLock } from "@/lib/withRecordLock";
 import { getNextNumber } from "@/lib/designer/numbering";
 import { validatePosInput, planPosStock } from "@/lib/pos/stockPolicy";
 import { getOpenTillSession } from "@/lib/pos/posTill";
+import { assertSerializedUnitsAvailable, consumeSerializedUnits, restoreSerializedUnits } from "@/lib/stockLots";
 
 export type CompleteSaleInput = {
   lines: SaleLine[];
@@ -59,10 +60,27 @@ export async function completeSaleAction(partnerId: string, input: CompleteSaleI
   if (changeDue > cashTendered) throw new Error("Change cannot exceed the cash tendered; correct the non-cash payment amount.");
 
   // Stock check — fail closed, no partial deduction.
-  const stockRecords = await listBusinessRecords(partnerId, "inventory-stock");
+  const [stockRecords, materialRecords] = await Promise.all([listBusinessRecords(partnerId, "inventory-stock"), listBusinessRecords(partnerId, "inventory-bom")]);
+  const serializedLines = input.lines.filter((line) => Boolean(line.serialNumber));
+  const stockById = new Map(stockRecords.map((record) => [String(record["id"]), record]));
+  const materialByCode = new Map(materialRecords.map((record) => [String(record["id"]), record]));
+  for (const line of input.lines) {
+    const stock = stockById.get(line.sku);
+    if (!stock) throw new Error("Stock record is missing for a sale item.");
+    const materialCode = String(stock["materialId"] ?? "").split(" - ")[0].trim();
+    const serialized = Boolean(materialByCode.get(materialCode)?.["serialized"] ?? stock["serialized"]);
+    if (serialized !== Boolean(line.serialNumber)) {
+      throw new Error(serialized ? "Serialized stock must be sold by scanning its individual unit label." : "A unit serial was supplied for non-serialized stock.");
+    }
+  }
+  const serializedWarehouseNames = new Set(serializedLines.map((line) => String(stockById.get(line.sku)?.["warehouseName"] ?? "")).filter(Boolean));
+  if (serializedWarehouseNames.size > 1) throw new Error("Serialized units must be sold from one outlet warehouse per sale.");
+  const serializedWarehouse = [...serializedWarehouseNames][0] ?? "";
+  await assertSerializedUnitsAvailable(partnerId, serializedLines.map((line) => ({ lotId: String(line.serialLotId), serialNumber: String(line.serialNumber) })), serializedWarehouse);
   for (const update of planPosStock(stockRecords, input.lines)) {
     await updateBusinessRecord(partnerId, "inventory-stock", update.id, update.data);
   }
+  await consumeSerializedUnits(partnerId, serializedLines.map((line) => ({ lotId: String(line.serialLotId), serialNumber: String(line.serialNumber) })), serializedWarehouse);
 
   const paymentSummary = Array.from(new Set(input.tenders.map((t) => t.method))).join(" + ");
 
@@ -154,6 +172,7 @@ export async function voidSaleAction(partnerId: string, saleId: string, reason: 
         await updateBusinessRecord(partnerId, "inventory-stock", line.sku, { ...stock, qtyOnHand: restoredQty, availableQty: Math.max(0, restoredQty - Number(stock["reservedQty"] ?? 0)) });
       }
     }
+    await restoreSerializedUnits(partnerId, sale.lines.filter((line) => line.serialNumber && line.serialLotId).map((line) => ({ lotId: String(line.serialLotId), serialNumber: String(line.serialNumber) })));
   }
 
   await updateBusinessRecord(partnerId, "pos", saleId, {

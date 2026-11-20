@@ -27,6 +27,10 @@ export type SaleLine = {
   unitPrice: number;
   taxRate: number; // % — carried per line so mixed-tax-rate baskets work
   discount: number; // flat amount off this line
+  /** Present only for a unique, serialized unit scanned at the counter. */
+  serialNumber?: string;
+  /** Immutable StockLot id used to restore the exact unit on a return/void. */
+  serialLotId?: string;
 };
 
 export type Tender = { method: "Cash" | "UPI" | "Card" | "Wallet"; amount: number };

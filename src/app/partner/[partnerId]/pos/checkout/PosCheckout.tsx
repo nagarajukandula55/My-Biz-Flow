@@ -5,13 +5,15 @@ import { SearchSelectModal, type SearchSelectOption } from "@/components/SearchS
 import { computeSaleTotals, type SaleLine, type Tender } from "@/lib/sample-data/pos";
 import { completeSaleAction, type CompleteSaleInput } from "./actions";
 
-type StockItem = { sku: string; label: string; unitPrice: number; taxRate: number; available: number };
+type StockItem = { sku: string; label: string; barcode?: string; unitPrice: number; taxRate: number; available: number; serialized?: boolean };
+type SerialUnit = { lotId: string; serialNumber: string; sku: string; label: string; unitPrice: number; taxRate: number };
 
 const TENDER_METHODS: Tender["method"][] = ["Cash", "UPI", "Card", "Wallet"];
 
 export function PosCheckout({
   partnerId,
   stockItems,
+  serialUnits,
   cashier,
   branch,
   locationId,
@@ -19,6 +21,7 @@ export function PosCheckout({
 }: {
   partnerId: string;
   stockItems: StockItem[];
+  serialUnits: SerialUnit[];
   cashier?: string;
   branch?: string;
   locationId?: string;
@@ -26,6 +29,8 @@ export function PosCheckout({
 }) {
   const [lines, setLines] = useState<SaleLine[]>([]);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [barcodeEntry, setBarcodeEntry] = useState("");
+  const [scanMessage, setScanMessage] = useState<string | null>(null);
   const [tenders, setTenders] = useState<Tender[]>([{ method: "Cash", amount: 0 }]);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -33,7 +38,7 @@ export function PosCheckout({
   const stockBySku = useMemo(() => new Map(stockItems.map((s) => [s.sku, s])), [stockItems]);
   const options: SearchSelectOption[] = stockItems.map((s) => ({
     value: s.sku,
-    label: s.label,
+    label: s.barcode ? `${s.label} · ${s.barcode}` : s.label,
     sublabel: `₹${s.unitPrice} · ${s.available} in stock`,
   }));
 
@@ -45,6 +50,10 @@ export function PosCheckout({
   function addProduct(option: SearchSelectOption) {
     const stock = stockBySku.get(option.value);
     if (!stock) return;
+    if (stock.serialized) {
+      setScanMessage("This product has individual unit labels. Scan the unique unit barcode.");
+      return;
+    }
     setPickerOpen(false);
     setLines((prev) => {
       const existing = prev.find((l) => l.sku === option.value);
@@ -64,6 +73,33 @@ export function PosCheckout({
         },
       ];
     });
+  }
+
+  function addScannedBarcode() {
+    const scanned = barcodeEntry.trim().toUpperCase();
+    if (!scanned) return;
+    const unit = serialUnits.find((item) => item.serialNumber.trim().toUpperCase() === scanned);
+    if (unit) {
+      if (lines.some((line) => line.serialLotId === unit.lotId)) {
+        setScanMessage("This serialized unit is already in the cart.");
+        return;
+      }
+      setLines((previous) => [...previous, {
+        id: `L-${Date.now()}-${unit.lotId}`, sku: unit.sku, productName: unit.label, qty: 1,
+        unitPrice: unit.unitPrice, taxRate: unit.taxRate, discount: 0, serialNumber: unit.serialNumber, serialLotId: unit.lotId,
+      }]);
+      setBarcodeEntry("");
+      setScanMessage(null);
+      return;
+    }
+    const match = stockItems.find((item) => String(item.barcode ?? "").trim().toUpperCase() === scanned);
+    if (!match) {
+      setScanMessage("No active stock item matches that barcode.");
+      return;
+    }
+    addProduct({ value: match.sku, label: match.label });
+    setBarcodeEntry("");
+    setScanMessage(null);
   }
 
   function updateLine(id: string, patch: Partial<SaleLine>) {
@@ -112,17 +148,28 @@ export function PosCheckout({
       {/* Cart */}
       <div className="lg:col-span-2">
         <div className="rounded-md border border-border bg-bg-raised p-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="font-display text-base font-bold text-text">Cart</h2>
-            <button type="button" className="btn-accent" onClick={() => setPickerOpen(true)}>
-              + Add Product
-            </button>
+            <div className="flex items-center gap-2">
+              <input
+                value={barcodeEntry}
+                onChange={(event) => { setBarcodeEntry(event.target.value); setScanMessage(null); }}
+                onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); addScannedBarcode(); } }}
+                placeholder="Scan barcode"
+                aria-label="Scan barcode"
+                className="w-36 rounded-md border border-border bg-bg px-2 py-1.5 text-sm text-text"
+              />
+              <button type="button" className="btn-outline text-xs" onClick={addScannedBarcode}>Add scan</button>
+              <button type="button" className="btn-accent" onClick={() => setPickerOpen(true)}>
+                + Add Product
+              </button>
+            </div>
           </div>
+          {scanMessage && <p className="mt-2 text-xs text-danger">{scanMessage}</p>}
 
           {lines.length === 0 ? (
             <p className="mt-4 text-sm text-text-muted">
-              Scan or search a product to add it to the cart — a barcode scanner acting as a keyboard works
-              directly in the search box.
+              Scan, enter a barcode, or search a product to add it to the cart.
             </p>
           ) : (
             <div className="mt-4 space-y-2">
@@ -144,6 +191,7 @@ export function PosCheckout({
                       <button
                         type="button"
                         className="h-7 w-7 rounded-md border border-border text-sm text-text"
+                        disabled={Boolean(line.serialNumber)}
                         onClick={() => updateLine(line.id, { qty: Math.max(1, line.qty - 1) })}
                       >
                         −
@@ -152,12 +200,14 @@ export function PosCheckout({
                         type="number"
                         min={1}
                         value={line.qty}
+                        disabled={Boolean(line.serialNumber)}
                         onChange={(e) => updateLine(line.id, { qty: Math.max(1, Number(e.target.value) || 1) })}
                         className="w-14 rounded-md border border-border bg-bg-raised px-2 py-1 text-center text-sm text-text"
                       />
                       <button
                         type="button"
                         className="h-7 w-7 rounded-md border border-border text-sm text-text"
+                        disabled={Boolean(line.serialNumber)}
                         onClick={() => updateLine(line.id, { qty: line.qty + 1 })}
                       >
                         +

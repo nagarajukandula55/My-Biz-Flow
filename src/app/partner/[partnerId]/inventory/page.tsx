@@ -2,7 +2,7 @@ import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
-import { Boxes, Warehouse, ClipboardList, SlidersHorizontal, ArrowLeftRight, ClipboardCheck, Undo2, PackageCheck, TrendingDown, LineChart } from "lucide-react";
+import { Boxes, Warehouse, ClipboardList, SlidersHorizontal, ArrowLeftRight, ClipboardCheck, Undo2, PackageCheck, TrendingDown, LineChart, Barcode } from "lucide-react";
 import { listBusinessRecords } from "@/lib/businessRecords";
 
 registerPage({
@@ -19,6 +19,7 @@ registerPage({
 });
 
 const SECTIONS = [
+  { href: "barcodes", icon: Barcode, label: "Barcode & Labels", description: "Your barcode series, label fields, price display and print dimensions.", moduleSlug: "inventory-bom" },
   {
     href: "bom",
     icon: Boxes,

@@ -2883,6 +2883,39 @@
     "sourceFile": "src/app/partner/[partnerId]/inventory/ageing/page.tsx"
   },
   {
+    "id": "inventory.barcodes",
+    "moduleSlug": "inventory",
+    "title": "Barcode & Labels",
+    "path": "/partner/[partnerId]/inventory/barcodes",
+    "kind": "form",
+    "superAdminOnly": false,
+    "customizableRegions": [],
+    "explanation": "Partner-owned barcode series and printable product-label setup for Inventory and POS. Settings cover prefix, sequence, barcode type, price display and physical label dimensions.",
+    "sourceFile": "src/app/partner/[partnerId]/inventory/barcodes/page.tsx"
+  },
+  {
+    "id": "inventory.barcodes.audit",
+    "moduleSlug": "inventory",
+    "title": "Barcode Audit",
+    "path": "/partner/[partnerId]/inventory/barcodes/audit",
+    "kind": "list",
+    "superAdminOnly": false,
+    "customizableRegions": [],
+    "explanation": "POS Pro audit trail of barcode generation, unique-unit ranges and requested label print jobs.",
+    "sourceFile": "src/app/partner/[partnerId]/inventory/barcodes/audit/page.tsx"
+  },
+  {
+    "id": "inventory.barcodes.print",
+    "moduleSlug": "inventory",
+    "title": "Print Barcode Labels",
+    "path": "/partner/[partnerId]/inventory/barcodes/print",
+    "kind": "form",
+    "superAdminOnly": false,
+    "customizableRegions": [],
+    "explanation": "POS-only batch product-label print queue. The owner selects product quantities; output uses the partner's Barcode & Labels series, fields and dimensions.",
+    "sourceFile": "src/app/partner/[partnerId]/inventory/barcodes/print/page.tsx"
+  },
+  {
     "id": "inventory.bom.create",
     "moduleSlug": "inventory",
     "title": "Material Catalog (BOM) — Create",
@@ -4460,6 +4493,17 @@
     "customizableRegions": [],
     "explanation": "Partial return/refund against one Completed sale — pick a quantity to return per line, a refund method, and a reason. Restocks the exact Good units returned to the same warehouse the sale sold from, and records the refund (src/lib/pos/posReturns.ts). One return per sale for this pass — a sale already returned redirects back to its detail page instead of allowing a second one.",
     "sourceFile": "src/app/partner/[partnerId]/pos/[recordId]/return/page.tsx"
+  },
+  {
+    "id": "pos.return-barcode",
+    "moduleSlug": "pos",
+    "title": "POS Return by Barcode",
+    "path": "/partner/[partnerId]/pos/returns",
+    "kind": "form",
+    "superAdminOnly": false,
+    "customizableRegions": [],
+    "explanation": "POS Pro barcode lookup for a completed sale before opening the existing audited refund flow.",
+    "sourceFile": "src/app/partner/[partnerId]/pos/returns/page.tsx"
   },
   {
     "id": "pos.staff.login",

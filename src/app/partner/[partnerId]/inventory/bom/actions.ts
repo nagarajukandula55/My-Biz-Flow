@@ -4,6 +4,9 @@ import { revalidatePath } from "next/cache";
 import { createBusinessRecord } from "@/lib/businessRecords";
 import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import { bomFormFields } from "@/lib/sample-data/bom";
+import { POS_BARCODE_FIELD_KEYS } from "@/lib/sample-data/bom";
+import { assertMaterialBarcodeAvailable, assertPosBarcodeAccess } from "@/lib/barcodeCatalog";
+import { assertPageTierAccess } from "@/lib/tenant";
 
 // "id" (Material Code) is excluded from the CSV vocabulary — it's an
 // auto-generated field (see NUMBERED_MODULE_SLUGS in businessRecords.ts)
@@ -17,17 +20,30 @@ const ALL_KEYS = CSV_FORM_FIELDS.map((f) => f.key);
 /** Same header-matched, no-quoted-comma CSV parser as telecalling's importLeadsAction
  * (see src/lib/telecalling/actions.ts, parseLeadsCsv) — good enough for a plain
  * exported catalog, not a full RFC 4180 parser. */
+function parseCsvRows(text: string): string[][] {
+  const rows: string[][] = []; let row: string[] = []; let cell = ""; let quoted = false;
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index];
+    if (char === '"') { if (quoted && text[index + 1] === '"') { cell += '"'; index += 1; } else quoted = !quoted; }
+    else if (char === "," && !quoted) { row.push(cell.trim()); cell = ""; }
+    else if ((char === "\n" || char === "\r") && !quoted) { if (char === "\r" && text[index + 1] === "\n") index += 1; row.push(cell.trim()); if (row.some(Boolean)) rows.push(row); row = []; cell = ""; }
+    else cell += char;
+  }
+  row.push(cell.trim()); if (row.some(Boolean)) rows.push(row);
+  if (quoted) throw new Error("CSV contains an unclosed quoted value.");
+  return rows;
+}
+
 function parseBomCsv(text: string): Record<string, string>[] {
-  const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
+  const lines = parseCsvRows(text);
   if (lines.length < 2) return [];
-  const header = lines[0].split(",").map((h) => h.trim());
+  const header = lines[0].map((h) => h.trim());
   const knownHeaderIdx: Record<string, number> = {};
   for (const key of ALL_KEYS) {
     const idx = header.findIndex((h) => h.toLowerCase() === key.toLowerCase());
     if (idx >= 0) knownHeaderIdx[key] = idx;
   }
-  return lines.slice(1).map((line) => {
-    const cols = line.split(",").map((c) => c.trim());
+  return lines.slice(1).map((cols) => {
     const row: Record<string, string> = {};
     for (const [key, idx] of Object.entries(knownHeaderIdx)) {
       row[key] = cols[idx] ?? "";
@@ -48,6 +64,9 @@ export async function bulkImportBomAction(
   const rows = parseBomCsv(text);
   if (rows.length === 0) throw new Error("No valid rows found in the CSV");
 
+  const usesBarcodeFields = rows.some((row) => Object.entries(row).some(([key, value]) => POS_BARCODE_FIELD_KEYS.has(key) && Boolean(value.trim())));
+  if (usesBarcodeFields) { await assertPosBarcodeAccess(partnerId); await assertPageTierAccess(partnerId, "inventory.barcodes"); }
+  const fileBarcodes = new Set<string>();
   let count = 0;
   const failed: { row: number; error: string }[] = [];
   for (let i = 0; i < rows.length; i++) {
@@ -64,6 +83,12 @@ export async function bulkImportBomAction(
       }
       if (values["serialized"] !== undefined) {
         values["serialized"] = String(values["serialized"]).trim().toLowerCase() === "true";
+      }
+      if (String(values["barcode"] ?? "").trim()) {
+        const code = String(values["barcode"]).trim().toUpperCase();
+        if (fileBarcodes.has(code)) throw new Error(`Duplicate barcode "${code}" within this CSV.`);
+        await assertMaterialBarcodeAvailable(partnerId, values);
+        fileBarcodes.add(code);
       }
       await createBusinessRecord(partnerId, "inventory-bom", values);
       count++;

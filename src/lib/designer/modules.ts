@@ -205,6 +205,7 @@ export const MODULE_SUB_NAV: Record<string, PartnerNavSubItem[]> = {
   pos: [
     { key: "pos.list", label: "Sales", href: "pos" },
     { key: "pos.checkout", label: "+ New Sale", href: "pos/checkout" },
+    { key: "pos.return-barcode", label: "Return by Barcode", href: "pos/returns" },
   ],
   "wholesale-b2b": [
     { key: "wholesale-b2b.list", label: "Orders", href: "wholesale-b2b" },
@@ -218,6 +219,8 @@ export const MODULE_SUB_NAV: Record<string, PartnerNavSubItem[]> = {
   ],
   inventory: [
     { key: "inventory.bom", label: "Material Catalog (BOM)", href: "inventory/bom" },
+    { key: "inventory.barcodes", label: "Barcode & Labels", href: "inventory/barcodes" },
+      { key: "inventory.barcodes.audit", label: "Barcode Audit", href: "inventory/barcodes/audit" },
     { key: "inventory.warehouses", label: "Warehouses", href: "inventory/warehouses" },
     { key: "inventory.stock", label: "Inventory (Stock)", href: "inventory/stock" },
     { key: "inventory.lots", label: "Lot & Serial Traceability", href: "inventory/lots" },

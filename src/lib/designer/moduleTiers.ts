@@ -196,7 +196,8 @@ export const MODULE_TIER_FEATURES: Record<string, ModuleTierFeatures> = {
     ],
     "pro": [
       "Material/BOM catalog authoring",
-      "Inventory money ledger (Transactions)"
+      "Inventory money ledger (Transactions)",
+      "Business-owned barcode series, printable product labels and POS barcode scanning"
     ],
     "ultimate": []
   },

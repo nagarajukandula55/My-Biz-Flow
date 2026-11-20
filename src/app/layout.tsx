@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     template: "%s | My Biz Flow",
   },
   description:
-    "My Biz Flow is a modular, no-code business management platform for Indian SMBs — mix and match POS, Service Centre workorders, GST billing, inventory, and more modules on one account, all config-driven with no custom development required.",
+    "My Biz Flow is a modular business management platform for Indian SMBs - run POS, inventory, barcode labels, GST billing and more from one configurable account.",
   keywords: [
     "no-code business management software",
     "multi-vertical CRM platform",
@@ -38,6 +38,8 @@ export const metadata: Metadata = {
     "GST billing software",
     "modular business software",
     "POS and service centre software",
+    "barcode inventory software India",
+    "barcode label printing POS",
     "business management software for SMBs India",
   ],
   applicationName: "My Biz Flow",
@@ -47,14 +49,14 @@ export const metadata: Metadata = {
     siteName: "My Biz Flow",
     title: "My Biz Flow — No-Code Business Management Platform for Every Business",
     description:
-      "One platform, every module: POS, Service Centre, Telecalling, Field Force, Billing/GST, Inventory, Clinic and more — mix and match on one account, no custom development required.",
+      "One platform for POS, inventory, barcode labels, Billing/GST and more - configure the workflows your business needs on one account.",
     images: [{ url: "/logo-horizontal.png", alt: "My Biz Flow" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "My Biz Flow — No-Code Business Management Platform for Every Business",
     description:
-      "One platform, every module: POS, Service Centre, Telecalling, Field Force, Billing/GST, Inventory, Clinic and more — mix and match on one account, no custom development required.",
+      "One platform for POS, inventory, barcode labels, Billing/GST and more - configure the workflows your business needs on one account.",
     images: ["/logo-horizontal.png"],
   },
   robots: { index: true, follow: true },

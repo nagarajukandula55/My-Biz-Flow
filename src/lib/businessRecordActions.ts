@@ -9,6 +9,16 @@ import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import { withRecordLock } from "@/lib/withRecordLock";
 import { applyInvoiceConsumption, finalizeInvoiceItems, hasInventoryLines, planInvoiceConsumption } from "@/lib/invoiceInventory";
 import { syncBomMaterialToInventoryStock } from "@/lib/inventoryStock";
+import { assertMaterialBarcodeAvailable, assertPosBarcodeAccess } from "@/lib/barcodeCatalog";
+import { assertPageTierAccess } from "@/lib/tenant";
+
+const POS_BARCODE_WRITE_KEYS = new Set(["barcode", "barcodeType", "variant", "packSize", "offerPrice", "manufacturedOn", "expiryDate", "labelNote"]);
+
+async function assertBarcodeWriteAccess(partnerId: string, values: Record<string, unknown>): Promise<void> {
+  if (!Object.keys(values).some((key) => POS_BARCODE_WRITE_KEYS.has(key))) return;
+  await assertPosBarcodeAccess(partnerId);
+  await assertPageTierAccess(partnerId, "inventory.barcodes");
+}
 
 /**
  * Every page whose material picker is built from getBomOptionsForPartner
@@ -102,6 +112,10 @@ export async function createBusinessRecordAction(
   // module built directly on createBusinessRecord/updateBusinessRecord)
   // trusting the caller-supplied partnerId with nothing to enforce it.
   partnerId = await requireSessionPartnerId(partnerId);
+  if (moduleSlug === "inventory-bom") {
+    await assertBarcodeWriteAccess(partnerId, values);
+    await assertMaterialBarcodeAvailable(partnerId, values);
+  }
   // Fail-closed GST-invoice gate: a partner without their own GSTIN cannot
   // issue a GST-format tax invoice (buyer GSTIN/HSN/CGST-SGST-IGST split) —
   // only a plain/normal invoice. BillingInvoiceForm already hides the "GST
@@ -216,6 +230,10 @@ export async function updateBusinessRecordAction(
   urlPath: string = moduleSlug
 ) {
   partnerId = await requireSessionPartnerId(partnerId);
+  if (moduleSlug === "inventory-bom") {
+    await assertBarcodeWriteAccess(partnerId, values);
+    await assertMaterialBarcodeAvailable(partnerId, values, recordKey);
+  }
 
   // Same fail-closed GST-invoice gate as createBusinessRecordAction above —
   // editing an existing invoice into "GST" format is just as much a bypass

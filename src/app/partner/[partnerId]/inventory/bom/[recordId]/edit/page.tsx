@@ -1,7 +1,9 @@
 import { AppShell } from "@/components/AppShell";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
-import { bomFormFields } from "@/lib/sample-data/bom";
+import { bomFormFields, POS_BARCODE_FIELD_KEYS } from "@/lib/sample-data/bom";
+import { getVisibleModuleSlugs } from "@/lib/designer/entitlements";
+import { getPageTierAccess } from "@/lib/tenant";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { notFound } from "next/navigation";
 import { getBusinessRecord } from "@/lib/businessRecords";
@@ -26,7 +28,9 @@ registerPage({
 export default async function EditBomPage({ params }: { params: { partnerId: string; recordId: string } }) {
   const record = await getBusinessRecord(params.partnerId, "inventory-bom", params.recordId);
   if (!record) notFound();
-  const fields = await applyCustomizations("inventory.bom.edit", bomFormFields);
+  const hasPos = (await getVisibleModuleSlugs(params.partnerId)).includes("pos");
+  const barcodeFeatureEnabled = hasPos && (await getPageTierAccess(params.partnerId, "inventory.barcodes")).allowed;
+  const fields = (await applyCustomizations("inventory.bom.edit", bomFormFields)).filter((field) => barcodeFeatureEnabled || !POS_BARCODE_FIELD_KEYS.has(field.key));
 
   return (
     <AppShell topbarTitle="Edit Material — Material Catalog (BOM)">

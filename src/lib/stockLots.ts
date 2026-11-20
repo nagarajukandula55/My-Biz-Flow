@@ -65,6 +65,9 @@ async function createStockLotsInner(input: CreateStockLotInput): Promise<string[
   if (input.serialized) {
     const serials = input.serialNumbers ?? [];
     if (serials.length === 0) return [];
+    if (new Set(serials).size !== serials.length) throw new Error("Duplicate serialized unit codes were supplied.");
+    const existing = await prisma.stockLot.findMany({ where: { partnerId: input.partnerId, serialNumber: { in: serials } }, select: { serialNumber: true }, take: serials.length + 1 });
+    if (existing.length) throw new Error(`Serialized unit code already exists: ${String(existing[0].serialNumber)}.`);
     const created = await prisma.$transaction(
       serials.map((serialNumber) =>
         prisma.stockLot.create({
@@ -102,6 +105,43 @@ export type ConsumeFifoResult = {
   shortfall: number;
   lotsTouched: { lotId: string; quantityDrawn: number; serialNumber: string | null }[];
 };
+
+export type AvailableSerializedUnit = { lotId: string; serialNumber: string; materialId: string; materialLabel: string; warehouseName: string | null };
+
+/** Available unit-level stock for the POS scanner. A row represents one physical serialized unit. */
+export async function listAvailableSerializedUnits(partnerId: string, warehouseName: string): Promise<AvailableSerializedUnit[]> {
+  const lots = await prisma.stockLot.findMany({
+    where: { partnerId, warehouseName, serialized: true, condition: { not: "Defective" }, quantityRemaining: { gt: 0 }, serialNumber: { not: null } },
+    select: { id: true, serialNumber: true, materialId: true, materialLabel: true, warehouseName: true },
+    take: 2000,
+  });
+  return lots.map((lot) => ({ lotId: lot.id, serialNumber: String(lot.serialNumber), materialId: lot.materialId, materialLabel: lot.materialLabel, warehouseName: lot.warehouseName }));
+}
+
+/** Fails closed before a sale touches aggregate stock if a scanned unit is no longer available at this outlet. */
+export async function assertSerializedUnitsAvailable(partnerId: string, units: Array<{ lotId: string; serialNumber: string }>, warehouseName: string): Promise<void> {
+  if (!units.length) return;
+  if (new Set(units.map((unit) => unit.lotId)).size !== units.length || new Set(units.map((unit) => unit.serialNumber)).size !== units.length) throw new Error("The same serialized unit cannot be sold twice.");
+  const found = await prisma.stockLot.findMany({ where: { partnerId, id: { in: units.map((unit) => unit.lotId) }, warehouseName, serialized: true, quantityRemaining: { gt: 0 } }, select: { id: true, serialNumber: true, condition: true } });
+  if (found.length !== units.length || found.some((lot) => lot.condition === "Defective") || found.some((lot) => !units.some((unit) => unit.lotId === lot.id && unit.serialNumber === lot.serialNumber))) {
+    throw new Error("One or more scanned serialized units are unavailable at this outlet. Refresh and scan again.");
+  }
+}
+
+export async function consumeSerializedUnits(partnerId: string, units: Array<{ lotId: string; serialNumber: string }>, warehouseName: string): Promise<void> {
+  await assertSerializedUnitsAvailable(partnerId, units, warehouseName);
+  await prisma.$transaction(units.map((unit) => prisma.stockLot.update({ where: { id: unit.lotId }, data: { quantityRemaining: 0, consumedAt: new Date() } })));
+}
+
+/** Return/void puts back the exact serial that was sold; no substitute unit can be restored accidentally. */
+export async function restoreSerializedUnits(partnerId: string, units: Array<{ lotId: string; serialNumber: string }>): Promise<void> {
+  if (!units.length) return;
+  const found = await prisma.stockLot.findMany({ where: { partnerId, id: { in: units.map((unit) => unit.lotId) }, serialized: true }, select: { id: true, serialNumber: true, quantityReceived: true, quantityRemaining: true } });
+  if (found.length !== units.length || found.some((lot) => lot.quantityReceived !== 1 || lot.quantityRemaining !== 0 || !units.some((unit) => unit.lotId === lot.id && unit.serialNumber === lot.serialNumber))) {
+    throw new Error("The serialized unit cannot be restored because its stock record no longer matches the original sale.");
+  }
+  await prisma.$transaction(found.map((lot) => prisma.stockLot.update({ where: { id: lot.id }, data: { quantityRemaining: 1, consumedAt: null } })));
+}
 
 /**
  * FIFO draw: consumes `quantity` units of a material from the oldest

@@ -2,7 +2,9 @@ import { AppShell } from "@/components/AppShell";
 import { renderTierGate } from "@/lib/pageTierGate";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
-import { bomFormFields } from "@/lib/sample-data/bom";
+import { bomFormFields, POS_BARCODE_FIELD_KEYS } from "@/lib/sample-data/bom";
+import { getVisibleModuleSlugs } from "@/lib/designer/entitlements";
+import { getPageTierAccess } from "@/lib/tenant";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { createServiceCentreBomMaterialAction } from "@/lib/serviceCentreCatalogActions";
 
@@ -26,7 +28,9 @@ export default async function NewBomPage({ params }: { params: { partnerId: stri
   const tierGate = await renderTierGate(params.partnerId, "inventory.bom.create", "Material Catalog (BOM)");
   if (tierGate) return <AppShell topbarTitle={"New Material"}>{tierGate}</AppShell>;
 
-  const fields = await applyCustomizations("inventory.bom.create", bomFormFields);
+  const hasPos = (await getVisibleModuleSlugs(params.partnerId)).includes("pos");
+  const barcodeFeatureEnabled = hasPos && (await getPageTierAccess(params.partnerId, "inventory.barcodes")).allowed;
+  const fields = (await applyCustomizations("inventory.bom.create", bomFormFields)).filter((field) => barcodeFeatureEnabled || !POS_BARCODE_FIELD_KEYS.has(field.key));
 
   return (
     <AppShell topbarTitle="New Material — Material Catalog (BOM)">

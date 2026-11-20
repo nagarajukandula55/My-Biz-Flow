@@ -12,9 +12,9 @@ export async function createPosReturnAction(partnerId: string, saleId: string, f
   const refundMethod = String(formData.get("refundMethod") ?? "Cash") as "Cash" | "UPI" | "Card" | "Wallet";
   const reason = String(formData.get("reason") ?? "").trim();
 
-  const skus = formData.getAll("sku").map(String);
+  const lineIds = formData.getAll("lineId").map(String);
   const qtys = formData.getAll("qty").map((v) => Number(v));
-  const lines: PosReturnLineInput[] = skus.map((sku, i) => ({ sku, qty: qtys[i] || 0 })).filter((l) => l.qty > 0);
+  const lines: PosReturnLineInput[] = lineIds.map((lineId, i) => ({ lineId, qty: qtys[i] || 0 })).filter((l) => l.qty > 0);
 
   if (lines.length === 0) throw new Error("Enter a quantity to return for at least one line.");
 

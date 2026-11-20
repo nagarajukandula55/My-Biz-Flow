@@ -137,6 +137,15 @@ body {
   color: var(--text);
 }
 
+/* Label printing is deliberately opt-in via a transient body class. This
+   preserves the existing A4/thermal document print layouts everywhere else. */
+@media print {
+  .printing-barcode-label * { visibility: hidden; }
+  .printing-barcode-label .barcode-label,
+  .printing-barcode-label .barcode-label * { visibility: visible; }
+  .printing-barcode-label .single-barcode-print .barcode-label { position: fixed; left: 0; top: 0; margin: 0; }
+}
+
 body {
   font-family: var(--font-sans), Arial, sans-serif;
   font-weight: 400;

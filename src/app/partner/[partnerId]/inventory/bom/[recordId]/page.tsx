@@ -4,8 +4,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { RecordDetail } from "@/components/RecordDetail";
 import { getBomDetailFields, getBomTimeline, bomRelated, bomColumns } from "@/lib/sample-data/bom";
+import { getVisibleModuleSlugs } from "@/lib/designer/entitlements";
+import { getPageTierAccess } from "@/lib/tenant";
 import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
 import { getBusinessRecord } from "@/lib/businessRecords";
+import { getBarcodeSettings } from "@/lib/barcodeCatalog";
+import { MaterialBarcodeActions } from "../../barcodes/MaterialBarcodeActions";
+import { UnitBarcodeGenerator } from "../../barcodes/UnitBarcodeGenerator";
+import { VariantCreator } from "../../barcodes/VariantCreator";
 
 registerPage({
   id: "inventory.bom.detail",
@@ -33,7 +39,13 @@ export default async function BomDetailPage({
 }) {
   const record = await getBusinessRecord(params.partnerId, "inventory-bom", params.recordId);
   if (!record) notFound();
-  const fields = await applyCustomizationsToDetailFields("inventory.bom.detail", getBomDetailFields(record), bomColumns);
+  const hasPos = (await getVisibleModuleSlugs(params.partnerId)).includes("pos");
+  const barcodeFeatureEnabled = hasPos && (await getPageTierAccess(params.partnerId, "inventory.barcodes")).allowed;
+  const [fields, barcodeSettings] = await Promise.all([
+    applyCustomizationsToDetailFields("inventory.bom.detail", getBomDetailFields(record), bomColumns),
+    getBarcodeSettings(params.partnerId),
+  ]);
+  const visibleFields = fields.filter((field) => barcodeFeatureEnabled || !["Barcode (SKU)", "Barcode Type", "Variant / Colour / Style", "Pack Size / Net Quantity", "Offer / Sale Price", "Manufactured On", "Expiry / Best Before", "Label Note"].includes(String(field.label)));
   const timeline = getBomTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
 
@@ -41,7 +53,7 @@ export default async function BomDetailPage({
     <AppShell topbarTitle="Material Catalog (BOM)">
       <div>
         <RecordDetail
-          fields={fields}
+          fields={visibleFields}
           recordLabel={recordLabel}
           searchParams={searchParams}
           timeline={timeline}
@@ -53,6 +65,7 @@ export default async function BomDetailPage({
                 <p className="mt-1 text-xs text-text-muted">Material detail</p>
               </div>
               <div className="flex items-center gap-3">
+                {barcodeFeatureEnabled && <div><MaterialBarcodeActions partnerId={params.partnerId} material={record} settings={barcodeSettings} /><UnitBarcodeGenerator partnerId={params.partnerId} material={record} settings={barcodeSettings} /><VariantCreator partnerId={params.partnerId} materialId={params.recordId} /></div>}
                 <Link href={`/partner/${params.partnerId}/inventory/bom`} className="btn-outline">
                   &larr; Back
                 </Link>

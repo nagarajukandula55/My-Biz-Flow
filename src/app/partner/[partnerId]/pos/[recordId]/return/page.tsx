@@ -56,10 +56,11 @@ export default async function PosReturnPage({ params }: { params: { partnerId: s
               </thead>
               <tbody>
                 {sale.lines.map((line) => (
-                  <tr key={line.sku} className="border-b border-border last:border-b-0">
+                  <tr key={line.id} className="border-b border-border last:border-b-0">
                     <td className="px-3 py-2">
                       {line.productName}
-                      <input type="hidden" name="sku" value={line.sku} />
+                      <input type="hidden" name="lineId" value={line.id} />
+                      {line.serialNumber ? <span className="block text-xs text-text-muted">Unit: {line.serialNumber}</span> : null}
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums">{line.qty}</td>
                     <td className="px-3 py-2 text-right tabular-nums">₹{line.unitPrice}</td>

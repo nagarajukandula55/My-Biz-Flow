@@ -15,8 +15,9 @@ import { withRecordLock } from "@/lib/withRecordLock";
  */
 import { getBusinessRecord, createBusinessRecord, updateBusinessRecord, listBusinessRecords } from "@/lib/businessRecords";
 import { extractSaleFromRecord } from "@/lib/sample-data/pos";
+import { restoreSerializedUnits } from "@/lib/stockLots";
 
-export type PosReturnLineInput = { sku: string; qty: number };
+export type PosReturnLineInput = { lineId: string; qty: number };
 
 export async function hasExistingReturn(partnerId: string, saleId: string): Promise<boolean> {
   const returns = await listBusinessRecords(partnerId, "pos-returns");
@@ -43,29 +44,29 @@ export async function createPosReturn(params: {
     throw new Error("This sale has already had a return processed against it.");
   }
 
-  const linesBySku = new Map(sale.lines.map((l) => [l.sku, l]));
+  const linesById = new Map(sale.lines.map((l) => [l.id, l]));
   let refundAmount = 0;
-  const returnLines: { sku: string; productName: string; qty: number; unitPrice: number; taxRate: number; lineRefund: number }[] = [];
+  const returnLines: { sku: string; productName: string; qty: number; unitPrice: number; taxRate: number; lineRefund: number; serialNumber?: string; serialLotId?: string }[] = [];
 
   const seen = new Set<string>();
   for (const input of params.lines) {
     if (!Number.isFinite(input.qty) || input.qty < 0) throw new Error("Invalid return quantity.");
     if (input.qty === 0) continue;
-    if (seen.has(input.sku)) throw new Error("Combine repeated return lines before submitting.");
-    seen.add(input.sku);
-    if (sale.lines.filter(line => line.sku === input.sku).length !== 1) throw new Error("This sale has repeated SKU lines; review its refund allocation before returning it.");
-    const line = linesBySku.get(input.sku);
-    if (!line) throw new Error(`Line "${input.sku}" isn't on this sale.`);
+    if (seen.has(input.lineId)) throw new Error("A sale line can only be returned once.");
+    seen.add(input.lineId);
+    const line = linesById.get(input.lineId);
+    if (!line) throw new Error("The selected line is not on this sale.");
     if (input.qty > line.qty) {
       throw new Error(`Cannot return ${input.qty} of ${line.productName} — only ${line.qty} were sold.`);
     }
+    if (line.serialNumber && input.qty !== 1) throw new Error("A serialized unit must be returned as exactly one unit.");
     // Per-unit net price after this line's flat discount, tax-inclusive —
     // an approximation (the discount was applied to the whole line, not
     // per unit), same rounding posture computeSaleTotals already uses.
     const unitNet = Math.max(0, line.unitPrice - (line.discount || 0) / line.qty);
     const lineRefund = Math.round(unitNet * input.qty * (1 + (line.taxRate || 0) / 100) * 100) / 100;
     refundAmount += lineRefund;
-    returnLines.push({ sku: input.sku, productName: line.productName, qty: input.qty, unitPrice: line.unitPrice, taxRate: line.taxRate, lineRefund });
+    returnLines.push({ sku: line.sku, productName: line.productName, qty: input.qty, unitPrice: line.unitPrice, taxRate: line.taxRate, lineRefund, serialNumber: line.serialNumber, serialLotId: line.serialLotId });
   }
   if (returnLines.length === 0) throw new Error("Select at least one line and quantity to return.");
 
@@ -81,6 +82,7 @@ export async function createPosReturn(params: {
       await updateBusinessRecord(params.partnerId, "inventory-stock", line.sku, { ...stock, qtyOnHand: restoredQty, availableQty: Math.max(0, restoredQty - Number(stock["reservedQty"] ?? 0)) });
     }
   }
+  await restoreSerializedUnits(params.partnerId, returnLines.filter((line) => line.serialNumber && line.serialLotId).map((line) => ({ lotId: String(line.serialLotId), serialNumber: String(line.serialNumber) })));
 
   const rounded = Math.round(refundAmount * 100) / 100;
   const ret = await createBusinessRecord(params.partnerId, "pos-returns", {
