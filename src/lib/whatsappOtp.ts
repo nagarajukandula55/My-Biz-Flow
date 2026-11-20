@@ -77,7 +77,7 @@ export async function requestLoginOtp(
   await prisma.otpCode.updateMany({ where: { partnerId, targetRecordId, purpose, consumedAt: null }, data: { consumedAt: now } });
 
   const code = generateSixDigitCode();
-  await prisma.otpCode.create({
+  const otp = await prisma.otpCode.create({
     data: {
       partnerId,
       purpose,
@@ -90,7 +90,12 @@ export async function requestLoginOtp(
   });
 
   const delivered = await sendWhatsAppTemplateMessage(toPhone, templateName, env.whatsappOtpTemplateLang(), [code]);
-  return delivered ? { sent: true } : { sent: false, reason: "send_failed" };
+  if (delivered) return { sent: true };
+  // A provider rejection must not create a fake pending OTP or cause the next
+  // genuine attempt to hit the cooldown/hourly limiter. The code was never
+  // delivered, so remove only this newly-created row; prior rows remain audit history.
+  await prisma.otpCode.delete({ where: { id: otp.id } }).catch(() => undefined);
+  return { sent: false, reason: "send_failed" };
 }
 
 export type VerifyLoginOtpResult = {

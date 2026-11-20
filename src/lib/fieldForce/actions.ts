@@ -397,7 +397,9 @@ export async function requestCustomerWhatsAppOtpAction(partnerId: string, phone:
       error:
         result.reason === "not_configured"
           ? "WhatsApp OTP login isn't available right now."
-          : "Couldn't send the code — check the number and try again.",
+          : result.reason === "rate_limited"
+            ? "Please wait 60 seconds before requesting another OTP. Only five accepted OTPs are allowed per hour."
+            : "WhatsApp could not accept the OTP request. Check the approved OTP template and WhatsApp Business configuration, then try again.",
     };
   }
   return { ok: true };

@@ -15,6 +15,12 @@ import { isOtpLoginEnabledForPartner } from "@/lib/telecalling/whatsappGate";
 import { verifyCustomerLogin, setCustomerSession } from "@/lib/fieldForce/customerAuth";
 import { verifyProviderLogin, setProviderSession } from "@/lib/fieldForce/providerAuth";
 
+function loginOtpRequestError(reason: "not_configured" | "send_failed" | "rate_limited"): string {
+  if (reason === "not_configured") return "WhatsApp OTP login isn't available right now.";
+  if (reason === "rate_limited") return "Please wait 60 seconds before requesting another OTP. Only five accepted OTPs are allowed per hour.";
+  return "WhatsApp could not accept the OTP request. Check the approved OTP template and WhatsApp Business configuration, then try again.";
+}
+
 /**
  * Real partner login — universal across every business type. There is one
  * login form for the whole platform: it looks a partner up by their public
@@ -133,10 +139,7 @@ export async function requestPartnerWhatsAppOtpAction(phone: string): Promise<{ 
   if (!result.sent) {
     return {
       ok: false,
-      error:
-        result.reason === "not_configured"
-          ? "WhatsApp OTP login isn't available right now."
-          : "Couldn't send the code — check the number and try again.",
+      error: loginOtpRequestError(result.reason),
     };
   }
   return { ok: true };
@@ -189,7 +192,7 @@ export async function requestUnifiedWhatsAppOtpAction(role: string, phone: strin
   const account = matches[0];
   if (!(await isOtpLoginEnabledForPartner(account.partnerId))) return { ok: true };
   const result = await requestLoginOtp(account.partnerId, `unified-${role}-login`, account.id, trimmed);
-  return result.sent ? { ok: true } : { ok: false, error: result.reason === "not_configured" ? "WhatsApp OTP login is not available right now." : "Could not send OTP." };
+  return result.sent ? { ok: true } : { ok: false, error: loginOtpRequestError(result.reason) };
 }
 
 export async function verifyUnifiedWhatsAppOtpAction(role: string, phone: string, code: string): Promise<void | { error?: string }> {
