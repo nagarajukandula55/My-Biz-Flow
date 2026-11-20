@@ -1,156 +1,64 @@
 name: Scheduled jobs
 
-# Replaces Vercel Cron (vercel.json's "crons" removed) — we rely on GitHub
-# Actions for scheduling instead. Each job just hits the same authenticated
-# cron endpoint Vercel Cron used to call, with the same CRON_SECRET bearer
-# token (set as a repo secret: Settings -> Secrets and variables -> Actions).
+# GitHub Actions owns all scheduled execution. No Vercel Cron is configured.
 on:
   schedule:
-    - cron: "7,22,37,52 4-13 * * *"
-    # Re-dispatch Field Force bookings whose provider offers expired.
-    # Fifteen minutes is sufficient because the offer window is durable.
-    - cron: "7,22,37,52 4-13 * * *"
-    # Company SLA breach monitor.
+    - cron: "7,37 4-13 * * *"
+    - cron: "0 3,7,11 * * *"
     - cron: "*/30 4-13 * * *"
-    # Billing recurring invoices — daily 03:00 UTC (was vercel.json "0 3 * * *")
     - cron: "0 5 * * *"
-    # Telegram daily/weekly/monthly partner reports — two low-load attempts
-    # at 20:30 and 20:45 IST (15:00 and 15:15 UTC). The endpoint is
-    # idempotent per partner/cadence, so a retry cannot duplicate a report.
     - cron: "0,15 15 * * *"
-    # Trial-expiry Telegram warnings — daily 18:30 IST = 13:00 UTC
     - cron: "0 13 * * *"
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      job:
+        description: "Job to run manually"
+        required: true
+        default: "all"
+        type: choice
+        options: [all, payment-delivery, field-force-offer-retry, field-force-sla-monitor, workflow-actions, event-starting-soon, legal-court-date-reminders, overdue-invoice-automations, low-stock-automations, billing-recurring-invoices, telegram-reports, subscription-expiry-check]
 
 jobs:
-  payment-delivery:
-    if: github.event.schedule == '7,22,37,52 4-13 * * *' || github.event_name == 'workflow_dispatch'
+  dispatch:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      WHATSAPP_ACCESS_TOKEN: ${{ secrets.WHATSAPP_ACCESS_TOKEN }}
+      WHATSAPP_BUSINESS_PHONE_NUMBER_ID: ${{ secrets.WHATSAPP_BUSINESS_PHONE_NUMBER_ID }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_OPS_CHAT_ID: ${{ secrets.TELEGRAM_OPS_CHAT_ID }}
+      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+      RESEND_FROM: ${{ secrets.RESEND_FROM }}
+      RAZORPAY_KEY_ID: ${{ secrets.RAZORPAY_KEY_ID }}
+      RAZORPAY_KEY_SECRET: ${{ secrets.RAZORPAY_KEY_SECRET }}
     steps:
-      - name: Process durable payment delivery jobs
-        run: |
-          curl --max-time 120 -sf -X GET "${APP_URL}/api/cron/payment-delivery" \
-            -H "Authorization: Bearer ${CRON_SECRET}"
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Run due jobs directly (not through Vercel)
+        shell: bash
         env:
-          APP_URL: ${{ secrets.APP_URL }}
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
-
-  field-force-offer-retry:
-    if: github.event.schedule == '7,22,37,52 4-13 * * *' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Retry expired Field Force provider offers
+          SCHEDULE: ${{ github.event.schedule }}
+          MANUAL_JOB: ${{ inputs.job }}
         run: |
-          curl --max-time 120 -sf -X GET "${APP_URL}/api/cron/field-force-offer-retry" \
-            -H "Authorization: Bearer ${CRON_SECRET}"
-        env:
-          APP_URL: ${{ secrets.APP_URL }}
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
-
-  field-force-sla-monitor:
-    if: github.event.schedule == '*/30 4-13 * * *' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Monitor Field Force Company SLAs
-        run: |
-          curl --max-time 120 -sf -X GET "${APP_URL}/api/cron/field-force-sla-monitor" \
-            -H "Authorization: Bearer ${CRON_SECRET}"
-        env:
-          APP_URL: ${{ secrets.APP_URL }}
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
-
-  workflow-actions:
-    if: github.event.schedule == '*/30 4-13 * * *' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Deliver queued workflow notifications
-        run: |
-          curl --max-time 120 -sf -X GET "${APP_URL}/api/cron/workflow-actions" \
-            -H "Authorization: Bearer ${CRON_SECRET}"
-        env:
-          APP_URL: ${{ secrets.APP_URL }}
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
-
-  event-starting-soon:
-    if: github.event.schedule == '*/30 4-13 * * *' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Deliver event starting reminders
-        run: |
-          curl --max-time 120 -sf -X GET "${APP_URL}/api/cron/event-starting-soon" \
-            -H "Authorization: Bearer ${CRON_SECRET}"
-        env:
-          APP_URL: ${{ secrets.APP_URL }}
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
-
-  legal-court-date-reminders:
-    if: github.event.schedule == '0 13 * * *' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Deliver legal court-date reminders
-        run: |
-          curl --max-time 120 -sf -X GET "${APP_URL}/api/cron/legal-court-date-reminders" \
-            -H "Authorization: Bearer ${CRON_SECRET}"
-        env:
-          APP_URL: ${{ secrets.APP_URL }}
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
-
-  overdue-invoice-automations:
-    if: github.event.schedule == '0 5 * * *' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Evaluate overdue invoice automations
-        run: |
-          curl --max-time 120 -sf -X GET "${APP_URL}/api/cron/overdue-invoice-automations" \
-            -H "Authorization: Bearer ${CRON_SECRET}"
-        env:
-          APP_URL: ${{ secrets.APP_URL }}
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
-
-  low-stock-automations:
-    if: github.event.schedule == '0 5 * * *' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Evaluate low-stock automations
-        run: |
-          curl --max-time 120 -sf -X GET "${APP_URL}/api/cron/low-stock-automations" \
-            -H "Authorization: Bearer ${CRON_SECRET}"
-        env:
-          APP_URL: ${{ secrets.APP_URL }}
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
-
-  billing-recurring-invoices:
-    if: github.event.schedule == '0 5 * * *' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Trigger billing-recurring-invoices
-        run: |
-          curl -sf -X GET "${APP_URL}/api/cron/billing-recurring-invoices" \
-            -H "Authorization: Bearer ${CRON_SECRET}"
-        env:
-          APP_URL: ${{ secrets.APP_URL }}
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
-
-  telegram-reports:
-    if: github.event.schedule == '0,15 15 * * *' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Trigger telegram-reports (daily/weekly/monthly partner digests)
-        run: |
-          curl -sf -X GET "${APP_URL}/api/cron/telegram-reports" \
-            -H "Authorization: Bearer ${CRON_SECRET}"
-        env:
-          APP_URL: ${{ secrets.APP_URL }}
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
-
-  subscription-expiry-check:
-    if: github.event.schedule == '0 13 * * *' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Trigger subscription-expiry-check (trial-expiry Telegram warnings)
-        run: |
-          curl -sf -X GET "${APP_URL}/api/cron/subscription-expiry-check" \
-            -H "Authorization: Bearer ${CRON_SECRET}"
-        env:
-          APP_URL: ${{ secrets.APP_URL }}
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          run() { npm run jobs:run -- "$1"; }
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            if [ "$MANUAL_JOB" = "all" ]; then
+              for job in payment-delivery field-force-offer-retry field-force-sla-monitor workflow-actions event-starting-soon legal-court-date-reminders overdue-invoice-automations low-stock-automations billing-recurring-invoices telegram-reports subscription-expiry-check; do run "$job"; done
+            else
+              run "$MANUAL_JOB"
+            fi
+          elif [ "$SCHEDULE" = "7,37 4-13 * * *" ]; then run payment-delivery
+          elif [ "$SCHEDULE" = "0 3,7,11 * * *" ]; then run field-force-offer-retry; run field-force-sla-monitor
+          elif [ "$SCHEDULE" = "*/30 4-13 * * *" ]; then run workflow-actions; run event-starting-soon
+          elif [ "$SCHEDULE" = "0 5 * * *" ]; then run overdue-invoice-automations; run low-stock-automations; run billing-recurring-invoices
+          elif [ "$SCHEDULE" = "0,15 15 * * *" ]; then run telegram-reports
+          elif [ "$SCHEDULE" = "0 13 * * *" ]; then run legal-court-date-reminders; run subscription-expiry-check
+          else echo "Unknown schedule: $SCHEDULE" >&2; exit 1
+          fi
