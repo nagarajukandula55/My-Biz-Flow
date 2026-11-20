@@ -23,7 +23,7 @@ test('SMS and WhatsApp report acceptance only from a successful provider respons
   ['src/lib/whatsapp.ts','sendWhatsAppMessage',{whatsappBusinessPhoneNumberId:()=> 'phone',whatsappAccessToken:()=> 'key'},{messages:[{id:'message-id'}]}],
  ]) {
   let ok=false, body=response;
-  const sender=load(file,{'@/lib/env':{env},'@/lib/smsFlowMapping':{getSmsFlowMapping:async()=>({}),buildSmsFlowPayload:()=>({})}},{fetch:async(url,options)=>{assert.ok(options.signal);return {ok,json:async()=>body};}});
+  const sender=load(file,{'@/lib/env':{env},'@/lib/smsFlowMapping':{getSmsFlowMapping:async()=>({}),buildSmsFlowPayload:()=>({})},'@/lib/phone':{normalizeWhatsAppPhone:value=>String(value).replace(/\D/g,''),maskPhoneForLog:()=>"****"}},{fetch:async(url,options)=>{assert.ok(options.signal);return {ok,json:async()=>body};}});
   assert.equal(await sender[method]('recipient','message'),false);
   ok=true;body={error:'rejected'};assert.equal(await sender[method]('recipient','message'),false);
   body=response;assert.equal(await sender[method]('recipient','message'),true);

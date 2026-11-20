@@ -18,6 +18,7 @@ import { getPartnerType } from "@/lib/designer/partnerTypesData";
 import { issueAccessKey } from "@/lib/designer/accessKeys";
 import { parseProductDomains, type ProductDomain } from "@/lib/catalog/productDomains";
 import { parseServiceTypes, parsePincodeList } from "@/lib/serviceTypes";
+import { phoneLookupVariants } from "@/lib/phone";
 
 const BUSINESS_ID = "BIZ002";
 
@@ -554,8 +555,9 @@ export async function createPartnerFromRequest(request: {
 /** Looks a partner up by their public <prefix>#### id OR their registered login contact number — never the internal key. */
 export async function findPartnerByLoginIdentifier(identifier: string): Promise<PartnerRecord | undefined> {
   const trimmed = identifier.trim();
+  const phoneVariants = phoneLookupVariants(trimmed);
   const row = await prisma.partner.findFirst({
-    where: { OR: [{ id: trimmed }, { loginContact: trimmed }] },
+    where: { OR: [{ id: trimmed }, { loginContact: { in: phoneVariants } }] },
   });
   return row ? toRecord(row) : undefined;
 }

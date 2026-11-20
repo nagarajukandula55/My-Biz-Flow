@@ -10,6 +10,7 @@
  * within an existing customer-initiated conversation window until it is.
  */
 import { env } from "@/lib/env";
+import { maskPhoneForLog, normalizeWhatsAppPhone } from "@/lib/phone";
 
 export async function sendWhatsAppMessage(to: string, message: string): Promise<boolean> {
   const phoneNumberId = env.whatsappBusinessPhoneNumberId();
@@ -27,7 +28,7 @@ export async function sendWhatsAppMessage(to: string, message: string): Promise<
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
       body: JSON.stringify({
         messaging_product: "whatsapp",
-        to: to.replace(/[^\d]/g, ""),
+        to: normalizeWhatsAppPhone(to),
         type: "text",
         text: { body: message },
       }),
@@ -75,7 +76,7 @@ export async function sendWhatsAppTemplateMessage(
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
       body: JSON.stringify({
         messaging_product: "whatsapp",
-        to: to.replace(/[^\d]/g, ""),
+        to: normalizeWhatsAppPhone(to),
         type: "template",
         template: {
           name: templateName,
@@ -89,7 +90,7 @@ export async function sendWhatsAppTemplateMessage(
     });
     const body = await res.json().catch(() => null);
     if (!res.ok || !body?.messages?.[0]?.id) {
-      console.error(`[whatsapp] template "${templateName}" send failed:`, body?.error ?? res.status);
+      console.error(`[whatsapp] template "${templateName}" send failed for ${maskPhoneForLog(to)}:`, body?.error?.message ?? res.status);
       return false;
     }
     return true;

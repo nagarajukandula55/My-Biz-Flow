@@ -85,5 +85,5 @@
   "src/lib/telegramTemplatesData.ts": "36c2f1fed849f9c4a125c8d9c9dd2aeb5907fab26103540dc969f433a4899688",
   "src/lib/telegramTemplateDefs.ts": "cb3fa9e7fb40b51699a00339002002186163f9650c9ad8ba1b304673f3821a68",
   "src/lib/telegramSettingsActions.ts": "cc19fcd62709609fb836060185300edab1870b0f0cbcabc5edbea9d5b4df2413",
-  "src/lib/partnerData.ts": "5c34b9ca86d43434d7f49fa8548a2d57c296760da54f1baf8fe0bbde18144b1b"
+  "src/lib/partnerData.ts": "3ec4001d2f76a343df221825632096947254c7f2ea8cbdc4e1c3c53a54a8cc91"
 }
