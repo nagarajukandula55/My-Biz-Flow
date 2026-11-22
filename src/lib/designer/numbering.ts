@@ -57,11 +57,53 @@ function defaultsForDocument(documentType: string, defaults?: Partial<NumberingS
   return { ...invoiceDefaults, ...defaults };
 }
 
+/**
+ * A counter is normally the source of truth. Older invoice rows can however
+ * have been imported or manually created with a higher visible serial than
+ * the legacy counter. When a new GST/non-GST stream is first opened, use the
+ * highest already-issued document that matches its active format as a floor.
+ * This makes the handover safe even for such historical data.
+ */
+function invoiceSequenceFromNumber(invoiceNumber: string, scheme: NumberingScheme): number | undefined {
+  const marker = "2147483647";
+  const formattedMarker = formatNumber(scheme, Number(marker));
+  const markerIndex = formattedMarker.lastIndexOf(marker);
+  if (markerIndex < 0) return undefined;
+  const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const pattern = new RegExp(
+    `^${escapeRegex(formattedMarker.slice(0, markerIndex))}(\\d+)${escapeRegex(formattedMarker.slice(markerIndex + marker.length))}$`
+  );
+  const matched = invoiceNumber.match(pattern);
+  if (!matched) return undefined;
+  const sequence = Number(matched[1]);
+  return Number.isSafeInteger(sequence) && sequence >= 0 ? sequence : undefined;
+}
+
+async function highestIssuedInvoiceSequence(
+  partnerId: string,
+  scheme: NumberingScheme,
+  client: Prisma.TransactionClient = prisma
+): Promise<number | undefined> {
+  const records = await client.businessRecord.findMany({
+    where: { partnerId, moduleSlug: "billing" },
+    select: { data: true },
+  });
+  let highest: number | undefined;
+  for (const record of records) {
+    const data = record.data as Record<string, unknown>;
+    const number = typeof data.invoiceNumber === "string" ? data.invoiceNumber : "";
+    const sequence = invoiceSequenceFromNumber(number, scheme);
+    if (sequence !== undefined && (highest === undefined || sequence > highest)) highest = sequence;
+  }
+  return highest;
+}
+
 async function nextCounterValue(
   documentType: string,
   partnerId: string | undefined,
   scheme: NumberingScheme,
-  client: Prisma.TransactionClient = prisma
+  client: Prisma.TransactionClient = prisma,
+  reconcileIssuedRecords = false
 ): Promise<number> {
   const legacyDocumentType = LEGACY_INVOICE_DOCUMENT_TYPE[documentType];
   if (!legacyDocumentType || !partnerId) return scheme.sequenceStart;
@@ -71,7 +113,10 @@ async function nextCounterValue(
   });
   // Counter values store the last issued sequence. A new GST/Non-GST
   // counter must therefore start at the *next* value after its legacy one.
-  return Math.max(scheme.sequenceStart, (legacyCounter?.value ?? scheme.sequenceStart - 1) + 1);
+  const legacyNext = (legacyCounter?.value ?? scheme.sequenceStart - 1) + 1;
+  if (!reconcileIssuedRecords) return Math.max(scheme.sequenceStart, legacyNext);
+  const highestIssued = await highestIssuedInvoiceSequence(partnerId, scheme, client);
+  return Math.max(scheme.sequenceStart, legacyNext, (highestIssued ?? scheme.sequenceStart - 1) + 1);
 }
 
 export async function getMainScheme(documentType: string): Promise<NumberingScheme> {
@@ -153,7 +198,7 @@ export async function previewNextNumber(documentType: string, partnerId?: string
   const scheme = await getEffectiveScheme(documentType, partnerId);
   const key = scopeKey(documentType, partnerId);
   const row = await prisma.numberingCounter.findUnique({ where: { scopeKey: key } });
-  const initial = await nextCounterValue(documentType, partnerId, scheme);
+  const initial = await nextCounterValue(documentType, partnerId, scheme, prisma, !row);
   const current = row?.value ?? initial - 1;
   return formatNumber(scheme, current + 1);
 }
@@ -172,7 +217,20 @@ export async function getNextNumber(
 ): Promise<string> {
   const scheme = await getEffectiveScheme(documentType, partnerId, defaults, client);
   const key = scopeKey(documentType, partnerId);
-  const initial = await nextCounterValue(documentType, partnerId, scheme, client);
+  const existingCounter = await client.numberingCounter.findUnique({ where: { scopeKey: key }, select: { value: true } });
+  // A short-lived deployment may already have opened the new stream using a
+  // stale legacy counter. Reconcile it before issuing the next document so
+  // the counter can only move forward to the highest visible invoice serial.
+  if (existingCounter && partnerId && LEGACY_INVOICE_DOCUMENT_TYPE[documentType]) {
+    const highestIssued = await highestIssuedInvoiceSequence(partnerId, scheme, client);
+    if (highestIssued !== undefined && highestIssued > existingCounter.value) {
+      await client.numberingCounter.updateMany({
+        where: { scopeKey: key, value: { lt: highestIssued } },
+        data: { value: highestIssued },
+      });
+    }
+  }
+  const initial = await nextCounterValue(documentType, partnerId, scheme, client, !existingCounter);
 
   const row = await client.numberingCounter.upsert({
     where: { scopeKey: key },

@@ -2,10 +2,11 @@ const assert = require('node:assert/strict');
 const test = require('node:test');
 const load = require('./loadModule.cjs');
 
-function numberingHarness() {
+function numberingHarness({ counters: initialCounters, billingRecords = [] } = {}) {
   const counters = new Map([
     ['partner:p1:invoice.b2b', 47],
     ['partner:p1:invoice.b2c', 23],
+    ...(initialCounters ?? []),
   ]);
   const schemes = new Map([
     ['p1:invoice.b2b', { prefix: 'INV', separator: '-', financialYearFormat: 'none', sequenceDigits: 4, sequenceStart: 1, suffix: '' }],
@@ -26,7 +27,13 @@ function numberingHarness() {
         if (!counters.has(key)) { counters.set(key, create.value); return { value: create.value }; }
         const value = counters.get(key) + (update.value?.increment ?? 0); counters.set(key, value); return { value };
       },
+      updateMany: async ({ where, data }) => {
+        const current = counters.get(where.scopeKey);
+        if (current !== undefined && current < where.value.lt) { counters.set(where.scopeKey, data.value); return { count: 1 }; }
+        return { count: 0 };
+      },
     },
+    businessRecord: { findMany: async () => billingRecords.map((data) => ({ data })) },
   };
   const formatNumber = (scheme, value) => `${scheme.prefix}${scheme.separator}${String(value).padStart(scheme.sequenceDigits, '0')}`;
   return { counters, numbering: load('src/lib/designer/numbering.ts', {
@@ -43,4 +50,13 @@ test('GST and Non-GST counters inherit established invoice streams instead of re
   assert.equal(await numbering.getNextNumber('invoice.non-gst', 'p1'), 'BILL-0024');
   assert.equal(counters.get('partner:p1:invoice.gst'), 48);
   assert.equal(counters.get('partner:p1:invoice.non-gst'), 24);
+});
+
+test('an already-opened stream advances beyond the highest visible historical invoice', async () => {
+  const { counters, numbering } = numberingHarness({
+    counters: [['partner:p1:invoice.non-gst', 3]],
+    billingRecords: [{ invoiceNumber: 'BILL-0010' }, { invoiceNumber: 'BILL-0009' }, { invoiceNumber: 'NONGST-0001' }],
+  });
+  assert.equal(await numbering.getNextNumber('invoice.non-gst', 'p1'), 'BILL-0011');
+  assert.equal(counters.get('partner:p1:invoice.non-gst'), 11);
 });
