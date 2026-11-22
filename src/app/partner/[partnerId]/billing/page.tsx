@@ -8,6 +8,7 @@ import { applyCustomizations } from "@/lib/designer/customizations";
 import { billingColumns } from "@/lib/sample-data/billing";
 import { listBusinessRecords, listBusinessRecordsPaginated } from "@/lib/businessRecords";
 import { formatCurrencyINR } from "@/lib/format";
+import { prepareBillingExportRows } from "@/lib/billingExportRows";
 import { PaginationControls, buildPageQueryString } from "@/components/PaginationControls";
 
 registerPage({
@@ -46,7 +47,7 @@ type SearchParams = {
   q?: string;
 };
 
-const SEARCH_FIELDS = ["id", "customer", "customerPhone", "customerGstin"];
+const SEARCH_FIELDS = ["id", "invoiceNumber", "sourceWorkorderId", "customer", "customerPhone", "customerGstin"];
 
 export default async function BillingPage({
   params,
@@ -120,6 +121,8 @@ export default async function BillingPage({
   const invoiceSourceOptions = distinct("invoiceSource");
 
   const hasActiveFilters = Boolean(q || paymentStatus || paymentMode || invoiceSource || from || to);
+  const displayRows = prepareBillingExportRows(rows);
+  const exportRows = prepareBillingExportRows(filteredRows);
 
   return (
     <AppShell
@@ -128,7 +131,7 @@ export default async function BillingPage({
         <div className="flex items-center gap-3">
           <RecordCsvExportButton
             columns={billingColumns.map((c) => ({ key: c.key, type: c.type === "date" ? "date" : c.type === "datetime" ? "datetime" : undefined }))}
-            rows={filteredRows}
+            rows={exportRows}
             filename={`invoices-${params.partnerId}-${new Date().toISOString().slice(0, 10)}.csv`}
           />
           <Link href={`/partner/${params.partnerId}/billing/new`} className="btn-accent">
@@ -182,7 +185,7 @@ export default async function BillingPage({
         </form>
 
         <div className="mt-6">
-          <BillingClientTable partnerId={params.partnerId} columns={columns} rows={rows} />
+          <BillingClientTable partnerId={params.partnerId} columns={columns} rows={displayRows} />
         </div>
 
         <PaginationControls

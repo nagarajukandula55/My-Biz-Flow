@@ -87,7 +87,8 @@ const INVOICE_SOURCE_VARIANT: Record<string, StatusVariant> = {
 };
 
 export const billingColumns: Column[] = [
-  { key: "id", label: "Invoice Number", type: "text" },
+  { key: "invoiceNumber", label: "Invoice Number", type: "text" },
+  { key: "workorderNumber", label: "Workorder No.", type: "text" },
   { key: "customer", label: "Customer", type: "relation-link" },
   { key: "invoiceSource", label: "Source", type: "select-chip", chipVariantMap: INVOICE_SOURCE_VARIANT },
   { key: "issueDate", label: "Issue Date", type: "date" },

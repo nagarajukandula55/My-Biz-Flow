@@ -290,8 +290,8 @@ const DEFAULT_SEQUENCE_PREFIX: Record<string, string> = {
  * moduleSlug whose generic `slug.toUpperCase().slice(0, 3)` prefix would
  * read as (or actually collide-looking with) a real Invoice number — every
  * "inventory-*" slug reduces to "INV" that way, the same prefix
- * invoice.b2b's own real sequence uses (see getNextNumber callers using
- * `prefix: "INV"`). Stock Adjustment/Transfer/Take/Return Order/Part Order
+ * historical sales-invoice sequences used (the active invoice policy now
+ * uses dedicated GST/Non-GST prefixes). Stock Adjustment/Transfer/Take/Return Order/Part Order
  * now get a real configurable sequence instead (see NUMBERED_MODULE_SLUGS
  * above) — this map only still covers modules with no partner-facing
  * numbering scheme of their own (a raw Stock ledger row isn't a document a
@@ -312,6 +312,26 @@ export async function createBusinessRecord(
   values: Record<string, unknown>
 ): Promise<Row> {
   await assertPartnerCanWrite(partnerId);
+  // Every route that creates a real sales invoice eventually persists a
+  // `billing` record. Allocate its immutable number here as a final safety
+  // net, so POS/restaurant/clinic/etc. cannot silently create an unnumbered
+  // invoice or bypass the GST-vs-Non-GST serial policy. Callers that need to
+  // reserve the number earlier (after stock checks) may supply one directly.
+  if (moduleSlug === "billing" && !values.invoiceNumber) {
+    const [{ getPartner }, { getNextNumber }, { resolveInvoiceDocumentType, invoiceNumberingConfig }] = await Promise.all([
+      import("@/lib/partnerData"),
+      import("@/lib/designer/numbering"),
+      import("@/lib/invoiceNumbering"),
+    ]);
+    const partner = await getPartner(partnerId);
+    const invoiceType = resolveInvoiceDocumentType(values.invoiceType, Boolean(partner?.gstin?.trim()));
+    const numbering = invoiceNumberingConfig(invoiceType);
+    values = {
+      ...values,
+      invoiceType,
+      invoiceNumber: await getNextNumber(numbering.documentType, partnerId, numbering.defaults),
+    };
+  }
   let recordKey = (values.id as string | undefined)?.trim();
   if (!recordKey) {
     const documentType = NUMBERED_MODULE_SLUGS[moduleSlug];

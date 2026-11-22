@@ -7,7 +7,6 @@ import { computeSaleTotals, extractSaleFromRecord, type SaleLine, type Tender } 
 import type { LineItem } from "@/lib/sample-data/billing";
 import { requirePosStaffAction } from "@/lib/pos/posAuth";
 import { withRecordLock } from "@/lib/withRecordLock";
-import { getNextNumber } from "@/lib/designer/numbering";
 import { validatePosInput, planPosStock } from "@/lib/pos/stockPolicy";
 import { getOpenTillSession } from "@/lib/pos/posTill";
 import { assertSerializedUnitsAvailable, consumeSerializedUnits, restoreSerializedUnits } from "@/lib/stockLots";
@@ -129,7 +128,6 @@ export async function completeSaleAction(partnerId: string, input: CompleteSaleI
     totalAmount: totals.totalAmount,
     paymentStatus: "Paid",
     paymentMode: input.tenders[0]?.method,
-    invoiceNumber: await getNextNumber("invoice.b2c", partnerId, { prefix: "BILL" }),
     sourcePosSaleId: sale.id,
     invoiceSource: "POS Sale",
   });

@@ -135,6 +135,7 @@ export async function applyInvoiceConsumption(
       workorderId: invoice.number || invoice.id,
       source: "Sales Invoice",
       invoiceId: invoice.id,
+      invoiceNumber: invoice.number || invoice.id,
       materialId: a.materialId,
       materialLabel: a.materialLabel,
       warehouseName: a.warehouseName,

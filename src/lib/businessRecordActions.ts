@@ -51,20 +51,25 @@ export async function revalidateBomConsumerPaths(partnerId: string): Promise<voi
  * invoice. Runs at actual creation time, after any stock check has passed.
  */
 async function withInvoiceDefaults(partnerId: string, values: Record<string, unknown>): Promise<Record<string, unknown>> {
-  // Assign the real invoice number ONCE, here, at actual creation time —
-  // via the same atomic, persisted NumberingCounter (getNextNumber) and
-  // the SAME "invoice.b2c"/"invoice.b2b" scope a Service-Centre-workorder-
-  // originated invoice uses (see service-centre/[recordId]/actions.ts,
-  // createInvoiceFromWorkorderAction), so both origins draw from one
-  // shared per-partner sequence and never hand out the same number twice.
+  // Assign the real invoice number ONCE, here, at actual creation time,
+  // after stock validation but before creation. GST and Non-GST invoices
+  // use separate, system-wide sequences irrespective of B2B/B2C status.
   // Previously nothing stored a number at all: the printed document page
   // recomputed one live by counting "billing" rows on every render.
   if (!values["invoiceNumber"]) {
-    const { getNextNumber } = await import("@/lib/designer/numbering");
-    const isB2B = Boolean(String(values["customerGstin"] ?? "").trim());
-    const numberingDocType = isB2B ? "invoice.b2b" : "invoice.b2c";
-    const numberingDefaults = isB2B ? { prefix: "INV" } : { prefix: "BILL" };
-    values = { ...values, invoiceNumber: await getNextNumber(numberingDocType, partnerId, numberingDefaults) };
+    const [{ getNextNumber }, { getPartner }, { resolveInvoiceDocumentType, invoiceNumberingConfig }] = await Promise.all([
+      import("@/lib/designer/numbering"),
+      import("@/lib/partnerData"),
+      import("@/lib/invoiceNumbering"),
+    ]);
+    const partner = await getPartner(partnerId);
+    const invoiceType = resolveInvoiceDocumentType(values["invoiceType"], Boolean(partner?.gstin?.trim()));
+    const numbering = invoiceNumberingConfig(invoiceType);
+    values = {
+      ...values,
+      invoiceType,
+      invoiceNumber: await getNextNumber(numbering.documentType, partnerId, numbering.defaults),
+    };
   }
 
   // Stamp the invoice's origin for the Source filter on the Invoices list

@@ -3,11 +3,14 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertPartnerCanWrite } from "@/lib/tenant";
 import { getNextNumber } from "@/lib/designer/numbering";
+import { getPartner } from "@/lib/partnerData";
+import { invoiceNumberingConfig, resolveInvoiceDocumentType } from "@/lib/invoiceNumbering";
 import { advanceNextRunDate, RECURRING_FREQUENCIES, type RecurringFrequency } from "@/lib/sample-data/billing-recurring";
 
 /** Locks the template row; invoice, number and schedule commit or roll back together. */
 export async function createDueRecurringInvoice(partnerId: string, templateId: string, expectedDate: string, today: string): Promise<boolean> {
   await assertPartnerCanWrite(partnerId);
+  const partner = await getPartner(partnerId);
   return prisma.$transaction(async tx => {
     await tx.$queryRaw`SELECT id FROM business_records WHERE "partnerId" = ${partnerId} AND "moduleSlug" = 'billing-recurring' AND "recordKey" = ${templateId} FOR UPDATE`;
     const row = await tx.businessRecord.findUnique({ where: { partnerId_moduleSlug_recordKey: { partnerId, moduleSlug: "billing-recurring", recordKey: templateId } } });
@@ -22,10 +25,12 @@ export async function createDueRecurringInvoice(partnerId: string, templateId: s
     if (followingDate <= nextRunDate) throw new Error("Recurring invoice date did not advance");
     const recordKey = "REC-" + createHash("sha256").update(JSON.stringify([partnerId, templateId, nextRunDate])).digest("hex");
     const customerGstin = String(template.customerGstin ?? "").trim();
-    const invoiceNumber = await getNextNumber(customerGstin ? "invoice.b2b" : "invoice.b2c", partnerId, { prefix: customerGstin ? "INV" : "BILL" }, tx);
+    const invoiceType = resolveInvoiceDocumentType(template.invoiceType, Boolean(partner?.gstin?.trim()));
+    const numbering = invoiceNumberingConfig(invoiceType);
+    const invoiceNumber = await getNextNumber(numbering.documentType, partnerId, numbering.defaults, tx);
     const data = {
       id: recordKey, invoiceNumber, customer: template.customer ?? "", customerGstin,
-      invoiceType: "GST", issueDate: today, dueDate: today,
+      invoiceType, issueDate: today, dueDate: today,
       lineItemsSummary: template.lineItemsSummary ?? "", subtotal: template.subtotal ?? 0,
       taxAmount: template.taxAmount ?? 0, totalAmount: template.totalAmount ?? 0,
       paymentStatus: "Draft", paymentMode: "Bank Transfer", items: template.items ?? [],

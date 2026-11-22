@@ -1,6 +1,7 @@
 import { getBusinessRecord, listBusinessRecords, updateBusinessRecord } from "@/lib/businessRecords";
 import { DEFAULT_BARCODE_SETTINGS, normalizeBarcode, type BarcodeSettings, validateBarcode } from "@/lib/barcodes";
 import { getVisibleModuleSlugs } from "@/lib/designer/entitlements";
+import { syncBomMaterialToInventoryStock } from "@/lib/inventoryStock";
 
 /** Barcodes are deliberately a POS retail tool, not a generic Inventory or
  * Service Centre setting. Both the UI and every write action use this gate. */
@@ -32,5 +33,16 @@ export async function assignGeneratedBarcode(partnerId: string, materialId: stri
   await assertMaterialBarcodeAvailable(partnerId, { barcode, barcodeType: settings.barcodeType }, materialId);
   await updateBusinessRecord(partnerId, "inventory-bom", materialId, {
     ...material, barcode, barcodeType: settings.barcodeType, barcodeSource: "Generated", barcodeAssignedAt: new Date().toISOString(),
+  });
+  // This path intentionally writes the BOM record directly (it is a
+  // barcode-generation operation, not the generic edit form), so invoke
+  // the same material-to-stock synchronizer the normal BOM edit path uses.
+  // Without it existing Stock rows could keep an obsolete barcode.
+  await syncBomMaterialToInventoryStock(partnerId, materialId, {
+    ...material,
+    barcode,
+    barcodeType: settings.barcodeType,
+    barcodeSource: "Generated",
+    barcodeAssignedAt: new Date().toISOString(),
   });
 }

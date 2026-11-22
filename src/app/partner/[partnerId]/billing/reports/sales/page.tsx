@@ -3,6 +3,7 @@ import { registerPage } from "@/lib/designer/registry";
 import { DataTable, type Column, type Row } from "@/components/DataTable";
 import { RecordCsvExportButton } from "@/components/RecordCsvExportButton";
 import { listBusinessRecords } from "@/lib/businessRecords";
+import { prepareBillingExportRows } from "@/lib/billingExportRows";
 
 registerPage({
   id: "billing.reports.sales",
@@ -26,7 +27,8 @@ function inRange(date: string, from?: string, to?: string): boolean {
 }
 
 const SALES_COLUMNS: Column[] = [
-  { key: "id", label: "Invoice", type: "relation-link" },
+  { key: "invoiceNumber", label: "Invoice", type: "relation-link" },
+  { key: "workorderNumber", label: "Workorder No.", type: "text" },
   { key: "customer", label: "Customer", type: "text" },
   { key: "issueDate", label: "Issue Date", type: "date" },
   { key: "subtotal", label: "Subtotal", type: "currency" },
@@ -44,9 +46,9 @@ export default async function SalesRegisterPage({
 }) {
   const { from, to } = searchParams ?? {};
   const invoices = await listBusinessRecords(params.partnerId, "billing");
-  const rows: Row[] = invoices
+  const rows: Row[] = prepareBillingExportRows(invoices
     .filter((r) => inRange(String(r["issueDate"] ?? ""), from, to))
-    .sort((a, b) => String(b["issueDate"] ?? "").localeCompare(String(a["issueDate"] ?? "")));
+    .sort((a, b) => String(b["issueDate"] ?? "").localeCompare(String(a["issueDate"] ?? ""))));
 
   type Totals = { subtotal: number; taxAmount: number; totalAmount: number };
   const totals = rows.reduce<Totals>(

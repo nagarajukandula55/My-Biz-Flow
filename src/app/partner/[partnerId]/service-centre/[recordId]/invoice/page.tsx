@@ -47,10 +47,12 @@ export default async function ServiceCentreInvoicePage({
   const linkedInvoice = record["invoiceId"]
     ? await getBusinessRecord(params.partnerId, "billing", String(record["invoiceId"]))
     : null;
-  const isB2B = Boolean(String(record["customerGstin"] ?? "").trim());
   let invoiceNumber = linkedInvoice?.["invoiceNumber"] ? String(linkedInvoice["invoiceNumber"]) : undefined;
   if (!invoiceNumber) {
-    // Shared scope with Billing's own invoices — see actions.ts.
+    // Preserve the legacy display calculation for an old invoice that was
+    // issued before invoice numbers were persisted. New invoices never use
+    // this path: they receive one immutable GST/Non-GST serial at creation.
+    const isB2B = Boolean(String(record["customerGstin"] ?? "").trim());
     const numberingDocType = isB2B ? "invoice.b2b" : "invoice.b2c";
     const numberingDefaults = isB2B ? { prefix: "INV" } : { prefix: "BILL" };
     const sequenceIndex = await getBusinessRecordSequenceIndexFiltered(

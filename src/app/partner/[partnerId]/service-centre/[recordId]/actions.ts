@@ -390,7 +390,9 @@ export async function deductInventoryForWorkorderAction(partnerId: string, worko
       // Parts Consumption always reflects what actually left stock and a
       // partner can see usage trends to reorder ahead of running out.
       await createBusinessRecord(partnerId, "inventory-consumption", {
+        source: "Service Centre",
         workorderId,
+        workorderNumber: workorderId,
         materialId: line.materialId,
         materialLabel: line.materialLabel,
         warehouseName,
@@ -498,15 +500,19 @@ async function createInvoiceFromWorkorderInner(
   // that's why a partner's first real invoice could print as e.g.
   // "BILL-...-0013" instead of "...-0001", and why the number wasn't even
   // stable (it could shift if an earlier workorder was later deleted).
-  // Shared scope with Billing's own direct "New Invoice" form
-  // (businessRecordActions.ts) — "invoice.b2c"/"invoice.b2b", NOT a
-  // Service-Centre-only key — so both origins draw from the same
-  // per-partner sequence and can never hand out the same number twice.
-  const isB2B = Boolean(String(record["customerGstin"] ?? "").trim());
-  const numberingDocType = isB2B ? "invoice.b2b" : "invoice.b2c";
-  const numberingDefaults = isB2B ? { prefix: "INV" } : { prefix: "BILL" };
-  const { getNextNumber } = await import("@/lib/designer/numbering");
-  const invoiceNumber = await getNextNumber(numberingDocType, partnerId, numberingDefaults);
+  // GST and Non-GST invoice serials are separate across the entire system.
+  // Customer GSTIN only decides B2B/B2C tax details; it must never decide
+  // this serial because a GST-registered business can issue a GST invoice
+  // to a B2C customer. The type is determined by the issuing partner's own
+  // GST registration, exactly as the persisted invoiceType below is.
+  const invoicingPartner = await getPartner(partnerId);
+  const partnerHasGstin = Boolean(invoicingPartner?.gstin?.trim());
+  const [{ getNextNumber }, { invoiceNumberingConfig }] = await Promise.all([
+    import("@/lib/designer/numbering"),
+    import("@/lib/invoiceNumbering"),
+  ]);
+  const numbering = invoiceNumberingConfig(partnerHasGstin ? "GST" : "Non-GST");
+  const invoiceNumber = await getNextNumber(numbering.documentType, partnerId, numbering.defaults);
 
   const partsSummary = lifecycle.partLines
     .filter((p) => !p.pending)
@@ -543,9 +549,6 @@ async function createInvoiceFromWorkorderInner(
   // auto-generated Service Centre invoice for such a partner must come out
   // as a plain/Non-GST invoice — the buyer's GSTIN and each line's HSN code
   // are dropped rather than carried over.
-  const invoicingPartner = await getPartner(partnerId);
-  const partnerHasGstin = Boolean(invoicingPartner?.gstin?.trim());
-
   const invoice = await createBusinessRecord(partnerId, "billing", {
     invoiceNumber,
     invoiceType: partnerHasGstin ? "GST" : "Non-GST",

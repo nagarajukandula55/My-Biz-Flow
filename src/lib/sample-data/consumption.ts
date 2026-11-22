@@ -12,10 +12,11 @@ import type { Column, Row } from "@/components/DataTable";
  * mid-repair.
  */
 export const consumptionColumns: Column[] = [
-  { key: "id", label: "Consumption ID", type: "text" },
-  { key: "workorderId", label: "Workorder", type: "relation-link" },
-  { key: "materialId", label: "Material Code", type: "text" },
-  { key: "materialLabel", label: "Part", type: "text" },
+  { key: "source", label: "Source", type: "text" },
+  { key: "workorderNumber", label: "Workorder No.", type: "relation-link" },
+  { key: "invoiceNumber", label: "Invoice No.", type: "relation-link" },
+  { key: "materialCode", label: "Material Code", type: "text" },
+  { key: "materialName", label: "Material Name", type: "text" },
   { key: "qty", label: "Qty Consumed", type: "text" },
   { key: "warehouseName", label: "Warehouse", type: "text" },
   { key: "serial", label: "Serial / Barcode", type: "text" },
@@ -28,7 +29,7 @@ export const consumptionColumns: Column[] = [
 export function summarizeConsumptionByMaterial(rows: Row[]): { materialId: string; materialLabel: string; totalQty: number }[] {
   const byMaterial = new Map<string, { materialLabel: string; totalQty: number }>();
   for (const r of rows) {
-    const materialId = String(r["materialId"] ?? "").trim();
+    const materialId = String(r["materialCode"] ?? r["materialId"] ?? "").trim();
     if (!materialId) continue;
     const existing = byMaterial.get(materialId) ?? { materialLabel: String(r["materialLabel"] ?? materialId), totalQty: 0 };
     existing.totalQty += Number(r["qty"] ?? 0);

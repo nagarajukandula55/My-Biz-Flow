@@ -52,7 +52,10 @@ export async function syncBomMaterialToInventoryStock(
   };
 
   await withRecordLock("inventory-partner", partnerId, async () => {
-    const stockRows = await listBusinessRecords(partnerId, "inventory-stock");
+    const [stockRows, consumptionRows] = await Promise.all([
+      listBusinessRecords(partnerId, "inventory-stock"),
+      listBusinessRecords(partnerId, "inventory-consumption"),
+    ]);
     for (const stock of stockRows) {
       if (splitMaterialLabel(stock["materialId"]).code !== materialCode) continue;
       await updateBusinessRecord(partnerId, "inventory-stock", String(stock["id"]), {
@@ -60,7 +63,31 @@ export async function syncBomMaterialToInventoryStock(
         ...materialSnapshot,
       });
     }
+    // Consumption is an operational report, not an immutable tax document.
+    // Keep its material label in sync too, so a renamed BOM material is not
+    // shown under its obsolete name in history/CSV exports.
+    for (const consumption of consumptionRows) {
+      if (splitMaterialLabel(consumption["materialId"]).code !== materialCode) continue;
+      await updateBusinessRecord(partnerId, "inventory-consumption", String(consumption["id"]), {
+        ...consumption,
+        materialLabel: materialId,
+        materialName: description,
+      });
+    }
   });
+}
+
+/** Uses the live BOM description whenever a new stock bucket is created.
+ * A workorder can stay open while a material is renamed; its saved part-line
+ * label may then be old, but a newly created Defective/Good stock bucket
+ * must still use the current catalogue name. */
+async function currentBomMaterialLabel(partnerId: string, materialId: string, fallback: string): Promise<string> {
+  const code = splitMaterialLabel(materialId).code;
+  if (!code) return fallback || materialId;
+  const bomRows = await listBusinessRecords(partnerId, "inventory-bom");
+  const bom = bomRows.find((row) => String(row["id"] ?? "") === code);
+  const description = String(bom?.["description"] ?? "").trim();
+  return description ? `${code} - ${description}` : fallback || materialId;
 }
 
 /**
@@ -96,12 +123,13 @@ async function adjustStockQtyInner(
   const existing = await findStockRecord(partnerId, materialId, warehouseName, condition);
   if (!existing) {
     const qtyOnHand = Math.max(0, delta);
+    const currentMaterialLabel = await currentBomMaterialLabel(partnerId, materialId, materialLabel);
     await createBusinessRecord(partnerId, "inventory-stock", {
       // Stored as the "CODE — Description" label, same format every
       // manual/bulk-import Stock row already uses (stockFormFields'
       // materialId select is built from getBomOptions().map(o => o.label))
       // — findStockRecord normalizes both shapes when matching either way.
-      materialId: materialLabel || materialId,
+      materialId: currentMaterialLabel,
       warehouseName,
       condition,
       qtyOnHand,
@@ -174,8 +202,9 @@ async function adjustReservedQtyInner(
     // reservation so it's released correctly later, with 0 on-hand/available
     // until the real receipt/adjustment happens.
     const reservedQty = Math.max(0, delta);
+    const currentMaterialLabel = await currentBomMaterialLabel(partnerId, materialId, materialLabel);
     await createBusinessRecord(partnerId, "inventory-stock", {
-      materialId: materialLabel || materialId,
+      materialId: currentMaterialLabel,
       warehouseName,
       condition,
       qtyOnHand: 0,
@@ -287,8 +316,9 @@ async function setStockQtyInner(
   const existing = await findStockRecord(partnerId, materialId, warehouseName, condition);
   const clamped = Math.max(0, qty);
   if (!existing) {
+    const currentMaterialLabel = await currentBomMaterialLabel(partnerId, materialId, materialLabel);
     await createBusinessRecord(partnerId, "inventory-stock", {
-      materialId: materialLabel || materialId,
+      materialId: currentMaterialLabel,
       warehouseName,
       condition,
       qtyOnHand: clamped,

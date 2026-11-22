@@ -5,6 +5,7 @@ import { DashboardWidget } from "@/components/DashboardWidget";
 import { listBusinessRecords } from "@/lib/businessRecords";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { consumptionColumns, summarizeConsumptionByMaterial } from "@/lib/sample-data/consumption";
+import { prepareConsumptionDisplayRows } from "@/lib/consumptionDisplayRows";
 import { ConsumptionClientTable } from "./ConsumptionClientTable";
 
 registerPage({
@@ -40,10 +41,21 @@ export default async function ConsumptionPage({
   searchParams?: { from?: string; to?: string; warehouseName?: string; materialId?: string };
 }) {
   const { from, to, warehouseName, materialId } = searchParams ?? {};
-  const [columns, allRows] = await Promise.all([
+  const [customizedColumns, rawConsumptionRows, bomRows] = await Promise.all([
     applyCustomizations("inventory.consumption.list", consumptionColumns),
     listBusinessRecords(params.partnerId, "inventory-consumption"),
+    listBusinessRecords(params.partnerId, "inventory-bom"),
   ]);
+  // A prior saved table layout may still contain technical IDs from before
+  // this report exposed business references. Keep any extra user columns,
+  // but always lead with the complete, current business-facing data set.
+  const canonicalKeys = new Set(consumptionColumns.map((column) => column.key));
+  const internalKeys = new Set(["id", "workorderId", "invoiceId", "materialId", "materialLabel"]);
+  const columns = [
+    ...consumptionColumns,
+    ...customizedColumns.filter((column) => !canonicalKeys.has(column.key) && !internalKeys.has(column.key)),
+  ];
+  const allRows = prepareConsumptionDisplayRows(rawConsumptionRows, bomRows);
 
   // Filter dimensions available on this module's own data shape (see
   // consumptionColumns above) — date range, warehouse, and material.
@@ -53,8 +65,12 @@ export default async function ConsumptionPage({
     new Set(allRows.map((r) => String(r["warehouseName"] ?? "").trim()).filter(Boolean))
   ).sort();
   const materialOptions = Array.from(
-    new Set(allRows.map((r) => String(r["materialId"] ?? "").trim()).filter(Boolean))
-  ).sort();
+    allRows.reduce((options, row) => {
+      const code = String(row["materialCode"] ?? "").trim();
+      if (code) options.set(code, String(row["materialName"] ?? "").trim());
+      return options;
+    }, new Map<string, string>()).entries()
+  ).sort(([a], [b]) => a.localeCompare(b));
 
   // Single filtered query — both the summary cards below AND the table
   // derive from this same `rows`, so the cards always match what's shown.
@@ -62,7 +78,7 @@ export default async function ConsumptionPage({
     if (r["reversedAt"]) return false;
     if (!inRange(String(r["consumedDate"] ?? ""), from, to)) return false;
     if (warehouseName && String(r["warehouseName"] ?? "") !== warehouseName) return false;
-    if (materialId && String(r["materialId"] ?? "") !== materialId) return false;
+    if (materialId && String(r["materialCode"] ?? "") !== materialId) return false;
     return true;
   });
   const totalQty = rows.reduce((sum, r) => sum + Number(r["qty"] ?? 0), 0);
@@ -122,8 +138,8 @@ export default async function ConsumptionPage({
               className="rounded-md border border-border bg-bg px-3 py-2 text-sm text-text outline-none focus:border-teal"
             >
               <option value="">All</option>
-              {materialOptions.map((m) => (
-                <option key={m} value={m}>{m}</option>
+              {materialOptions.map(([code, name]) => (
+                <option key={code} value={code}>{name ? `${code} - ${name}` : code}</option>
               ))}
             </select>
           </label>
@@ -155,7 +171,7 @@ export default async function ConsumptionPage({
                   {topConsumed.map((m) => (
                     <tr key={m.materialId} className="border-b border-border last:border-b-0">
                       <td className="px-3 py-2">
-                        <span className="font-mono text-xs">{m.materialId}</span> {m.materialLabel}
+                        {m.materialLabel}
                       </td>
                       <td className="px-3 py-2 text-right tabular-nums">{m.totalQty}</td>
                       <td className="px-3 py-2 text-right tabular-nums">{m.totalQty}</td>

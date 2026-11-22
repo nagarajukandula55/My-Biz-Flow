@@ -41,16 +41,11 @@ export const DEFAULT_SCHEME: NumberingScheme = {
 
 /** The document types that currently have a document page — see DESIGN_SYSTEM.md §5. */
 export const NUMBERED_DOCUMENT_TYPES = [
-  // A single shared sequence per B2C/B2B, used by EVERY invoice
-  // regardless of where it was created (Billing's own "New Invoice" form
-  // OR a Service Centre workorder's Close/Handover) — previously these
-  // were two entirely separate scopes ("billing.invoice.b2c" and
-  // "service-centre.invoice.b2c"), so an invoice created from a
-  // workorder and one created directly in Billing could both print as
-  // e.g. "BILL-...-0001" at the same time: two different invoices, same
-  // number. One shared key per B2C/B2B fixes that at the root.
-  { id: "invoice.b2c", label: "B2C Sales Invoice (Billing + Service Centre)" },
-  { id: "invoice.b2b", label: "B2B Sales Invoice (Billing + Service Centre)" },
+  // The active invoice policy across every module. A customer GSTIN changes
+  // B2B/B2C tax details but not the serial stream: GST and Non-GST invoices
+  // each have one independent, partner-scoped sequence.
+  { id: "invoice.gst", label: "GST Invoice (All modules)" },
+  { id: "invoice.non-gst", label: "Non-GST Invoice (All modules)" },
   // "service-centre.document" (Job Card) deliberately removed from this
   // list — the Job Card print page (service-centre/[recordId]/document/
   // page.tsx) never reads a numbering scheme at all; its printed "RO No."

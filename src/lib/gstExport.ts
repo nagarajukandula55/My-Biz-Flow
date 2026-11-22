@@ -97,7 +97,9 @@ export async function buildGstExportRows(
     const placeOfSupply = customerState || supplierState;
 
     rows.push({
-      invoiceNumber: String(inv["id"] ?? ""),
+      // `id` is the database record key; exports must use the issued,
+      // customer-facing serial and only fall back for historical records.
+      invoiceNumber: String(inv["invoiceNumber"] ?? inv["id"] ?? ""),
       invoiceDate: issueDate,
       invoiceType,
       customerName: String(inv["customer"] ?? ""),

@@ -10,7 +10,10 @@ export function ConsumptionClientTable({ partnerId, columns, rows }: { partnerId
     <div>
       <div className="mb-3 flex justify-end">
         <RecordCsvExportButton
-          columns={cols.map((c) => ({ key: c.key, type: c.type === "date" ? "date" : c.type === "datetime" ? "datetime" : undefined }))}
+          // Exports always use the approved business-facing columns even if
+          // an older saved table layout still contains the retired internal
+          // Consumption ID field.
+          columns={consumptionColumns.map((c) => ({ key: c.key, type: c.type === "date" ? "date" : c.type === "datetime" ? "datetime" : undefined }))}
           rows={rows}
           filename={`parts-consumption-${partnerId}-${new Date().toISOString().slice(0, 10)}.csv`}
         />
