@@ -37,6 +37,43 @@ function scopeKey(documentType: string, partnerId?: string): string {
   return partnerId ? `partner:${partnerId}:${documentType}` : `main:${documentType}`;
 }
 
+/**
+ * GST/Non-GST numbering replaced the older B2B/B2C streams. Keep a one-time
+ * handover path so businesses continue their established document sequence
+ * and formatting rather than unexpectedly restarting from 0001.
+ */
+const LEGACY_INVOICE_DOCUMENT_TYPE: Record<string, string | undefined> = {
+  "invoice.gst": "invoice.b2b",
+  "invoice.non-gst": "invoice.b2c",
+};
+
+function defaultsForDocument(documentType: string, defaults?: Partial<NumberingScheme>): Partial<NumberingScheme> | undefined {
+  const invoiceDefaults = documentType === "invoice.gst"
+    ? { prefix: "INV" }
+    : documentType === "invoice.non-gst"
+      ? { prefix: "BILL" }
+      : undefined;
+  if (!invoiceDefaults && !defaults) return undefined;
+  return { ...invoiceDefaults, ...defaults };
+}
+
+async function nextCounterValue(
+  documentType: string,
+  partnerId: string | undefined,
+  scheme: NumberingScheme,
+  client: Prisma.TransactionClient = prisma
+): Promise<number> {
+  const legacyDocumentType = LEGACY_INVOICE_DOCUMENT_TYPE[documentType];
+  if (!legacyDocumentType || !partnerId) return scheme.sequenceStart;
+  const legacyCounter = await client.numberingCounter.findUnique({
+    where: { scopeKey: scopeKey(legacyDocumentType, partnerId) },
+    select: { value: true },
+  });
+  // Counter values store the last issued sequence. A new GST/Non-GST
+  // counter must therefore start at the *next* value after its legacy one.
+  return Math.max(scheme.sequenceStart, (legacyCounter?.value ?? scheme.sequenceStart - 1) + 1);
+}
+
 export async function getMainScheme(documentType: string): Promise<NumberingScheme> {
   const row = await prisma.numberingMainScheme.findUnique({ where: { documentType } });
   return (row?.scheme as unknown as NumberingScheme) ?? DEFAULT_SCHEME;
@@ -89,13 +126,26 @@ export async function getEffectiveScheme(
   defaults?: Partial<NumberingScheme>,
   client: Prisma.TransactionClient = prisma
 ): Promise<NumberingScheme> {
+  const effectiveDefaults = defaultsForDocument(documentType, defaults);
   if (partnerId) {
     const override = await client.numberingPartnerScheme.findUnique({ where: { partnerId_documentType: { partnerId, documentType } } });
     if (override?.scheme) return override.scheme as unknown as NumberingScheme;
   }
   const row = await client.numberingMainScheme.findUnique({ where: { documentType } });
   if (row?.scheme) return row.scheme as unknown as NumberingScheme;
-  return defaults ? { ...DEFAULT_SCHEME, ...defaults } : DEFAULT_SCHEME;
+
+  // No new GST/Non-GST configuration yet: inherit the partner's existing
+  // B2B/B2C setup until they intentionally configure the new document type.
+  const legacyDocumentType = LEGACY_INVOICE_DOCUMENT_TYPE[documentType];
+  if (legacyDocumentType) {
+    if (partnerId) {
+      const legacyOverride = await client.numberingPartnerScheme.findUnique({ where: { partnerId_documentType: { partnerId, documentType: legacyDocumentType } } });
+      if (legacyOverride?.scheme) return legacyOverride.scheme as unknown as NumberingScheme;
+    }
+    const legacyMain = await client.numberingMainScheme.findUnique({ where: { documentType: legacyDocumentType } });
+    if (legacyMain?.scheme) return legacyMain.scheme as unknown as NumberingScheme;
+  }
+  return effectiveDefaults ? { ...DEFAULT_SCHEME, ...effectiveDefaults } : DEFAULT_SCHEME;
 }
 
 /** Peek at what the NEXT number would look like without consuming it — for live preview UIs. */
@@ -103,7 +153,8 @@ export async function previewNextNumber(documentType: string, partnerId?: string
   const scheme = await getEffectiveScheme(documentType, partnerId);
   const key = scopeKey(documentType, partnerId);
   const row = await prisma.numberingCounter.findUnique({ where: { scopeKey: key } });
-  const current = row?.value ?? scheme.sequenceStart - 1;
+  const initial = await nextCounterValue(documentType, partnerId, scheme);
+  const current = row?.value ?? initial - 1;
   return formatNumber(scheme, current + 1);
 }
 
@@ -121,10 +172,11 @@ export async function getNextNumber(
 ): Promise<string> {
   const scheme = await getEffectiveScheme(documentType, partnerId, defaults, client);
   const key = scopeKey(documentType, partnerId);
+  const initial = await nextCounterValue(documentType, partnerId, scheme, client);
 
   const row = await client.numberingCounter.upsert({
     where: { scopeKey: key },
-    create: { scopeKey: key, value: scheme.sequenceStart },
+    create: { scopeKey: key, value: initial },
     update: { value: { increment: 1 } },
   });
 

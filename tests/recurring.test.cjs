@@ -24,7 +24,7 @@ test('overlapping recurring runs create one invoice and roll back number/invoice
     'node:crypto': crypto, '@/lib/prisma': { prisma }, '@/lib/tenant': { assertPartnerCanWrite: async () => {} },
     '@/lib/designer/numbering': { getNextNumber: async (type, partner, defaults, tx) => { assert.equal(type, 'invoice.non-gst'); return tx.nextNumber(); } },
     '@/lib/partnerData': { getPartner: async () => ({ gstin: '' }) },
-    '@/lib/invoiceNumbering': { resolveInvoiceDocumentType: () => 'Non-GST', invoiceNumberingConfig: () => ({ documentType: 'invoice.non-gst', defaults: { prefix: 'NONGST' } }) },
+    '@/lib/invoiceNumbering': { resolveInvoiceDocumentType: () => 'Non-GST', invoiceNumberingConfig: () => ({ documentType: 'invoice.non-gst', defaults: { prefix: 'BILL' } }) },
     '@/lib/sample-data/billing-recurring': { RECURRING_FREQUENCIES: ['Monthly'], advanceNextRunDate: () => '2026-10-30' },
   });
   const run = () => runner.createDueRecurringInvoice('p1', 't1', '2026-09-30', '2026-09-30');

@@ -18,6 +18,9 @@ export function invoiceNumberingConfig(invoiceType: InvoiceDocumentType): {
   defaults: { prefix: string };
 } {
   return invoiceType === "GST"
-    ? { documentType: "invoice.gst", defaults: { prefix: "GST" } }
-    : { documentType: "invoice.non-gst", defaults: { prefix: "NONGST" } };
+    // Preserve the established document naming defaults. Counters remain
+    // separate by GST status; only the prefix follows the familiar invoice
+    // names unless the partner overrides it in Document Numbering settings.
+    ? { documentType: "invoice.gst", defaults: { prefix: "INV" } }
+    : { documentType: "invoice.non-gst", defaults: { prefix: "BILL" } };
 }
