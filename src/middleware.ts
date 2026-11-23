@@ -56,6 +56,9 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|field-force-manifest.json|field-force-icon.svg|telecalling-icon.svg).*)",
+    // Static files never need x-pathname or an admin/standalone redirect.
+    // Keeping them out of middleware prevents every icon, manifest and PWA
+    // shell request from being counted as avoidable edge work.
+    "/((?!_next/static|_next/image|favicon.ico|icon|apple-icon|sw.js|robots.txt|sitemap.xml|llms.txt|.*\\.(?:png|jpg|jpeg|gif|webp|svg|ico|css|js|json|txt|xml|webmanifest)$).*)",
   ],
 };

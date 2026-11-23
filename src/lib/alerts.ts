@@ -30,6 +30,7 @@
 import { listBusinessRecords } from "@/lib/businessRecords";
 import { computeAgeingRows, getAgeingThresholdDays } from "@/lib/inventoryAgeing";
 import type { Row } from "@/components/DataTable";
+import { unstable_cache } from "next/cache";
 
 export type AlertSeverity = "danger" | "warning" | "info";
 
@@ -76,7 +77,7 @@ function str(row: Row, key: string): string {
  * age thresholds are testable and so a single render uses one consistent
  * clock across all four checks.
  */
-export async function computeAlerts(partnerId: string, now: Date = new Date()): Promise<Alert[]> {
+async function computeAlertsAt(partnerId: string, now: Date): Promise<Alert[]> {
   const [stock, workorders, invoices, profiles] = await Promise.all([
     listBusinessRecords(partnerId, "inventory-stock"),
     listBusinessRecords(partnerId, "service-centre"),
@@ -204,4 +205,25 @@ export async function computeAlerts(partnerId: string, now: Date = new Date()): 
   const order: Record<AlertSeverity, number> = { danger: 0, warning: 1, info: 2 };
   alerts.sort((a, b) => order[a.severity] - order[b.severity] || a.id.localeCompare(b.id));
   return alerts;
+}
+
+// Alerts are informational and Telegram already delivers the urgent events.
+// Recomputing inventory ageing plus four record sets in every shared layout
+// is disproportionately expensive, so the shell uses a ten-minute snapshot.
+const computeAlertsCached = unstable_cache(
+  async (partnerId: string) => computeAlertsAt(partnerId, new Date()),
+  ["partner-shell-alerts"],
+  { revalidate: 600, tags: ["partner-shell-alerts"] },
+);
+
+export async function computeAlerts(partnerId: string, now?: Date): Promise<Alert[]> {
+  if (now) return computeAlertsAt(partnerId, now);
+  try {
+    return await computeAlertsCached(partnerId);
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("incrementalCache missing")) {
+      return computeAlertsAt(partnerId, new Date());
+    }
+    throw error;
+  }
 }

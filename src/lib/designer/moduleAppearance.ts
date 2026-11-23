@@ -28,7 +28,10 @@ export type ModuleAppearance = {
  * label/icon in the Designer, so it's cached whole (it's tiny — one row
  * per module) for a short TTL and invalidated immediately on write.
  */
-const APPEARANCE_CACHE_TTL_MS = 10_000;
+// These labels/icons change only through platform administration. Keeping
+// them for ten minutes avoids a database read on nearly every warm function
+// invocation while still reflecting configuration changes promptly enough.
+const APPEARANCE_CACHE_TTL_MS = 10 * 60 * 1000;
 let appearanceCache: { data: Record<string, ModuleAppearance>; expiresAt: number } | null = null;
 
 async function loadAppearances(): Promise<Record<string, ModuleAppearance>> {

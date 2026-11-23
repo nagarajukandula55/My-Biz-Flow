@@ -197,6 +197,7 @@ export function Sidebar({
                         >
                           <Link
                             href={itemHref}
+                            prefetch={false}
                             onClick={(e) => navigate(e, itemHref)}
                             className={`flex flex-1 items-center gap-2 px-2.5 py-1.5 ${
                               isPending && pendingHref === itemHref ? "opacity-50" : ""
@@ -258,6 +259,7 @@ export function Sidebar({
                                   <div className="flex items-center gap-1">
                                     <Link
                                       href={subHref}
+                                      prefetch={false}
                                       onClick={(e) => navigate(e, subHref)}
                                       className={`flex flex-1 items-center gap-1.5 rounded-md px-2 py-1 text-[12px] font-medium ${
                                         active2 || nestedActive
@@ -293,6 +295,7 @@ export function Sidebar({
                                           <li key={nested.key}>
                                             <Link
                                               href={nestedHref}
+                                              prefetch={false}
                                               onClick={(e) => navigate(e, nestedHref)}
                                               className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-[12px] font-medium ${
                                                 nestedItemActive

@@ -9,6 +9,7 @@
  */
 import { safeCache as cache } from "@/lib/safeCache";
 import { prisma } from "@/lib/prisma";
+import { unstable_cache } from "next/cache";
 
 export type PlanTier = "basic" | "pro" | "ultimate";
 export const PLAN_TIERS: PlanTier[] = ["basic", "pro", "ultimate"];
@@ -80,9 +81,29 @@ export async function listPartnerTypes(): Promise<PartnerTypeRecord[]> {
   return rows.map(toRecord);
 }
 
-export async function listActivePartnerTypes(): Promise<PartnerTypeRecord[]> {
+async function loadActivePartnerTypes(): Promise<PartnerTypeRecord[]> {
   const rows = await prisma.partnerType.findMany({ where: { status: "Active" }, orderBy: { id: "asc" } });
   return rows.map(toRecord);
+}
+
+const listActivePartnerTypesCached = unstable_cache(loadActivePartnerTypes,
+  ["active-partner-types"], { revalidate: 600, tags: ["active-partner-types"] });
+
+/** Public/configuration read shared by marketing, signup and pricing pages.
+ * Partner types change infrequently, so a ten-minute cross-request cache
+ * avoids repeating the same database query for every visitor and bot hit. */
+export async function listActivePartnerTypes(): Promise<PartnerTypeRecord[]> {
+  try {
+    return await listActivePartnerTypesCached();
+  } catch (error) {
+    // Standalone tsx/Node maintenance scripts do not have Next's incremental
+    // cache context. Preserve their established behavior instead of making a
+    // Vercel optimization break operational scripts.
+    if (error instanceof Error && error.message.includes("incrementalCache missing")) {
+      return loadActivePartnerTypes();
+    }
+    throw error;
+  }
 }
 
 /**

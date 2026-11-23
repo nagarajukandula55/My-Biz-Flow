@@ -1,6 +1,7 @@
 import { buildPartnerNavGroups } from "./moduleRegistry";
 import { getVisibleModuleSlugs } from "./entitlements";
 import type { PartnerNavGroup } from "./modules";
+import { unstable_cache } from "next/cache";
 
 /**
  * The full partner sidebar's nav groups: Overview (Dashboard/Analytics) +
@@ -70,4 +71,23 @@ export async function buildPartnerAdminNavGroups(partnerId: string): Promise<Par
     }
   }
   return [commonGroup, ...moduleGroups, partnerAdminGroup];
+}
+
+const buildPartnerAdminNavGroupsCached = unstable_cache(
+  buildPartnerAdminNavGroups,
+  ["partner-admin-navigation"],
+  { revalidate: 600, tags: ["partner-admin-navigation"] },
+);
+
+/** Ten-minute shell cache. Module route authorization remains live and is
+ * not delegated to this navigation snapshot. */
+export async function getPartnerAdminNavGroupsForShell(partnerId: string): Promise<PartnerNavGroup[]> {
+  try {
+    return await buildPartnerAdminNavGroupsCached(partnerId);
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("incrementalCache missing")) {
+      return buildPartnerAdminNavGroups(partnerId);
+    }
+    throw error;
+  }
 }

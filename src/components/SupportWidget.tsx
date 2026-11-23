@@ -6,8 +6,6 @@ import { sendSupportMessageAction, getSupportThreadAction } from "@/lib/supportT
 import type { SupportTicketRecord } from "@/lib/supportTickets";
 import { SUPPORT_LANGUAGES, DEFAULT_SUPPORT_LANGUAGE, type SupportLanguage } from "@/lib/i18n/supportLanguages";
 
-const POLL_MS = 15000;
-
 /** Splits a message on any bare URL/relative path (from an auto-reply's link, see supportAutoReply.ts) and renders those as real clickable links — messages are plain text otherwise, so without this a link would just sit there unclickable. */
 function renderMessageText(text: string) {
   const parts = text.split(/(https?:\/\/\S+|(?:^|\s)\/[a-zA-Z0-9/_#-]+)/g);
@@ -47,13 +45,12 @@ const QUICK_SHORTCUTS = [
  * live chat, not a fire-and-forget ticket: a message sent here is pushed
  * to My Biz Flow's own ops Telegram chat within that conversation's own
  * thread, and this widget polls for replies while open — a human OR a bot
- * replying in that Telegram thread shows up here within POLL_MS, no page
- * reload needed (see src/lib/supportTickets.ts / the Telegram webhook's
+ * replying in that Telegram thread remains available the next time the widget
+ * is opened (see src/lib/supportTickets.ts / the Telegram webhook's
  * support-ticket reply case for the full mechanism).
  *
- * Refreshes once on mount and polls only while the widget is open, so an
- * active conversation stays responsive without a background invocation on
- * every partner page. Seen state
+ * Makes no background requests. Opening the widget loads the conversation
+ * once, and sending a message refreshes it after the write. Seen state
  * persists across reloads via localStorage (`anu-lastseen-<partnerId>`).
  *
  * QUICK_SHORTCUTS above the input send a canned message with one click, no
@@ -132,13 +129,13 @@ export function SupportWidget({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Refresh once on mount; poll only during an active conversation. This
-  // avoids a continuous serverless invocation stream from idle pages.
+  // Telegram carries reply notifications, so ANu never polls. Opening the
+  // widget performs one deliberate read; sending a message refreshes after the
+  // write. This avoids all idle and abandoned-tab serverless invocations.
   useEffect(() => {
-    refresh();
     if (!open) return;
-    const id = setInterval(refresh, POLL_MS);
-    return () => clearInterval(id);
+
+    void refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 

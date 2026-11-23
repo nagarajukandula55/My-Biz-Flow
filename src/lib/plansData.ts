@@ -4,6 +4,7 @@
  * /pricing page, so pricing can never drift from what Super Admin set.
  */
 import { prisma } from "@/lib/prisma";
+import { unstable_cache } from "next/cache";
 
 export type PlanRecord = {
   id: string;
@@ -47,9 +48,23 @@ export async function listPlans(): Promise<PlanRecord[]> {
   return rows.map(toRecord);
 }
 
-export async function listPublicPlans(): Promise<PlanRecord[]> {
+async function loadPublicPlans(): Promise<PlanRecord[]> {
   const rows = await prisma.plan.findMany({ where: { isPublic: true }, orderBy: { price: "asc" } });
   return rows.map(toRecord);
+}
+
+const listPublicPlansCached = unstable_cache(loadPublicPlans,
+  ["public-plans"], { revalidate: 600, tags: ["public-plans"] });
+
+export async function listPublicPlans(): Promise<PlanRecord[]> {
+  try {
+    return await listPublicPlansCached();
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("incrementalCache missing")) {
+      return loadPublicPlans();
+    }
+    throw error;
+  }
 }
 
 export async function getPlan(id: string): Promise<PlanRecord | undefined> {

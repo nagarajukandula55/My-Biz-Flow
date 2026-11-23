@@ -27,9 +27,9 @@ export function BusinessOfferingDirectory({ offerings, referral }: { offerings: 
           <p className="mt-2 break-words text-sm leading-relaxed text-text-muted">{item.summary}</p></div>
         <ul className="flex-1 list-disc space-y-2 pl-5 text-sm text-text-muted">{item.features.slice(0, 3).map(feature => <li key={feature}>{feature}</li>)}</ul>
         <div className="flex flex-col gap-2">
-          <Link href={`/business-types/${item.slug}${suffix}`} className="btn-outline min-h-11 justify-center text-center">Explore {item.title}</Link>
-          {item.signupOptions.map(option => <Link key={option.id} href={`/signup/${encodeURIComponent(option.id)}${suffix}`} className="btn-accent min-h-11 justify-center whitespace-normal text-center">{item.signupOptions.length > 1 ? `Register: ${option.label}` : `Register ${item.title}`}</Link>)}
-          {!item.signupOptions.length && <Link href="/contact" className="inline-flex min-h-11 items-center justify-center text-sm font-semibold text-teal underline">Ask about this package</Link>}
+          <Link href={`/business-types/${item.slug}${suffix}`} prefetch={false} className="btn-outline min-h-11 justify-center text-center">Explore {item.title}</Link>
+          {item.signupOptions.map(option => <Link key={option.id} href={`/signup/${encodeURIComponent(option.id)}${suffix}`} prefetch={false} className="btn-accent min-h-11 justify-center whitespace-normal text-center">{item.signupOptions.length > 1 ? `Register: ${option.label}` : `Register ${item.title}`}</Link>)}
+          {!item.signupOptions.length && <Link href="/contact" prefetch={false} className="inline-flex min-h-11 items-center justify-center text-sm font-semibold text-teal underline">Ask about this package</Link>}
         </div>
       </li>)}
     </ul>

@@ -6,14 +6,13 @@ import { Sidebar } from "@/components/Sidebar";
 import { ResponsivePartnerShell } from "@/components/ResponsivePartnerShell";
 import { SupportWidget } from "@/components/SupportWidget";
 import { PendingActionsBanner } from "@/components/PendingActionsBanner";
-import { buildPartnerAdminNavGroups } from "@/lib/designer/partnerAdminNav";
+import { getPartnerAdminNavGroupsForShell } from "@/lib/designer/partnerAdminNav";
 import { requirePartnerSessionForPage } from "@/lib/requirePartnerSession";
 import { computeAlerts } from "@/lib/alerts";
 import { getPartner } from "@/lib/partnerData";
-import { getTelegramSettings } from "@/lib/telegram";
 import { env } from "@/lib/env";
 import { getVisibleModuleSlugs } from "@/lib/designer/entitlements";
-import { getWorkspaceSummary } from "@/lib/workspaceSummary";
+import { getTelegramSettingsForShell, getWorkspaceSummaryForShell } from "@/lib/shellUsageCache";
 import type { Alert } from "@/lib/alerts";
 import { prisma } from "@/lib/prisma";
 
@@ -184,11 +183,11 @@ export default async function PartnerLayout({
   const modules = await getVisibleModuleSlugs(params.partnerId);
   const serviceCentre = modules.includes("service-centre");
   const [navGroups, alerts, partner, telegramSettings] = await Promise.all([
-    buildPartnerAdminNavGroups(params.partnerId),
+    getPartnerAdminNavGroupsForShell(params.partnerId),
     // Alerts are computed here rather than in each page so the bell's count is
     // correct on every partner screen, and recomputed on each server render
     // rather than cached — see src/lib/alerts.ts for why nothing is stored.
-    (serviceCentre ? computeAlerts(params.partnerId) : getWorkspaceSummary(params.partnerId).then(summaries =>
+    (serviceCentre ? computeAlerts(params.partnerId) : getWorkspaceSummaryForShell(params.partnerId).then(summaries =>
       summaries.flatMap(summary => summary.sources.flatMap((source, index): Alert[] => {
         if (!source.state) return [];
         const metric = summary.metrics.find(item => item.label === source.state?.label);
@@ -201,7 +200,7 @@ export default async function PartnerLayout({
     // transient failure degrades to "no branding this render" rather than
     // crashing the whole page.
     getPartner(params.partnerId).catch(() => undefined),
-    getTelegramSettings(params.partnerId).catch(
+    getTelegramSettingsForShell(params.partnerId).catch(
       () => ({ partnerId: params.partnerId, chatId: null, chatTitle: null, groupChatId: null, groupChatTitle: null, routing: {}, lastReportSentAt: null })
     ),
   ]);

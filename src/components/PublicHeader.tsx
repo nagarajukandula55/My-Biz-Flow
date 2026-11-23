@@ -57,23 +57,23 @@ export function PublicHeader({
   const resolvedCtaLabel = ctaLabel ?? (locale ? tPublic(locale, "getStarted") : "Get started");
   return (
     <header className="flex flex-wrap items-center justify-between gap-y-3 border-b border-border px-6 py-5">
-      <Link href="/" className="flex shrink-0 items-center gap-2">
+      <Link href="/" prefetch={false} className="flex shrink-0 items-center gap-2">
         <BrandLogo height={36} />
       </Link>
       <nav className="flex flex-wrap items-center gap-4 text-sm font-semibold">
         {links.map((link) => (
-          <Link key={link.href} href={link.href} className="text-text-muted hover:text-text">
+          <Link key={link.href} href={link.href} prefetch={false} className="text-text-muted hover:text-text">
             {link.label}
           </Link>
         ))}
         {locale && <LanguageSwitcher current={locale} />}
         {showSignIn && (
-          <Link href={signInHref} className="text-text-muted hover:text-text">
+          <Link href={signInHref} prefetch={false} className="text-text-muted hover:text-text">
             {resolvedSignInLabel}
           </Link>
         )}
         {showCta && (
-          <Link href={ctaHref} className={ctaClassName ? `btn-accent ${ctaClassName}` : "btn-accent"}>
+          <Link href={ctaHref} prefetch={false} className={ctaClassName ? `btn-accent ${ctaClassName}` : "btn-accent"}>
             {resolvedCtaLabel}
           </Link>
         )}

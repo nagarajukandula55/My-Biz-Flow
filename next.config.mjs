@@ -19,6 +19,17 @@ const nextConfig = {
         source: "/(logo-full.png|logo-horizontal.png|logo-mark.png|screenshots/:path*)",
         headers: [{ key: "Cache-Control", value: "public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400" }],
       },
+      {
+        // Per-partner PWA manifests contain no private data and change only
+        // with a deployment. Cache them at the edge so opening module pages
+        // does not repeatedly invoke a route function for the same manifest.
+        source: "/:path*/manifest.webmanifest",
+        headers: [{ key: "Cache-Control", value: "public, max-age=86400, s-maxage=2592000, stale-while-revalidate=604800" }],
+      },
+      {
+        source: "/(sw.js|field-force-sw.js|field-force-manifest.json|field-force-icon.svg|telecalling-icon.svg|llms.txt)",
+        headers: [{ key: "Cache-Control", value: "public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400" }],
+      },
     ];
   },
   // The Designer's page-detail view (src/app/admin/(protected)/designer/[pageId]/page.tsx)
