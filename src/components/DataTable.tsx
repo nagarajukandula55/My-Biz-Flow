@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
-import { Eye } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
+import { Eye, SlidersHorizontal } from "lucide-react";
+import { usePathname } from "next/navigation";
 import { StatusChip, type StatusVariant } from "./StatusChip";
 import { formatCurrencyINR, formatDate } from "@/lib/format";
 import { QuickViewModal } from "./QuickViewModal";
@@ -93,6 +94,13 @@ type DataTableProps = {
    * Omit for no change (every existing caller's behavior is unaffected).
    */
   pageSize?: number;
+  /** Shows the shared per-page Columns selector. Enabled by default for every
+   * operational table; document/embedded tables may opt out explicitly. */
+  enableColumnSelector?: boolean;
+  /** Optional compact default. Users can always add any supplied column back. */
+  defaultVisibleColumnKeys?: readonly string[];
+  /** Override only when more than one table on the same page needs its own saved view. */
+  columnSelectorStorageKey?: string;
 };
 
 export function renderCell(column: Column, row: Row) {
@@ -200,10 +208,52 @@ export function renderCell(column: Column, row: Row) {
   }
 }
 
-export function DataTable({ columns, rows, onRowClick, enableQuickView, enableSearch, searchPlaceholder, pageSize }: DataTableProps) {
+export function DataTable({ columns, rows, onRowClick, enableQuickView, enableSearch, searchPlaceholder, pageSize, enableColumnSelector = true, defaultVisibleColumnKeys, columnSelectorStorageKey }: DataTableProps) {
+  const pathname = usePathname();
   const [quickViewRow, setQuickViewRow] = useState<Row | null>(null);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [isColumnChooserOpen, setColumnChooserOpen] = useState(false);
+  const defaultKeys = (defaultVisibleColumnKeys?.filter((key) => columns.some((column) => column.key === key)) ?? columns.map((column) => column.key));
+  const [selectedColumnKeys, setSelectedColumnKeys] = useState<string[]>(defaultKeys.length ? defaultKeys : columns.map((column) => column.key));
+  const columnSignature = columns.map((column) => column.key).join("|");
+  const savedColumnsKey = columnSelectorStorageKey ?? `mbf:table-columns:${pathname}`;
+
+  // Preferences are intentionally local to the signed-in operator's browser
+  // and current page. One user can use a compact operations view without
+  // changing what another staff member sees.
+  useEffect(() => {
+    const fallback = defaultKeys.length ? defaultKeys : columns.map((column) => column.key);
+    try {
+      const stored = JSON.parse(window.localStorage.getItem(savedColumnsKey) ?? "[]") as unknown;
+      if (Array.isArray(stored)) {
+        const valid = stored.filter((key): key is string => typeof key === "string" && columns.some((column) => column.key === key));
+        setSelectedColumnKeys(valid.length ? valid : fallback);
+        return;
+      }
+    } catch {
+      // Ignore malformed legacy browser data and restore the safe default.
+    }
+    setSelectedColumnKeys(fallback);
+  // columnSignature is deliberate: `columns` is often reconstructed on a
+  // parent render, which must not reset a user's selection.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [savedColumnsKey, columnSignature]);
+
+  const visibleColumns = columns.filter((column) => selectedColumnKeys.includes(column.key));
+  const displayColumns = visibleColumns.length ? visibleColumns : columns.slice(0, 1);
+  const toggleColumn = (key: string) => {
+    setSelectedColumnKeys((current) => {
+      const next = current.includes(key) ? current.filter((item) => item !== key) : [...current, key];
+      if (!next.length) return current;
+      window.localStorage.setItem(savedColumnsKey, JSON.stringify(next));
+      return next;
+    });
+  };
+  const resetColumns = () => {
+    window.localStorage.removeItem(savedColumnsKey);
+    setSelectedColumnKeys(defaultKeys.length ? defaultKeys : columns.map((column) => column.key));
+  };
 
   const q = search.trim().toLowerCase();
   const searchedRows = !enableSearch || !q
@@ -226,8 +276,9 @@ export function DataTable({ columns, rows, onRowClick, enableQuickView, enableSe
 
   return (
     <div className="w-full">
-      {enableSearch && (
-        <div className="mb-3">
+      {(enableSearch || (enableColumnSelector && columns.length > 1)) && (
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          {enableSearch ? (
           <input
             type="text"
             value={search}
@@ -238,13 +289,37 @@ export function DataTable({ columns, rows, onRowClick, enableQuickView, enableSe
             placeholder={searchPlaceholder ?? "Search…"}
             className="w-full max-w-xs rounded-md border border-border bg-bg px-3 py-1.5 text-sm text-text outline-none focus:border-accent sm:w-72"
           />
+          ) : <span />}
+          {enableColumnSelector && columns.length > 1 && (
+            <div className="relative">
+              <button type="button" className="btn-outline inline-flex items-center gap-2" onClick={() => setColumnChooserOpen((open) => !open)} aria-expanded={isColumnChooserOpen}>
+                <SlidersHorizontal className="h-4 w-4" /> Columns
+              </button>
+              {isColumnChooserOpen && (
+                <div className="absolute right-0 z-20 mt-2 w-64 rounded-lg border border-border bg-bg-raised p-3 shadow-lg">
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="text-sm font-semibold text-text">Show columns</p>
+                    <button type="button" className="text-xs font-medium text-teal hover:underline" onClick={resetColumns}>Reset</button>
+                  </div>
+                  <div className="max-h-72 space-y-2 overflow-y-auto">
+                    {columns.map((column) => (
+                      <label key={column.key} className="flex cursor-pointer items-center gap-2 text-sm text-text">
+                        <input type="checkbox" checked={selectedColumnKeys.includes(column.key)} onChange={() => toggleColumn(column.key)} />
+                        {column.label}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
       <div className="w-full overflow-x-auto rounded-lg border border-border bg-bg-raised">
       <table className="w-full min-w-max border-collapse text-sm">
         <thead>
           <tr className="border-b border-border bg-bg-sunken">
-            {columns.map((column) => (
+            {displayColumns.map((column) => (
               <th
                 key={column.key}
                 className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-text-muted"
@@ -264,7 +339,7 @@ export function DataTable({ columns, rows, onRowClick, enableQuickView, enableSe
                 onRowClick ? "cursor-pointer hover:bg-bg-sunken" : ""
               }`}
             >
-              {columns.map((column) => (
+              {displayColumns.map((column) => (
                 <td key={column.key} className="whitespace-nowrap px-4 py-3">
                   {renderCell(column, row)}
                 </td>
@@ -293,9 +368,9 @@ export function DataTable({ columns, rows, onRowClick, enableQuickView, enableSe
         <QuickViewModal
           open={quickViewRow !== null}
           onClose={() => setQuickViewRow(null)}
-          columns={columns}
+          columns={displayColumns}
           row={quickViewRow}
-          title={quickViewRow ? String(quickViewRow[columns[0]?.key] ?? "Quick view") : "Quick view"}
+          title={quickViewRow ? String(quickViewRow[displayColumns[0]?.key] ?? "Quick view") : "Quick view"}
         />
       )}
       </div>
