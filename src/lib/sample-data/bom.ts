@@ -41,6 +41,16 @@ export const GST_RATES = [0, 0.25, 3, 5, 12, 18, 28] as const;
 /** Common suggestions only. BOM forms accept any custom unit text so a material is never blocked by this list. */
 export const UOM_OPTIONS = ["pcs", "piece", "box", "pack", "set", "pair", "bundle", "carton", "pallet", "mg", "g", "kg", "tonne", "ml", "ltr", "cubic.ft", "cubic.m", "mm", "cm", "inch", "ft", "yard", "meter", "running.ft", "running.m", "sq.mm", "sq.cm", "sq.ft", "sq.m", "sq.yard", "roll", "sheet", "slab", "panel", "board", "bag", "hour", "day", "job", "visit", "project"];
 
+/** Standard material groups for the BOM form. Partners can still use the
+ * generic "Other" group instead of being forced into an electronics-only
+ * catalogue. */
+export const MATERIAL_CATEGORIES = ["Accessory", "Battery", "Cable", "Chemical / Cleaning", "Connector", "Consumable", "Display", "Fasteners", "Housing / Body", "Packaging", "Product", "Service Material", "Tool", "Other"] as const;
+
+/** Compact operational view for the BOM list. HSN remains available through
+ * the user's Columns menu and in exports, but does not consume space by
+ * default in everyday inventory work. */
+export const BOM_DEFAULT_LIST_COLUMN_KEYS = ["id", "description", "type", "uom", "rate", "taxPercent", "category", "status"] as const;
+
 /**
  * Curated common HSN codes for electronics/repair/retail — not the full
  * multi-thousand-code government HSN master (confirmed scope 2026-08-08).
@@ -219,7 +229,7 @@ export const bomFormFields: FormFieldDef[] = [
   { key: "labelNote", label: "Label Note", type: "text", required: false, placeholder: "Optional short line to print on labels" },
   { key: "hsnCode", label: "HSN Code", type: "select", required: true, options: HSN_CODES.map((h) => h.code) },
   { key: "type", label: "Type", type: "select", required: true, options: [...MATERIAL_TYPES] },
-  { key: "uom", label: "Selling Unit", type: "text", required: true, placeholder: "e.g. sq.ft, running.m, bag, hour" },
+  { key: "uom", label: "Selling Unit", type: "select", required: true, options: [...UOM_OPTIONS] },
   { key: "purchaseUnit", label: "Purchase Unit", type: "text", required: false, placeholder: "e.g. roll, carton, slab" },
   { key: "purchaseToSellingFactor", label: "Purchase Unit Conversion", type: "number", required: false, placeholder: "How many selling units are in one purchase unit" },
   { key: "pricingBasis", label: "Pricing Basis", type: "text", required: false, placeholder: "e.g. per sq.ft, per running.m, per piece" },
@@ -229,7 +239,7 @@ export const bomFormFields: FormFieldDef[] = [
   { key: "taxPercent", label: "Tax %", type: "select", required: true, options: GST_RATES.map(String) },
   { key: "mrp", label: "MRP", type: "currency", required: false },
   { key: "serialized", label: "Serialized (Serial / IMEI tracked)", type: "boolean", required: false },
-  { key: "category", label: "Category", type: "text", required: false },
+  { key: "category", label: "Category", type: "select", required: false, options: [...MATERIAL_CATEGORIES] },
   { key: "status", label: "Status", type: "select", required: true, options: ["Active", "Inactive"] },
   // --- Optional fields, ported from AN-CRM's BOM shape (non-breaking) ---
   { key: "brandName", label: "Brand", type: "text", required: false, placeholder: "Leave blank if this part isn't brand-specific" },
