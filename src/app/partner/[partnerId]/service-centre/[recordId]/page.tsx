@@ -141,6 +141,16 @@ export default async function ServiceCentreDetailPage({
           engineerName={lifecycle.engineerName}
           collectedByName={lifecycle.collectedByName}
           paymentMode={lifecycle.paymentMode}
+          initialAdvancePayments={Array.isArray(record["advancePayments"])
+            ? record["advancePayments"].flatMap((value) => {
+                if (!value || typeof value !== "object") return [];
+                const item = value as Record<string, unknown>;
+                const amount = Number(item.amount);
+                return Number.isFinite(amount) && amount > 0
+                  ? [{ id: String(item.id ?? ""), amount, mode: String(item.mode ?? "Cash"), reference: typeof item.reference === "string" ? item.reference : undefined, receivedAt: typeof item.receivedAt === "string" ? item.receivedAt : "" }]
+                  : [];
+              })
+            : []}
           onHold={lifecycle.onHold}
           holdReason={lifecycle.holdReason}
           brandJobNoForPartOrder={lifecycle.brandJobNoForPartOrder}

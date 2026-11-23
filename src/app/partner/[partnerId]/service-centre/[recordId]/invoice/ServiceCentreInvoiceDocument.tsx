@@ -41,6 +41,10 @@ export function ServiceCentreInvoiceDocument({
   workorderNumber,
   paymentMode,
   collectedByName,
+  advanceApplied = 0,
+  amountPaid,
+  amountDue,
+  advanceExcess = 0,
   customerName,
   customerPhone,
   customerEmail,
@@ -78,6 +82,12 @@ export function ServiceCentreInvoiceDocument({
   paymentMode?: string;
   /** Free-text name of whoever collected payment / handed the unit over — mirrors AN-CRM's `paymentCollectedByName`. */
   collectedByName?: string;
+  /** Advance actually adjusted against this invoice (never more than grand total). */
+  advanceApplied?: number;
+  amountPaid?: number;
+  amountDue?: number;
+  /** Overpaid amount that requires a separate refund/credit decision. */
+  advanceExcess?: number;
   customerName: string;
   customerPhone?: string;
   customerEmail?: string;
@@ -320,6 +330,8 @@ export function ServiceCentreInvoiceDocument({
               always present). Now always shown alongside device info. */}
           <div className="ric-sectionTitle" style={hasDevice ? { marginTop: "0.5em" } : undefined}>PAYMENT</div>
           <div>Mode: {paymentMode ? safe(paymentMode) : "—"}</div>
+          {advanceApplied > 0 && <div>Advance adjusted: {money(advanceApplied)}</div>}
+          {amountDue !== undefined && <div>Balance due: {money(amountDue)}</div>}
           {collectedByName && <div>Received By: {safe(collectedByName)}</div>}
         </div>
       </div>
@@ -403,6 +415,10 @@ export function ServiceCentreInvoiceDocument({
           )}
           {!!discountTotal && <div><span>Discount</span><span>-{money(discountTotal)}</span></div>}
           <div className="ric-grand"><span>Grand Total</span><span>{money(grandTotal)}</span></div>
+          {advanceApplied > 0 && <div><span>Less: Advance adjusted</span><span>-{money(advanceApplied)}</span></div>}
+          {amountPaid !== undefined && <div><span>Amount paid</span><span>{money(amountPaid)}</span></div>}
+          {amountDue !== undefined && <div className="ric-grand"><span>Payable balance</span><span>{money(amountDue)}</span></div>}
+          {advanceExcess > 0 && <div><span>Advance refund/credit due</span><span>{money(advanceExcess)}</span></div>}
         </div>
       </div>
 

@@ -21,6 +21,10 @@ export async function patchServiceCentreWorkorderAction(...args: Parameters<type
   unwrapWorkorderResult(await actions.patchServiceCentreWorkorderAction(...args));
 }
 
+export async function recordWorkorderAdvancePaymentAction(...args: Parameters<typeof actions.recordWorkorderAdvancePaymentAction>): Promise<void> {
+  unwrapWorkorderResult(await actions.recordWorkorderAdvancePaymentAction(...args));
+}
+
 export async function voidWorkorderWarrantyAction(...args: Parameters<typeof actions.voidWorkorderWarrantyAction>): Promise<void> {
   unwrapWorkorderResult(await actions.voidWorkorderWarrantyAction(...args));
 }

@@ -89,6 +89,10 @@ export default async function ServiceCentreInvoicePage({
       // Only what was actually collected at handover — an uncollected job
       // prints an em dash rather than a guessed payment mode.
       paymentMode={String(record["paymentMode"] ?? "")}
+      advanceApplied={Number(linkedInvoice?.["advanceApplied"] ?? record["advanceApplied"] ?? 0)}
+      amountPaid={linkedInvoice?.["amountPaid"] === undefined ? undefined : Number(linkedInvoice["amountPaid"])}
+      amountDue={linkedInvoice?.["amountDue"] === undefined ? undefined : Number(linkedInvoice["amountDue"])}
+      advanceExcess={Number(linkedInvoice?.["advanceExcess"] ?? record["advanceExcess"] ?? 0)}
       collectedByName={record["collectedByName"] ? String(record["collectedByName"]) : undefined}
       customerName={String(record["customer"] ?? "Walk-in Customer")}
       customerPhone={String(record["customerPhone"] ?? "")}

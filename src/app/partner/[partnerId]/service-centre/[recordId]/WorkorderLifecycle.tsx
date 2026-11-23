@@ -33,6 +33,7 @@ import {
   cancelWorkorderAction,
   deductInventoryForWorkorderAction,
   patchServiceCentreWorkorderAction,
+  recordWorkorderAdvancePaymentAction,
   voidWorkorderWarrantyAction,
 } from "./clientActions";
 import { getServiceCentreBrandOptionsAction } from "@/lib/serviceCentreCatalogActions";
@@ -246,6 +247,7 @@ export function WorkorderLifecycle({
   engineerName,
   collectedByName,
   paymentMode: initialPaymentMode,
+  initialAdvancePayments = [],
   onHold,
   holdReason,
   brandJobNoForPartOrder,
@@ -316,6 +318,7 @@ export function WorkorderLifecycle({
   collectedByName?: string;
   /** Mode of payment recorded at handover close (or later, if collected at invoice time instead) — the same PAYMENT_MODES list used by the Create Invoice modal. */
   paymentMode?: string;
+  initialAdvancePayments?: { id: string; amount: number; mode: string; reference?: string; receivedAt: string }[];
   onHold?: boolean;
   holdReason?: string;
   /**
@@ -529,7 +532,15 @@ export function WorkorderLifecycle({
   const [cancelled, setCancelled] = useState(Boolean(cancelledAt));
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [cancelReasonDraft, setCancelReasonDraft] = useState("");
+  const [refundAmountDraft, setRefundAmountDraft] = useState("");
+  const [refundModeDraft, setRefundModeDraft] = useState<string>(PAYMENT_MODES[0]);
+  const [refundReferenceDraft, setRefundReferenceDraft] = useState("");
   const [paymentMode, setPaymentMode] = useState<string>(initialPaymentMode ?? PAYMENT_MODES[0]);
+  const [advancePayments, setAdvancePayments] = useState(initialAdvancePayments);
+  const [advanceModalOpen, setAdvanceModalOpen] = useState(false);
+  const [advanceAmountDraft, setAdvanceAmountDraft] = useState("");
+  const [advanceModeDraft, setAdvanceModeDraft] = useState<string>(PAYMENT_MODES[0]);
+  const [advanceReferenceDraft, setAdvanceReferenceDraft] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
   // Every stage transition here is a client-side startTransition + patch —
   // there's no redirect to land a ?created=1-style banner on, so a real
@@ -685,6 +696,9 @@ export function WorkorderLifecycle({
   const terminal = cancelled || stage === "Closed";
   const unresolvedSerials = partLines.filter((p) => p.serialized && !p.serial && !p.pending);
   const oowChargeableTotal = chargeableSubtotal + taxTotal;
+  const advanceTotal = advancePayments.reduce((sum, payment) => sum + payment.amount, 0);
+  const advanceAppliedPreview = Math.min(oowChargeableTotal, advanceTotal);
+  const finalPayablePreview = Math.max(0, oowChargeableTotal - advanceAppliedPreview);
   const canVoidWarranty = stage === "In Progress" && !cancelled && warrantyStatus === "IW" && warrantyIsActive;
 
   // TAT — elapsed time since intake, running until Closed/Cancelled (then
@@ -1237,7 +1251,7 @@ export function WorkorderLifecycle({
    * this is safe even if it somehow fires twice.
    */
   function createInvoice() {
-    const collected = !warrantyIsActive;
+    const collected = !warrantyIsActive && finalPayablePreview > 0;
     run(
       () =>
         createInvoiceFromWorkorderAction(partnerId, workorderId, {
@@ -1259,12 +1273,30 @@ export function WorkorderLifecycle({
       return;
     }
     run(
-      () => cancelWorkorderAction(partnerId, workorderId, reason),
+      () => cancelWorkorderAction(partnerId, workorderId, reason, advanceTotal > 0 ? { refundAmount: Number(refundAmountDraft), mode: refundModeDraft, reference: refundReferenceDraft } : undefined),
       () => {
         setCancelled(true);
         setHold(false);
         setCancelModalOpen(false);
         announceSuccess("Workorder Cancelled.");
+      }
+    );
+  }
+
+  function recordAdvance() {
+    const amount = Number(advanceAmountDraft);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setActionError("Enter an advance amount greater than ₹0.");
+      return;
+    }
+    run(
+      () => recordWorkorderAdvancePaymentAction(partnerId, workorderId, { amount, mode: advanceModeDraft, reference: advanceReferenceDraft }),
+      () => {
+        setAdvancePayments((current) => [...current, { id: `pending-${Date.now()}`, amount, mode: advanceModeDraft, reference: advanceReferenceDraft.trim() || undefined, receivedAt: new Date().toISOString() }]);
+        setAdvanceAmountDraft("");
+        setAdvanceReferenceDraft("");
+        setAdvanceModalOpen(false);
+        announceSuccess("Advance payment recorded. It will be adjusted in the final invoice.");
       }
     );
   }
@@ -1369,7 +1401,7 @@ export function WorkorderLifecycle({
       setActionError("Collected By is required before a workorder can be closed.");
       return;
     }
-    const collected = !warrantyIsActive;
+    const collected = !warrantyIsActive && finalPayablePreview > 0;
     setConfirmCloseOpen(false);
     run(
       async () => {
@@ -1494,6 +1526,14 @@ export function WorkorderLifecycle({
           <button type="button" className="btn-outline" onClick={saveAll}>
             Save
           </button>
+          {stage === "Created" && !cancelled && (
+            <>
+              <button type="button" className="btn-outline" onClick={() => { setActionError(null); setAdvanceModalOpen(true); }}>
+                Record Advance
+              </button>
+              {advanceTotal > 0 && <span className="rounded-md bg-teal/10 px-2 py-1 text-xs font-semibold text-teal">Advance ₹{inr(advanceTotal)}</span>}
+            </>
+          )}
           {/* Mark Part Pending / Resume Repair — the Hold side-state toggle,
               moved up into the header row alongside AN-CRM's own layout
               (previously it only existed further down the page). Same
@@ -1540,6 +1580,8 @@ export function WorkorderLifecycle({
               className="btn-outline text-danger"
               onClick={() => {
                 setCancelReasonDraft("");
+                setRefundAmountDraft(advanceTotal > 0 ? String(advanceTotal) : "");
+                setRefundReferenceDraft("");
                 setActionError(null);
                 setCancelModalOpen(true);
               }}
@@ -2706,6 +2748,37 @@ export function WorkorderLifecycle({
         </p>
       </Modal>
       <Modal
+        open={advanceModalOpen}
+        onClose={() => setAdvanceModalOpen(false)}
+        title="Record Repair Advance"
+        size="sm"
+        footer={
+          <>
+            <button type="button" className="btn-outline" onClick={() => setAdvanceModalOpen(false)}>Cancel</button>
+            <button type="button" className="btn-accent" onClick={recordAdvance}>Record Advance</button>
+          </>
+        }
+      >
+        <p className="text-sm text-text-muted">This receipt is saved against the workorder now and automatically adjusted against the final sales invoice at handover.</p>
+        <div className="mt-3 grid gap-3">
+          <label className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+            Amount
+            <input type="number" min="0.01" step="0.01" value={advanceAmountDraft} onChange={(e) => setAdvanceAmountDraft(e.target.value)} className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm font-normal text-text" placeholder="0.00" />
+          </label>
+          <label className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+            Payment Mode
+            <select value={advanceModeDraft} onChange={(e) => setAdvanceModeDraft(e.target.value)} className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm font-normal text-text">
+              {PAYMENT_MODES.map((mode) => <option key={mode} value={mode}>{mode}</option>)}
+            </select>
+          </label>
+          <label className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+            Reference / UTR (optional)
+            <input value={advanceReferenceDraft} onChange={(e) => setAdvanceReferenceDraft(e.target.value)} className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm font-normal text-text" placeholder="Receipt no., UTR or note" />
+          </label>
+          {advancePayments.length > 0 && <p className="text-xs text-text-muted">Advance already recorded: <span className="font-semibold text-text">₹{inr(advanceTotal)}</span></p>}
+        </div>
+      </Modal>
+      <Modal
         open={confirmCloseOpen}
         onClose={() => setConfirmCloseOpen(false)}
         title="Close Workorder"
@@ -2731,8 +2804,9 @@ export function WorkorderLifecycle({
           and how payment was taken before closing this workorder.
            {!warrantyIsActive && (
             <>
-              {" "}Chargeable lines total <span className="font-semibold text-text">₹{estimateTotal}</span> before
-              GST — the invoice is generated the moment this workorder closes, treated as paid in full at handover.
+              {" "}Invoice total is estimated at <span className="font-semibold text-text">₹{inr(oowChargeableTotal)}</span>.
+              {advanceTotal > 0 && <> Advance received: <span className="font-semibold text-text">₹{inr(advanceTotal)}</span>; payable at handover: <span className="font-semibold text-text">₹{inr(finalPayablePreview)}</span>.</>}
+              {!advanceTotal && <> It will be collected in full at handover.</>}
             </>
           )}
         </p>
@@ -2771,7 +2845,7 @@ export function WorkorderLifecycle({
               figure) — Mode of Payment is the only thing to record. Nothing
               to collect on a warranty job, so the whole section is skipped
               for one, same as createInvoice's rule. */}
-          {!warrantyIsActive && (
+          {!warrantyIsActive && finalPayablePreview > 0 && (
             <label className="text-xs font-semibold uppercase tracking-wide text-text-muted sm:col-span-2">
               Mode of Payment
               <select
@@ -2788,6 +2862,9 @@ export function WorkorderLifecycle({
             </label>
           )}
         </div>
+        {!warrantyIsActive && advanceTotal > oowChargeableTotal && (
+          <p className="mt-3 rounded-md border border-warning/30 bg-warning/10 p-2 text-xs text-text">Advance exceeds the current invoice total by ₹{inr(advanceTotal - oowChargeableTotal)}. The invoice will use only the amount due; resolve the excess as a customer refund or credit.</p>
+        )}
         {staffNameOptionsState.length === 0 && (
           <p className="mt-2 text-xs text-text-muted">
             Type each name in full. Keeping a reusable Staff Names list (so these become pickable) is a Pro feature.
@@ -2851,6 +2928,27 @@ export function WorkorderLifecycle({
         <p className="text-sm text-text-muted">
           This is permanent — a cancelled workorder can&apos;t be reopened or advanced. A reason is required.
         </p>
+        {advanceTotal > 0 && (
+          <div className="mt-3 rounded-md border border-border bg-bg-sunken p-3">
+            <p className="text-sm font-semibold text-text">Advance settlement</p>
+            <p className="mt-1 text-xs text-text-muted">Advance received: ₹{inr(advanceTotal)}. Enter the amount actually returned. The remaining amount is recorded as retained.</p>
+            <label className="mt-3 block text-xs font-semibold uppercase tracking-wide text-text-muted">
+              Refund Amount
+              <input type="number" min="0" max={advanceTotal} step="0.01" value={refundAmountDraft} onChange={(e) => setRefundAmountDraft(e.target.value)} className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm font-normal text-text" />
+            </label>
+            <label className="mt-3 block text-xs font-semibold uppercase tracking-wide text-text-muted">
+              Refund Mode
+              <select value={refundModeDraft} onChange={(e) => setRefundModeDraft(e.target.value)} disabled={Number(refundAmountDraft) <= 0} className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm font-normal text-text disabled:opacity-50">
+                {PAYMENT_MODES.map((mode) => <option key={mode} value={mode}>{mode}</option>)}
+              </select>
+            </label>
+            <label className="mt-3 block text-xs font-semibold uppercase tracking-wide text-text-muted">
+              Refund Reference (optional)
+              <input value={refundReferenceDraft} onChange={(e) => setRefundReferenceDraft(e.target.value)} className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm font-normal text-text" placeholder="UPI/Bank reference or receipt number" />
+            </label>
+            <p className="mt-2 text-xs text-text-muted">Retained amount: <span className="font-semibold text-text">₹{inr(Math.max(0, advanceTotal - (Number(refundAmountDraft) || 0)))}</span></p>
+          </div>
+        )}
         <textarea
           value={cancelReasonDraft}
           onChange={(e) => setCancelReasonDraft(e.target.value)}

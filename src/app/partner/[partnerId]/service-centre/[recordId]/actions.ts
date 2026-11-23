@@ -36,6 +36,31 @@ function withWorkorderLock<T>(workorderId: string, fn: () => Promise<T>): Promis
   return withRecordLock("service-centre-workorder", workorderId, fn);
 }
 
+export type WorkorderAdvancePayment = {
+  id: string;
+  amount: number;
+  mode: string;
+  reference?: string;
+  receivedAt: string;
+};
+
+function workorderAdvancePayments(record: Record<string, unknown>): WorkorderAdvancePayment[] {
+  if (!Array.isArray(record["advancePayments"])) return [];
+  return record["advancePayments"].flatMap((value) => {
+    if (!value || typeof value !== "object") return [];
+    const payment = value as Record<string, unknown>;
+    const amount = Number(payment.amount);
+    if (!Number.isFinite(amount) || amount <= 0) return [];
+    return [{
+      id: String(payment.id ?? ""),
+      amount: Math.round(amount * 100) / 100,
+      mode: String(payment.mode ?? "Cash"),
+      reference: typeof payment.reference === "string" ? payment.reference : undefined,
+      receivedAt: typeof payment.receivedAt === "string" ? payment.receivedAt : new Date().toISOString(),
+    }];
+  });
+}
+
 /**
  * Shared lookup for every action below. Previously each action did
  * `if (!existing) return;` — a silent no-op, so a lifecycle button whose id
@@ -228,6 +253,41 @@ export async function patchServiceCentreWorkorderAction(
   if (patch["stage"] === "Closed") {
     await closeLinkedPnaEntries(partnerId, workorderId);
   }
+}
+
+/** Records money actually received before repair begins. It is deliberately
+ * immutable rather than an editable balance: the final invoice consumes the
+ * receipt as an adjustment and creates the matching Billing payment records. */
+export async function recordWorkorderAdvancePaymentAction(
+  partnerId: string,
+  workorderId: string,
+  payment: { amount: number; mode: string; reference?: string }
+): Promise<void> {
+  await assertCanActOnServiceCentre(partnerId);
+  const amount = Math.round(Number(payment.amount) * 100) / 100;
+  if (!Number.isFinite(amount) || amount <= 0) throw new WorkorderValidationError("Enter an advance amount greater than ₹0.");
+  if (!payment.mode?.trim()) throw new WorkorderValidationError("Select how the advance was received.");
+  await withWorkorderLock(workorderId, async () => {
+    const record = await requireWorkorder(partnerId, workorderId);
+    if (record["cancelledAt"] || record["stage"] !== "Created" || record["invoiceId"]) {
+      throw new WorkorderValidationError("Advance can be recorded only before this workorder proceeds for repair.");
+    }
+    const advances = workorderAdvancePayments(record);
+    const advance: WorkorderAdvancePayment = {
+      id: `ADV-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      amount,
+      mode: payment.mode.trim(),
+      reference: payment.reference?.trim() || undefined,
+      receivedAt: new Date().toISOString(),
+    };
+    await updateBusinessRecord(partnerId, "service-centre", workorderId, {
+      ...record,
+      advancePayments: [...advances, advance],
+      advanceTotal: Math.round((advances.reduce((sum, item) => sum + item.amount, 0) + amount) * 100) / 100,
+    });
+  });
+  revalidatePath(`/partner/${partnerId}/service-centre/${workorderId}`);
+  revalidatePath(`/partner/${partnerId}/service-centre`);
 }
 
 /**
@@ -488,6 +548,13 @@ async function createInvoiceFromWorkorderInner(
   const subtotal = invoiceLines.reduce((sum, l) => sum + l.quantity * l.rate, 0);
   const taxAmount = invoiceLines.reduce((sum, l) => sum + l.quantity * l.rate * (l.gstRate / 100), 0);
   const totalAmount = subtotal + taxAmount;
+  const advances = underWarranty ? [] : workorderAdvancePayments(record);
+  const advanceTotal = advances.reduce((sum, item) => sum + item.amount, 0);
+  // An advance can settle no more than this invoice's total. Any excess is
+  // never silently treated as sales payment: it remains explicitly visible
+  // as refund/credit due for the partner to resolve with the customer.
+  const advanceApplied = Math.min(totalAmount, advanceTotal);
+  const advanceExcess = Math.max(0, advanceTotal - advanceApplied);
 
   // Assign the real invoice number ONCE, here, at actual invoice-creation
   // time — via the same atomic, persisted NumberingCounter every other
@@ -525,11 +592,12 @@ async function createInvoiceFromWorkorderInner(
   // Otherwise the paid amount is whatever was actually collected at
   // handover — defaulting to the invoice total when the operator ticked
   // "payment collected" without overriding the amount.
+  const finalAmountPayable = Math.max(0, totalAmount - advanceApplied);
   const collected = Boolean(payment?.collected) && !underWarranty;
   const collectedAmount = collected
-    ? Math.max(0, Math.min(totalAmount, Number(payment?.amount ?? totalAmount) || 0))
+    ? Math.max(0, Math.min(finalAmountPayable, Number(payment?.amount ?? finalAmountPayable) || 0))
     : 0;
-  const amountPaid = underWarranty ? totalAmount : collectedAmount;
+  const amountPaid = underWarranty ? totalAmount : advanceApplied + collectedAmount;
   const amountDue = totalAmount - amountPaid;
   // Invoice date = handover date, not invoice-record-creation time — the
   // customer receives/pays at handover (confirmClose stamps handedOverAt
@@ -587,6 +655,10 @@ async function createInvoiceFromWorkorderInner(
     totalAmount,
     amountPaid,
     amountDue,
+    advanceAmount: advanceTotal,
+    advanceApplied,
+    advanceExcess,
+    finalAmountCollected: collectedAmount,
     paymentStatus: amountDue <= 0 ? "Paid" : amountPaid > 0 ? "Partially Paid" : "Draft",
     paymentMode: collected ? payment?.mode : undefined,
     sourceWorkorderId: workorderId,
@@ -596,6 +668,20 @@ async function createInvoiceFromWorkorderInner(
   // Mirror the Billing > Payments record the manual form would have
   // created, so the money shows up in the outstanding/statement reports
   // rather than only as a field on the invoice.
+  let remainingAdvanceToApply = totalAmount;
+  for (const advance of advances) {
+    const appliedAmount = Math.min(advance.amount, remainingAdvanceToApply);
+    remainingAdvanceToApply -= appliedAmount;
+    if (appliedAmount <= 0) continue;
+    await createBusinessRecord(partnerId, "billing-payments", {
+      invoiceId: invoice.id,
+      contact: record["customer"] ?? "",
+      amount: appliedAmount,
+      mode: advance.mode,
+      date: advance.receivedAt.slice(0, 10),
+      reference: `Advance adjusted - workorder ${workorderId}${advance.reference ? ` (${advance.reference})` : ""}`,
+    });
+  }
   if (collected && collectedAmount > 0) {
     await createBusinessRecord(partnerId, "billing-payments", {
       invoiceId: invoice.id,
@@ -605,8 +691,8 @@ async function createInvoiceFromWorkorderInner(
       date: issueDate,
       reference: `Collected at handover — workorder ${workorderId}`,
     });
-    revalidatePath(`/partner/${partnerId}/billing/payments`);
   }
+  if (advances.length > 0 || (collected && collectedAmount > 0)) revalidatePath(`/partner/${partnerId}/billing/payments`);
 
   // Same AN-Accounting push the generic createBusinessRecordAction makes
   // for a manually-created Billing invoice (src/lib/businessRecordActions.ts)
@@ -648,10 +734,14 @@ async function createInvoiceFromWorkorderInner(
   await updateBusinessRecord(partnerId, "service-centre", workorderId, {
     ...record,
     invoiceId: invoice.id,
-    paymentCollected: collected || underWarranty,
+    paymentCollected: amountDue <= 0 || underWarranty,
     paymentMode: collected ? payment?.mode : undefined,
     paymentCollectedAmount: amountPaid,
     paymentCollectedAt: collected ? new Date().toISOString() : undefined,
+    advanceTotal,
+    advanceApplied,
+    advanceExcess,
+    finalAmountCollected: collectedAmount,
   });
 
   if (partner) {
@@ -730,7 +820,8 @@ async function reverseConsumptionForWorkorder(partnerId: string, workorderId: st
 export async function cancelWorkorderAction(
   partnerId: string,
   workorderId: string,
-  reason: string
+  reason: string,
+  settlement?: { refundAmount: number; mode?: string; reference?: string }
 ): Promise<void> {
   await assertCanActOnServiceCentre(partnerId);
   const trimmedReason = (reason ?? "").trim();
@@ -745,6 +836,17 @@ export async function cancelWorkorderAction(
     if (record["stage"] === "Closed") {
       throw new WorkorderValidationError("A closed workorder can no longer be cancelled.");
     }
+
+    const advances = workorderAdvancePayments(record);
+    const advanceTotal = advances.reduce((sum, item) => sum + item.amount, 0);
+    const refundAmount = Math.round(Number(settlement?.refundAmount ?? 0) * 100) / 100;
+    if (advanceTotal > 0 && (!Number.isFinite(refundAmount) || refundAmount < 0 || refundAmount > advanceTotal)) {
+      throw new WorkorderValidationError(`Refund amount must be between ₹0 and ₹${advanceTotal.toFixed(2)}.`);
+    }
+    if (refundAmount > 0 && !settlement?.mode?.trim()) {
+      throw new WorkorderValidationError("Select the payment mode used for the advance refund.");
+    }
+    const retainedAmount = Math.max(0, advanceTotal - refundAmount);
 
     // A job cancelled AFTER it was already Completed already had its parts
     // deducted from real Stock — cancelling it doesn't undo that on its
@@ -763,6 +865,24 @@ export async function cancelWorkorderAction(
         { at: new Date().toISOString(), stage: `Parts returned to Inventory on cancel: ${returned.join(", ")}` },
       ];
     }
+    if (advanceTotal > 0) {
+      history = [...history, {
+        at: new Date().toISOString(),
+        stage: `Advance settlement on cancellation: refunded ₹${refundAmount.toFixed(2)}${refundAmount > 0 ? ` via ${settlement?.mode}` : ""}; retained ₹${retainedAmount.toFixed(2)}`,
+      }];
+      await createBusinessRecord(partnerId, "service-centre-advance-settlements", {
+        workorderId,
+        customer: record["customer"] ?? "",
+        advanceTotal,
+        refundAmount,
+        retainedAmount,
+        refundMode: refundAmount > 0 ? settlement?.mode?.trim() : undefined,
+        refundReference: settlement?.reference?.trim() || undefined,
+        reason: trimmedReason,
+        settledAt: new Date().toISOString(),
+        status: refundAmount === advanceTotal ? "Fully Refunded" : refundAmount === 0 ? "Retained" : "Partially Refunded",
+      });
+    }
 
     await updateBusinessRecord(partnerId, "service-centre", workorderId, {
       ...record,
@@ -773,6 +893,11 @@ export async function cancelWorkorderAction(
       holdSince: undefined,
       inventoryDeducted: false,
       stageHistory: history,
+      advanceSettlementAt: advanceTotal > 0 ? new Date().toISOString() : undefined,
+      advanceRefundAmount: advanceTotal > 0 ? refundAmount : undefined,
+      advanceRetainedAmount: advanceTotal > 0 ? retainedAmount : undefined,
+      advanceRefundMode: refundAmount > 0 ? settlement?.mode?.trim() : undefined,
+      advanceRefundReference: settlement?.reference?.trim() || undefined,
     });
 
     const partner = await getPartner(partnerId);
@@ -798,6 +923,7 @@ export async function cancelWorkorderAction(
 
   revalidatePath(`/partner/${partnerId}/service-centre/${workorderId}`);
   revalidatePath(`/partner/${partnerId}/service-centre`);
+  revalidatePath(`/partner/${partnerId}/service-centre/payments`);
   revalidatePath(`/partner/${partnerId}/inventory/stock`);
   revalidatePath(`/partner/${partnerId}/inventory/consumption`);
 }
