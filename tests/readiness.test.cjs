@@ -67,7 +67,10 @@ test('signup rejects unavailable types and invalid fields before provisioning; d
   '@/lib/plansData':{getPlan:async()=>undefined},'@/lib/partnerData':{getPartner:async()=>null,updatePartnerSubscription:async()=>{}},
   '@/lib/email':{sendPartnerWelcomeEmail:async()=>{}},'@/lib/partnerSession':{createPartnerSessionToken:async()=>{if(signingFailure)throw new Error('signing unavailable');return 'test-token';}},
   '@/lib/platformSettings':{notifyAdmins:async()=>{}},'@/lib/telegramTemplates':{newPartnerApplicationMessage:async()=>''},
- },{process:{env:{NODE_ENV:'test'}}});
+  '@/lib/dealerPortal':{verifyDealerReferralToken:async()=>{throw new Error('unused');}},
+  '@/lib/wholesaleReferrals':{getWholesaleReferralProgram:async()=>null},
+  '@/lib/wholesaleData':{getWholesaleCustomer:async()=>null},
+ },{process:{env:{NODE_ENV:'test'}},URLSearchParams});
  const form=new FormData();for(const key of ['partnerTypeId','businessName','city','state','pincode','businessEmail','businessContact','loginContact'])form.set(key,'Test');
  await assert.rejects(api.registerBusiness(form),/not accepting/);assert.equal(writes,0);
  type={status:'Active',customSignupFields:[{key:'size',type:'select',label:'Size',options:['Small'],required:true}]};

@@ -34,7 +34,7 @@ export default async function SignupTypePage({
   searchParams,
 }: {
   params: { type: string };
-  searchParams: { error?: string; ref?: string; planId?: string };
+  searchParams: { error?: string; ref?: string; planId?: string; dealerInvite?: string };
 }) {
   const partnerType = await getPartnerType(params.type);
   // Field Force is a single operator marketplace, not a Partner-registration
@@ -53,9 +53,10 @@ export default async function SignupTypePage({
           <p className="mt-2 max-w-xl text-sm text-text-muted">
             You&apos;ll be assigned a Partner ID (e.g. {partnerType.idPrefix}0001), signed in, and asked to set your password.
           </p>
+          {searchParams.dealerInvite && <p className="mt-3 rounded-lg border border-teal/30 bg-teal/5 p-3 text-sm text-teal">You are registering through a distributor’s dealer invitation. Your selected plan is required before the dealer account is created; after setting your password, you’ll complete subscription payment before entering the workspace.</p>}
 
           <Link className="my-3 inline-flex min-h-11 items-center text-teal underline" href={`${offering ? `/business-types/${offering.slug}` : '/business-types'}${searchParams.ref ? `?ref=${encodeURIComponent(searchParams.ref)}` : ""}`}>Read features and requirements for this business</Link>
-          <SignupForm partnerType={partnerType} error={searchParams.error} referralCode={searchParams.ref} selectedPlanId={searchParams.planId} />
+          <SignupForm partnerType={partnerType} error={searchParams.error} referralCode={searchParams.ref} selectedPlanId={searchParams.planId} dealerInviteToken={searchParams.dealerInvite} />
         </div>
 
         <aside className="h-fit rounded-lg border border-border bg-bg-raised p-6">

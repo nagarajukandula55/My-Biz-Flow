@@ -1,9 +1,13 @@
 import type { Row } from "@/components/DataTable";
 import { createBusinessRecord, listBusinessRecords, updateBusinessRecord } from "@/lib/businessRecords";
 import { adjustStockQty } from "@/lib/inventoryStock";
+import { parseSerialNumbers, validateSerialNumbers } from "@/lib/inventoryRead";
+import { createStockLots } from "@/lib/stockLots";
+import { recordInventoryTransaction } from "@/lib/inventoryLedger";
+import { withRecordLock } from "@/lib/withRecordLock";
 import { runWorkflowAutomations } from "@/lib/workflowAutomation";
 
-export type PurchaseLine = { materialId: string; materialLabel: string; quantity: number; unitPrice: number; warehouseName: string };
+export type PurchaseLine = { materialId: string; materialLabel: string; quantity: number; receivedQuantity?: number; unitPrice: number; warehouseId: string; warehouseName: string; serialized: boolean };
 
 export async function listSuppliers(partnerId: string) { return listBusinessRecords(partnerId, "inventory-supplier"); }
 export async function listPurchaseOrders(partnerId: string) { return listBusinessRecords(partnerId, "inventory-purchase-order"); }
@@ -38,19 +42,44 @@ export async function createPurchaseOrder(partnerId: string, input: { supplierId
   if (!input.lines.length || input.lines.some(line => !line.materialId || !line.warehouseName || !Number.isFinite(line.quantity) || line.quantity <= 0 || !Number.isFinite(line.unitPrice) || line.unitPrice < 0)) throw new Error("Add valid purchase lines.");
   const total = input.lines.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0);
   return createBusinessRecord(partnerId, "inventory-purchase-order", {
-    supplierId: input.supplierId, supplierName: input.supplierName, expectedDate: input.expectedDate ?? "", lines: input.lines,
+    supplierId: input.supplierId, supplierName: input.supplierName, expectedDate: input.expectedDate ?? "",
     totalAmount: Number(total.toFixed(2)), status: "Open", receivedAt: "", createdAt: new Date().toISOString(),
+    lines: input.lines.map((line) => ({ ...line, receivedQuantity: 0 })),
   });
 }
 
-export async function receivePurchaseOrder(partnerId: string, purchaseOrderId: string): Promise<void> {
-  const orders = await listPurchaseOrders(partnerId);
-  const order = orders.find(row => String(row.id) === purchaseOrderId);
-  if (!order) throw new Error("Purchase order not found.");
-  if (String(order.status) === "Received") throw new Error("Purchase order has already been received.");
-  const lines = Array.isArray(order.lines) ? order.lines as PurchaseLine[] : [];
-  for (const line of lines) await adjustStockQty(partnerId, line.materialId, line.materialLabel, line.warehouseName, line.quantity, "Good");
-  const receivedAt = new Date().toISOString();
-  await updateBusinessRecord(partnerId, "inventory-purchase-order", purchaseOrderId, { ...order, status: "Received", receivedAt });
-  await createBusinessRecord(partnerId, "inventory-receipt", { purchaseOrderId, supplierId: order.supplierId, supplierName: order.supplierName, lines, receivedAt, status: "Posted" });
+export async function receivePurchaseOrder(partnerId: string, purchaseOrderId: string, input: { supplierInvoice?: string; quantities: number[]; serialNumbersRaw: string[] }): Promise<void> {
+  return withRecordLock("inventory-partner", partnerId, async () => {
+    const order = (await listPurchaseOrders(partnerId)).find(row => String(row.id) === purchaseOrderId);
+    if (!order) throw new Error("Purchase order not found.");
+    if (String(order.status) === "Received") throw new Error("Purchase order has already been fully received.");
+    const lines = Array.isArray(order.lines) ? order.lines as PurchaseLine[] : [];
+    const nextLines: PurchaseLine[] = [];
+    const receiptLines: Array<Record<string, unknown>> = [];
+    for (let index = 0; index < lines.length; index++) {
+      const line = lines[index];
+      const alreadyReceived = Number(line.receivedQuantity ?? 0);
+      const remaining = Math.max(0, line.quantity - alreadyReceived);
+      const quantity = Number(input.quantities[index] ?? 0);
+      if (!Number.isFinite(quantity) || quantity < 0 || quantity > remaining) throw new Error(`${line.materialLabel}: receipt quantity must be between 0 and ${remaining}.`);
+      if (line.serialized && !Number.isInteger(quantity)) throw new Error(`${line.materialLabel} is serialized and must be received in whole units.`);
+      const serials = parseSerialNumbers(input.serialNumbersRaw[index]);
+      if (line.serialized) {
+        const error = validateSerialNumbers(serials, quantity, line.materialLabel);
+        if (error) throw new Error(error);
+      } else if (serials.length) throw new Error(`${line.materialLabel} is non-serialized; leave serial/barcode numbers blank.`);
+      if (quantity > 0) {
+        await createStockLots({ partnerId, warehouseId: line.warehouseId, warehouseName: line.warehouseName, materialId: line.materialId, materialLabel: line.materialLabel, condition: "Good", serialized: line.serialized, serialNumbers: line.serialized ? serials : undefined, quantity: line.serialized ? undefined : quantity, unitCost: Math.round(line.unitPrice * 100), sourceType: "purchase-receipt", sourceRecordId: purchaseOrderId });
+        await adjustStockQty(partnerId, line.materialId, line.materialLabel, line.warehouseName, quantity, "Good");
+        receiptLines.push({ materialId: line.materialId, materialLabel: line.materialLabel, quantity, serialNumbers: serials, warehouseId: line.warehouseId, warehouseName: line.warehouseName, unitPrice: line.unitPrice });
+      }
+      nextLines.push({ ...line, receivedQuantity: alreadyReceived + quantity });
+    }
+    if (!receiptLines.length) throw new Error("Enter at least one received quantity.");
+    const fullyReceived = nextLines.every((line) => Number(line.receivedQuantity ?? 0) >= line.quantity);
+    const receivedAt = new Date().toISOString();
+    await updateBusinessRecord(partnerId, "inventory-purchase-order", purchaseOrderId, { ...order, lines: nextLines, status: fullyReceived ? "Received" : "Partially Received", receivedAt: fullyReceived ? receivedAt : order.receivedAt ?? "" });
+    const receipt = await createBusinessRecord(partnerId, "inventory-receipt", { purchaseOrderId, supplierId: order.supplierId, supplierName: order.supplierName, supplierInvoice: input.supplierInvoice?.trim() ?? "", lines: receiptLines, receivedAt, status: "Posted" });
+    await recordInventoryTransaction({ partnerId, sourceType: "purchase-receipt", sourceRecordId: String(receipt.id), direction: "debit", amount: Math.round(receiptLines.reduce((sum, line) => sum + Number(line.quantity) * Number(line.unitPrice), 0) * 100), description: `Supplier stock receipt for PO ${purchaseOrderId}` });
+  });
 }

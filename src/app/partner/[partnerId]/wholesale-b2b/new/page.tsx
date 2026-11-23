@@ -2,7 +2,7 @@ import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
 import { WholesaleOrderNewForm } from "../WholesaleOrderNewForm";
-import { listWholesaleCustomers, listPriceTiers } from "@/lib/wholesaleData";
+import { listWholesaleCustomers, listPriceTiers, listWholesaleProducts } from "@/lib/wholesaleData";
 
 registerPage({
   id: "wholesale-b2b.create",
@@ -18,9 +18,10 @@ registerPage({
 
 export default async function NewWholesaleB2bPage({ params }: { params: { partnerId: string } }) {
   const mod = await getModule("wholesale-b2b");
-  const [customers, priceTiers] = await Promise.all([
+  const [customers, priceTiers, products] = await Promise.all([
     listWholesaleCustomers(params.partnerId),
     listPriceTiers(params.partnerId),
+    listWholesaleProducts(params.partnerId, true),
   ]);
 
   return (
@@ -31,8 +32,9 @@ export default async function NewWholesaleB2bPage({ params }: { params: { partne
         <div className="mt-6">
           <WholesaleOrderNewForm
             partnerId={params.partnerId}
-            customers={customers.filter((c) => c.isActive).map((c) => ({ id: c.id, name: c.name }))}
+            customers={customers.filter((c) => c.isActive).map((c) => ({ id: c.id, name: c.name, defaultPriceTierId: c.defaultPriceTierId }))}
             priceTiers={priceTiers.map((t) => ({ id: t.id, name: t.name, discountPercent: t.discountPercent }))}
+            products={products.map((p) => ({ id: p.id, sku: p.sku, name: p.name, unit: p.unit, listPrice: p.listPrice, gstRateBps: p.gstRateBps, minimumQuantity: p.minimumQuantity }))}
           />
         </div>
       </div>

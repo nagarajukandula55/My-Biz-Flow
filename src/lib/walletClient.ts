@@ -1,7 +1,7 @@
 import { env } from "@/lib/env";
 import { postWithRetry } from "@/lib/centralApi";
 
-const COMMISSION_PERCENT = 10;
+const COMMISSION_PERCENT = 5;
 
 export type WalletOwnerType = "PARTNER" | "TELECALLING_AGENT" | "FIELD_FORCE_PROVIDER";
 
@@ -115,7 +115,7 @@ export async function requestWalletWithdrawal(
 }
 
 /**
- * Credits a 10% referral commission into the referrer's ANy Pay wallet
+ * Credits a 5% referral commission into the referrer's ANy Pay wallet
  * (held in the accounting app) when a referred partner makes their
  * first-ever captured subscription payment. Called from
  * src/lib/subscriptionPaymentReceipt.ts via the durable payment-delivery

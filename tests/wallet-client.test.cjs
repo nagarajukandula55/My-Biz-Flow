@@ -30,6 +30,6 @@ test('referral wallet credit uses the central action and paise units', async () 
   assert.equal(ok, true);
   assert.equal(request.action, 'credit');
   assert.equal(request.ownerType, 'PARTNER');
-  assert.equal(request.amount, 12000);
+  assert.equal(request.amount, 6000);
   assert.equal(request.idempotencyKey, 'my-biz-flow:referral-commission:pay_123');
 });

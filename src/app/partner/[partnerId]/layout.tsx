@@ -15,6 +15,7 @@ import { env } from "@/lib/env";
 import { getVisibleModuleSlugs } from "@/lib/designer/entitlements";
 import { getWorkspaceSummary } from "@/lib/workspaceSummary";
 import type { Alert } from "@/lib/alerts";
+import { prisma } from "@/lib/prisma";
 
 /**
  * Routes reachable with NO session at all — the Telecalling staff login and
@@ -134,6 +135,14 @@ export default async function PartnerLayout({
   }
 
   const session = await requirePartnerSessionForPage(params.partnerId);
+
+  if (session.kind === "owner" || session.kind === "admin") {
+    const managedDealer = await prisma.distributorDealerRelationship.findUnique({ where: { dealerPartnerId: params.partnerId }, select: { id: true } });
+    if (managedDealer && !pathname?.startsWith(`/partner/${params.partnerId}/admin/subscription`)) {
+      const partner = await getPartner(params.partnerId).catch(() => undefined);
+      if (partner?.subscriptionStatus !== "Active") redirect(`/partner/${params.partnerId}/admin/subscription`);
+    }
+  }
 
   // Print-style document pages render on their own, chrome-free — see
   // PRINT_ROUTE_SUFFIXES above. Skip the nav-building/alerts work too,

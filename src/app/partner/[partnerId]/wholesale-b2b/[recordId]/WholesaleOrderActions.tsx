@@ -2,169 +2,62 @@
 
 import { useState, useTransition } from "react";
 import { StatusChip } from "@/components/StatusChip";
-import { createWholesaleDispatchAction, updateWholesaleOrderStatusAction } from "../actions";
+import {
+  allocateWholesaleStockAction, cancelWholesaleOrderAction, confirmWholesalePickingAction,
+  markWholesaleDeliveredAction, packWholesaleOrderAction, recordWholesalePaymentAction,
+  shipWholesaleOrderAction, startWholesaleProcessingAction,
+} from "../actions";
 
-const NEXT_STATUS: Record<string, string | null> = {
-  Pending: "Confirmed",
-  Confirmed: "Dispatched",
-  Dispatched: "Delivered",
-  Delivered: null,
-  Cancelled: null,
-};
+const STAGES = ["Requested", "Processing", "Picking", "Packed", "Shipped", "Delivered", "Received"];
+const money = (value: number) => `₹${value.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`;
 
-/**
- * Order lifecycle panel on the wholesale-b2b order detail page: shows the
- * line items, base vs. tier-discounted total, the customer's live
- * outstanding balance against their credit limit, and status-advance /
- * cancel buttons enforcing the fixed Pending -> Confirmed -> Dispatched ->
- * Delivered (or Cancelled from any non-final state) transition set — see
- * isAllowedStatusTransition in src/lib/wholesaleData.ts.
- */
-export function WholesaleOrderActions({
-  partnerId,
-  orderId,
-  status,
-  priceTierName,
-  discountPercent,
-  totalAmount,
-  creditLimit,
-  outstandingBalance,
-  lines,
-  dispatch,
-}: {
-  partnerId: string;
-  orderId: string;
-  status: string;
-  priceTierName: string | null;
-  discountPercent: number;
-  totalAmount: number; // rupees
-  creditLimit: number; // rupees
-  outstandingBalance: number; // rupees
-  lines: Array<{ id: string; materialLabel: string; quantity: number; unitPrice: number }>; // unitPrice in rupees (base)
-  dispatch?: { carrier: string; trackingNumber: string; dispatchedAt: string; notes?: string } | null;
+type Line = { id: string; materialLabel: string; quantity: number; allocatedQuantity: number; pickedQuantity: number; shippedQuantity: number; receivedQuantity: number; unitPrice: number; gstRateBps: number; serialized: boolean };
+type Event = { id: string; eventType: string; fromStatus: string | null; toStatus: string | null; actorType: string; actorId: string | null; note: string | null; createdAt: string };
+
+export function WholesaleOrderActions(props: {
+  partnerId: string; orderId: string; status: string; priceTierName: string | null; discountPercent: number;
+  totalAmount: number; subtotalAmount: number; taxAmount: number; paidAmount: number; creditLimit: number; outstandingBalance: number;
+  warehouseId: string | null; warehouseName: string | null;
+  warehouses: Array<{ value: string; label: string }>;
+  lines: Line[]; payments: Array<{ id: string; amount: number; method: string; reference: string | null; receivedAt: string }>;
+  events: Event[];
 }) {
-  const [currentStatus, setCurrentStatus] = useState(status);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
-  const [dispatchError, setDispatchError] = useState<string | null>(null);
+  const balance = Math.max(0, props.totalAmount - props.paidAmount);
+  const activeIndex = STAGES.indexOf(props.status);
 
-  const nextStatus = NEXT_STATUS[currentStatus];
-  const overLimit = creditLimit > 0 && outstandingBalance > creditLimit;
+  const run = (work: () => Promise<{ error?: string }>) => {
+    setError("");
+    startTransition(async () => { const result = await work(); if (result.error) setError(result.error); else window.location.reload(); });
+  };
 
-  function advance(target: string) {
-    setError(null);
-    startTransition(async () => {
-      const result = await updateWholesaleOrderStatusAction(partnerId, orderId, target);
-      if (result?.error) {
-        setError(result.error);
-      } else {
-        setCurrentStatus(target);
-      }
-    });
-  }
+  return <div className="space-y-6">
+    <section className="rounded-xl border border-border bg-bg-raised p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="font-display text-lg font-bold">PO lifecycle</h2><p className="mt-1 text-sm text-text-muted">Each step unlocks only after the previous step is complete. Stock is reserved before picking and deducted only when shipped.</p></div><StatusChip label={props.status} variant={props.status === "Cancelled" ? "danger" : props.status === "Received" ? "success" : "teal"} /></div>
+      <div className="mt-4 grid gap-2 sm:grid-cols-4 lg:grid-cols-7">{STAGES.map((stage, index) => <div key={stage} className="rounded-lg border border-border p-2 text-center"><StatusChip label={stage} variant={index < activeIndex || props.status === "Received" ? "success" : index === activeIndex ? "teal" : "neutral"} /></div>)}</div>
+      {error && <p role="alert" className="mt-4 text-sm text-danger">{error}</p>}
 
-  return (
-    <div className="rounded-md border border-border bg-bg-raised p-4">
-      <h2 className="font-display text-base font-bold text-text">Line Items & Pricing</h2>
-      <div className="mt-3 overflow-x-auto">
-        <table className="w-full min-w-[480px] border-collapse text-sm">
-          <thead>
-            <tr className="border-b border-border text-left text-xs font-semibold uppercase tracking-wide text-text-muted">
-              <th className="px-2 py-2">Item</th>
-              <th className="px-2 py-2 text-right">Qty</th>
-              <th className="px-2 py-2 text-right">Base Unit Price</th>
-              <th className="px-2 py-2 text-right">Discounted Unit Price</th>
-              <th className="px-2 py-2 text-right">Line Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {lines.map((l) => {
-              const discountedUnit = Math.round(l.unitPrice * (1 - discountPercent / 100) * 100) / 100;
-              return (
-                <tr key={l.id} className="border-b border-border last:border-b-0">
-                  <td className="px-2 py-2 text-text">{l.materialLabel}</td>
-                  <td className="px-2 py-2 text-right tabular-nums text-text">{l.quantity}</td>
-                  <td className={`px-2 py-2 text-right tabular-nums ${discountPercent > 0 ? "text-text-muted line-through" : "text-text"}`}>
-                    ₹{l.unitPrice.toFixed(2)}
-                  </td>
-                  <td className="px-2 py-2 text-right tabular-nums text-text">
-                    {discountPercent > 0 ? `₹${discountedUnit.toFixed(2)}` : "—"}
-                  </td>
-                  <td className="px-2 py-2 text-right font-semibold tabular-nums text-text">
-                    ₹{(discountedUnit * l.quantity).toFixed(2)}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+      {props.status === "Requested" && <div className="mt-5 flex flex-wrap gap-2"><button className="btn-accent" disabled={pending} onClick={() => run(() => startWholesaleProcessingAction(props.partnerId, props.orderId))}>Accept PO and start processing</button><button className="btn-outline" disabled={pending} onClick={() => run(() => cancelWholesaleOrderAction(props.partnerId, props.orderId))}>Reject / cancel PO</button></div>}
 
-      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <div>
-          <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">Price Tier</div>
-          <div className="mt-0.5 text-sm text-text">{priceTierName ?? "None — list price"}</div>
-        </div>
-        <div>
-          <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">Order Total (discounted)</div>
-          <div className="mt-0.5 text-sm font-semibold text-text">₹{totalAmount.toFixed(2)}</div>
-        </div>
-        <div>
-          <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">Status</div>
-          <div className="mt-0.5">
-            <StatusChip label={currentStatus} variant={currentStatus === "Cancelled" ? "danger" : currentStatus === "Delivered" ? "success" : "neutral"} />
-          </div>
-        </div>
-      </div>
+      {props.status === "Processing" && <form className="mt-5 space-y-4" action={(formData) => {
+        const warehouseId = String(formData.get("warehouseId") ?? "");
+        const warehouseName = props.warehouses.find((item) => item.value === warehouseId)?.label ?? "";
+        const lines = props.lines.map((line) => ({ lineId: line.id, quantity: Number(formData.get(`qty-${line.id}`) ?? 0) }));
+        run(() => allocateWholesaleStockAction(props.partnerId, props.orderId, { warehouseId, warehouseName, lines }));
+      }}><div className="grid gap-3 sm:grid-cols-2"><label className="text-sm">Source warehouse<select name="warehouseId" required className="input mt-1 w-full"><option value="">Select warehouse</option>{props.warehouses.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label></div><div className="overflow-x-auto rounded-lg border border-border"><table className="w-full min-w-[620px] text-sm"><thead><tr className="border-b border-border text-left"><th className="p-3">Product</th><th className="p-3 text-right">Requested</th><th className="p-3">Accepted / allocated</th><th className="p-3">Tracking</th></tr></thead><tbody>{props.lines.map((line) => <tr key={line.id} className="border-b border-border last:border-0"><td className="p-3">{line.materialLabel}</td><td className="p-3 text-right font-mono tabular-nums">{line.quantity}</td><td className="p-3"><input className="input w-32" name={`qty-${line.id}`} type="number" min="0" max={line.quantity} step={line.serialized ? 1 : 0.001} defaultValue={line.quantity} required /></td><td className="p-3">{line.serialized ? "Serialized" : "Quantity tracked"}</td></tr>)}</tbody></table></div><div className="flex flex-wrap gap-2"><button className="btn-accent" disabled={pending}>Reserve stock and start picking</button><button type="button" className="btn-outline" disabled={pending} onClick={() => run(() => cancelWholesaleOrderAction(props.partnerId, props.orderId))}>Cancel PO</button></div></form>}
 
-      <div className="mt-4 flex flex-wrap items-center gap-2">
-        <StatusChip
-          label={`Customer outstanding: ₹${outstandingBalance.toFixed(2)} / ₹${creditLimit.toFixed(2)} limit`}
-          variant={overLimit ? "danger" : "neutral"}
-        />
-      </div>
+      {props.status === "Picking" && <form className="mt-5 space-y-4" action={(formData) => { const lines = props.lines.map((line) => ({ lineId: line.id, quantity: Number(formData.get(`picked-${line.id}`) ?? 0), serialNumbersRaw: String(formData.get(`serials-${line.id}`) ?? "") })); run(() => confirmWholesalePickingAction(props.partnerId, props.orderId, lines)); }}><p className="text-sm text-text-muted">Warehouse: <strong className="text-text">{props.warehouseName}</strong>. Scan or paste one serial/barcode per line for serialized products.</p><div className="space-y-3">{props.lines.map((line) => <div key={line.id} className="grid gap-3 rounded-lg border border-border p-3 sm:grid-cols-3"><div><strong>{line.materialLabel}</strong><span className="block text-xs text-text-muted">Allocated: {line.allocatedQuantity}</span></div><label className="text-sm">Picked quantity<input className="input mt-1 w-full" name={`picked-${line.id}`} type="number" min={line.allocatedQuantity} max={line.allocatedQuantity} step={line.serialized ? 1 : 0.001} defaultValue={line.allocatedQuantity} required /></label>{line.serialized ? <label className="text-sm">Serial / barcode numbers<textarea className="input mt-1 w-full" name={`serials-${line.id}`} rows={3} required placeholder="One code per line" /></label> : <p className="self-center text-sm text-text-muted">No serial entry required.</p>}</div>)}</div><div className="flex flex-wrap gap-2"><button className="btn-accent" disabled={pending}>Confirm picked quantities</button>{props.lines.every((line) => line.pickedQuantity === line.allocatedQuantity) && <button type="button" className="btn-accent" disabled={pending} onClick={() => run(() => packWholesaleOrderAction(props.partnerId, props.orderId))}>Move to packed</button>}<button type="button" className="btn-outline" disabled={pending} onClick={() => run(() => cancelWholesaleOrderAction(props.partnerId, props.orderId))}>Cancel and release stock</button></div></form>}
 
-      {error && <p className="mt-3 text-sm text-danger">{error}</p>}
+      {props.status === "Packed" && <form className="mt-5 grid gap-3 sm:grid-cols-2" action={(formData) => run(() => shipWholesaleOrderAction(props.partnerId, props.orderId, { carrier: String(formData.get("carrier") ?? ""), trackingNumber: String(formData.get("trackingNumber") ?? ""), note: String(formData.get("note") ?? "") }))}><label className="text-sm">Carrier / transporter<input name="carrier" required className="input mt-1 w-full" /></label><label className="text-sm">Tracking / LR number<input name="trackingNumber" required className="input mt-1 w-full" /></label><label className="text-sm sm:col-span-2">Shipping note<textarea name="note" rows={2} className="input mt-1 w-full" /></label><div className="flex flex-wrap gap-2 sm:col-span-2"><button className="btn-accent" disabled={pending}>Ship and deduct stock</button><button type="button" className="btn-outline" disabled={pending} onClick={() => run(() => cancelWholesaleOrderAction(props.partnerId, props.orderId))}>Cancel and release stock</button></div></form>}
+      {props.status === "Shipped" && <div className="mt-5"><button className="btn-accent" disabled={pending} onClick={() => run(() => markWholesaleDeliveredAction(props.partnerId, props.orderId))}>Confirm delivered to dealer</button></div>}
+      {props.status === "Delivered" && <p className="mt-5 rounded-lg border border-warning/30 bg-warning-soft p-3 text-sm">Awaiting dealer receipt. The dealer must choose their warehouse and confirm receipt before stock enters their account.</p>}
+    </section>
 
-      <div className="mt-4 flex items-center gap-3">
-        {nextStatus && (
-          <button type="button" className="btn-accent" disabled={pending} onClick={() => advance(nextStatus)}>
-            Mark as {nextStatus}
-          </button>
-        )}
-        {currentStatus !== "Delivered" && currentStatus !== "Cancelled" && (
-          <button type="button" className="btn-outline" disabled={pending} onClick={() => advance("Cancelled")}>
-            Cancel Order
-          </button>
-        )}
-      </div>
-      {(currentStatus === "Dispatched" || currentStatus === "Delivered") && (
-        <div className="mt-6 border-t border-border pt-4">
-          <h3 className="font-display text-sm font-bold text-text">Dispatch & Tracking</h3>
-          {dispatch ? (
-            <p className="mt-2 text-sm text-text">{dispatch.carrier} · {dispatch.trackingNumber} · {new Date(dispatch.dispatchedAt).toLocaleDateString()}</p>
-          ) : (
-            <form className="mt-3 grid gap-3 sm:grid-cols-2" action={(formData) => {
-              setDispatchError(null);
-              startTransition(async () => {
-                const result = await createWholesaleDispatchAction(partnerId, orderId, {
-                  carrier: String(formData.get("carrier") ?? ""), trackingNumber: String(formData.get("trackingNumber") ?? ""),
-                  dispatchedAt: String(formData.get("dispatchedAt") ?? ""), notes: String(formData.get("notes") ?? ""),
-                });
-                if (result.error) setDispatchError(result.error);
-                else window.location.reload();
-              });
-            }}>
-              <input name="carrier" className="input" placeholder="Carrier / transporter" required />
-              <input name="trackingNumber" className="input" placeholder="Tracking / LR number" required />
-              <input name="dispatchedAt" className="input" type="date" defaultValue={new Date().toISOString().slice(0, 10)} required />
-              <input name="notes" className="input" placeholder="Notes (optional)" />
-              <div className="sm:col-span-2"><button className="btn-outline" disabled={pending}>Save dispatch details</button></div>
-              {dispatchError && <p className="sm:col-span-2 text-sm text-danger">{dispatchError}</p>}
-            </form>
-          )}
-        </div>
-      )}
-    </div>
-  );
+    <section className="rounded-xl border border-border bg-bg-raised p-5"><h2 className="font-display text-lg font-bold">Products and quantities</h2><div className="mt-3 overflow-x-auto"><table className="w-full min-w-[850px] text-sm"><thead><tr className="border-b border-border text-left"><th className="p-2">Product</th><th className="p-2 text-right">Requested</th><th className="p-2 text-right">Allocated</th><th className="p-2 text-right">Picked</th><th className="p-2 text-right">Shipped</th><th className="p-2 text-right">Received</th><th className="p-2 text-right">Unit price</th><th className="p-2 text-right">GST</th></tr></thead><tbody>{props.lines.map((line) => <tr key={line.id} className="border-b border-border last:border-0"><td className="p-2">{line.materialLabel}{line.serialized && <span className="block text-xs text-text-muted">Serialized</span>}</td>{[line.quantity,line.allocatedQuantity,line.pickedQuantity,line.shippedQuantity,line.receivedQuantity].map((value,index)=><td key={index} className="p-2 text-right font-mono tabular-nums">{value}</td>)}<td className="p-2 text-right font-mono tabular-nums">{money(line.unitPrice)}</td><td className="p-2 text-right font-mono tabular-nums">{line.gstRateBps / 100}%</td></tr>)}</tbody></table></div><div className="mt-4 grid gap-3 sm:grid-cols-4"><div className="rounded-lg border border-border p-3"><span className="text-xs text-text-muted">Price tier</span><strong className="block">{props.priceTierName ?? "List price"}</strong></div><div className="rounded-lg border border-border p-3"><span className="text-xs text-text-muted">Subtotal</span><strong className="block font-mono tabular-nums">{money(props.subtotalAmount)}</strong></div><div className="rounded-lg border border-border p-3"><span className="text-xs text-text-muted">GST</span><strong className="block font-mono tabular-nums">{money(props.taxAmount)}</strong></div><div className="rounded-lg border border-border p-3"><span className="text-xs text-text-muted">Total</span><strong className="block font-mono tabular-nums">{money(props.totalAmount)}</strong></div></div></section>
+
+    <section className="rounded-xl border border-border bg-bg-raised p-5"><h2 className="font-display text-lg font-bold">Payments</h2><p className="mt-1 text-sm text-text-muted">Paid {money(props.paidAmount)} · Balance {money(balance)} · Dealer exposure {money(props.outstandingBalance)} / {money(props.creditLimit)}</p>{props.payments.length > 0 && <div className="mt-3 space-y-2">{props.payments.map((payment) => <div key={payment.id} className="flex flex-wrap justify-between rounded-lg border border-border p-3 text-sm"><span>{payment.method} · {payment.reference || "No reference"} · {new Date(payment.receivedAt).toLocaleDateString("en-IN")}</span><strong className="font-mono tabular-nums">{money(payment.amount)}</strong></div>)}</div>}{balance > 0 && props.status !== "Cancelled" && <form className="mt-4 grid gap-3 sm:grid-cols-4" action={(formData) => run(() => recordWholesalePaymentAction(props.partnerId, props.orderId, { amount: Number(formData.get("amount") ?? 0), method: String(formData.get("method") ?? ""), reference: String(formData.get("reference") ?? "") }))}><label className="text-sm">Amount<input name="amount" type="number" min="0.01" max={balance} step="0.01" defaultValue={balance} required className="input mt-1 w-full" /></label><label className="text-sm">Method<select name="method" required className="input mt-1 w-full"><option value="">Select</option>{["Cash","UPI","Bank transfer","Cheque","Other"].map((value)=><option key={value}>{value}</option>)}</select></label><label className="text-sm">UTR / reference<input name="reference" className="input mt-1 w-full" /></label><div className="flex items-end"><button className="btn-outline" disabled={pending}>Record payment</button></div></form>}</section>
+
+    <section className="rounded-xl border border-border bg-bg-raised p-5"><h2 className="font-display text-lg font-bold">Audit history</h2><div className="mt-3 space-y-2">{props.events.map((entry) => <div key={entry.id} className="rounded-lg border border-border p-3 text-sm"><div className="flex flex-wrap justify-between gap-2"><strong>{entry.eventType}</strong><time className="font-mono text-xs tabular-nums text-text-muted">{new Date(entry.createdAt).toLocaleString("en-IN")}</time></div><p className="mt-1 text-xs text-text-muted">{entry.actorType}{entry.actorId ? ` · ${entry.actorId}` : ""}{entry.fromStatus && entry.toStatus ? ` · ${entry.fromStatus} → ${entry.toStatus}` : ""}</p>{entry.note && <p className="mt-1">{entry.note}</p>}</div>)}</div></section>
+  </div>;
 }

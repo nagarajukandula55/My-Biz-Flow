@@ -6,8 +6,8 @@ import { notFound } from "next/navigation";
 import { RecordDetail } from "@/components/RecordDetail";
 import { getWholesaleB2bDetailFields, wholesaleB2bRelated } from "@/lib/sample-data/wholesale-b2b";
 import { WholesaleOrderActions } from "./WholesaleOrderActions";
-import { customerOutstandingBalance, getWholesaleOrder, orderToRow, paiseToRupees } from "@/lib/wholesaleData";
-import { listBusinessRecords } from "@/lib/businessRecords";
+import { customerOutstandingBalance, getWholesaleOrder, listWholesaleProducts, orderToRow, paiseToRupees } from "@/lib/wholesaleData";
+import { getWarehouseOptionsForPartner } from "@/lib/sample-data/warehouse";
 
 registerPage({
   id: "wholesale-b2b.detail",
@@ -40,15 +40,18 @@ export default async function WholesaleB2bDetailPage({
   const fields = getWholesaleB2bDetailFields(row);
   const recordLabel = order.orderNumber;
 
-  const outstandingExcludingThis = await customerOutstandingBalance(params.partnerId, order.customerId, order.id);
+  const [outstandingExcludingThis, warehouses, products] = await Promise.all([
+    customerOutstandingBalance(params.partnerId, order.customerId, order.id),
+    getWarehouseOptionsForPartner(params.partnerId),
+    listWholesaleProducts(params.partnerId),
+  ]);
   const outstandingIncludingThis =
-    order.status !== "Delivered" && order.status !== "Cancelled"
-      ? outstandingExcludingThis + order.totalAmount
+    order.status !== "Cancelled"
+      ? outstandingExcludingThis + Math.max(0, order.totalAmount - order.paidAmount)
       : outstandingExcludingThis;
 
   const customer = await (await import("@/lib/prisma")).prisma.wholesaleCustomer.findUnique({ where: { id: order.customerId } });
-  const dispatch = (await listBusinessRecords(params.partnerId, "wholesale-dispatch")).find((row) => String(row.orderId ?? "") === order.id) ?? null;
-  const fulfillment = (await listBusinessRecords(params.partnerId, "wholesale-fulfillment")).find((row) => String(row.orderId ?? "") === order.id) ?? null;
+  const productsById = new Map(products.map((product) => [product.id, product]));
 
   return (
     <AppShell topbarTitle={mod?.label ?? "Wholesale / Distributor B2B"}>
@@ -60,21 +63,20 @@ export default async function WholesaleB2bDetailPage({
           priceTierName={order.priceTierName}
           discountPercent={order.discountPercent}
           totalAmount={paiseToRupees(order.totalAmount)}
+          subtotalAmount={paiseToRupees(order.subtotalAmount)}
+          taxAmount={paiseToRupees(order.taxAmount)}
+          paidAmount={paiseToRupees(order.paidAmount)}
           creditLimit={paiseToRupees(customer?.creditLimit ?? 0)}
           outstandingBalance={paiseToRupees(outstandingIncludingThis)}
-          lines={order.lines.map((l) => ({ ...l, unitPrice: paiseToRupees(l.unitPrice) }))}
-          dispatch={dispatch ? { carrier: String(dispatch.carrier ?? ""), trackingNumber: String(dispatch.trackingNumber ?? ""), dispatchedAt: String(dispatch.dispatchedAt ?? ""), notes: String(dispatch.notes ?? "") } : null}
+          warehouseId={order.warehouseId}
+          warehouseName={order.warehouseName}
+          warehouses={warehouses}
+          lines={order.lines.map((line) => ({ ...line, unitPrice: paiseToRupees(line.unitPrice), serialized: line.productId ? Boolean(productsById.get(line.productId)?.serialized) : false }))}
+          payments={order.payments.map((payment) => ({ id: payment.id, amount: paiseToRupees(payment.amount), method: payment.method, reference: payment.reference, receivedAt: payment.receivedAt.toISOString() }))}
+          events={order.events.map((entry) => ({ ...entry, details: undefined, createdAt: entry.createdAt.toISOString() }))}
         />
 
         <div className="mt-8">
-          <section className="mb-5 rounded-xl border border-border bg-surface p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Warehouse fulfilment</p>
-            <div className="mt-2 flex flex-wrap items-center gap-3">
-              <span className="font-medium text-text">{String(fulfillment?.stage ?? "Awaiting pick")}</span>
-              {fulfillment?.recordedAt ? <span className="text-sm text-text-muted">Recorded {String(fulfillment.recordedAt)}</span> : null}
-              {!fulfillment && <span className="text-sm text-text-muted">This confirmed order has not been picked yet.</span>}
-            </div>
-          </section>
           <RecordDetail
             fields={fields}
             recordLabel={recordLabel}

@@ -27,6 +27,7 @@ const SOURCE_TYPE_LABELS: Record<InventorySourceType, string> = {
   "stock-transfer": "Stock Transfer",
   "return-order": "Return Order",
   "part-order": "Part Order",
+  "purchase-receipt": "Goods Receipt",
   "stock-take": "Stock Take",
 };
 
@@ -43,6 +44,8 @@ function sourceRecordHref(partnerId: string, sourceType: string, sourceRecordId:
       return `/partner/${partnerId}/inventory/return-orders/${sourceRecordId}`;
     case "part-order":
       return `/partner/${partnerId}/inventory/part-orders/${sourceRecordId}`;
+    case "purchase-receipt":
+      return `/partner/${partnerId}/inventory/procurement`;
     case "stock-take":
       return `/partner/${partnerId}/inventory/stock-take/${sourceRecordId}`;
     default:

@@ -408,6 +408,9 @@ model Partner {
   /// other), both nullable so neither is required. See src/lib/referrals.ts.
   referredByStaffId String?
 
+  distributorDealerLinks DistributorDealerRelationship[] @relation("DistributorManagedDealers")
+  distributorManagement DistributorDealerRelationship? @relation("DealerManagedByDistributor")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -1927,19 +1930,35 @@ model ProductionStageHistory {
 // ---------------------------------------------------------------------
 
 model WholesaleCustomer {
-  id             String   @id @default(cuid())
-  partnerId      String
-  name           String
-  contact        String?
-  gstin          String?
-  creditLimit    Int      @default(0) // paise
-  creditTermDays Int      @default(0)
-  isActive       Boolean  @default(true)
-  createdAt      DateTime @default(now())
+  id                    String   @id @default(cuid())
+  partnerId             String
+  name                  String
+  contact               String?
+  email                 String?
+  gstin                 String?
+  addressLine           String?
+  city                  String?
+  state                 String?
+  pincode               String?
+  creditLimit           Int      @default(0) // paise
+  creditTermDays        Int      @default(0)
+  defaultPriceTierId    String?
+  referredByCustomerId  String?
+  referralCode          String?
+  isActive              Boolean  @default(true)
+  createdAt             DateTime @default(now())
 
   orders WholesaleOrder[]
+  defaultPriceTier PriceTier? @relation("WholesaleCustomerDefaultTier", fields: [defaultPriceTierId], references: [id], onDelete: SetNull)
+  referredBy WholesaleCustomer? @relation("WholesaleDealerReferrals", fields: [referredByCustomerId], references: [id], onDelete: SetNull)
+  referredDealers WholesaleCustomer[] @relation("WholesaleDealerReferrals")
+  referralRewardsEarned WholesaleReferralReward[] @relation("WholesaleReferralReferrer")
+  referralReward WholesaleReferralReward? @relation("WholesaleReferralReferred")
+  distributorDealerRelationship DistributorDealerRelationship?
 
   @@index([partnerId])
+  @@index([referredByCustomerId])
+  @@unique([partnerId, referralCode])
   @@map("wholesale_customers")
 }
 
@@ -1950,6 +1969,7 @@ model PriceTier {
   discountPercent Int    @default(0)
 
   orders WholesaleOrder[]
+  defaultForCustomers WholesaleCustomer[] @relation("WholesaleCustomerDefaultTier")
 
   @@index([partnerId])
   @@map("price_tiers")
@@ -1963,13 +1983,25 @@ model WholesaleOrder {
   priceTierId String?
   priceTier   PriceTier?        @relation(fields: [priceTierId], references: [id])
   orderNumber String
-  /// Pending | Confirmed | Dispatched | Delivered | Cancelled
-  status      String            @default("Pending")
+  /// Requested | Processing | Picking | Packed | Shipped | Delivered | Received | Cancelled
+  status      String            @default("Requested")
+  source      String            @default("Distributor") // Distributor | DealerPortal | DealerWorkspace
+  requestedByDealerPartnerId String?
+  warehouseId String?
+  warehouseName String?
   orderDate   DateTime          @default(now())
+  subtotalAmount Int            @default(0) // paise, after tier discount and before GST
+  taxAmount   Int               @default(0) // paise
   totalAmount Int               @default(0) // paise
   createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  shippedAt   DateTime?
+  deliveredAt DateTime?
+  receivedAt  DateTime?
 
   lines WholesaleOrderLine[]
+  payments WholesalePayment[]
+  events WholesaleOrderEvent[]
 
   @@unique([partnerId, orderNumber])
   @@index([partnerId])
@@ -1986,10 +2018,137 @@ model WholesaleOrderLine {
   materialId    String
   materialLabel String
   quantity      Float
+  allocatedQuantity Float      @default(0)
+  pickedQuantity Float         @default(0)
+  shippedQuantity Float        @default(0)
+  receivedQuantity Float       @default(0)
+  serialNumbers Json?
+  serialLotIds  Json?
   unitPrice     Int // paise
+  productId     String?
+  gstRateBps    Int            @default(0)
+  product       WholesaleProduct? @relation(fields: [productId], references: [id], onDelete: SetNull)
 
   @@index([orderId])
   @@map("wholesale_order_lines")
+}
+
+model WholesalePayment {
+  id          String         @id @default(cuid())
+  partnerId   String
+  orderId     String
+  order       WholesaleOrder @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  amount      Int            // paise
+  method      String
+  reference   String?
+  receivedAt  DateTime       @default(now())
+  createdAt   DateTime       @default(now())
+
+  @@index([partnerId, orderId, receivedAt])
+  @@map("wholesale_payments")
+}
+
+model WholesaleOrderEvent {
+  id          String         @id @default(cuid())
+  partnerId   String
+  orderId     String
+  order       WholesaleOrder @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  eventType   String
+  fromStatus  String?
+  toStatus    String?
+  actorType   String
+  actorId     String?
+  note        String?        @db.Text
+  details     Json?
+  createdAt   DateTime       @default(now())
+
+  @@index([partnerId, orderId, createdAt])
+  @@map("wholesale_order_events")
+}
+
+/// Distributor-owned catalogue. Prices and GST rates are copied onto order
+/// lines at order creation so later catalogue changes cannot rewrite history.
+model WholesaleProduct {
+  id              String   @id @default(cuid())
+  partnerId       String
+  sku             String
+  name            String
+  description     String?  @db.Text
+  category        String?
+  unit            String   @default("unit")
+  listPrice       Int      // paise, excluding GST
+  gstRateBps      Int      @default(0) // 1800 = 18%
+  minimumQuantity Float    @default(1)
+  inventoryMaterialId String?
+  barcode         String?
+  serialized      Boolean  @default(false)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  orderLines WholesaleOrderLine[]
+
+  @@unique([partnerId, sku])
+  @@index([partnerId, isActive, name])
+  @@map("wholesale_products")
+}
+
+model WholesaleReferralProgram {
+  id                  String   @id @default(cuid())
+  partnerId           String   @unique
+  enabled             Boolean  @default(false)
+  rewardAmount        Int      @default(0) // legacy fixed value; new rewards use rewardPercentBps
+  rewardPercentBps    Int      @default(500) // 500 = 5% of first captured subscription payment
+  dealerPartnerTypeId String?
+  updatedAt           DateTime @updatedAt
+
+  @@map("wholesale_referral_programs")
+}
+
+/// Explicit distributor -> dealer account relationship. It is the boundary
+/// used by the distributor's network dashboard; referred partner status
+/// alone is not treated as sufficient authorization to view dealer data.
+model DistributorDealerRelationship {
+  id                   String @id @default(cuid())
+  distributorPartnerId String
+  distributor          Partner @relation("DistributorManagedDealers", fields: [distributorPartnerId], references: [id], onDelete: Restrict)
+  dealerPartnerId      String @unique
+  dealer               Partner @relation("DealerManagedByDistributor", fields: [dealerPartnerId], references: [id], onDelete: Restrict)
+  wholesaleCustomerId  String @unique
+  wholesaleCustomer    WholesaleCustomer @relation(fields: [wholesaleCustomerId], references: [id], onDelete: Restrict)
+  referrerCustomerId   String?
+  createdAt            DateTime @default(now())
+  status               String @default("Active") // Active | Suspended
+
+  @@unique([distributorPartnerId, wholesaleCustomerId])
+  @@index([distributorPartnerId, status, createdAt])
+  @@map("distributor_dealer_relationships")
+}
+
+model WholesaleReferralReward {
+  id                 String   @id @default(cuid())
+  partnerId          String
+  referrerCustomerId String?
+  referrer           WholesaleCustomer? @relation("WholesaleReferralReferrer", fields: [referrerCustomerId], references: [id], onDelete: Restrict)
+  recipientType      String   @default("Dealer") // Distributor | Dealer
+  recipientPartnerId String?
+  referredCustomerId String   @unique
+  referred           WholesaleCustomer @relation("WholesaleReferralReferred", fields: [referredCustomerId], references: [id], onDelete: Restrict)
+  qualifyingOrderId  String?
+  qualifyingSubscriptionPaymentId String?
+  rewardPercentBps   Int      @default(500)
+  qualifyingSubscriptionAmount Int?
+  rewardAmount       Int      @default(0) // computed from first captured plan payment
+  status             String   @default("Pending") // Pending | Qualified | Approved | Paid | Rejected
+  qualifiedAt        DateTime?
+  approvedAt         DateTime?
+  paidAt             DateTime?
+  payoutReference    String?
+  createdAt          DateTime @default(now())
+
+  @@index([partnerId, status, createdAt])
+  @@index([referrerCustomerId])
+  @@map("wholesale_referral_rewards")
 }
 
 // ---------------------------------------------------------------------

@@ -3127,12 +3127,21 @@
   {
     "id": "inventory.procurement",
     "moduleSlug": "inventory",
-    "title": "Procurement",
+    "title": "Procurement & Goods Receipts",
     "path": "/partner/[partnerId]/inventory/procurement",
     "kind": "list",
     "superAdminOnly": false,
-    "customizableRegions": [],
-    "explanation": "Create supplier purchase orders and receive materials into Good inventory with an auditable receipt record.",
+    "customizableRegions": [
+      {
+        "key": "purchase-order-fields",
+        "label": "Purchase order fields"
+      },
+      {
+        "key": "receipt-fields",
+        "label": "Goods receipt fields"
+      }
+    ],
+    "explanation": "Raises supplier POs and posts partial or complete goods receipts into real warehouse stock, including per-unit serial and barcode capture.",
     "sourceFile": "src/app/partner/[partnerId]/inventory/procurement/page.tsx"
   },
   {
@@ -6279,6 +6288,22 @@
     "sourceFile": "src/app/partner/[partnerId]/wholesale-b2b/analytics/page.tsx"
   },
   {
+    "id": "wholesale-b2b.catalog",
+    "moduleSlug": "wholesale-b2b",
+    "title": "Product Catalogue & Dealer Pricing",
+    "path": "/partner/[partnerId]/wholesale-b2b/catalog",
+    "kind": "list",
+    "superAdminOnly": false,
+    "customizableRegions": [
+      {
+        "key": "catalog-fields",
+        "label": "Catalogue fields"
+      }
+    ],
+    "explanation": "Maps distributor products to real inventory materials, pricing, GST and serialized tracking so dealer POs reserve and ship actual stock.",
+    "sourceFile": "src/app/partner/[partnerId]/wholesale-b2b/catalog/page.tsx"
+  },
+  {
     "id": "wholesale-b2b.create",
     "moduleSlug": "wholesale-b2b",
     "title": "Wholesale / Distributor B2B — Create",
@@ -6397,6 +6422,17 @@
     "sourceFile": "src/app/partner/[partnerId]/wholesale-b2b/page.tsx"
   },
   {
+    "id": "wholesale-b2b.network",
+    "moduleSlug": "wholesale-b2b",
+    "title": "Dealer Network",
+    "path": "/partner/[partnerId]/wholesale-b2b/network",
+    "kind": "list",
+    "superAdminOnly": false,
+    "customizableRegions": [],
+    "explanation": "Distributor-only view of dealer accounts enrolled through this distributor's invitation, subscription status, recent login, module activity and orders placed with this distributor.",
+    "sourceFile": "src/app/partner/[partnerId]/wholesale-b2b/network/page.tsx"
+  },
+  {
     "id": "wholesale-b2b.pick-list",
     "moduleSlug": "wholesale-b2b",
     "title": "Warehouse Pick List",
@@ -6405,11 +6441,11 @@
     "superAdminOnly": false,
     "customizableRegions": [
       {
-        "key": "filters",
-        "label": "Pick-list filters"
+        "key": "pick-columns",
+        "label": "Pick list columns"
       }
     ],
-    "explanation": "Aggregates material quantities from confirmed wholesale orders for warehouse picking. Read-only: it does not reserve, deduct or adjust stock; those effects remain in the existing audited inventory workflows.",
+    "explanation": "Aggregates remaining allocated quantities from POs in the Picking stage and links warehouse users to the enforced serial-aware picking action.",
     "sourceFile": "src/app/partner/[partnerId]/wholesale-b2b/pick-list/page.tsx"
   },
   {
@@ -6419,8 +6455,13 @@
     "path": "/partner/[partnerId]/wholesale-b2b/portal-links",
     "kind": "list",
     "superAdminOnly": false,
-    "customizableRegions": [],
-    "explanation": "Create signed, time-limited dealer portal links scoped to one wholesale customer.",
+    "customizableRegions": [
+      {
+        "key": "dealer-actions",
+        "label": "Dealer link actions"
+      }
+    ],
+    "explanation": "Issues tenant-scoped dealer ordering links, direct distributor invitations and dealer-attributed plan referral links.",
     "sourceFile": "src/app/partner/[partnerId]/wholesale-b2b/portal-links/page.tsx"
   },
   {
@@ -6497,5 +6538,37 @@
     ],
     "explanation": "Lists every PriceTier (name + discount %) this partner has defined for Wholesale B2B orders — Prisma-backed, with a \"+ New\" action and row-click navigation into the record's detail view.",
     "sourceFile": "src/app/partner/[partnerId]/wholesale-b2b/price-tiers/page.tsx"
+  },
+  {
+    "id": "wholesale-b2b.purchases",
+    "moduleSlug": "wholesale-b2b",
+    "title": "My Distributor Purchases",
+    "path": "/partner/[partnerId]/wholesale-b2b/purchases",
+    "kind": "list",
+    "superAdminOnly": false,
+    "customizableRegions": [
+      {
+        "key": "purchase-columns",
+        "label": "Purchase list columns"
+      }
+    ],
+    "explanation": "Dealer-side view of POs from its linked distributor, including order entry, shipment progress, warehouse receipt and referral link generation.",
+    "sourceFile": "src/app/partner/[partnerId]/wholesale-b2b/purchases/page.tsx"
+  },
+  {
+    "id": "wholesale-b2b.referrals",
+    "moduleSlug": "wholesale-b2b",
+    "title": "Dealer Referrals & Rewards",
+    "path": "/partner/[partnerId]/wholesale-b2b/referrals",
+    "kind": "list",
+    "superAdminOnly": false,
+    "customizableRegions": [
+      {
+        "key": "reward-columns",
+        "label": "Reward ledger columns"
+      }
+    ],
+    "explanation": "Configures eligible dealer plans and shows the platform-controlled 5% first-plan-payment referral reward ledger.",
+    "sourceFile": "src/app/partner/[partnerId]/wholesale-b2b/referrals/page.tsx"
   }
 ]

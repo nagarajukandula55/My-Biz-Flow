@@ -19,6 +19,9 @@ test('payment acceptance persists before activation, does not reactivate replay,
   let existing = null;
   let planId = 'plan1';
   let failInsert = false;
+  let dealerRelationship = null;
+  let referringDealerRelationship = null;
+  let queuedDelivery = null;
   const events = [];
   const tx = {
     $queryRaw: async () => { events.push('lock'); return []; },
@@ -31,12 +34,16 @@ test('payment acceptance persists before activation, does not reactivate replay,
       findUnique: async () => ({ planId, billingCycle: 'Yearly', offerId: null }),
       update: async () => events.push('activate'),
     },
+    distributorDealerRelationship: {
+      findUnique: async ({ where }) => where.dealerPartnerId ? dealerRelationship : referringDealerRelationship,
+    },
+    wholesaleReferralReward: { updateMany: async ({data}) => { events.push(`dealer-reward:${data.rewardAmount}`); } },
   };
   const service = load('src/lib/acceptSubscriptionPayment.ts', {
     '@/lib/prisma': { prisma: { $transaction: async fn => fn(tx) } },
     '@/lib/razorpay': { fetchPaymentAndOrder: async () => ({ payment, order }) },
     '@/lib/subscriptionPaymentPolicy': policy,
-    '@/lib/paymentDeliveryQueue': { enqueuePaymentDelivery: async () => events.push('enqueue') },
+    '@/lib/paymentDeliveryQueue': { enqueuePaymentDelivery: async (_tx, payload) => { queuedDelivery = payload; events.push('enqueue'); } },
     '@/lib/env': { env: { walletCommissionEnabled: () => false } },
   });
   assert.equal((await service.acceptSubscriptionPayment('pay_123', 'order_123', 'SC0001')).newlyRecorded, true);
@@ -50,6 +57,22 @@ test('payment acceptance persists before activation, does not reactivate replay,
   planId = 'plan1'; failInsert = true; events.length = 0;
   await assert.rejects(service.acceptSubscriptionPayment('pay_123'), /database failure/);
   assert.deepEqual(events, ['lock', 'insert']);
+
+  failInsert = false; existing = null; events.length = 0;
+  dealerRelationship = { distributorPartnerId: 'DIST1', wholesaleCustomerId: 'DEALER1' };
+  const dealerResult = await service.acceptSubscriptionPayment('pay_123');
+  assert.equal(dealerResult.newlyRecorded, true);
+  assert.deepEqual(events, ['lock', 'insert', 'enqueue', 'activate', 'dealer-reward:6000']);
+  assert.equal(queuedDelivery.referrer.type, 'PARTNER');
+  assert.equal(queuedDelivery.referrer.id, 'DIST1');
+
+  existing = null; events.length = 0;
+  dealerRelationship = { distributorPartnerId: 'DIST1', wholesaleCustomerId: 'DEALER2', referrerCustomerId: 'DEALER1' };
+  referringDealerRelationship = { dealerPartnerId: 'REFERRING-DEALER' };
+  await service.acceptSubscriptionPayment('pay_123');
+  assert.equal(queuedDelivery.referrer.type, 'PARTNER');
+  assert.equal(queuedDelivery.referrer.id, 'REFERRING-DEALER');
+  assert.deepEqual(events, ['lock', 'insert', 'enqueue', 'activate', 'dealer-reward:6000']);
 });
 
 test('partner home skips revoked and unknown modules', async () => {

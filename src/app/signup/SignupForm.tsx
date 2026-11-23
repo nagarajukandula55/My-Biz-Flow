@@ -17,11 +17,12 @@ import {
  * per field def. `partnerTypeId` is a hidden input, not a dropdown: this
  * page is already scoped to one business type.
  */
-export function SignupForm({ partnerType, error, referralCode, selectedPlanId }: { partnerType: PartnerTypeRecord; error?: string; referralCode?: string; selectedPlanId?: string }) {
+export function SignupForm({ partnerType, error, referralCode, selectedPlanId, dealerInviteToken }: { partnerType: PartnerTypeRecord; error?: string; referralCode?: string; selectedPlanId?: string; dealerInviteToken?: string }) {
   return (
     <form action={registerBusiness} className="mt-8 space-y-8">
       <input type="hidden" name="partnerTypeId" value={partnerType.id} />
       {selectedPlanId && <input type="hidden" name="selectedPlanId" value={selectedPlanId} />}
+      {dealerInviteToken && <input type="hidden" name="dealerInviteToken" value={dealerInviteToken} />}
 
       {error === "contact_taken" && (
         <p className="rounded-md border border-danger bg-danger-soft px-3 py-2 text-sm text-danger">
@@ -29,6 +30,7 @@ export function SignupForm({ partnerType, error, referralCode, selectedPlanId }:
         </p>
       )}
       {error === "registration_failed" && <p className="rounded-md border border-danger bg-danger-soft px-3 py-2 text-sm text-danger">Registration could not be completed. Please retry or contact support.</p>}
+      {error === "invalid_dealer_invite" && <p className="rounded-md border border-danger bg-danger-soft px-3 py-2 text-sm text-danger">This dealer invitation is invalid or expired. Ask the distributor for a new invitation.</p>}
 
       <div>
         <h2 className="font-display text-base font-bold text-text">Business Details</h2>

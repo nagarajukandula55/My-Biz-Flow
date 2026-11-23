@@ -17,6 +17,7 @@ export type InventorySourceType =
   | "stock-transfer"
   | "return-order"
   | "part-order"
+  | "purchase-receipt"
   | "stock-take";
 
 export type InventoryTransactionDirection = "debit" | "credit";

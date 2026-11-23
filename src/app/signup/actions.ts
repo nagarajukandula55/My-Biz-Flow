@@ -15,6 +15,9 @@ import {
 } from "@/lib/partnerSession";
 import { notifyAdmins } from "@/lib/platformSettings";
 import { newPartnerApplicationMessage } from "@/lib/telegramTemplates";
+import { verifyDealerReferralToken } from "@/lib/dealerPortal";
+import { getWholesaleReferralProgram } from "@/lib/wholesaleReferrals";
+import { getWholesaleCustomer } from "@/lib/wholesaleData";
 
 /**
  * Real "register your business" action. No password is collected here — one
@@ -44,6 +47,7 @@ export async function registerBusiness(formData: FormData) {
   const loginContact = String(formData.get("loginContact") ?? "").trim();
   const referralCode = String(formData.get("referralCode") ?? "").trim();
   const selectedPlanId = String(formData.get("selectedPlanId") ?? "").trim();
+  const dealerInviteToken = String(formData.get("dealerInviteToken") ?? "").trim();
   // Multi-select checkboxes — every ticked box posts under the same name.
   // Left unvalidated here on purpose: parseProductDomains() (partnerData)
   // drops anything unknown and falls back to ELECTRONICS if nothing was
@@ -61,6 +65,24 @@ export async function registerBusiness(formData: FormData) {
   const selectedPlan = selectedPlanId ? await getPlan(selectedPlanId) : null;
   if (selectedPlanId && (!selectedPlan || !partnerType.planIds.includes(selectedPlanId))) {
     throw new Error("Invalid plan for this business type.");
+  }
+
+  let dealerInvite: Awaited<ReturnType<typeof verifyDealerReferralToken>> | undefined;
+  if (dealerInviteToken) {
+    try { dealerInvite = await verifyDealerReferralToken(dealerInviteToken); }
+    catch { redirect(`/signup/${encodeURIComponent(partnerTypeId)}?error=invalid_dealer_invite`); }
+    const [program, distributor, referringDealer] = await Promise.all([
+      getWholesaleReferralProgram(dealerInvite.partnerId),
+      getPartner(dealerInvite.partnerId),
+      dealerInvite.referrerCustomerId ? getWholesaleCustomer(dealerInvite.partnerId, dealerInvite.referrerCustomerId) : Promise.resolve(null),
+    ]);
+    const requiredModules = ["wholesale-b2b", "inventory", "pos", "billing"];
+    const planSupportsDealerWorkflows = selectedPlan?.isPublic && requiredModules.every((module) => selectedPlan.includedModuleSlugs.includes(module));
+    if (!distributor || distributor.status !== "Active" || !program || program.dealerPartnerTypeId !== dealerInvite.partnerTypeId ||
+      partnerType.id !== dealerInvite.partnerTypeId || (dealerInvite.referrerCustomerId ? !referringDealer?.isActive : false) || !selectedPlanId || !planSupportsDealerWorkflows ||
+      requiredModules.some((module) => !partnerType.defaultModules.includes(module))) {
+      redirect(`/dealer-portal/refer/${encodeURIComponent(dealerInviteToken)}?error=dealer_setup_incomplete`);
+    }
   }
 
   // Server-side validation for this type's own custom signup fields — the
@@ -83,7 +105,7 @@ export async function registerBusiness(formData: FormData) {
   // simply resolves to undefined and the signup proceeds as organic. The
   // code may name either a referring Partner (REF-<id>) or a telecalling
   // agent (their loginId, e.g. "AGT001") — see resolveReferrer.
-  const referrer = referralCode ? await resolveReferrer(referralCode) : undefined;
+  const referrer = dealerInvite ? undefined : referralCode ? await resolveReferrer(referralCode) : undefined;
   const input = {
     partnerTypeId,
     businessName,
@@ -97,8 +119,10 @@ export async function registerBusiness(formData: FormData) {
     loginContact,
     productDomains,
     customFieldValues,
-    referredByPartnerId: referrer?.type === "PARTNER" ? referrer.id : undefined,
+    referredByPartnerId: dealerInvite?.partnerId ?? (referrer?.type === "PARTNER" ? referrer.id : undefined),
     referredByStaffId: referrer?.type === "STAFF" ? referrer.id : undefined,
+    distributorPartnerId: dealerInvite?.partnerId,
+    referringDealerCustomerId: dealerInvite?.referrerCustomerId,
   };
 
   let partnerId: string;
@@ -114,7 +138,10 @@ export async function registerBusiness(formData: FormData) {
         subscriptionStatus: "PastDue",
         trialStartAt: createdPartner?.trialStartAt ?? null,
         trialEndAt: createdPartner?.trialEndAt ?? null,
-        billingCycle: selectedPlan.billingCycle,
+        // Subscription checkout accepts only Yearly / TwoYearly cycles. Start
+        // dealer invitations on a valid Yearly quote; the owner can switch to
+        // TwoYearly before paying from the subscription screen.
+        billingCycle: "Yearly",
         planId: selectedPlan.id,
         offerId: null,
       });
@@ -125,7 +152,11 @@ export async function registerBusiness(formData: FormData) {
     const duplicateContact = failure.code === "P2002" &&
       (Array.isArray(target) ? target.includes("loginContact") || target.includes("login_contact") :
         typeof target === "string" && /login_?contact/i.test(target));
-    redirect(`/signup/${encodeURIComponent(partnerTypeId)}?error=${duplicateContact ? "contact_taken" : "registration_failed"}`);
+    const preserve = new URLSearchParams();
+    if (selectedPlanId) preserve.set("planId", selectedPlanId);
+    if (dealerInviteToken) preserve.set("dealerInvite", dealerInviteToken);
+    preserve.set("error", duplicateContact ? "contact_taken" : "registration_failed");
+    redirect(`/signup/${encodeURIComponent(partnerTypeId)}?${preserve.toString()}`);
   }
 
   // Best-effort — sendPartnerWelcomeEmail never throws — but awaited
