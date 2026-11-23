@@ -12,10 +12,18 @@ import { syncBomMaterialToInventoryStock } from "@/lib/inventoryStock";
 import { assertMaterialBarcodeAvailable, assertPosBarcodeAccess } from "@/lib/barcodeCatalog";
 import { assertPageTierAccess } from "@/lib/tenant";
 
-const POS_BARCODE_WRITE_KEYS = new Set(["barcode", "barcodeType", "variant", "packSize", "offerPrice", "manufacturedOn", "expiryDate", "labelNote"]);
+// `barcodeType` is rendered with a harmless default (CODE128) by generic
+// forms. It must not turn a plain BOM-material save into a POS-only barcode
+// operation when no barcode data was supplied.
+const POS_BARCODE_WRITE_KEYS = new Set(["barcode", "variant", "packSize", "offerPrice", "manufacturedOn", "expiryDate", "labelNote"]);
 
 async function assertBarcodeWriteAccess(partnerId: string, values: Record<string, unknown>): Promise<void> {
-  if (!Object.keys(values).some((key) => POS_BARCODE_WRITE_KEYS.has(key))) return;
+  const usesBarcodeFields = [...POS_BARCODE_WRITE_KEYS].some((key) => {
+    const value = values[key];
+    if (typeof value === "string") return value.trim().length > 0;
+    return value !== undefined && value !== null && value !== false;
+  });
+  if (!usesBarcodeFields) return;
   await assertPosBarcodeAccess(partnerId);
   await assertPageTierAccess(partnerId, "inventory.barcodes");
 }

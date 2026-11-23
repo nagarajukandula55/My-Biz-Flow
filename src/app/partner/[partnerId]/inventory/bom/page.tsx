@@ -6,7 +6,7 @@ import { BomSearchButton } from "./BomSearchButton";
 import { BomBulkUploadButton } from "./BomBulkUploadButton";
 import { RecordCsvExportButton } from "@/components/RecordCsvExportButton";
 import { applyCustomizations } from "@/lib/designer/customizations";
-import { bomColumns, POS_BARCODE_FIELD_KEYS } from "@/lib/sample-data/bom";
+import { bomColumns, bomFormFields, POS_BARCODE_FIELD_KEYS } from "@/lib/sample-data/bom";
 import { getVisibleModuleSlugs } from "@/lib/designer/entitlements";
 import { getPageTierAccess } from "@/lib/tenant";
 import { listBusinessRecords, listBusinessRecordsPaginated } from "@/lib/businessRecords";
@@ -40,6 +40,12 @@ export default async function BomPage({
   const hasPos = (await getVisibleModuleSlugs(params.partnerId)).includes("pos");
   const barcodeFeatureEnabled = hasPos && (await getPageTierAccess(params.partnerId, "inventory.barcodes")).allowed;
   const columns = (await applyCustomizations("inventory.bom.list", bomColumns)).filter((column) => barcodeFeatureEnabled || !POS_BARCODE_FIELD_KEYS.has(column.key));
+  // The list's modal must use the same POS-filtered fields as the standalone
+  // New Material page. Previously it passed the full form unconditionally,
+  // exposing barcode-label fields to Service Centre users and submitting the
+  // default barcode type even when they entered no barcode.
+  const createFields = (await applyCustomizations("inventory.bom.create", bomFormFields))
+    .filter((field) => barcodeFeatureEnabled || !POS_BARCODE_FIELD_KEYS.has(field.key));
   const page = Math.max(1, Number(searchParams.page) || 1);
   // Two reads: BomSearchButton's typeahead and the CSV export both need
   // every material, not just the current page, while the table itself
@@ -61,7 +67,7 @@ export default async function BomPage({
         <div className="flex items-center gap-3">
           <BomSearchButton options={bomOptions} />
           <BomBulkUploadButton partnerId={params.partnerId} />
-          <BomNewButton partnerId={params.partnerId} />
+          <BomNewButton partnerId={params.partnerId} fields={createFields} />
           <RecordCsvExportButton
             columns={columns.map((c) => ({ key: c.key, type: c.type === "date" ? "date" : c.type === "datetime" ? "datetime" : undefined }))}
             rows={allRows}

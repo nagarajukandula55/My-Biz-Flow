@@ -2,7 +2,7 @@
 
 import { RecordFormModal, useRecordFormModal } from "@/components/RecordFormModal";
 import { createBusinessRecordAction } from "@/lib/businessRecordActions";
-import { bomFormFields } from "@/lib/sample-data/bom";
+import type { FormFieldDef } from "@/components/RecordForm";
 
 /**
  * Live proof of the Create-as-modal pattern (see RecordFormModal.tsx) —
@@ -11,7 +11,7 @@ import { bomFormFields } from "@/lib/sample-data/bom";
  * modules keep the full-page form for now (see chat: rolling this out
  * everywhere is a separate, larger follow-up).
  */
-export function BomNewButton({ partnerId }: { partnerId: string }) {
+export function BomNewButton({ partnerId, fields }: { partnerId: string; fields: FormFieldDef[] }) {
   const { open, openModal, closeModal } = useRecordFormModal();
   return (
     <>
@@ -22,7 +22,7 @@ export function BomNewButton({ partnerId }: { partnerId: string }) {
         open={open}
         onClose={closeModal}
         title="New Material"
-        fields={bomFormFields}
+        fields={fields}
         submitLabel="Create Material"
         action={(values: Record<string, unknown>) => createBusinessRecordAction(partnerId, "inventory-bom", values, "inventory/bom")}
       />
