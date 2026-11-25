@@ -18,7 +18,7 @@ import { notifyCentralApiBillingInvoice } from "@/lib/centralApi";
 import { buildServiceCentreLines } from "@/lib/serviceCentreLines";
 import { sendWorkorderTelegramAlert, sendPartnerTelegramAlert } from "@/lib/telegram";
 import { workorderClosedMessage, workorderCancelledMessage, lowStockAlertMessage, pnaLoggedMessage } from "@/lib/telegramTemplates";
-import { findStockRecord, adjustStockQty, moveDefectiveToGood } from "@/lib/inventoryStock";
+import { adjustExistingStockRecordQty, adjustStockQty, getAvailableStockRows, materialCode, moveDefectiveToGood, type AvailableStockRow } from "@/lib/inventoryStock";
 import { withRecordLock } from "@/lib/withRecordLock";
 import { isWorkorderReopenUnlocked, consumeWorkorderReopenUnlock } from "@/lib/workorderReopenAccess";
 
@@ -115,8 +115,7 @@ async function assertCanActOnServiceCentre(partnerId: string): Promise<void> {
 async function assertLegalStageTransition(
   partnerId: string,
   existing: Record<string, unknown>,
-  nextStage: WorkorderStage,
-  serializedInventoryEnabled: boolean
+  nextStage: WorkorderStage
 ): Promise<void> {
   const currentStage = (existing["stage"] as WorkorderStage | undefined) ?? "Created";
   if (nextStage === currentStage) return; // no-op patch (e.g. re-saving other fields alongside the current stage)
@@ -179,24 +178,17 @@ async function assertLegalStageTransition(
     }
   }
 
-  if (nextStage === "Closed") {
-    // `serialized` is stamped onto a part line from the BOM catalog match
-    // (WorkorderLifecycle.tsx's setPartLabel) regardless of whether this
-    // partner has Serialized Inventory turned on — it's a property of the
-    // catalog item, not something the partner controls the meaning of. A
-    // partner who never opted into serial tracking (the default) gets no
-    // stock checking/deduction at all from deductInventoryForWorkorderAction,
-    // so this gate has to respect the same toggle — otherwise a catalog flag
-    // they don't know exists could block Close for a reason with no
-    // corresponding feature turned on for them.
-    if (serializedInventoryEnabled) {
-      const partLines = (existing["partLines"] as { serialized?: boolean; serial?: string; pending?: boolean }[] | undefined) ?? [];
-      const unresolvedSerials = partLines.filter((p) => p.serialized && !p.serial && !p.pending);
-      if (unresolvedSerials.length > 0) {
-        throw new WorkorderValidationError(
-          `${unresolvedSerials.length} part line(s) are serialized but missing a Serial/IMEI number. Enter the serial or mark the line Pending before closing.`
-        );
-      }
+  if (nextStage === "Completed" || nextStage === "Closed") {
+    // BOM/material serialization and Settings-level strict inventory are
+    // separate controls. A catalog item marked Serialized always requires a
+    // serial/IMEI; the partner setting only decides whether stock shortage
+    // itself blocks completion.
+    const partLines = (existing["partLines"] as { serialized?: boolean; serial?: string; pending?: boolean }[] | undefined) ?? [];
+    const unresolvedSerials = partLines.filter((p) => p.serialized && !p.serial && !p.pending);
+    if (unresolvedSerials.length > 0) {
+      throw new WorkorderValidationError(
+        `${unresolvedSerials.length} part line(s) are serialized but missing a Serial/IMEI number. Enter the serial or mark the line Pending before completing or closing the repair.`
+      );
     }
   }
 }
@@ -221,8 +213,7 @@ export async function patchServiceCentreWorkorderAction(
     const extra: Record<string, unknown> = {};
     if (typeof patch["stage"] === "string") {
       const nextStage = patch["stage"] as WorkorderStage;
-      const partner = await getPartner(partnerId);
-      await assertLegalStageTransition(partnerId, existing, nextStage, Boolean(partner?.serializedInventoryEnabled));
+      await assertLegalStageTransition(partnerId, existing, nextStage);
       if (nextStage !== existing["stage"]) {
         // Log the real transition so the activity timeline has something
         // true to render instead of fabricating a history.
@@ -360,9 +351,13 @@ async function closeLinkedPnaEntries(partnerId: string, workorderId: string): Pr
  * only controls how STRICT this is —
  *  - ON: fail-closed (a shortage blocks the whole deduction, same as
  *    before) and a serialized line's entered serial is recorded.
- *  - OFF (default): still deducts every line's real quantity, just
- *    without blocking on a shortage (adjustStockQty floors at 0) and
- *    without requiring a serial.
+ *  - OFF (default): deducts the quantity that is physically available
+ *    across all warehouses, without blocking closure for any uncovered
+ *    shortage. It never fabricates a
+ *    consumption/Defective-stock entry for quantity that was not on hand.
+ * Material-catalog serialization is independent: a serialized line always
+ * requires its serial before Completed/Closed and that serial is retained in
+ * consumption history in either strict-inventory mode.
  * A serialized line always consumes exactly 1 unit regardless of either
  * mode (a serial number identifies one physical unit, so its `qty` isn't
  * read for the deduction amount); a non-serialized line deducts its own
@@ -401,83 +396,123 @@ export async function deductInventoryForWorkorderAction(partnerId: string, worko
     // every such job.
     const linesToConsume = lifecycle.partLines.filter((line) => !line.pending && line.materialId);
 
-    // Fail-closed pre-check — strict mode only. In non-strict (default)
-    // mode a shortage still deducts (floored at 0 by adjustStockQty) rather
-    // than blocking the job from closing.
-    if (strict) {
-      const shortages: string[] = [];
+    // The availability check and every deduction share the partner-level
+    // inventory lock. This prevents another workorder from consuming the
+    // same stock after this one has checked it but before it writes.
+    await withRecordLock("inventory-partner", partnerId, async () => {
+      type PlannedAllocation = { line: (typeof linesToConsume)[number]; stock: AvailableStockRow; qty: number };
+      const planned: PlannedAllocation[] = [];
+      const bucketsByMaterial = new Map<string, AvailableStockRow[]>();
+      const remainingByStockRecord = new Map<string, number>();
+
       for (const line of linesToConsume) {
-        const stock = await findStockRecord(partnerId, line.materialId);
-        const available = Number(stock?.["qtyOnHand"] ?? 0);
-        const needed = line.serialized ? 1 : line.qty || 1;
-        if (available < needed) {
-          shortages.push(`${line.materialLabel || line.materialId}: ${available} available, ${needed} needed`);
+        const code = materialCode(line.materialId);
+        let buckets = bucketsByMaterial.get(code);
+        if (!buckets) {
+          buckets = await getAvailableStockRows(partnerId, code);
+          bucketsByMaterial.set(code, buckets);
+          for (const bucket of buckets) remainingByStockRecord.set(String(bucket.row["id"]), bucket.available);
+        }
+
+        const needed = line.serialized ? 1 : Math.max(1, line.qty || 1);
+        const available = buckets.reduce(
+          (sum, bucket) => sum + (remainingByStockRecord.get(String(bucket.row["id"])) ?? 0),
+          0
+        );
+        if (strict && available < needed) {
+          throw new WorkorderValidationError(
+            `Not enough stock to complete this job - ${line.materialLabel || line.materialId}: ${available} available, ${needed} needed.`
+          );
+        }
+
+        // Strict mode reaches here only when the entire line is covered.
+        // Non-strict mode allocates whatever genuinely exists and leaves an
+        // uncovered shortage unlogged, allowing the call to close without
+        // inventing stock movements.
+        let remainingNeed = Math.min(needed, available);
+        for (const bucket of buckets) {
+          if (remainingNeed <= 0) break;
+          const recordId = String(bucket.row["id"]);
+          const bucketRemaining = remainingByStockRecord.get(recordId) ?? 0;
+          const take = Math.min(bucketRemaining, remainingNeed);
+          if (take <= 0) continue;
+          planned.push({ line, stock: bucket, qty: take });
+          remainingByStockRecord.set(recordId, bucketRemaining - take);
+          remainingNeed -= take;
         }
       }
-      if (shortages.length > 0) {
-        throw new WorkorderValidationError(`Not enough stock to complete this job — ${shortages.join("; ")}.`);
-      }
-    }
 
-    const customerName = typeof record["customer"] === "string" ? (record["customer"] as string) : "";
-    for (const line of linesToConsume) {
-      const needed = line.serialized ? 1 : line.qty || 1;
-      const before = await findStockRecord(partnerId, line.materialId);
-      const reorderLevel = Number(before?.["reorderLevel"] ?? 0);
-      const currentQty = Number(before?.["qtyOnHand"] ?? 0);
-      const warehouseName = String(before?.["warehouseName"] ?? "");
-
-      // Every unit consumed by a workorder is a part that was actually
-      // pulled and fitted — the old, worn/faulty part it replaced comes
-      // back into the system as Defective stock of the same material, so
-      // Inventory > Stock and the Consumption report both reflect that a
-      // Defective unit now exists to be tracked/disposed of, not just that
-      // a Good unit vanished.
-      const newQty = await adjustStockQty(partnerId, line.materialId, line.materialLabel, warehouseName, -needed);
-      await adjustStockQty(partnerId, line.materialId, line.materialLabel, warehouseName, needed, "Defective");
-
-      if (strict && line.serialized && line.serial && before) {
-        const consumedSerials = Array.isArray(before["consumedSerials"]) ? (before["consumedSerials"] as unknown[]) : [];
-        await updateBusinessRecord(partnerId, "inventory-stock", String(before["id"]), {
-          ...before,
-          qtyOnHand: newQty,
-          consumedSerials: [...consumedSerials, { serial: line.serial, workorderId, consumedAt: new Date().toISOString() }],
-        });
+      const allocationsByStockRecord = new Map<string, { stock: AvailableStockRow; qty: number; allocations: PlannedAllocation[] }>();
+      for (const allocation of planned) {
+        const recordId = String(allocation.stock.row["id"]);
+        const group = allocationsByStockRecord.get(recordId) ?? { stock: allocation.stock, qty: 0, allocations: [] };
+        group.qty += allocation.qty;
+        group.allocations.push(allocation);
+        allocationsByStockRecord.set(recordId, group);
       }
 
-      // Real consumption history — one row per part line actually deducted,
-      // independent of the strict/non-strict mode above, so Inventory >
-      // Parts Consumption always reflects what actually left stock and a
-      // partner can see usage trends to reorder ahead of running out.
-      await createBusinessRecord(partnerId, "inventory-consumption", {
-        source: "Service Centre",
-        workorderId,
-        workorderNumber: workorderId,
-        materialId: line.materialId,
-        materialLabel: line.materialLabel,
-        warehouseName,
-        qty: needed,
-        serial: strict && line.serialized ? line.serial ?? "" : "",
-        customerName,
-        consumedDate: new Date().toISOString().slice(0, 10),
-      });
+      const customerName = typeof record["customer"] === "string" ? (record["customer"] as string) : "";
+      for (const [stockRecordId, group] of allocationsByStockRecord) {
+        const { stock, qty, allocations } = group;
+        const before = stock.row;
+        const warehouseName = stock.warehouseName;
+        const reorderLevel = Number(before["reorderLevel"] ?? 0);
+        const currentQty = Number(before["qtyOnHand"] ?? 0);
 
-      // Fire once, right as stock crosses the threshold — not on every
-      // subsequent deduction while it stays low, so this doesn't spam an
-      // alert per workorder for a part nobody's reordered yet.
-      if (partner && reorderLevel > 0 && currentQty > reorderLevel && newQty <= reorderLevel) {
-        await sendPartnerTelegramAlert(
-          partnerId,
-          "lowStock",
-          await lowStockAlertMessage({
-            partnerBusinessName: partner.businessName,
-            itemName: line.materialLabel || line.materialId,
-            quantityRemaining: newQty,
-            reorderThreshold: reorderLevel,
-          })
-        );
+        // Consume from the actual warehouse bucket selected by the plan,
+        // then create the matching Defective return only for the quantity
+        // that physically left Good stock.
+        const representative = allocations[0].line;
+        const newQty = await adjustExistingStockRecordQty(partnerId, stockRecordId, -qty);
+        await adjustStockQty(partnerId, representative.materialId, representative.materialLabel, warehouseName, qty, "Defective");
+
+        const serializedAllocations = allocations.filter(({ line }) => line.serialized && line.serial);
+        if (serializedAllocations.length > 0) {
+          // Re-read after adjustStockQty so adding serial history cannot
+          // restore stale availableQty/reservation metadata from `before`.
+          const updated = await getBusinessRecord(partnerId, "inventory-stock", stockRecordId);
+          if (updated) {
+            const consumedSerials = Array.isArray(updated["consumedSerials"]) ? (updated["consumedSerials"] as unknown[]) : [];
+            await updateBusinessRecord(partnerId, "inventory-stock", stockRecordId, {
+              ...updated,
+              consumedSerials: [
+                ...consumedSerials,
+                ...serializedAllocations.map(({ line }) => ({ serial: line.serial, workorderId, consumedAt: new Date().toISOString() })),
+              ],
+            });
+          }
+        }
+
+        for (const allocation of allocations) {
+          const { line, qty: allocationQty } = allocation;
+          await createBusinessRecord(partnerId, "inventory-consumption", {
+            source: "Service Centre",
+            workorderId,
+            workorderNumber: workorderId,
+            materialId: line.materialId,
+            materialLabel: line.materialLabel,
+            warehouseName,
+            qty: allocationQty,
+            serial: line.serialized ? line.serial ?? "" : "",
+            customerName,
+            consumedDate: new Date().toISOString().slice(0, 10),
+          });
+        }
+
+        if (partner && reorderLevel > 0 && currentQty > reorderLevel && newQty <= reorderLevel) {
+          await sendPartnerTelegramAlert(
+            partnerId,
+            "lowStock",
+            await lowStockAlertMessage({
+              partnerBusinessName: partner.businessName,
+              itemName: representative.materialLabel || representative.materialId,
+              quantityRemaining: newQty,
+              reorderThreshold: reorderLevel,
+            })
+          );
+        }
       }
-    }
+    });
 
     await updateBusinessRecord(partnerId, "service-centre", workorderId, { ...record, inventoryDeducted: true });
   });

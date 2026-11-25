@@ -2,8 +2,12 @@
 import { listBusinessRecords } from "@/lib/businessRecords";
 import type { Row } from "@/components/DataTable";
 
-function materialCode(value: unknown): string {
-  return String(value ?? "").split(" — ")[0].trim();
+export function materialCode(value: unknown): string {
+  // Most current records use "CODE - Description", but older imports and
+  // screens have also produced en/em dashes.  Stock identity is the code;
+  // accepting all three separators prevents existing stock from becoming
+  // invisible merely because its display label was saved by an older UI.
+  return String(value ?? "").split(/\s[-–—]\s/, 1)[0].trim();
 }
 
 export function parseSerialNumbers(raw: unknown): string[] {
@@ -27,6 +31,45 @@ export type StockCondition = "Good" | "Defective";
 
 function rowCondition(r: Row): StockCondition {
   return r["condition"] === "Defective" ? "Defective" : "Good";
+}
+
+/**
+ * `availableQty` is a denormalized convenience field and some older stock
+ * rows contain a stale zero even though qtyOnHand is positive.  Physical
+ * availability is always derived from the two source fields when on-hand is
+ * present; the stored availableQty is only a backwards-compatible fallback.
+ */
+export function availableQtyForStockRow(r: Row): number {
+  const onHand = Number(r["qtyOnHand"]);
+  if (Number.isFinite(onHand)) {
+    const reserved = Number(r["reservedQty"] ?? 0);
+    return Math.max(0, onHand - (Number.isFinite(reserved) ? reserved : 0));
+  }
+  const stored = Number(r["availableQty"] ?? 0);
+  return Number.isFinite(stored) ? Math.max(0, stored) : 0;
+}
+
+export type AvailableStockRow = {
+  row: Row;
+  materialCode: string;
+  warehouseName: string;
+  available: number;
+};
+
+/** All usable Good-stock buckets for a material, largest available first. */
+export async function getAvailableStockRows(partnerId: string, materialId: string): Promise<AvailableStockRow[]> {
+  const code = materialCode(materialId);
+  const rows = await listBusinessRecords(partnerId, "inventory-stock");
+  return rows
+    .filter((row) => rowCondition(row) === "Good" && materialCode(row["materialId"]) === code)
+    .map((row) => ({
+      row,
+      materialCode: code,
+      warehouseName: String(row["warehouseName"] ?? ""),
+      available: availableQtyForStockRow(row),
+    }))
+    .filter((entry) => entry.available > 0)
+    .sort((a, b) => b.available - a.available);
 }
 
 export async function findStockRecord(
@@ -68,7 +111,7 @@ export async function getAvailabilityDetailByMaterial(partnerId: string): Promis
   for (const r of rows) {
     if (rowCondition(r) !== "Good") continue; // Defective stock isn't usable/sellable — never counts as "available"
     const code = materialCode(r["materialId"]);
-    const available = Number(r["availableQty"] ?? r["qtyOnHand"] ?? 0);
+    const available = availableQtyForStockRow(r);
     if (available <= 0) continue;
     const existing = byMaterial.get(code) ?? { entries: [], total: 0 };
     existing.entries.push(`${r["warehouseName"]}: ${available} avail`);

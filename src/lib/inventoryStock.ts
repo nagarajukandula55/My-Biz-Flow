@@ -1,6 +1,18 @@
 import { findStockRecord } from "@/lib/inventoryRead";
 import type { StockCondition } from "@/lib/inventoryRead";
-export { findStockRecord, getQtyOnHand, getAvailabilityByMaterial, getAvailabilityDetailByMaterial, parseSerialNumbers, validateSerialNumbers, type StockCondition } from "@/lib/inventoryRead";
+export {
+  findStockRecord,
+  getQtyOnHand,
+  getAvailabilityByMaterial,
+  getAvailabilityDetailByMaterial,
+  getAvailableStockRows,
+  availableQtyForStockRow,
+  materialCode,
+  parseSerialNumbers,
+  validateSerialNumbers,
+  type AvailableStockRow,
+  type StockCondition,
+} from "@/lib/inventoryRead";
 import { withRecordLock } from "@/lib/withRecordLock";
 /**
  * Single source of truth for reading/writing an "inventory-stock"
@@ -18,7 +30,7 @@ import { withRecordLock } from "@/lib/withRecordLock";
  * Stock Adjustments/Part Orders/Stock Take) should call these instead of
  * touching `inventory-stock` BusinessRecords directly.
  */
-import { updateBusinessRecord, createBusinessRecord, listBusinessRecords } from "@/lib/businessRecords";
+import { updateBusinessRecord, createBusinessRecord, getBusinessRecord, listBusinessRecords } from "@/lib/businessRecords";
 import { splitMaterialLabel } from "@/lib/materialLabel";
 
 /**
@@ -109,6 +121,37 @@ export async function adjustStockQty(
 ): Promise<number> {
   if (!Number.isFinite(delta)) throw new Error("Stock quantity must be a finite number");
   return withRecordLock("inventory-partner", partnerId, () => adjustStockQtyInner(partnerId, materialId, materialLabel, warehouseName, delta, condition));
+}
+
+/**
+ * Adjust one already-selected stock bucket by its record id. Service Centre
+ * plans across every warehouse/legacy duplicate first, so applying by exact
+ * id is essential: looking the material up again could select a different
+ * row and leave the planned bucket untouched.
+ */
+export async function adjustExistingStockRecordQty(
+  partnerId: string,
+  stockRecordId: string,
+  delta: number
+): Promise<number> {
+  if (!Number.isFinite(delta)) throw new Error("Stock quantity must be a finite number");
+  return withRecordLock("inventory-partner", partnerId, async () => {
+    const existing = await getBusinessRecord(partnerId, "inventory-stock", stockRecordId);
+    if (!existing) throw new Error(`Inventory stock record "${stockRecordId}" was not found.`);
+    if ((existing["condition"] === "Defective" ? "Defective" : "Good") !== "Good") {
+      throw new Error("Only usable Good stock can be consumed from a workorder.");
+    }
+    const qtyOnHand = Number(existing["qtyOnHand"] ?? 0);
+    const reservedQty = Number(existing["reservedQty"] ?? 0);
+    const newQty = Math.max(0, qtyOnHand + delta);
+    await updateBusinessRecord(partnerId, "inventory-stock", stockRecordId, {
+      ...existing,
+      qtyOnHand: newQty,
+      availableQty: Math.max(0, newQty - reservedQty),
+      lastUpdated: new Date().toISOString(),
+    });
+    return newQty;
+  });
 }
 
 async function adjustStockQtyInner(

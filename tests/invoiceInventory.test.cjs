@@ -9,7 +9,11 @@ function loadWith(bom, stock, adjustments = [], created = []) {
       listBusinessRecords: async (_p, slug) => (slug === 'inventory-bom' ? bom : stock),
       createBusinessRecord: async (_p, slug, data) => { created.push({ slug, data }); return data; },
     },
-    '@/lib/inventoryStock': { adjustStockQty: async (...args) => { adjustments.push(args.slice(1)); } },
+    '@/lib/inventoryStock': {
+      adjustStockQty: async (...args) => { adjustments.push(args.slice(1)); },
+      materialCode: value => String(value ?? '').split(/\s[-–—]\s/, 1)[0].trim(),
+      availableQtyForStockRow: row => Math.max(0, Number(row.qtyOnHand ?? row.availableQty ?? 0) - Number(row.reservedQty ?? 0)),
+    },
   });
 }
 const bom = [{ id: 'MAT-1', serialized: false }, { id: 'MAT-2', serialized: true }];

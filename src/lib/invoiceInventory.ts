@@ -13,7 +13,7 @@
  * and the deduction see the same stock.
  */
 import { createBusinessRecord, listBusinessRecords } from "@/lib/businessRecords";
-import { adjustStockQty } from "@/lib/inventoryStock";
+import { adjustStockQty, availableQtyForStockRow, materialCode } from "@/lib/inventoryStock";
 
 export type InvoiceConsumption = {
   materialId: string;
@@ -31,10 +31,6 @@ export type InvoiceConsumptionPlan = {
 };
 
 type RawLine = Record<string, unknown>;
-
-function materialCode(value: unknown): string {
-  return String(value ?? "").split(" — ")[0].trim();
-}
 
 function asLines(items: unknown): RawLine[] {
   return Array.isArray(items) ? (items as RawLine[]) : [];
@@ -85,7 +81,7 @@ export async function planInvoiceConsumption(partnerId: string, items: unknown):
   for (const [code, { qty: needed, description }] of needByCode) {
     const rows = stockRows
       .filter((r) => r["condition"] !== "Defective" && materialCode(r["materialId"]) === code)
-      .map((r) => ({ row: r, available: Number(r["availableQty"] ?? r["qtyOnHand"] ?? 0) }))
+      .map((r) => ({ row: r, available: availableQtyForStockRow(r) }))
       .filter((r) => r.available > 0)
       .sort((a, b) => b.available - a.available);
     const totalAvailable = rows.reduce((sum, r) => sum + r.available, 0);

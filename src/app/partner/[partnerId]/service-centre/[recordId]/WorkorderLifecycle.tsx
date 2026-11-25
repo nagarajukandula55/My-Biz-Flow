@@ -37,6 +37,7 @@ import {
   voidWorkorderWarrantyAction,
 } from "./clientActions";
 import { getServiceCentreBrandOptionsAction } from "@/lib/serviceCentreCatalogActions";
+import { splitMaterialLabel } from "@/lib/materialLabel";
 
 const STAGE_VARIANT: Record<WorkorderStage, "neutral" | "warning" | "teal" | "success"> = {
   Created: "neutral",
@@ -694,6 +695,10 @@ export function WorkorderLifecycle({
 
   const editable = stage === "In Progress" && !hold && !cancelled;
   const terminal = cancelled || stage === "Closed";
+  // Material-catalog serialization is independent of the partner-level
+  // strict-inventory setting. A BOM material marked Serialized always needs
+  // its own serial/IMEI before handover, even when stock sufficiency checking
+  // is disabled in Settings.
   const unresolvedSerials = partLines.filter((p) => p.serialized && !p.serial && !p.pending);
   const oowChargeableTotal = chargeableSubtotal + taxTotal;
   const advanceTotal = advancePayments.reduce((sum, payment) => sum + payment.amount, 0);
@@ -1321,6 +1326,12 @@ export function WorkorderLifecycle({
     if (next === "Completed" && !solutionSelectValue) {
       setCloseBlockedMessage(
         "Select a Solution before marking the repair completed — the fault diagnosis/solution is required."
+      );
+      return;
+    }
+    if (next === "Completed" && unresolvedSerials.length > 0) {
+      setCloseBlockedMessage(
+        `${unresolvedSerials.length} serialized material line(s) are missing a Serial/IMEI number. Enter the serial before completing the repair.`
       );
       return;
     }
@@ -1967,6 +1978,7 @@ export function WorkorderLifecycle({
             })}
             {partLines.map((line) => {
               const qty = line.qty || 1;
+              const availabilityKey = splitMaterialLabel(line.materialId).code;
               const taxRate = line.taxRate ?? 18;
               const base = baseRateOf(line.unitPrice || 0, taxRate, line.rateMode, line.discountPercent);
               const lineTotal = cancelled
@@ -1989,12 +2001,12 @@ export function WorkorderLifecycle({
                           staff can see before typing a Qty whether Stock can
                           actually cover it — same data source (getAvailabilityByMaterial)
                           the Inventory forms show in their own Material dropdowns. */}
-                      {line.materialId && materialAvailability[line.materialId.split(" — ")[0].trim()] && (
+                      {line.materialId && materialAvailability[availabilityKey] && (
                         <p className="mt-0.5 text-[11px] text-text-muted">
-                          Avail: {materialAvailability[line.materialId.split(" — ")[0].trim()]}
+                          Avail: {materialAvailability[availabilityKey]}
                         </p>
                       )}
-                      {line.materialId && !materialAvailability[line.materialId.split(" — ")[0].trim()] && (
+                      {line.materialId && !materialAvailability[availabilityKey] && (
                         <p className="mt-0.5 text-[11px] text-danger">No stock available for this part.</p>
                       )}
                     </div>

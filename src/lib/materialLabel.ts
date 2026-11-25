@@ -8,7 +8,10 @@
  */
 export function splitMaterialLabel(materialId: unknown): { code: string; name: string } {
   const raw = String(materialId ?? "");
-  const idx = raw.indexOf(" — ");
-  if (idx === -1) return { code: raw.trim(), name: "" };
-  return { code: raw.slice(0, idx).trim(), name: raw.slice(idx + 3).trim() };
+  const separator = raw.match(/\s[-–—]\s/);
+  if (!separator || separator.index === undefined) return { code: raw.trim(), name: "" };
+  return {
+    code: raw.slice(0, separator.index).trim(),
+    name: raw.slice(separator.index + separator[0].length).trim(),
+  };
 }
