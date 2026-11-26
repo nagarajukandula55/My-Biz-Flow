@@ -8,6 +8,7 @@ import {
   saveTelegramRouting,
   sendPartnerTelegramAlert,
   TELEGRAM_ALERT_TYPES,
+  TELEGRAM_DEFAULT_NONE_TYPES,
   type AlertDestination,
   type TelegramRoutingKey,
   type TelegramRoutingMap,
@@ -21,7 +22,7 @@ function readRoutingFromForm(formData: FormData): TelegramRoutingMap {
   const validDestinations = new Set<AlertDestination>(["personal", "group", "both", "none"]);
   const routing: TelegramRoutingMap = {};
   for (const key of ALL_ROUTING_KEYS) {
-    const raw = String(formData.get(`routing_${key}`) ?? "both") as AlertDestination;
+    const raw = String(formData.get(`routing_${key}`) ?? (key !== "report" && TELEGRAM_DEFAULT_NONE_TYPES.has(key) ? "none" : "both")) as AlertDestination;
     routing[key] = validDestinations.has(raw) ? raw : "both";
   }
   return routing;

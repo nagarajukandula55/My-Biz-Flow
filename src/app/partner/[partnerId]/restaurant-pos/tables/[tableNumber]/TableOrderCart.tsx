@@ -9,6 +9,7 @@ import { computeOrderTotals, type MenuItem, type RestaurantOrder } from "@/lib/s
 import {
   addItemToOrderAction,
   cancelOrderAction,
+  markServedAction,
   removeLineAction,
   sendToKitchenAction,
   settleBillAction,
@@ -16,24 +17,31 @@ import {
   updateLineQtyAction,
 } from "../../actions";
 
-const TENDER_METHODS = ["Cash", "UPI", "Card", "Wallet"];
+const TENDER_METHODS = ["Cash", "UPI", "Card", "Bank transfer", "Wallet", "Other"];
 
 export function TableOrderCart({
   partnerId,
   tableNumber,
   menuItems,
   order,
+  servicePointLabel,
+  kitchenEnabled,
+  canIssueGst,
 }: {
   partnerId: string;
   tableNumber: string;
   menuItems: MenuItem[];
   order: RestaurantOrder | null;
+  servicePointLabel: string;
+  kitchenEnabled: boolean;
+  canIssueGst: boolean;
 }) {
   const router = useRouter();
   const [pickerOpen, setPickerOpen] = useState(false);
   const [billOpen, setBillOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [tenderMethod, setTenderMethod] = useState("Cash");
+  const [invoiceType, setInvoiceType] = useState<"GST" | "Non-GST">(canIssueGst ? "GST" : "Non-GST");
   const [splitCount, setSplitCount] = useState(1);
   const [cancelReason, setCancelReason] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -45,7 +53,8 @@ export function TableOrderCart({
     sublabel: `₹${m.price} · GST ${m.taxRate}% · ${m.category}`,
   }));
 
-  const totals = order ? computeOrderTotals(order.lines) : { subtotal: 0, taxAmount: 0, totalAmount: 0 };
+  const orderTotals = order ? computeOrderTotals(order.lines) : { subtotal: 0, taxAmount: 0, totalAmount: 0 };
+  const totals = invoiceType === "GST" ? orderTotals : { ...orderTotals, taxAmount: 0, totalAmount: orderTotals.subtotal };
   const shareTotal = Math.round((totals.totalAmount / Math.max(1, splitCount)) * 100) / 100;
   const canSettle = !!order && order.lines.length > 0 && order.status !== "Billed" && order.status !== "Cancelled";
   const hasUnsentLines = !!order && order.lines.some((l) => !l.kotSent);
@@ -86,12 +95,20 @@ export function TableOrderCart({
     });
   }
 
+  function markServed() {
+    if (!order) return;
+    startTransition(async () => {
+      await markServedAction(partnerId, order.id);
+      refresh();
+    });
+  }
+
   function settleBill() {
     if (!order) return;
     setError(null);
     startTransition(async () => {
       try {
-        await settleBillAction(partnerId, order.id, { tenderMethod, splitCount });
+        await settleBillAction(partnerId, order.id, { tenderMethod, splitCount, invoiceType });
       } catch (e) {
         const digest = (e as { digest?: string } | undefined)?.digest;
         if (digest?.startsWith("NEXT_REDIRECT")) throw e;
@@ -129,7 +146,7 @@ export function TableOrderCart({
           </div>
 
           {!order || order.lines.length === 0 ? (
-            <p className="mt-4 text-sm text-text-muted">No items yet — add a menu item to start this table's order.</p>
+            <p className="mt-4 text-sm text-text-muted">No items yet - add a menu item to start this {servicePointLabel.toLowerCase()}'s order.</p>
           ) : (
             <div className="mt-4 space-y-2">
               {order.lines.map((line) => (
@@ -189,9 +206,14 @@ export function TableOrderCart({
             </div>
           )}
 
-          {order && hasUnsentLines && (
+          {kitchenEnabled && order && hasUnsentLines && (
             <button type="button" className="btn-outline mt-4 w-full" onClick={sendToKitchen} disabled={isPending}>
               Send to Kitchen
+            </button>
+          )}
+          {kitchenEnabled && order?.status === "In kitchen" && !hasUnsentLines && (
+            <button type="button" className="btn-outline mt-2 w-full" onClick={markServed} disabled={isPending}>
+              Mark Served
             </button>
           )}
         </div>
@@ -257,6 +279,13 @@ export function TableOrderCart({
         }
       >
         <div className="space-y-3 text-sm">
+          <div>
+            <label className="text-xs text-text-muted">Invoice type</label>
+            <select value={invoiceType} onChange={(e) => setInvoiceType(e.target.value as "GST" | "Non-GST")} className="mt-1 w-full rounded-md border border-border bg-bg px-2 py-1.5 text-sm text-text">
+              {canIssueGst && <option value="GST">GST invoice (separate GST counter)</option>}
+              <option value="Non-GST">Non-GST bill (separate Non-GST counter)</option>
+            </select>
+          </div>
           <div>
             <label className="text-xs text-text-muted">Payment method</label>
             <select

@@ -1,4 +1,7 @@
 import type { Metadata, Viewport } from "next";
+import type { ReactNode } from "react";
+import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
+import { assertModuleAccess } from "@/lib/tenant";
 
 /**
  * PWA metadata for the whole Restaurant POS subtree — same pattern as
@@ -16,6 +19,8 @@ export async function generateMetadata({ params }: { params: { partnerId: string
 
 export const viewport: Viewport = { themeColor: "#0B0F19" };
 
-export default function RestaurantPosLayout({ children }: { children: React.ReactNode }) {
+export default async function RestaurantPosLayout({ children, params }: { children: ReactNode; params: { partnerId: string } }) {
+  await requireSessionPartnerId(params.partnerId);
+  await assertModuleAccess(params.partnerId, "restaurant-pos");
   return children;
 }

@@ -58,6 +58,7 @@ export async function BillingInvoiceDocument({
   customerCity,
   customerState,
   customerPincode,
+  placeOfSupplyState,
   items,
   discountAmount,
   customTemplate,
@@ -99,6 +100,8 @@ export async function BillingInvoiceDocument({
   customerCity?: string;
   customerState?: string;
   customerPincode?: string;
+  /** Optional service-specific supply location (e.g. hotel accommodation at the property), distinct from the buyer's address state. */
+  placeOfSupplyState?: string;
   items: LineItem[];
   discountAmount?: number;
   /** Super-Admin-designed override from the Designer (src/lib/designer/documentTemplates.ts). */
@@ -126,10 +129,11 @@ export async function BillingInvoiceDocument({
   // each; a customer in another state is inter-state and takes the whole
   // slab as IGST. Blank customer state falls back to intra-state — the
   // same default ServiceCentreInvoiceDocument.tsx uses.
+  const supplyState = placeOfSupplyState?.trim() || customerState?.trim() || partnerState?.trim() || "";
   const interState =
-    normalizeState(customerState) !== "" &&
+    normalizeState(supplyState) !== "" &&
     normalizeState(partnerState) !== "" &&
-    normalizeState(customerState) !== normalizeState(partnerState);
+    normalizeState(supplyState) !== normalizeState(partnerState);
 
   const hasTax = items.some((it) => it.taxRate > 0);
 
@@ -201,6 +205,7 @@ export async function BillingInvoiceDocument({
       customerAddress: customerAddress ?? "",
       customerCity: customerCity ?? "",
       customerState: customerState ?? "",
+      placeOfSupplyState: supplyState,
       customerPincode: customerPincode ?? "",
       documentType,
       subtotal,
@@ -322,7 +327,7 @@ export async function BillingInvoiceDocument({
                     Reference: <span className="font-mono text-text">{paymentReference || "—"}</span>
                   </div>
                   <div>
-                    Place of Supply: <span className="font-semibold text-text">{customerState || partnerState || "—"}</span>
+                    Place of Supply: <span className="font-semibold text-text">{supplyState || "-"}</span>
                   </div>
                 </div>
               </div>

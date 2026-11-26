@@ -5,6 +5,7 @@ import {
   getRecentTelegramConnectionIssue,
   buildTelegramConnectLink,
   TELEGRAM_ALERT_TYPES,
+  TELEGRAM_DEFAULT_NONE_TYPES,
   type AlertDestination,
 } from "@/lib/telegram";
 import { generateTelegramConnectQrDataUrl } from "@/lib/telegramQr";
@@ -235,7 +236,7 @@ export default async function TelegramAlertsPage({ params }: { params: { partner
                   keep them as hidden inputs mirroring the main form's
                   current values. */}
               {TELEGRAM_ALERT_TYPES.map((t) => (
-                <input key={t.key} type="hidden" name={`routing_${t.key}`} value={settings.routing[t.key] ?? "both"} />
+                  <input key={t.key} type="hidden" name={`routing_${t.key}`} value={settings.routing[t.key] ?? (TELEGRAM_DEFAULT_NONE_TYPES.has(t.key) ? "none" : "both")} />
               ))}
               <input type="hidden" name="routing_report" value={settings.routing.report ?? "both"} />
               <button type="submit" className="btn-outline">
@@ -283,7 +284,7 @@ export default async function TelegramAlertsPage({ params }: { params: { partner
                   <span>{t.label}</span>
                   <select
                     name={`routing_${t.key}`}
-                    defaultValue={settings.routing[t.key] ?? "both"}
+                      defaultValue={settings.routing[t.key] ?? (TELEGRAM_DEFAULT_NONE_TYPES.has(t.key) ? "none" : "both")}
                     className="rounded-md border border-border bg-bg px-2 py-1 text-xs text-text outline-none focus:border-accent"
                   >
                     {ROUTING_DESTINATIONS.map((d) => (

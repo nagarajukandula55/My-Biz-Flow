@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#1A63BD" />
+    <title>Offline workspace - My Biz Flow</title>
+    <style>
+      *{box-sizing:border-box}body{font:16px/1.5 system-ui,sans-serif;margin:0;background:#f5f7fb;color:#172033;padding:1rem}main{max-width:52rem;margin:1rem auto;padding:clamp(1rem,4vw,2rem);background:white;border:1px solid #dce3ee;border-radius:1rem;box-shadow:0 8px 28px #17203312}h1{font-size:1.55rem;margin:0 0 .5rem}h2{font-size:1.15rem;margin:1.25rem 0 .5rem}p{color:#46546b}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,15rem),1fr));gap:.8rem}.field{display:grid;gap:.25rem;font-size:.9rem;font-weight:600}.field input,.field select{width:100%;padding:.65rem;border:1px solid #c8d2e0;border-radius:.45rem;background:white;font:inherit}.row{display:flex;flex-wrap:wrap;gap:.6rem;align-items:center}.card{padding:1rem;border:1px solid #dce3ee;border-radius:.7rem;margin-top:1rem}.warning{padding:.9rem;background:#fff6df;border-radius:.6rem;color:#604700}.status{min-height:1.5rem;color:#a12b22}.button{padding:.7rem 1rem;border:0;border-radius:.5rem;background:#1a63bd;color:#fff;font:inherit;font-weight:650;cursor:pointer}.button.secondary{background:#edf2f8;color:#172033}.small{font-size:.82rem;color:#58667a}ul{padding-left:1.3rem}nav a{color:#1a63bd;margin-right:1rem}
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>My Biz Flow offline workspace</h1>
+      <p id="connection">You’re offline. Drafts are saved on this device and are not yet recorded in your business account.</p>
+      <div class="warning"><strong>Use a trusted, device-locked computer, tablet, or phone.</strong> Offline drafts are stored in this browser profile. Restaurant draft orders are not bills; hotel requests are not confirmed reservations. Sync requires a connection and successful server validation.</div>
+      <section class="card">
+        <div class="grid"><label class="field">Business<select id="partner"></select></label><label class="field">Offline task<select id="module"></select></label></div>
+        <div id="restaurant" hidden>
+          <h2>Restaurant order draft</h2><p class="small">This uses the last menu and free order locations saved by this device. Final menu, table availability, kitchen tickets and billing are checked online after sync.</p>
+          <div class="grid"><label class="field" id="location-label">Order location<select id="table"></select></label><label class="field">Menu item<select id="item"></select></label><label class="field">Quantity<input id="qty" type="number" min="1" max="1000" value="1"></label></div>
+          <div class="row" style="margin-top:.7rem"><button class="button secondary" id="add-line" type="button">Add item</button><span id="cart-total"></span></div><ul id="cart"></ul>
+          <button class="button" id="save-order" type="button">Save order draft on this device</button>
+        </div>
+        <div id="hotel" hidden>
+          <h2>Hotel reservation request</h2><p class="small">A room may be booked by another user while you are offline. The server checks room availability and confirms only after a successful sync. No group reservations, payments, check-in or checkout are completed offline.</p>
+          <div class="grid"><label class="field">Room<select id="room"></select></label><label class="field">Guest name<input id="guest" maxlength="200" autocomplete="name"></label><label class="field">Contact number<input id="contact" maxlength="100" autocomplete="tel"></label><label class="field">Guests<input id="guests" type="number" min="1" value="1"></label><label class="field">Arrival<input id="arrival" type="date"></label><label class="field">Departure<input id="departure" type="date"></label></div>
+          <button class="button" id="save-stay" type="button" style="margin-top:.8rem">Save reservation request on this device</button>
+        </div>
+        <p class="status" id="status" role="status"></p>
+      </section>
+      <section class="card"><h2>Saved drafts</h2><div id="drafts"></div><nav id="sync-links"></nav></section>
+      <p class="small">When online, open the Restaurant or Hotel module’s Offline drafts page to validate and sync saved drafts. Remove drafts from this device after confirming they synced.</p>
+      <button class="button secondary" type="button" onclick="location.reload()">Try online again</button>
+    </main>
+    <script>
+      (()=>{
+        const $=id=>document.getElementById(id), safeRead=(key,fallback)=>{try{return JSON.parse(localStorage.getItem(key)||JSON.stringify(fallback))}catch{return fallback}};
+        const partners=safeRead('mbf-offline-partners',[]), partner=$('partner'), module=$('module'), draftsKey='mbf-offline-drafts'; let refs=null, cart=[];
+        if(navigator.onLine) $('connection').textContent='Connection available. Drafts saved here still need an explicit sync from the module’s Offline drafts page.';
+        for(const p of partners){const ref=safeRead(`mbf-offline-reference:${p.partnerId}`,null);if(!ref)continue;const o=document.createElement('option');o.value=p.partnerId;o.textContent=p.partnerLabel||p.partnerId;partner.append(o)}
+        function readDrafts(){return safeRead(draftsKey,[]).filter(d=>d&&typeof d.id==='string'&&d.payload&&typeof d.payload==='object')}
+        function showDrafts(){const ds=readDrafts();$('drafts').textContent=ds.length?`${ds.length} draft(s) saved on this device. Nothing here is marked complete until the server confirms sync.`:'No drafts saved on this device.';const nav=$('sync-links');nav.replaceChildren();for(const kind of ['restaurant-order','hotel-reservation']){if(!ds.some(d=>d.kind===kind))continue;const pid=ds.find(d=>d.kind===kind).payload.partnerId;const a=document.createElement('a');a.href=`/partner/${encodeURIComponent(pid)}/${kind==='restaurant-order'?'restaurant-pos':'hotel'}/offline-drafts`;a.textContent=kind==='restaurant-order'?'Restaurant sync page':'Hotel sync page';nav.append(a)}}
+        function saveDraft(kind,payload){const ds=readDrafts();ds.push({id:crypto.randomUUID(),kind,payload,createdAt:new Date().toISOString()});localStorage.setItem(draftsKey,JSON.stringify(ds));showDrafts();$('status').textContent='Draft saved on this device. It has not been sent or recorded on the server.'}
+        function render(){const ref=safeRead(`mbf-offline-reference:${partner.value}`,null);refs=ref;module.replaceChildren();for(const [v,label] of [['restaurant','Restaurant order'],['hotel','Hotel reservation']]){const available=v==='restaurant'?ref?.restaurant:ref?.hotel;if(available){const o=document.createElement('option');o.value=v;o.textContent=label;module.append(o)}}const chosen=module.value; $('restaurant').hidden=chosen!=='restaurant';$('hotel').hidden=chosen!=='hotel';cart=[];renderCart();if(ref?.restaurant){$('location-label').firstChild.textContent=`${ref.restaurant.servicePointLabel||'Order location'} `;fill($('table'),ref.restaurant.tables||[],x=>x,`No free ${ref.restaurant.servicePointLabel||'locations'} cached`);fill($('item'),ref.restaurant.menuItems||[],x=>`${x.name} — ₹${Number(x.price).toFixed(2)}`, 'No menu items cached')}if(ref?.hotel){const rooms=(ref.hotel.rooms||[]).filter(r=>r.status!=='Out of service');fill($('room'),rooms,r=>`${r.name} — ${r.roomType} — ₹${(r.ratePaise/100).toFixed(2)}/night — ${r.capacity} guests`,'No rooms cached');$('guests').max=rooms[0]?.capacity||1}}
+        function fill(select,items,label,empty){select.replaceChildren();if(!items.length){const o=document.createElement('option');o.textContent=empty;o.value='';select.append(o);return}for(const item of items){const o=document.createElement('option');o.value=typeof item==='string'?item:item.id;o.textContent=label(item);select.append(o)}}
+        function renderCart(){const ul=$('cart');ul.replaceChildren();for(const line of cart){const li=document.createElement('li');li.textContent=`${line.name} × ${line.qty} — ₹${(line.unitPrice*line.qty).toFixed(2)}`;ul.append(li)}$('cart-total').textContent=cart.length?`Draft subtotal ₹${cart.reduce((s,l)=>s+l.unitPrice*l.qty,0).toFixed(2)} (tax/bill calculated after sync)`:''}
+        partner.addEventListener('change',render);module.addEventListener('change',()=>{$('restaurant').hidden=module.value!=='restaurant';$('hotel').hidden=module.value!=='hotel';cart=[];renderCart();$('status').textContent=''});$('add-line').addEventListener('click',()=>{const item=refs?.restaurant?.menuItems?.find(x=>x.id===$('item').value),qty=Number($('qty').value);if(!item||!Number.isInteger(qty)||qty<1||qty>1000){$('status').textContent='Choose a menu item and valid quantity.';return}const existing=cart.find(x=>x.menuItemId===item.id);if(existing)existing.qty=Math.min(1000,existing.qty+qty);else cart.push({id:crypto.randomUUID(),menuItemId:item.id,name:item.name,qty,unitPrice:Number(item.price),taxRate:Number(item.taxRate),kotSent:false});$('status').textContent='';renderCart()});
+        $('save-order').addEventListener('click',()=>{if(!refs?.restaurant||!$('table').value||!cart.length){$('status').textContent='Select a cached free order location and add at least one item.';return}saveDraft('restaurant-order',{partnerId:partner.value,tableNumber:$('table').value,covers:1,lines:cart.map(x=>({...x}))});cart=[];renderCart()});
+        $('save-stay').addEventListener('click',()=>{const room=refs?.hotel?.rooms?.find(r=>r.id===$('room').value),guest=$('guest').value.trim(),contact=$('contact').value.trim(),guests=Number($('guests').value),arrival=$('arrival').value,departure=$('departure').value;if(!room||!guest||!contact||!Number.isInteger(guests)||guests<1||guests>room.capacity||!arrival||!departure||departure<=arrival){$('status').textContent='Enter guest/contact, valid guest count, and departure after arrival.';return}saveDraft('hotel-reservation',{partnerId:partner.value,roomId:room.id,guest,contact,guests,arrival,departure,agreedNightlyRate:String((room.ratePaise/100).toFixed(2))})});
+        if(partners.length){partner.value=partners[0].partnerId;render()}else{$('status').textContent='Open Restaurant Order Locations or Hotel Rooms while online on this device first, so this workspace can cache the minimum reference data.';module.replaceChildren()}showDrafts();
+      })();
+    </script>
+  </body>
+</html>

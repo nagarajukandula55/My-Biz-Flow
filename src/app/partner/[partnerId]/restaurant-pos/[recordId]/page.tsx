@@ -4,8 +4,7 @@ import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { RecordDetail } from "@/components/RecordDetail";
-import { DeleteBusinessRecordButton } from "@/components/DeleteBusinessRecordButton";
-import { getRestaurantPosDetailFields, getRestaurantPosTimeline, restaurantPosRelated, restaurantPosColumns, extractOrderFromRecord } from "@/lib/sample-data/restaurant-pos";
+import { getRestaurantPosDetailFields, restaurantPosRelated, restaurantPosColumns, extractOrderFromRecord } from "@/lib/sample-data/restaurant-pos";
 import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
 import { getOrderRow } from "@/lib/restaurantPos/data";
 
@@ -21,7 +20,7 @@ registerPage({
     { key: "timeline", label: "Activity timeline" },
     { key: "related-records", label: "Related records rail" },
   ],
-  explanation: "Read-only detail view of a single order, rendered via the shared RecordDetail component (field grid + activity timeline), with Edit and Delete actions in the header.",
+  explanation: "Read-only detail view of a single persistent table order and its kitchen and billing status.",
   sourceFile: "src/app/partner/[partnerId]/restaurant-pos/[recordId]/page.tsx",
 });
 
@@ -38,7 +37,6 @@ export default async function RestaurantPosDetailPage({
   const record = await getOrderRow(params.partnerId, params.recordId);
   if (!record) notFound();
   const fields = await applyCustomizationsToDetailFields("restaurant-pos.detail", getRestaurantPosDetailFields(record), restaurantPosColumns);
-  const timeline = getRestaurantPosTimeline(record);
   const recordLabel = String(record["id"] ?? params.recordId);
   const order = record["lines"] ? extractOrderFromRecord(record) : null;
 
@@ -84,7 +82,6 @@ export default async function RestaurantPosDetailPage({
           fields={fields}
           recordLabel={recordLabel}
           searchParams={searchParams}
-          timeline={timeline}
           related={restaurantPosRelated}
           headerSlot={
             <div className="flex items-center justify-between">
@@ -93,16 +90,9 @@ export default async function RestaurantPosDetailPage({
                 <p className="mt-1 text-xs text-text-muted">Order detail</p>
               </div>
               <div className="flex items-center gap-3">
-                <Link href={`/partner/${params.partnerId}/restaurant-pos`} className="btn-outline">
-                  &larr; Back
+                <Link href={`/partner/${params.partnerId}/restaurant-pos/tables`} className="btn-outline">
+                  &larr; Table floor
                 </Link>
-                <Link
-                  href={`/partner/${params.partnerId}/restaurant-pos/${params.recordId}/edit`}
-                  className="btn-outline"
-                >
-                  Edit
-                </Link>
-                <DeleteBusinessRecordButton partnerId={params.partnerId} moduleSlug="restaurant-pos" recordKey={params.recordId} recordLabel={recordLabel} />
               </div>
             </div>
           }

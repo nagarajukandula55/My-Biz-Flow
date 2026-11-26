@@ -16,7 +16,7 @@ const STATUS_VARIANT: Record<string, StatusVariant> = {
 
 export const restaurantPosColumns: Column[] = [
   { key: "id", label: "KOT Number", type: "text" },
-  { key: "tableNumber", label: "Table Number", type: "text" },
+  { key: "tableNumber", label: "Service Point", type: "text" },
   { key: "waiter", label: "Waiter", type: "text" },
   { key: "items", label: "Items", type: "text" },
   { key: "courseStage", label: "Course Stage", type: "select-chip" },
@@ -70,7 +70,7 @@ export const restaurantPosRows: Row[] = [
 
 export const restaurantPosFormFields: FormFieldDef[] = [
   { key: "id", label: "KOT Number", type: "text", required: true },
-  { key: "tableNumber", label: "Table Number", type: "text", required: true },
+  { key: "tableNumber", label: "Service Point", type: "text", required: true },
   { key: "waiter", label: "Waiter", type: "text", required: true },
   { key: "items", label: "Items", type: "textarea", required: true },
   { key: "courseStage", label: "Course Stage", type: "select", required: false, options: ["Starters","Mains","Dessert"] },
@@ -87,7 +87,7 @@ export function getRestaurantPosDetailFields(record: Row): RecordField[] {
   const r = record;
   return [
     { label: "KOT Number", value: r["id"], type: "text" },
-    { label: "Table Number", value: r["tableNumber"], type: "text" },
+    { label: "Service Point", value: r["tableNumber"], type: "text" },
     { label: "Waiter", value: r["waiter"], type: "text" },
     { label: "Items", value: r["items"], type: "text" },
     { label: "Course Stage", value: r["courseStage"], type: "select", chipVariant: STATUS_VARIANT[String(r["courseStage"])] ?? "neutral" },
@@ -151,6 +151,8 @@ export type OrderLine = {
   qty: number;
   unitPrice: number;
   taxRate: number;
+  /** Snapshot of the tax treatment actually used for this closed bill. */
+  billedTaxRate?: number;
   /** True once this line has been sent to the kitchen — locked from removal, still visible for re-ordering more of the same item. */
   kotSent: boolean;
 };
@@ -181,7 +183,7 @@ export function computeOrderTotals(lines: OrderLine[]): { subtotal: number; taxA
   for (const line of lines) {
     const gross = line.qty * line.unitPrice;
     subtotal += gross;
-    taxAmount += gross * ((line.taxRate || 0) / 100);
+    taxAmount += gross * (((line.billedTaxRate ?? line.taxRate) || 0) / 100);
   }
   const round = (n: number) => Math.round(n * 100) / 100;
   return { subtotal: round(subtotal), taxAmount: round(taxAmount), totalAmount: round(subtotal + taxAmount) };

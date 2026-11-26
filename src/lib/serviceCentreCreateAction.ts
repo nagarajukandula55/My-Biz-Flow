@@ -40,6 +40,8 @@ export async function validateServiceCentreWorkorder(
 
   const phone = text("customerPhone").replace(/\D/g, "");
   if (phone.length < 10) return "Contact No must be a valid phone number (at least 10 digits).";
+  const alternatePhone = text("customerAlternatePhone").replace(/\D/g, "");
+  if (alternatePhone && alternatePhone.length < 10) return "Alternate Contact No must be a valid phone number (at least 10 digits).";
 
   const pincode = text("customerPincode").replace(/\D/g, "");
   if (pincode.length !== 6) return "Pincode must be 6 digits.";

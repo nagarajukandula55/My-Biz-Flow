@@ -106,6 +106,21 @@ export const TELEGRAM_ALERT_TYPES = [
   // for a future payout feature to use.
   { key: "marketplaceNewOrder", label: "Marketplace: new order placed" },
   { key: "marketplaceVendorPayout", label: "Marketplace: vendor payout" },
+  // Restaurant POS - each event is routed through the existing per-event
+  // Telegram settings control (personal/group/both/none).
+  { key: "restaurantOrderOpened", label: "Restaurant: order opened" },
+  { key: "restaurantKitchenTicketSent", label: "Restaurant: kitchen ticket sent" },
+  { key: "restaurantOrderBilled", label: "Restaurant: bill settled" },
+  { key: "restaurantOrderCancelled", label: "Restaurant: order cancelled" },
+  // Hotel front desk lifecycle and folio events.
+  { key: "hotelReservationCreated", label: "Hotel: reservation created" },
+  { key: "hotelReservationCancelled", label: "Hotel: reservation cancelled" },
+  { key: "hotelReservationChanged", label: "Hotel: reservation or room changed" },
+  { key: "hotelGuestCheckedIn", label: "Hotel: guest checked in" },
+  { key: "hotelGuestCheckedOut", label: "Hotel: guest checked out" },
+  { key: "hotelFolioPayment", label: "Hotel: folio payment or refund recorded" },
+  { key: "hotelFolioCharge", label: "Hotel: folio charge added" },
+  { key: "hotelHousekeepingTask", label: "Hotel: housekeeping or maintenance task updated" },
 ] as const;
 
 export type TelegramAlertType = (typeof TELEGRAM_ALERT_TYPES)[number]["key"];
@@ -127,6 +142,13 @@ export type TelegramChatSlot = "personal" | "group";
 export type AlertDestination = TelegramChatSlot | "both" | "none";
 export type TelegramRoutingKey = TelegramAlertType | "report";
 export type TelegramRoutingMap = Partial<Record<TelegramRoutingKey, AlertDestination>>;
+
+/** New vertical events start disabled until the partner explicitly chooses a route. */
+export const TELEGRAM_DEFAULT_NONE_TYPES: ReadonlySet<TelegramAlertType> = new Set([
+  "restaurantOrderOpened", "restaurantKitchenTicketSent", "restaurantOrderBilled", "restaurantOrderCancelled",
+  "hotelReservationCreated", "hotelReservationCancelled", "hotelReservationChanged", "hotelGuestCheckedIn",
+  "hotelGuestCheckedOut", "hotelFolioPayment", "hotelFolioCharge", "hotelHousekeepingTask",
+]);
 
 export type TelegramSettingsRecord = {
   partnerId: string;
@@ -255,7 +277,7 @@ function resolveChatIdsForType(settings: TelegramSettingsRecord, type: TelegramR
   if (type === "test") {
     return [settings.chatId, settings.groupChatId].filter((id): id is string => Boolean(id));
   }
-  const destination = settings.routing[type] ?? "both";
+  const destination = settings.routing[type] ?? (type !== "report" && TELEGRAM_DEFAULT_NONE_TYPES.has(type) ? "none" : "both");
   const ids: string[] = [];
   if ((destination === "personal" || destination === "both") && settings.chatId) ids.push(settings.chatId);
   if ((destination === "group" || destination === "both") && settings.groupChatId) ids.push(settings.groupChatId);

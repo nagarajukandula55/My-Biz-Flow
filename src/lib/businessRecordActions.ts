@@ -194,7 +194,9 @@ export async function createBusinessRecordAction(
       // BillingInvoiceForm.tsx) — prefer that over the linked contact's
       // stored state, which only existed for invoices typed against a
       // saved contact.
-      const customerState = record["customerState"]
+      const customerState = record["placeOfSupplyState"]
+        ? String(record["placeOfSupplyState"])
+        : record["customerState"]
         ? String(record["customerState"])
         : customerContact?.["state"]
           ? String(customerContact["state"])

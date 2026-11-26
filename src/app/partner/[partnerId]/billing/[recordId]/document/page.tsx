@@ -87,6 +87,7 @@ export default async function BillingDocumentPage({
       customerAddress={record["customerAddress"] ? String(record["customerAddress"]) : undefined}
       customerCity={record["customerCity"] ? String(record["customerCity"]) : undefined}
       customerState={record["customerState"] ? String(record["customerState"]) : undefined}
+      placeOfSupplyState={record["placeOfSupplyState"] ? String(record["placeOfSupplyState"]) : undefined}
       customerPincode={record["customerPincode"] ? String(record["customerPincode"]) : undefined}
       items={items}
       discountAmount={Number(record["discountAmount"] ?? 0)}

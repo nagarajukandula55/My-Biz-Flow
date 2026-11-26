@@ -18,9 +18,9 @@ export async function GET(_request: Request, { params }: { params: { partnerId: 
       start_url: basePath,
       scope: basePath,
       display: "standalone",
+      display_override: ["standalone", "minimal-ui", "browser"],
       background_color: "#0B0F19",
       theme_color: "#0B0F19",
-      orientation: "portrait",
       icons: [{ src: "/logo-mark.png", sizes: "any", type: "image/png", purpose: "any maskable" }],
     },
     { headers: { "Content-Type": "application/manifest+json" } }

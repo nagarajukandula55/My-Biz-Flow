@@ -365,6 +365,16 @@ export const MODULE_SUB_NAV: Record<string, PartnerNavSubItem[]> = {
     { key: "hotel.list", label: "Reservations", href: "hotel" },
     { key: "hotel.create", label: "+ New Reservation", href: "hotel/new" },
     { key: "hotel.rooms", label: "Rooms and housekeeping", href: "hotel/rooms" },
+    { key: "hotel.offline-drafts", label: "Offline reservation requests", href: "hotel/offline-drafts" },
+    { key: "hotel.telegram", label: "Telegram notifications", href: "service-centre/telegram" },
+  ],
+  "restaurant-pos": [
+    { key: "restaurant-pos.tables", label: "Table floor", href: "restaurant-pos/tables" },
+    { key: "restaurant-pos.menu", label: "Menu", href: "restaurant-pos/menu" },
+    { key: "restaurant-pos.settings", label: "Restaurant setup", href: "restaurant-pos/settings" },
+    { key: "restaurant-pos.list", label: "Order history", href: "restaurant-pos" },
+    { key: "restaurant-pos.offline-drafts", label: "Offline order drafts", href: "restaurant-pos/offline-drafts" },
+    { key: "restaurant-pos.telegram", label: "Telegram notifications", href: "service-centre/telegram" },
   ],
   telecalling: [
     { key: "telecalling.leads", label: "Leads", href: "telecalling" },

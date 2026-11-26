@@ -2,8 +2,8 @@ import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { getModule } from "@/lib/designer/moduleRegistry";
 import { registerPage } from "@/lib/designer/registry";
-import { restaurantMenuItems } from "@/lib/sample-data/restaurant-pos";
-import { findOpenOrderForTable } from "@/lib/restaurantPos/data";
+import { findOpenOrderForTable, getRestaurantSettings, listRestaurantMenuItems } from "@/lib/restaurantPos/data";
+import { getPartner } from "@/lib/partnerData";
 import { TableOrderCart } from "./TableOrderCart";
 
 registerPage({
@@ -26,8 +26,13 @@ export default async function TableOrderPage({
 }: {
   params: { partnerId: string; tableNumber: string };
 }) {
-  const mod = await getModule("restaurant-pos");
-  const order = await findOpenOrderForTable(params.partnerId, params.tableNumber);
+  const [mod, order, menuItems, settings, partner] = await Promise.all([
+    getModule("restaurant-pos"),
+    findOpenOrderForTable(params.partnerId, params.tableNumber),
+    listRestaurantMenuItems(params.partnerId),
+    getRestaurantSettings(params.partnerId),
+    getPartner(params.partnerId),
+  ]);
 
   return (
     <AppShell topbarTitle={`${mod?.label ?? "Restaurant POS"} — ${params.tableNumber}`}>
@@ -47,8 +52,11 @@ export default async function TableOrderPage({
           <TableOrderCart
             partnerId={params.partnerId}
             tableNumber={params.tableNumber}
-            menuItems={restaurantMenuItems}
+            menuItems={menuItems}
             order={order}
+            servicePointLabel={settings.servicePointLabel}
+            kitchenEnabled={settings.kitchenEnabled}
+            canIssueGst={Boolean(partner?.gstin?.trim())}
           />
         </div>
       </div>

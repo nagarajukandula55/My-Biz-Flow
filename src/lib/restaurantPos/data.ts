@@ -8,12 +8,86 @@ import type { RestaurantOrder as PrismaRestaurantOrder } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertPartnerCanWrite, assertPartnerScope } from "@/lib/tenant";
 import type { Row } from "@/components/DataTable";
+import { randomUUID } from "node:crypto";
 import {
   computeOrderTotals,
   type OrderLine,
   type RestaurantOrder,
   type RestaurantOrderStatus,
+  type MenuItem,
 } from "@/lib/sample-data/restaurant-pos";
+
+const MENU_MODULE = "restaurant-menu-items";
+const SETTINGS_MODULE = "restaurant-pos-settings";
+const SETTINGS_KEY = "operating";
+export type RestaurantSettings = { servicePointLabel: string; kitchenEnabled: boolean };
+
+export async function getRestaurantSettings(partnerId: string): Promise<RestaurantSettings> {
+  const row = await prisma.businessRecord.findUnique({ where: { partnerId_moduleSlug_recordKey: { partnerId, moduleSlug: SETTINGS_MODULE, recordKey: SETTINGS_KEY } } });
+  const raw = row?.data as Partial<RestaurantSettings> | undefined;
+  const label = typeof raw?.servicePointLabel === "string" ? raw.servicePointLabel.trim() : "";
+  return { servicePointLabel: label.length >= 2 && label.length <= 30 ? label : "Table", kitchenEnabled: raw?.kitchenEnabled !== false };
+}
+
+export async function saveRestaurantSettings(partnerId: string, input: Record<string, unknown>): Promise<void> {
+  await assertPartnerCanWrite(partnerId);
+  const servicePointLabel = String(input.servicePointLabel ?? "").trim().replace(/\s+/g, " ");
+  const kitchenValue = String(input.kitchenEnabled ?? "true");
+  if (!/^[\p{L}\p{N}][\p{L}\p{N} -]{1,29}$/u.test(servicePointLabel)) throw new Error("Enter a service-point name using 2 to 30 letters, numbers, spaces or hyphens.");
+  if (!(["true", "false"].includes(kitchenValue))) throw new Error("Choose whether kitchen tickets are enabled.");
+  const data = { servicePointLabel, kitchenEnabled: kitchenValue === "true" };
+  await prisma.businessRecord.upsert({
+    where: { partnerId_moduleSlug_recordKey: { partnerId, moduleSlug: SETTINGS_MODULE, recordKey: SETTINGS_KEY } },
+    create: { partnerId, moduleSlug: SETTINGS_MODULE, recordKey: SETTINGS_KEY, data },
+    update: { data },
+  });
+}
+
+function parseMenuItem(id: string, raw: unknown): MenuItem | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const value = raw as Record<string, unknown>;
+  const name = typeof value.name === "string" ? value.name.trim() : "";
+  const category = value.category;
+  const price = Number(value.price);
+  const taxRate = Number(value.taxRate);
+  if (!name || !["Starters", "Mains", "Beverages", "Dessert"].includes(String(category)) ||
+      !Number.isFinite(price) || price < 0 || price > 10000000 ||
+      !Number.isFinite(taxRate) || taxRate < 0 || taxRate > 100) return undefined;
+  return { id, name, category: category as MenuItem["category"], price, taxRate };
+}
+
+/** Returns partner-owned menu configuration over the built-in starting menu. */
+export async function listRestaurantMenuItems(partnerId: string): Promise<MenuItem[]> {
+  const records = await prisma.businessRecord.findMany({ where: { partnerId, moduleSlug: MENU_MODULE } });
+  const active: MenuItem[] = [];
+  for (const record of records) {
+    const raw = record.data as Record<string, unknown>;
+    if (raw.isActive === false) continue;
+    const parsed = parseMenuItem(record.recordKey, raw);
+    if (parsed) active.push(parsed);
+  }
+  return active.sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name));
+}
+
+export async function saveRestaurantMenuItem(partnerId: string, input: Record<string, unknown>): Promise<void> {
+  await assertPartnerCanWrite(partnerId);
+  const id = String(input.id ?? "").trim() || `MENU-${randomUUID()}`;
+  const item = parseMenuItem(id, input);
+  if (!item || item.name.length > 100) throw new Error("Enter a valid menu name, category, price and tax rate.");
+  const existing = await prisma.businessRecord.findUnique({ where: { partnerId_moduleSlug_recordKey: { partnerId, moduleSlug: MENU_MODULE, recordKey: id } } });
+  const data = { ...item, isActive: true };
+  if (existing) await prisma.businessRecord.update({ where: { partnerId_moduleSlug_recordKey: { partnerId, moduleSlug: MENU_MODULE, recordKey: id } }, data: { data } });
+  else await prisma.businessRecord.create({ data: { partnerId, moduleSlug: MENU_MODULE, recordKey: id, data } });
+}
+
+export async function deactivateRestaurantMenuItem(partnerId: string, id: string): Promise<void> {
+  await assertPartnerCanWrite(partnerId);
+  const existing = await prisma.businessRecord.findUnique({ where: { partnerId_moduleSlug_recordKey: { partnerId, moduleSlug: MENU_MODULE, recordKey: id } } });
+  if (existing) {
+    await prisma.businessRecord.update({ where: { partnerId_moduleSlug_recordKey: { partnerId, moduleSlug: MENU_MODULE, recordKey: id } }, data: { data: { ...(existing.data as Record<string, unknown>), isActive: false } } });
+    return;
+  }
+}
 
 /** Statuses that still "occupy" a table — mirrors isOrderOpenForTable. */
 const OPEN_STATUSES = ["Open", "In kitchen", "Served"] as const;
@@ -62,9 +136,10 @@ function toRow(o: PrismaRestaurantOrder): Row {
   };
 }
 
-export async function listOrdersForPartner(partnerId: string): Promise<Row[]> {
-  const rows = await prisma.restaurantOrder.findMany({ where: { partnerId }, orderBy: { orderTime: "desc" } });
-  return rows.map(toRow);
+export async function listOrdersForPartner(partnerId: string, page = 1): Promise<{ rows: Row[]; page: number; hasNext: boolean }> {
+  const safePage = Number.isSafeInteger(page) && page > 0 && page < 10000 ? page : 1;
+  const rows = await prisma.restaurantOrder.findMany({ where: { partnerId }, orderBy: [{ orderTime: "desc" }, { id: "desc" }], skip: (safePage - 1) * 100, take: 101 });
+  return { rows: rows.slice(0, 100).map(toRow), page: safePage, hasNext: rows.length > 100 };
 }
 
 export async function listOpenOrdersForPartner(partnerId: string): Promise<RestaurantOrder[]> {
@@ -141,23 +216,43 @@ export async function updateOrderRecord(partnerId: string, id: string, values: R
 // Table floor
 // ---------------------------------------------------------------------
 
-/** Default floor plan, seeded once per partner on first access (used to be a static, shared list — now one row per partner per table). */
-const DEFAULT_TABLE_NUMBERS = [
-  "T-01", "T-02", "T-03", "T-04", "T-05", "T-06",
-  "T-07", "T-08", "T-09", "T-10", "T-11", "T-12",
-];
-
 export async function listTableNumbersForPartner(partnerId: string): Promise<string[]> {
   const existing = await prisma.restaurantTable.findMany({
     where: { partnerId, isActive: true },
     orderBy: { tableNumber: "asc" },
   });
-  if (existing.length > 0) return existing.map((t) => t.tableNumber);
+  return existing.map((t) => t.tableNumber);
+}
 
-  // First-ever visit for this partner: seed the default floor plan.
-  await prisma.restaurantTable.createMany({
-    data: DEFAULT_TABLE_NUMBERS.map((tableNumber) => ({ partnerId, tableNumber })),
-    skipDuplicates: true,
-  });
-  return DEFAULT_TABLE_NUMBERS;
+export async function assertRestaurantTableActive(partnerId: string, tableNumber: string): Promise<void> {
+  await listTableNumbersForPartner(partnerId);
+  const table = await prisma.restaurantTable.findUnique({ where: { partnerId_tableNumber: { partnerId, tableNumber } } });
+  if (!table?.isActive) throw new Error("This table is not active on the restaurant floor.");
+}
+
+export async function listRestaurantTables(partnerId: string): Promise<{ id: string; tableNumber: string; isActive: boolean }[]> {
+  await listTableNumbersForPartner(partnerId);
+  return prisma.restaurantTable.findMany({ where: { partnerId }, orderBy: { tableNumber: "asc" } });
+}
+
+export async function activateRestaurantTable(partnerId: string, value: unknown): Promise<void> {
+  await assertPartnerCanWrite(partnerId);
+  const tableNumber = String(value ?? "").trim().toUpperCase();
+  if (!/^[A-Z0-9][A-Z0-9 -]{0,19}$/.test(tableNumber)) throw new Error("Enter a table name using up to 20 letters, numbers, spaces or hyphens.");
+  const existing = await prisma.restaurantTable.findUnique({ where: { partnerId_tableNumber: { partnerId, tableNumber } } });
+  if (existing) {
+    if (!existing.isActive) await prisma.restaurantTable.update({ where: { id: existing.id }, data: { isActive: true } });
+    return;
+  }
+  await prisma.restaurantTable.create({ data: { partnerId, tableNumber } });
+}
+
+export async function deactivateRestaurantTable(partnerId: string, id: string): Promise<void> {
+  await assertPartnerCanWrite(partnerId);
+  const table = await prisma.restaurantTable.findUnique({ where: { id } });
+  if (!table) return;
+  assertPartnerScope(partnerId, table.partnerId);
+  const openOrder = await prisma.restaurantOrder.findFirst({ where: { partnerId, tableNumber: table.tableNumber, status: { in: [...OPEN_STATUSES] } }, select: { id: true } });
+  if (openOrder) throw new Error("Close the active order before removing this table from the floor.");
+  await prisma.restaurantTable.update({ where: { id }, data: { isActive: false } });
 }

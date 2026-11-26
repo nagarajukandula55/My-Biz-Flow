@@ -560,6 +560,7 @@ export const serviceCentreColumns: Column[] = [
   { key: "id", label: "Job ID", type: "text" },
   { key: "customer", label: "Customer", type: "relation-link" },
   { key: "customerPhone", label: "Customer Phone", type: "phone" },
+  { key: "customerAlternatePhone", label: "Alternate Contact No", type: "phone" },
   { key: "customerEmail", label: "Customer Email", type: "text" },
   { key: "customerCompany", label: "Company", type: "text" },
   { key: "customerGstin", label: "Customer GSTIN", type: "text" },
@@ -735,6 +736,7 @@ export const serviceCentreFormFields: FormFieldDef[] = [
   // the rest fills itself in" behaviour as the reference intake screen,
   // with every prefilled field left fully editable afterwards.
   { section: "Customer", column: 1, key: "customerPhone", label: "Contact No", type: "phone", required: true, placeholder: "Type to prefill a returning customer" },
+  { section: "Customer", column: 1, key: "customerAlternatePhone", label: "Alternate Contact No", type: "phone", required: false, placeholder: "Optional" },
   { section: "Customer", column: 1, key: "customer", label: "Customer Name", type: "relation", required: true, placeholder: "Fills in automatically if the number matches, or type it in" },
   // Not on the reference app's intake screen at all — a returning
   // customer's email still prefills from Contacts, and it stays editable
@@ -853,6 +855,7 @@ export function getServiceCentreRecord(recordId: string): Row {
 export function getServiceCentreDetailFields(record: Row): RecordField[] {
   const r = record;
   return [
+    { label: "Alternate Contact No", value: r["customerAlternatePhone"], type: "text" },
     { label: "Customer Email", value: r["customerEmail"], type: "text" },
     { label: "Company", value: r["customerCompany"], type: "text" },
     { label: "Customer GSTIN", value: r["customerGstin"], type: "text" },

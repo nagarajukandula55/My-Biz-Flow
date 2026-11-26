@@ -4,6 +4,9 @@ import { withRecordLock } from "@/lib/withRecordLock";
 import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import { assertModuleAccess, assertPartnerCanWrite } from "@/lib/tenant";
 import { hotelNights, hotelToday, hotelBalance, hotelPayerBalances, hotelPaymentMethods, hotelMoney, parseHotelRoom, type HotelRoom, type HotelStay, type FolioEntry } from "@/lib/hotelRules";
+import { createBusinessRecord } from "@/lib/businessRecords";
+import { getPartner } from "@/lib/partnerData";
+import { INDIAN_STATES } from "@/lib/sample-data/geo";
 
 const roomModule = "hotel-rooms", stayModule = "hotel-stays";
 type HotelRoomTask = { roomId:string; roomName:string; kind:"Housekeeping"|"Maintenance"; assignee:string; instructions:string; dueDate:string; status:"Open"|"Completed"; createdAt:string; completedAt?:string; completionNotes?:string };
@@ -45,6 +48,57 @@ async function authorize(partnerId: string, write = false) {
   await assertModuleAccess(partnerId, "hotel");
   if (write) await assertPartnerCanWrite(partnerId);
 }
+
+async function createHotelStayInvoices(partnerId: string, stay: HotelStay & { id: string }, invoiceType: "GST" | "Non-GST"): Promise<{ payer: string; id: string; number: string }[]> {
+  const partner = await getPartner(partnerId);
+  if (!partner) throw new Error("The hotel business profile could not be loaded.");
+  const gstRegistered = Boolean(partner.gstin?.trim());
+  const issueGst = invoiceType === "GST";
+  if (issueGst && !gstRegistered) throw new Error("A GST invoice can only be issued by a business with its own GSTIN.");
+  if (issueGst && !partner.state?.trim()) throw new Error("Set the hotel's registered state before issuing a GST invoice.");
+  if (stay.split?.gstin && (!/^\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/.test(stay.split.gstin) || !stay.split.address?.trim())) throw new Error("Enter a valid address and GSTIN for the second folio payer.");
+  const payers = stay.split
+    ? [{ name: "Guest", customer: stay.guest, address: stay.guestAddress ?? "", city: stay.guestCity ?? "", state: stay.guestState ?? "", pincode: stay.guestPincode ?? "", gstin: stay.guestGstin ?? "", roomPaise: stay.roomChargePaise - stay.split.roomChargePaise }, { name: stay.split.name, customer: stay.split.name, address: stay.split.address ?? "", city: stay.split.city ?? "", state: stay.split.state ?? "", pincode: stay.split.pincode ?? "", gstin: stay.split.gstin ?? "", roomPaise: stay.split.roomChargePaise }]
+    : [{ name: "Guest", customer: stay.guest, address: stay.guestAddress ?? "", city: stay.guestCity ?? "", state: stay.guestState ?? "", pincode: stay.guestPincode ?? "", gstin: stay.guestGstin ?? "", roomPaise: stay.roomChargePaise }];
+  const invoices: { payer: string; id: string; number: string }[] = [];
+  for (const payer of payers) {
+    const payerEntries = stay.entries.filter(item => (item.payer ?? "Guest") === payer.name);
+    const items: { description: string; quantity: number; unit: string; unitPrice: number; taxRate: number; priceMode: "excl"; hsnCode: string }[] = [];
+    let subtotalPaise = 0, taxPaise = 0;
+    const addTaxInclusiveLine = (description: string, grossPaise: number, taxRateValue: unknown, sacValue: unknown) => {
+      if (issueGst && (taxRateValue === undefined || taxRateValue === null || taxRateValue === "")) throw new Error("Set the applicable room and service tax rate before issuing this GST invoice.");
+      const taxRate = Number(taxRateValue ?? 0), sac = String(sacValue ?? "").trim();
+      if (!Number.isInteger(taxRate) || taxRate < 0 || taxRate > 100) throw new Error("A room or folio charge has an invalid tax rate. Correct it before checkout.");
+      if (issueGst && !/^\d{4,6}$/.test(sac)) throw new Error("Set a valid accommodation or service SAC before issuing this GST invoice.");
+      if (!gstRegistered && taxRate !== 0) throw new Error("This business has no GST registration. Set the room and folio charge tax rates to 0 before checkout.");
+      const lineTaxPaise = issueGst ? Math.round(grossPaise * taxRate / (100 + taxRate)) : 0;
+      const taxablePaise = grossPaise - lineTaxPaise;
+      subtotalPaise += taxablePaise;
+      taxPaise += lineTaxPaise;
+      items.push({ description, quantity: 1, unit: "stay", unitPrice: taxablePaise / 100, taxRate: issueGst ? taxRate : 0, priceMode: "excl", hsnCode: issueGst ? sac : "" });
+    };
+    if (payer.roomPaise > 0) addTaxInclusiveLine(`Accommodation - ${stay.roomName}, ${stay.arrival} to ${stay.departure}`, payer.roomPaise, stay.taxRatePercent, stay.sac);
+    for (const entry of payerEntries.filter(item => item.kind === "Charge")) addTaxInclusiveLine(entry.label, entry.amountPaise, entry.taxRatePercent ?? stay.taxRatePercent, entry.sac ?? stay.sac);
+    const totalPaise = subtotalPaise + taxPaise;
+    const payerBalance = hotelPayerBalances(stay).find(item => item.name === payer.name);
+    if (!payerBalance || payerBalance.balance !== 0 || totalPaise !== payerBalance.charges) throw new Error(`Folio charges for ${payer.name} do not reconcile to their settled balance.`);
+    if (totalPaise <= 0) continue;
+    const methods = [...new Set(payerEntries.filter(item => item.kind === "Payment").map(item => item.paymentMethod).filter(Boolean))];
+    const invoice = await createBusinessRecord(partnerId, "billing", {
+      customer: payer.customer, customerAddress: payer.address, customerCity: payer.city, customerState: payer.state, customerPincode: payer.pincode, customerGstin: payer.gstin,
+      placeOfSupplyState: stay.propertyState ?? partner.state ?? "", invoiceType,
+      issueDate: hotelToday(), dueDate: hotelToday(), lineItemsSummary: items.map(item => item.description).join("; "), items,
+      subtotal: subtotalPaise / 100, taxAmount: taxPaise / 100, totalAmount: totalPaise / 100,
+      paymentStatus: "Paid", amountPaid: totalPaise / 100, amountDue: 0,
+      paymentMode: methods.length === 1 ? methods[0] : methods.length > 1 ? "Mixed" : "Not recorded",
+      paymentReferences: payerEntries.filter(item => item.kind === "Payment").map(item => item.reference).join(", "),
+      sourceHotelStayId: stay.id, sourceHotelRoomId: stay.roomId, sourceHotelPayer: payer.name,
+    });
+    invoices.push({ payer: payer.name, id: String(invoice.id), number: String(invoice.invoiceNumber ?? invoice.id) });
+  }
+  return invoices;
+}
+
 const whereRecord = (partnerId: string, moduleSlug: string, recordKey: string) => ({ partnerId_moduleSlug_recordKey: { partnerId, moduleSlug, recordKey } });
 async function roomRecord(partnerId: string, id: string) {
   const row = await prisma.businessRecord.findUnique({ where: whereRecord(partnerId, roomModule, id) });
@@ -103,6 +157,7 @@ export async function reserveHotelGroup(partnerId: string, values: Record<string
   if (!Array.isArray(additional) || additional.some(id => typeof id !== "string")) throw new Error("Select valid additional rooms.");
   const ids = [String(values.roomId ?? ""), ...additional as string[]];
   if (ids.length < 2 || ids.length > 20 || new Set(ids).size !== ids.length) throw new Error("Select between 2 and 20 different rooms for a group.");
+  if(String(values.agreedNightlyRate??"").trim())throw new Error("Group bookings use each room's configured rate. Create a separate reservation to apply a negotiated nightly rate.");
   return withRecordLock("hotel", partnerId, async () => {
     const groupId = randomUUID(), stayIds: string[] = [];
     for (const roomId of ids) {
@@ -134,31 +189,56 @@ export async function saveHotelRoom(partnerId: string, id: string | null, values
     }
     if (!id && await prisma.businessRecord.count({where:{partnerId,moduleSlug:roomModule}}) >= 500) throw new Error("Room limit reached.");
     const recordKey = id ?? randomUUID();
-    const stored = { ...data, nameKey: data.name.toLocaleLowerCase("en-IN") };
+    if (!id && (data.taxRatePercent === undefined || !data.propertyState)) throw new Error("Set the room's tax rate and hotel property state before adding it to the hotel inventory.");
+    const effectiveTaxRate = data.taxRatePercent ?? existing?.taxRatePercent;
+    const stored = { ...data, ...(effectiveTaxRate !== undefined ? { taxRatePercent: effectiveTaxRate } : {}), ...(data.propertyState||existing?.propertyState?{propertyState:data.propertyState||existing?.propertyState}:{}), sac: data.sac || existing?.sac || "", nameKey: data.name.toLocaleLowerCase("en-IN") };
     await prisma.businessRecord.upsert({ where: whereRecord(partnerId, roomModule, recordKey), create: {partnerId,moduleSlug:roomModule,recordKey,data:stored},update:{data:stored} });
     return recordKey;
   });
 }
 export async function reserveHotelStay(partnerId: string, values: Record<string, unknown>) {
   await authorize(partnerId, true);
+  const offlineDraftId=String(values.offlineDraftId??"").trim();
+  if(offlineDraftId&&!/^[0-9a-f-]{36}$/i.test(offlineDraftId))throw new Error("Invalid offline reservation draft identifier.");
   return withRecordLock("hotel", partnerId, async()=>{
+    if(offlineDraftId){
+      const existing=await prisma.businessRecord.findUnique({where:whereRecord(partnerId,stayModule,offlineDraftId)});
+      if(existing){
+        const prior=existing.data as unknown as HotelStay;
+        const requestedRate=String(values.agreedNightlyRate??"").trim()?hotelMoney(values.agreedNightlyRate):prior.ratePaise;
+        const same=prior.roomId===String(values.roomId??"")&&prior.guest===String(values.guest??"").trim()&&prior.contact===String(values.contact??"").trim()&&prior.guests===Number(values.guests)&&prior.arrival===String(values.arrival??"")&&prior.departure===String(values.departure??"")&&prior.ratePaise===requestedRate;
+        if(same&&prior.status!=="Cancelled")return offlineDraftId;
+        throw new Error("This offline draft identifier was already used for a different or cancelled reservation.");
+      }
+    }
     const room = await roomRecord(partnerId, String(values.roomId ?? ""));
     const arrival=String(values.arrival??""),departure=String(values.departure??"");
     const nights=hotelNights(arrival,departure);
     if (arrival < hotelToday()) throw new Error("New reservations cannot start in the past.");
     if (room.status === "Out of service") throw new Error("This room is out of service.");
+    if (room.taxRatePercent === undefined) throw new Error("Set a tax rate for this room before taking reservations. Enter 0 when no tax applies.");
+    if (!room.propertyState) throw new Error("Set the hotel's property state before taking reservations.");
+    const partner = await getPartner(partnerId);
+    if (partner?.gstin && !/^\d{4,6}$/.test(String(room.sac ?? ""))) throw new Error("Set the accommodation SAC before taking reservations for a GST-registered hotel.");
+    if (!partner?.gstin && room.taxRatePercent !== 0) throw new Error("A hotel without GST registration must set the room tax rate to 0.");
     const guests=Number(values.guests),guest=String(values.guest??"").trim(),contact=String(values.contact??"").trim();
-    if (!guest || guest.length > 200 || contact.length > 100 || !Number.isInteger(guests) || guests < 1 || guests > room.capacity) throw new Error("Enter a guest name and guest count within this room's capacity.");
-    await assertAvailable(partnerId,room.id,arrival,departure);
-    const total=nights*room.ratePaise;
+    if (!guest || guest.length > 200 || !contact || contact.length > 100 || !Number.isInteger(guests) || guests < 1 || guests > room.capacity) throw new Error("Enter a guest name, contact and guest count within this room's capacity.");
+    const agreedRateText=String(values.agreedNightlyRate??"").trim();
+    const nightlyRatePaise=agreedRateText?hotelMoney(agreedRateText):room.ratePaise;
+    if(offlineDraftId&&nightlyRatePaise!==room.ratePaise)throw new Error("This room's rate changed after the offline cache was saved. Refresh the room list and create a new request.");
+    if(nightlyRatePaise<=0)throw new Error("The agreed nightly rate must be greater than zero.");
+    const total=nights*nightlyRatePaise;
     if (!Number.isSafeInteger(total) || total>2147483647) throw new Error("Reservation amount exceeds the supported limit.");
-    const data: HotelStay={roomId:room.id,roomName:room.name,guest,contact,guests,arrival,departure,ratePaise:room.ratePaise,roomChargePaise:total,status:"Confirmed",entries:[]};
-    const id=randomUUID();
+    const guestAddress=String(values.guestAddress??"").trim(),guestCity=String(values.guestCity??"").trim(),guestState=String(values.guestState??"").trim(),guestPincode=String(values.guestPincode??"").trim(),guestGstin=String(values.guestGstin??"").trim().toUpperCase();
+    if(guestAddress.length>1000 || guestCity.length>100 || guestPincode.length>10 || (guestState&&!INDIAN_STATES.includes(guestState as typeof INDIAN_STATES[number])) || (guestGstin && (!/^\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/.test(guestGstin)||!guestAddress))) throw new Error("Enter a valid guest address and GSTIN. A billing address is required when the guest provides a GSTIN.");
+    const data: HotelStay={roomId:room.id,roomName:room.name,guest,contact,guestAddress,guestCity,guestState,guestPincode,guestGstin,guests,arrival,departure,ratePaise:nightlyRatePaise,taxRatePercent:room.taxRatePercent,sac:room.sac,propertyState:room.propertyState,roomChargePaise:total,status:"Confirmed",entries:[]};
+    const id=offlineDraftId||randomUUID();
+    await assertAvailable(partnerId,room.id,arrival,departure);
     await prisma.businessRecord.create({data:{partnerId,moduleSlug:stayModule,recordKey:id,data:JSON.parse(JSON.stringify(data))}});
     return id;
   });
 }
-export async function transitionHotelStay(partnerId: string, id: string, action: string) {
+export async function transitionHotelStay(partnerId: string, id: string, action: string, requestedInvoiceType?: string) {
   await authorize(partnerId,true);
   return withRecordLock("hotel",partnerId,async()=>{
     const stay=await stayRecord(partnerId,id),room=await roomRecord(partnerId,stay.roomId);
@@ -171,6 +251,18 @@ export async function transitionHotelStay(partnerId: string, id: string, action:
     } else if (action === "check-out") {
       if (stay.status !== "Checked in") throw new Error("Only checked-in stays can check out.");
       if (hotelPayerBalances(stay).some(payer=>payer.balance !== 0)) throw new Error("Settle every payer's folio balance before checkout.");
+      if (!stay.invoiceId) {
+        const partner=await getPartner(partnerId);
+        if(requestedInvoiceType && !["GST","Non-GST"].includes(requestedInvoiceType))throw new Error("Select GST or Non-GST for the checkout invoice.");
+        const invoiceType=requestedInvoiceType==="GST"||requestedInvoiceType==="Non-GST"?requestedInvoiceType:(partner?.gstin?"GST":"Non-GST");
+        stay.taxRatePercent ??= room.taxRatePercent;
+        stay.sac ||= room.sac;
+        stay.invoiceType=invoiceType;
+        stay.invoices = await createHotelStayInvoices(partnerId, stay, invoiceType);
+        if(stay.invoices.length===0) throw new Error("No chargeable folio lines were available to invoice.");
+        stay.invoiceId = stay.invoices[0].id;
+        stay.invoiceNumber = stay.invoices[0].number;
+      }
       stay.status="Checked out";stay.checkedOutAt=new Date().toISOString();
       const {id:roomId,...roomData}=room;
       await prisma.businessRecord.update({where:whereRecord(partnerId,roomModule,roomId),data:{data:{...roomData,status:"Dirty"}}});
@@ -193,7 +285,9 @@ export async function splitHotelFolio(partnerId: string, id: string, values: Rec
     if (!["Confirmed","Checked in"].includes(stay.status)) throw new Error("This folio is closed.");
     if (stay.entries.length) throw new Error("Set the split before recording any financial entries.");
     if (roomChargePaise>stay.roomChargePaise) throw new Error("Allocation cannot exceed room charges.");
-    stay.split={name,roomChargePaise};
+    const address=String(values.payerAddress??"").trim(),city=String(values.payerCity??"").trim(),state=String(values.payerState??"").trim(),pincode=String(values.payerPincode??"").trim(),gstin=String(values.payerGstin??"").trim().toUpperCase();
+    if(address.length>1000 || city.length>100 || pincode.length>10 || (state&&!INDIAN_STATES.includes(state as typeof INDIAN_STATES[number])) || (gstin&&(!/^\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/.test(gstin)||!address)))throw new Error("Enter a valid billing address and GSTIN for the second payer.");
+    stay.split={name,roomChargePaise,address,city,state,pincode,gstin};
     await saveStay(partnerId,id,stay);
   });
 }
@@ -201,24 +295,35 @@ export async function postHotelFolio(partnerId: string,id: string,values:Record<
   await authorize(partnerId,true);
   const kind=String(values.kind) as FolioEntry["kind"],reference=String(values.reference??"").trim(),label=String(values.label??"").trim(),amountPaise=hotelMoney(values.amount);
   const paymentMethod=kind==="Charge" ? undefined : String(values.paymentMethod??"") as FolioEntry["paymentMethod"];
+  const taxRatePercent=values.taxRatePercent===undefined||values.taxRatePercent===""?undefined:Number(values.taxRatePercent),sac=String(values.sac??"").trim();
   if (!["Charge","Payment","Refund"].includes(kind) || !reference || reference.length>100 || !label || label.length>200 || amountPaise<=0) throw new Error("Enter a valid entry, positive amount, description and unique receipt/reference.");
+  if(kind==="Charge"&&((taxRatePercent!==undefined&&(!Number.isInteger(taxRatePercent)||taxRatePercent<0||taxRatePercent>100))||sac.length>20))throw new Error("Enter a valid charge tax rate and SAC.");
   return withRecordLock("hotel",partnerId,async()=>{
     const stay=await stayRecord(partnerId,id);
     const payer=String(values.payer??"Guest");
     const payerBalance=hotelPayerBalances(stay).find(item=>item.name===payer);
     if (!payerBalance) throw new Error("Select a payer on this folio.");
     const repeated=stay.entries.find(entry=>entry.reference===reference);
-    if (repeated) { if (repeated.kind===kind&&repeated.amountPaise===amountPaise&&repeated.label===label&&(repeated.payer??"Guest")===payer&&(repeated.paymentMethod??"")===(paymentMethod??"")) return; throw new Error("That reference already records a different transaction."); }
+    if (repeated) { if (repeated.kind===kind&&repeated.amountPaise===amountPaise&&repeated.label===label&&(repeated.payer??"Guest")===payer&&(repeated.paymentMethod??"")===(paymentMethod??"")) return false; throw new Error("That reference already records a different transaction."); }
     if (kind!=="Charge" && !hotelPaymentMethods.includes(paymentMethod as typeof hotelPaymentMethods[number])) throw new Error("Select a valid payment method for the receipt or refund.");
     if (!["Confirmed","Checked in"].includes(stay.status)) throw new Error("This folio is closed.");
     if (kind==="Charge" && stay.status!=="Checked in") throw new Error("Additional charges can be recorded after check-in.");
+    let chargeRate=taxRatePercent,chargeSac=sac;
+    if(kind==="Charge") {
+      const partner=await getPartner(partnerId),registered=Boolean(partner?.gstin?.trim());
+      chargeRate ??= stay.taxRatePercent;
+      chargeSac ||= stay.sac ?? "";
+      if(registered&&(chargeRate===undefined||!/^\d{4,6}$/.test(chargeSac)))throw new Error("Configure the GST tax rate and service SAC before recording this charge.");
+      if(!registered&&chargeRate!==0)throw new Error("This hotel has no GST registration. Set the charge tax rate to 0.");
+    }
     if (stay.entries.length>=1000) throw new Error("Folio entry limit reached. Contact support.");
     const balance=hotelBalance(stay);
     if (kind==="Refund"&&amountPaise>payerBalance.paid) throw new Error("Refund cannot exceed this payer's recorded net payments.");
     if (kind==="Payment"&&amountPaise>payerBalance.balance) throw new Error("Payment cannot exceed this payer's outstanding balance.");
     if (kind==="Charge"&&balance.charges+amountPaise>2147483647) throw new Error("Folio amount limit exceeded.");
-    stay.entries.push({reference,kind,label,amountPaise,payer,...(paymentMethod?{paymentMethod}:{}),at:new Date().toISOString()});
+    stay.entries.push({reference,kind,label,amountPaise,payer,...(paymentMethod?{paymentMethod}:{}),...(kind==="Charge"?{...(chargeRate!==undefined?{taxRatePercent:chargeRate}:{}),...(chargeSac?{sac:chargeSac}:{})}:{}),at:new Date().toISOString()});
     await saveStay(partnerId,id,stay);
+    return true;
   });
 }
 

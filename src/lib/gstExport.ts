@@ -80,7 +80,7 @@ export async function buildGstExportRows(
     // re-deriving GSTIN/state from a fuzzy name match against Contacts,
     // which silently produced blanks for any walk-in or renamed customer.
     const customerGstin = String(inv["customerGstin"] ?? "").trim();
-    const customerState = String(inv["customerState"] ?? "").trim();
+    const customerState = String(inv["placeOfSupplyState"] ?? inv["customerState"] ?? "").trim();
     const invoiceType: "B2B" | "B2C" = customerGstin ? "B2B" : "B2C";
     if (filter === "b2b" && invoiceType !== "B2B") continue;
     if (filter === "b2c" && invoiceType !== "B2C") continue;
