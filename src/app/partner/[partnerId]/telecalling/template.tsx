@@ -1,8 +1,7 @@
 import type { ReactNode } from "react";
-import { getVisibleModuleSlugs } from "@/lib/designer/entitlements";
-import { notFound } from "next/navigation";
+import { requireModuleTemplateAccess } from "@/lib/moduleTemplateAccess";
 
-export default async function ModuleTemplate({ children, params }: { children: ReactNode; params: { partnerId: string } }) {
-  if (!(await getVisibleModuleSlugs(params.partnerId)).includes("telecalling")) notFound();
+export default async function ModuleTemplate({ children }: { children: ReactNode }) {
+  await requireModuleTemplateAccess("telecalling");
   return children;
 }

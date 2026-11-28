@@ -10,13 +10,20 @@ const base = 'http://127.0.0.1:3317';
 
 async function main() {
   await prisma.plan.createMany({ data: planIds.map((planId, index) => ({ id: planId, name: 'Synthetic SC tier ' + index, price: 100 * (index + 1), billingCycle: 'monthly', includedModuleSlugs: ['service-centre'], maxUsers: 1, maxLocations: 1, isPublic: false })) });
-  await prisma.partnerType.create({ data: { id, defaultModules: ['service-centre'], planIds } });
+  await prisma.partnerType.create({ data: { id, defaultModules: ['service-centre', 'billing'], planIds } });
   await prisma.partner.create({ data: { id, internalKey: id, partnerTypeId: id, planId: planIds[1], businessName: 'Synthetic SC', city: 'Test', state: 'Test', pincode: '000000', businessEmail: 'sc-test@example.invalid', businessContact: id, loginContact: id, passwordHash: 'not-a-login-password', mustChangePassword: false, subscriptionStatus: 'Active' } });
-  await prisma.moduleAccessKey.create({ data: { partnerId: id, moduleSlug: 'service-centre', key: id } });
+  await prisma.moduleAccessKey.createMany({ data: [
+    { partnerId: id, moduleSlug: 'service-centre', key: id },
+    { partnerId: id, moduleSlug: 'billing', key: id + '-billing' },
+  ] });
   await prisma.businessRecord.createMany({ data: ['service-centre-inquiry', 'service-centre-customers'].flatMap(moduleSlug => Array.from({ length: 52 }, (_, index) => ({ partnerId: id, moduleSlug, recordKey: 'synthetic-' + index, createdAt: new Date(Date.UTC(2030, 0, 1, 0, 0, index)), data: moduleSlug === 'service-centre-inquiry' ? { customerName: 'SCINQUIRYMARKER' + index + 'END', customerPhone: '0000000000', status: 'Open' } : { name: 'SCCUSTOMERMARKER' + index + 'END', phone: '0000000000', status: 'Active' } }))) });
   const { SignJWT } = await import('jose');
   const token = await new SignJWT({ partnerId: id }).setProtectedHeader({ alg: 'HS256' }).setIssuedAt().setExpirationTime('10m').sign(new TextEncoder().encode('isolated-build-session-secret-at-least-32-characters'));
   const headers = { cookie: 'mbf_partner_session=' + token };
+  const billingResponse = await fetch(`${base}/partner/${id}/billing`, { headers, redirect: 'manual' });
+  const billingBody = await billingResponse.text();
+  assert.equal(billingResponse.status, 200, 'Billing route template renders with children only');
+  assert.ok(!billingBody.includes('"digest":'), 'Billing route has no server render error');
   async function html(route) {
     const response = await fetch(`${base}/partner/${id}/service-centre/${route}`, { headers, redirect: 'manual' });
     const body = await response.text();
