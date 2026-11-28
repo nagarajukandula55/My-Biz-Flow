@@ -17,7 +17,26 @@
 import { prisma } from "@/lib/prisma";
 import { withRecordLock } from "@/lib/withRecordLock";
 import { PRODUCTION_ORDER_STATUSES, type ProductionOrderStatus } from "@/lib/manufacturingTypes";
+import { assertPartnerCanWrite } from "@/lib/tenant";
+import { assertRecordModuleAccess } from "@/lib/recordEntitlement";
 export { PRODUCTION_ORDER_STATUSES, type ProductionOrderStatus } from "@/lib/manufacturingTypes";
+
+async function readAccess(partnerId: string) { await assertRecordModuleAccess(partnerId, "manufacturing"); }
+async function writeAccess(partnerId: string) { await readAccess(partnerId); await assertPartnerCanWrite(partnerId); }
+
+function validateBomInput(input: { productName: string; lines: BomLineInput[] }) {
+  if (!input.productName.trim()) throw new Error("Product name is required.");
+  if (!Array.isArray(input.lines) || input.lines.length === 0) throw new Error("Add at least one BOM line.");
+  for (const line of input.lines) {
+    if (!line.materialId.trim() || !line.materialLabel.trim() || !Number.isFinite(line.quantity) || line.quantity <= 0 ||
+        !Number.isSafeInteger(line.unitCost) || line.unitCost < 0) throw new Error("BOM lines require a material, positive quantity and valid paise cost.");
+  }
+}
+
+function validateWorkCenter(input: { name: string; capacityPerDay?: number | null }) {
+  if (!input.name.trim()) throw new Error("Work center name is required.");
+  if (input.capacityPerDay != null && (!Number.isSafeInteger(input.capacityPerDay) || input.capacityPerDay <= 0)) throw new Error("Capacity per day must be a positive whole number.");
+}
 
 async function validateProductionInput(partnerId: string, input: { bomId?: string | null; workCenterId?: string | null; quantityPlanned: number }) {
   if (!Number.isSafeInteger(input.quantityPlanned) || input.quantityPlanned <= 0) throw new Error("Planned quantity must be a positive whole number.");
@@ -50,6 +69,7 @@ export type BomRecord = {
 };
 
 export async function listBoms(partnerId: string): Promise<BomRecord[]> {
+  await readAccess(partnerId);
   return prisma.billOfMaterial.findMany({
     where: { partnerId },
     include: { lines: true },
@@ -58,6 +78,7 @@ export async function listBoms(partnerId: string): Promise<BomRecord[]> {
 }
 
 export async function getBom(partnerId: string, id: string): Promise<BomRecord | null> {
+  await readAccess(partnerId);
   const bom = await prisma.billOfMaterial.findFirst({
     where: { id, partnerId },
     include: { lines: true },
@@ -71,6 +92,8 @@ export async function createBom(
   partnerId: string,
   input: { productName: string; productCode?: string; isActive?: boolean; lines: BomLineInput[] }
 ): Promise<BomRecord> {
+  await writeAccess(partnerId);
+  validateBomInput(input);
   const bom = await prisma.billOfMaterial.create({
     data: {
       partnerId,
@@ -90,6 +113,8 @@ export async function updateBom(
   id: string,
   input: { productName: string; productCode?: string; isActive?: boolean; lines: BomLineInput[] }
 ): Promise<BomRecord | null> {
+  await writeAccess(partnerId);
+  validateBomInput(input);
   const existing = await prisma.billOfMaterial.findFirst({ where: { id, partnerId } });
   if (!existing) return null;
   await prisma.$transaction([
@@ -121,10 +146,12 @@ export type WorkCenterRecord = {
 };
 
 export async function listWorkCenters(partnerId: string): Promise<WorkCenterRecord[]> {
+  await readAccess(partnerId);
   return prisma.workCenter.findMany({ where: { partnerId }, orderBy: { name: "asc" } });
 }
 
 export async function getWorkCenter(partnerId: string, id: string): Promise<WorkCenterRecord | null> {
+  await readAccess(partnerId);
   return prisma.workCenter.findFirst({ where: { id, partnerId } });
 }
 
@@ -132,6 +159,8 @@ export async function createWorkCenter(
   partnerId: string,
   input: { name: string; capacityPerDay?: number | null; isActive?: boolean }
 ): Promise<WorkCenterRecord> {
+  await writeAccess(partnerId);
+  validateWorkCenter(input);
   return prisma.workCenter.create({
     data: { partnerId, name: input.name, capacityPerDay: input.capacityPerDay ?? null, isActive: input.isActive ?? true },
   });
@@ -142,6 +171,8 @@ export async function updateWorkCenter(
   id: string,
   input: { name: string; capacityPerDay?: number | null; isActive?: boolean }
 ): Promise<WorkCenterRecord | null> {
+  await writeAccess(partnerId);
+  validateWorkCenter(input);
   const existing = await prisma.workCenter.findFirst({ where: { id, partnerId } });
   if (!existing) return null;
   return prisma.workCenter.update({
@@ -218,6 +249,7 @@ function toProductionOrderRecord(row: {
 const PRODUCTION_ORDER_INCLUDE = { bom: { select: { productName: true } }, workCenter: { select: { name: true } } } as const;
 
 export async function listProductionOrders(partnerId: string): Promise<ProductionOrderRecord[]> {
+  await readAccess(partnerId);
   const rows = await prisma.productionOrder.findMany({
     where: { partnerId },
     include: PRODUCTION_ORDER_INCLUDE,
@@ -232,6 +264,7 @@ export type ProductionOrderDetail = ProductionOrderRecord & {
 };
 
 export async function getProductionOrder(partnerId: string, id: string): Promise<ProductionOrderDetail | null> {
+  await readAccess(partnerId);
   const row = await prisma.productionOrder.findFirst({
     where: { id, partnerId },
     include: {
@@ -255,6 +288,7 @@ export async function createProductionOrder(
     plannedEndDate?: Date | null;
   }
 ): Promise<ProductionOrderRecord> {
+  await writeAccess(partnerId);
   return withRecordLock("inventory-partner", partnerId, async () => {
   await validateProductionInput(partnerId, input);
   const created = await prisma.productionOrder.create({
@@ -289,6 +323,7 @@ export async function updateProductionOrder(
     plannedEndDate?: Date | null;
   }
 ): Promise<ProductionOrderRecord | null> {
+  await writeAccess(partnerId);
   return withRecordLock("inventory-partner", partnerId, async () => {
   const existing = await prisma.productionOrder.findFirst({ where: { id, partnerId } });
   if (!existing) return null;
@@ -326,6 +361,7 @@ export async function setProductionOrderStatus(
   status: ProductionOrderStatus,
   note?: string
 ): Promise<ProductionOrderRecord | null> {
+  await writeAccess(partnerId);
   if (!PRODUCTION_ORDER_STATUSES.includes(status)) throw new Error("Invalid production status.");
   return withRecordLock("inventory-partner", partnerId, async () => {
   const existing = await prisma.productionOrder.findFirst({ where: { id, partnerId } });

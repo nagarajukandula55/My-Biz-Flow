@@ -18,6 +18,7 @@
 import { prisma } from "@/lib/prisma";
 import { withRecordLock } from "@/lib/withRecordLock";
 import { assertModuleAccess, assertPartnerCanWrite } from "@/lib/tenant";
+import { buildPaginatedList, normalizeListPage, type ListPageOptions, type PaginatedList } from "@/lib/listPagination";
 
 async function accountingWrite<T>(partnerId: string, work: () => Promise<T>): Promise<T> {
   await assertModuleAccess(partnerId, "accounting");
@@ -275,12 +276,8 @@ function toJournalEntryRecord(row: {
 
 const JOURNAL_ENTRY_INCLUDE = { lines: { include: { account: { select: { accountName: true, accountCode: true, partnerId: true } } } } } as const;
 
-// TODO: accounting/journal-entries/page.tsx renders this full list directly
-// with no pagination UI yet. Capped with a safety ceiling rather than left
-// fully unbounded so the page can't blow up as entries accumulate — follow
-// up with real page/pageSize pagination (mirroring
-// listBusinessRecordsPaginated + PaginationControls, see billing/page.tsx).
-// Note this is NOT used by the trial-balance/P&L/balance-sheet calculations
+// Legacy capped helper retained for bounded callers. The journal entries
+// page uses listJournalEntriesPaginated; this helper is not used by reports.
 // (those aggregate prisma.journalLine directly), so capping this list has no
 // effect on any correctness-critical summation.
 const JOURNAL_ENTRIES_SAFETY_LIMIT = 500;
@@ -293,6 +290,24 @@ export async function listJournalEntries(partnerId: string): Promise<JournalEntr
     take: JOURNAL_ENTRIES_SAFETY_LIMIT,
   });
   return rows.map(toJournalEntryRecord);
+}
+
+export async function listJournalEntriesPaginated(
+  partnerId: string,
+  options: ListPageOptions = {}
+): Promise<PaginatedList<JournalEntryRecord>> {
+  const { page, pageSize } = normalizeListPage(options);
+  const total = await prisma.journalEntry.count({ where: { partnerId } });
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const actualPage = Math.min(page, totalPages);
+  const rows = await prisma.journalEntry.findMany({
+    where: { partnerId },
+    include: JOURNAL_ENTRY_INCLUDE,
+    orderBy: [{ entryDate: "desc" }, { id: "desc" }],
+    skip: (actualPage - 1) * pageSize,
+    take: pageSize,
+  });
+  return buildPaginatedList(rows.map(toJournalEntryRecord), total, actualPage, pageSize);
 }
 
 export async function getJournalEntry(partnerId: string, id: string): Promise<JournalEntryRecord | null> {

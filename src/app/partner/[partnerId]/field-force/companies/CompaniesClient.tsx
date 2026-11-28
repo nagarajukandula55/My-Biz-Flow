@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { StatusChip } from "@/components/StatusChip";
-import { COMPANY_UPLOAD_FIELDS, REQUIRED_COMPANY_UPLOAD_FIELDS, type CompanyUploadField } from "@/lib/fieldForce/companiesData";
+import { COMPANY_UPLOAD_FIELDS, REQUIRED_COMPANY_UPLOAD_FIELDS, type CompanyUploadField } from "@/lib/fieldForce/companyUploadFields";
 
 type Company = {
   id: string;

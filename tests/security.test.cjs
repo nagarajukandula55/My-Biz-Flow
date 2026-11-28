@@ -112,6 +112,7 @@ test('call logging validates the actor and keeps call/status writes in one trans
     '@/lib/prisma': { prisma: { $transaction: async fn => { staged = []; const result = await fn(tx); committed.push(...staged); return result; } } },
     '@/lib/tenant': { assertPartnerScope: (a, b) => assert.equal(a, b) },
     '@/lib/whatsapp': {}, '@/lib/whatsappTriggers': { isWhatsappTriggerEnabled: async () => false }, '@/lib/seo': { SITE_URL: 'https://example.invalid' },
+    '@/lib/telecalling/shared':load('src/lib/telecalling/shared.ts'),
   });
   const input = { leadId: 'l1', agentId: 'a1', outcome: 'Interested' };
   await assert.rejects(calls.logCall('p1', { ...input, outcome: 'invalid' }), /Invalid call/);

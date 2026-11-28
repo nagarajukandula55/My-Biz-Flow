@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { assertPartnerScope } from "@/lib/tenant";
 
 export type MessageChannel = "sms" | "whatsapp";
-export const TEMPLATE_CATEGORIES = ["Welcome", "ProductInfo", "FollowUp", "General"] as const;
+export { TEMPLATE_CATEGORIES } from "@/lib/telecalling/shared";
 
 export type MessageTemplateRecord = {
   id: string;

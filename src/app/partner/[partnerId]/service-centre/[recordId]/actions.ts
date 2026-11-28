@@ -660,6 +660,8 @@ async function createInvoiceFromWorkorderInner(
     // invoice knows who it's billed to (and whether it's B2B) instead of
     // holding a bare customer name — see serviceCentreFormFields.
     customerPhone: record["customerPhone"] ?? "",
+    customerAlternatePhone: record["customerAlternatePhone"] ?? "",
+    customerEmail: record["customerEmail"] ?? "",
     customerGstin: partnerHasGstin ? record["customerGstin"] ?? "" : "",
     customerAddress: record["customerAddress"] ?? "",
     customerCity: record["customerCity"] ?? "",

@@ -23,6 +23,7 @@ export function BookingForm({
   initial,
   submitLabel,
   action,
+  amountPaidReadOnly = false,
 }: {
   venues: VenueOption[];
   resources: ResourceOption[];
@@ -41,6 +42,7 @@ export function BookingForm({
   };
   submitLabel: string;
   action: (values: BookingFormInput) => Promise<BookingActionResult>;
+  amountPaidReadOnly?: boolean;
 }) {
   const [venueId, setVenueId] = useState(initial?.venueId ?? "");
   const [eventName, setEventName] = useState(initial?.eventName ?? "");
@@ -157,7 +159,8 @@ export function BookingForm({
         </div>
         <div>
           <label className={labelClass}>Amount Paid (Rs)</label>
-          <input type="number" className={inputClass} value={amountPaidRupees} onChange={(e) => setAmountPaidRupees(e.target.value)} />
+          <input type="number" className={inputClass} value={amountPaidRupees} readOnly={amountPaidReadOnly} onChange={(e) => setAmountPaidRupees(e.target.value)} />
+          {amountPaidReadOnly && <p className="mt-1 text-xs text-text-muted">Recorded payments are retained; use the payment workflow to add a payment.</p>}
         </div>
       </div>
 

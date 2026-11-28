@@ -2,7 +2,7 @@ import { AppShell } from "@/components/AppShell";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
 import { notFound } from "next/navigation";
-import { getLocationFormFields } from "@/lib/sample-data/brand";
+import { getLocationFormFields } from "@/lib/brandLocationFormFields";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { getBrand } from "@/lib/brandData";
 import { createLocationAction } from "../actions";

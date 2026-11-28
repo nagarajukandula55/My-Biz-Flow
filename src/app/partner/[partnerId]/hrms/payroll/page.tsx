@@ -5,9 +5,10 @@ import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { StatusChip } from "@/components/StatusChip";
 import { requirePartnerSessionForPage } from "@/lib/requirePartnerSession";
-import { listPayslips } from "@/lib/hrms";
+import { listPayslipsPaginated } from "@/lib/hrms";
 import { listPayrollCalculations } from "@/lib/hrmsAttendancePayroll";
 import { PayslipStatusControls } from "./PayslipStatusControls";
+import { PaginationControls, buildPageQueryString } from "@/components/PaginationControls";
 
 registerPage({
   id: "hrms.payroll.list",
@@ -23,13 +24,15 @@ registerPage({
 
 export const dynamic = "force-dynamic";
 
-export default async function PayrollPage({ params }: { params: { partnerId: string } }) {
+export default async function PayrollPage({ params, searchParams }: { params: { partnerId: string }; searchParams: { page?: string } }) {
   await requirePartnerSessionForPage(params.partnerId);
   const tierGate = await renderTierGate(params.partnerId, "hrms.payroll.list", "Payroll");
   if (tierGate) return <AppShell topbarTitle="Payroll — HRMS / Payroll">{tierGate}</AppShell>;
   const mod = await getModule("hrms");
-  const payslips = await listPayslips(params.partnerId);
-  const calculations = await listPayrollCalculations(params.partnerId);
+  const [{ rows: payslips, ...pagination }, calculations] = await Promise.all([
+    listPayslipsPaginated(params.partnerId, { page: Number(searchParams.page) || 1 }),
+    listPayrollCalculations(params.partnerId),
+  ]);
 
   return (
     <AppShell
@@ -41,7 +44,7 @@ export default async function PayrollPage({ params }: { params: { partnerId: str
       }
     >
       <div>
-        {payslips.length === 0 && <p className="text-sm text-text-muted">No payslips yet.</p>}
+        {pagination.total === 0 && <p className="text-sm text-text-muted">No payslips yet.</p>}
         <div className="space-y-2">
           {payslips.map((p) => (
             <div key={p.id} className="flex flex-wrap items-center justify-between gap-4 rounded-md border border-border bg-bg-raised px-4 py-3 text-sm">
@@ -57,6 +60,7 @@ export default async function PayrollPage({ params }: { params: { partnerId: str
             </div>
           ))}
         </div>
+        <PaginationControls page={pagination.page} totalPages={pagination.totalPages} total={pagination.total} pageSize={pagination.pageSize} buildHref={(page) => `/partner/${params.partnerId}/hrms/payroll${buildPageQueryString(searchParams, { page: String(page) })}`} />
         <section className="mt-6 space-y-4">
           <h2 className="font-display text-xl font-bold text-text">Attendance calculation history</h2>
           <p className="text-sm text-text-muted">Latest 50 saved calculations. Review before finalizing. Changes to attendance, approved leave or calculated amounts require recalculation. History is retained when a draft is recalculated or manually replaced.</p>

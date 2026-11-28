@@ -15,7 +15,7 @@ export async function createAmcContractAction(partnerId: string, values: Record<
     contractEndDate: new Date(String(values["contractEndDate"])),
     renewalTermMonths: values["renewalTermMonths"] ? Number(values["renewalTermMonths"]) : undefined,
     slaHours: values["slaHours"] ? Number(values["slaHours"]) : undefined,
-    contractValue: values["contractValue"] ? Number(values["contractValue"]) : undefined,
+    contractValue: values["contractValue"] === undefined || values["contractValue"] === "" ? undefined : Math.round(Number(values["contractValue"]) * 100),
   });
   revalidatePath(`/partner/${partnerId}/amc-field-service`);
   // ?created=1 is read by RecordDetail to render a real "created" ack on arrival.
@@ -32,7 +32,7 @@ export async function updateAmcContractAction(partnerId: string, contractId: str
     contractEndDate: new Date(String(values["contractEndDate"])),
     renewalTermMonths: values["renewalTermMonths"] ? Number(values["renewalTermMonths"]) : undefined,
     slaHours: values["slaHours"] ? Number(values["slaHours"]) : undefined,
-    contractValue: values["contractValue"] ? Number(values["contractValue"]) : undefined,
+    contractValue: values["contractValue"] === undefined || values["contractValue"] === "" ? undefined : Math.round(Number(values["contractValue"]) * 100),
   });
   revalidatePath(`/partner/${partnerId}/amc-field-service`);
   revalidatePath(`/partner/${partnerId}/amc-field-service/${contractId}`);

@@ -12,14 +12,19 @@
 import { prisma } from "@/lib/prisma";
 import { sendPartnerTelegramAlert } from "@/lib/telegram";
 import { createBusinessRecord, listBusinessRecords } from "@/lib/businessRecords";
-import { assertPartnerScope } from "@/lib/tenant";
+import { assertPartnerCanWrite, assertPartnerScope } from "@/lib/tenant";
+import { assertRecordModuleAccess } from "@/lib/recordEntitlement";
+import { afterDatabaseCommit } from "@/lib/databaseTransaction";
 import { getNextNumber } from "@/lib/designer/numbering";
 import { getPartner } from "@/lib/partnerData";
 import { legalMatterStatusChangedMessage } from "@/lib/telegramTemplates";
 import { sendLegalMatterStatusChangedEmail } from "@/lib/email/moduleEmails";
+import { LEGAL_MATTER_STATUSES, type LegalMatterStatus } from "@/lib/legalShared";
+export { LEGAL_MATTER_STATUSES } from "@/lib/legalShared";
+export type { LegalMatterStatus } from "@/lib/legalShared";
 
-export const LEGAL_MATTER_STATUSES = ["Open", "InProgress", "OnHold", "Closed"] as const;
-export type LegalMatterStatus = (typeof LEGAL_MATTER_STATUSES)[number];
+async function readAccess(partnerId: string) { await assertRecordModuleAccess(partnerId, "legal"); }
+async function writeAccess(partnerId: string) { await readAccess(partnerId); await assertPartnerCanWrite(partnerId); }
 
 // --- Clients -----------------------------------------------------------
 
@@ -54,11 +59,13 @@ function toClientRecord(row: {
 }
 
 export async function listLegalClients(partnerId: string): Promise<LegalClientRecord[]> {
+  await readAccess(partnerId);
   const rows = await prisma.legalClient.findMany({ where: { partnerId }, orderBy: { createdAt: "desc" } });
   return rows.map(toClientRecord);
 }
 
 export async function getLegalClient(partnerId: string, id: string): Promise<LegalClientRecord | null> {
+  await readAccess(partnerId);
   const row = await prisma.legalClient.findUnique({ where: { id } });
   if (!row) return null;
   assertPartnerScope(partnerId, row.partnerId);
@@ -69,6 +76,8 @@ export async function createLegalClient(
   partnerId: string,
   input: { name: string; contact?: string; email?: string; address?: string }
 ): Promise<LegalClientRecord> {
+  await writeAccess(partnerId);
+  if (!input.name.trim()) throw new Error("Client name is required.");
   const row = await prisma.legalClient.create({
     data: {
       partnerId,
@@ -86,6 +95,8 @@ export async function updateLegalClient(
   id: string,
   input: { name: string; contact?: string; email?: string; address?: string }
 ): Promise<LegalClientRecord> {
+  await writeAccess(partnerId);
+  if (!input.name.trim()) throw new Error("Client name is required.");
   const existing = await prisma.legalClient.findUniqueOrThrow({ where: { id } });
   assertPartnerScope(partnerId, existing.partnerId);
   const row = await prisma.legalClient.update({
@@ -101,6 +112,7 @@ export async function updateLegalClient(
 }
 
 export async function deleteLegalClient(partnerId: string, id: string): Promise<void> {
+  await writeAccess(partnerId);
   const existing = await prisma.legalClient.findUnique({ where: { id } });
   if (!existing) return;
   assertPartnerScope(partnerId, existing.partnerId);
@@ -149,6 +161,7 @@ function toMatterRecord(row: {
 }
 
 export async function listLegalMatters(partnerId: string): Promise<LegalMatterRecord[]> {
+  await readAccess(partnerId);
   const rows = await prisma.legalMatter.findMany({
     where: { partnerId },
     include: { client: { select: { name: true } } },
@@ -158,6 +171,7 @@ export async function listLegalMatters(partnerId: string): Promise<LegalMatterRe
 }
 
 export async function getLegalMatter(partnerId: string, id: string): Promise<LegalMatterRecord | null> {
+  await readAccess(partnerId);
   const row = await prisma.legalMatter.findUnique({ where: { id }, include: { client: { select: { name: true } } } });
   if (!row) return null;
   assertPartnerScope(partnerId, row.partnerId);
@@ -175,6 +189,10 @@ export async function createLegalMatter(
   partnerId: string,
   input: { clientId: string; title: string; matterType?: string; status?: LegalMatterStatus; openedDate?: string }
 ): Promise<LegalMatterRecord> {
+  await writeAccess(partnerId);
+  if (!input.title.trim()) throw new Error("Matter title is required.");
+  if (input.status && !LEGAL_MATTER_STATUSES.includes(input.status)) throw new Error("Select a valid matter status.");
+  if (input.openedDate && !Number.isFinite(new Date(input.openedDate).getTime())) throw new Error("Select a valid opening date.");
   const client = await prisma.legalClient.findUniqueOrThrow({ where: { id: input.clientId } });
   assertPartnerScope(partnerId, client.partnerId);
 
@@ -210,6 +228,14 @@ export async function updateLegalMatter(
   id: string,
   input: { clientId?: string; title?: string; matterType?: string; status?: LegalMatterStatus; openedDate?: string }
 ): Promise<LegalMatterRecord> {
+  await writeAccess(partnerId);
+  if (input.title !== undefined && !input.title.trim()) throw new Error("Matter title is required.");
+  if (input.status && !LEGAL_MATTER_STATUSES.includes(input.status)) throw new Error("Select a valid matter status.");
+  if (input.openedDate && !Number.isFinite(new Date(input.openedDate).getTime())) throw new Error("Select a valid opening date.");
+  if (input.clientId) {
+    const client = await prisma.legalClient.findFirst({ where: { id: input.clientId, partnerId } });
+    if (!client) throw new Error("Client not found for this business.");
+  }
   const existing = await prisma.legalMatter.findUniqueOrThrow({ where: { id } });
   assertPartnerScope(partnerId, existing.partnerId);
 
@@ -231,7 +257,7 @@ export async function updateLegalMatter(
   });
 
   if (statusChanged) {
-    (async () => {
+    await afterDatabaseCommit(async () => {
       const partner = await getPartner(partnerId);
       if (!partner) return;
       const message = await legalMatterStatusChangedMessage({
@@ -253,8 +279,8 @@ export async function updateLegalMatter(
           nextStatus: row.status,
         });
       }
-    })().catch(() => {
-      // Best-effort — never block the status update on a notification failure.
+    }).catch(() => {
+      // Notifications are best-effort and must never roll back the matter update.
     });
   }
 
@@ -291,6 +317,7 @@ function toCourtDateRecord(row: {
 }
 
 export async function listLegalCourtDates(partnerId: string, matterId: string): Promise<LegalCourtDateRecord[]> {
+  await readAccess(partnerId);
   const matter = await prisma.legalMatter.findUniqueOrThrow({ where: { id: matterId } });
   assertPartnerScope(partnerId, matter.partnerId);
   const rows = await prisma.legalCourtDate.findMany({ where: { matterId }, orderBy: { hearingDate: "asc" } });
@@ -298,6 +325,7 @@ export async function listLegalCourtDates(partnerId: string, matterId: string): 
 }
 
 export async function sendUpcomingLegalCourtDateReminders(partnerId: string, now = new Date()): Promise<number> {
+  await writeAccess(partnerId);
   const end = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
   const dates = await prisma.legalCourtDate.findMany({ where: { matter: { partnerId }, hearingDate: { gte: now, lt: end }, outcome: null }, include: { matter: true }, orderBy: { hearingDate: "asc" }, take: 200 });
   const sent = await listBusinessRecords(partnerId, "legal-court-date-reminder");
@@ -325,6 +353,8 @@ export async function addLegalCourtDate(
   matterId: string,
   input: { hearingDate: string; court?: string; purpose?: string; outcome?: string }
 ): Promise<LegalCourtDateRecord> {
+  await writeAccess(partnerId);
+  if (!Number.isFinite(new Date(input.hearingDate).getTime())) throw new Error("Select a valid hearing date.");
   const matter = await prisma.legalMatter.findUniqueOrThrow({ where: { id: matterId } });
   assertPartnerScope(partnerId, matter.partnerId);
   const row = await prisma.legalCourtDate.create({
@@ -366,6 +396,7 @@ function toDocumentRecord(row: {
 }
 
 export async function listLegalDocuments(partnerId: string, matterId: string): Promise<LegalDocumentRecord[]> {
+  await readAccess(partnerId);
   const matter = await prisma.legalMatter.findUniqueOrThrow({ where: { id: matterId } });
   assertPartnerScope(partnerId, matter.partnerId);
   const rows = await prisma.legalDocument.findMany({ where: { matterId }, orderBy: { uploadedAt: "desc" } });
@@ -380,6 +411,8 @@ export async function addLegalDocument(
   matterId: string,
   input: { title: string; documentType?: string }
 ): Promise<LegalDocumentRecord> {
+  await writeAccess(partnerId);
+  if (!input.title.trim()) throw new Error("Document title is required.");
   const matter = await prisma.legalMatter.findUniqueOrThrow({ where: { id: matterId } });
   assertPartnerScope(partnerId, matter.partnerId);
   const row = await prisma.legalDocument.create({

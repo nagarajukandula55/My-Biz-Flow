@@ -26,6 +26,8 @@ export const creditNoteColumns: Column[] = [
   { key: "noteType", label: "Type", type: "select-chip", chipVariantMap: NOTE_TYPE_VARIANT },
   { key: "contact", label: "Contact", type: "relation-link" },
   { key: "linkedInvoiceId", label: "Against Invoice", type: "relation-link" },
+  { key: "linkedInvoiceNumber", label: "Original Invoice Number", type: "text" },
+  { key: "linkedInvoiceDate", label: "Original Invoice Date", type: "date" },
   { key: "reason", label: "Reason", type: "text" },
   { key: "issueDate", label: "Issue Date", type: "date" },
   { key: "totalAmount", label: "Total Amount", type: "currency" },
@@ -34,7 +36,7 @@ export const creditNoteColumns: Column[] = [
 export function getCreditNoteDetailFields(record: Row): RecordField[] {
   const r = record;
   return [
-    { label: "Note Number", value: r["id"], type: "text" },
+    { label: "Note Number", value: r["noteNumber"] ?? r["id"], type: "text" },
     { label: "Type", value: r["noteType"], type: "select", chipVariant: NOTE_TYPE_VARIANT[String(r["noteType"])] ?? "neutral" },
     { label: "Contact", value: r["contact"], type: "relation" },
     { label: "Against Invoice", value: r["linkedInvoiceId"], type: "relation" },

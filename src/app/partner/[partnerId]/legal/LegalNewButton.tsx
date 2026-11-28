@@ -2,7 +2,8 @@
 
 import { RecordFormModal, useRecordFormModal } from "@/components/RecordFormModal";
 import type { FormFieldDef } from "@/components/RecordForm";
-import { LEGAL_MATTER_STATUSES, type LegalClientRecord } from "@/lib/legal";
+import { LEGAL_MATTER_STATUSES } from "@/lib/legalShared";
+import type { LegalClientRecord } from "@/lib/legal";
 import { createLegalMatterAction } from "./actions";
 
 /** Create-as-modal for a Legal matter, now backed by real LegalClient rows

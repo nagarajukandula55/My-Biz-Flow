@@ -2,9 +2,10 @@ import type { Column, Row } from "@/components/DataTable";
 import type { RecordField, TimelineEntry, RelatedRecord } from "@/components/RecordDetail";
 import type { StatusVariant } from "@/components/StatusChip";
 import type { FormFieldDef } from "@/components/RecordForm";
-import { paiseToRupees, type EnquiryRow, type LeadStage } from "@/lib/realEstateData";
+import type { EnquiryRow, LeadStage } from "@/lib/realEstateData";
 
-export { LEAD_STAGES, type LeadStage } from "@/lib/realEstateData";
+export { LEAD_STAGES } from "@/lib/realEstateStages";
+export type { LeadStage } from "@/lib/realEstateData";
 
 // Field vocabulary for the Real Estate module's main page — now Enquiry
 // (Prisma-backed, see src/lib/realEstateData.ts), the lead pipeline that
@@ -63,9 +64,9 @@ export function enquiryToRow(e: EnquiryRow): Row {
     agentName: e.agentName ?? "",
     siteVisitStart: e.siteVisitStart ? e.siteVisitStart.toISOString() : "",
     siteVisitEnd: e.siteVisitEnd ? e.siteVisitEnd.toISOString() : "",
-    dealValue: paiseToRupees(e.dealValue),
+    dealValue: e.dealValue == null ? 0 : Math.round(e.dealValue) / 100,
     commissionPct: e.commissionPct ?? "",
-    commissionAmount: paiseToRupees(e.commissionAmount),
+    commissionAmount: e.commissionAmount == null ? 0 : Math.round(e.commissionAmount) / 100,
     closedLostReason: e.closedLostReason ?? "",
   };
 }

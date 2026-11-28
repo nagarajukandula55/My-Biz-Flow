@@ -12,6 +12,10 @@ import { prisma } from "@/lib/prisma";
 import { sendWorkorderTelegramAlert } from "@/lib/telegram";
 import { newWorkorderCreatedMessage } from "@/lib/telegramTemplates";
 import { withRecordLock } from "@/lib/withRecordLock";
+import { assertRecordModuleAccess } from "@/lib/recordEntitlement";
+import { invoiceNumberingConfig, resolveInvoiceDocumentType } from "@/lib/invoiceNumbering";
+import { effectiveInquiryStatus, INQUIRY_CLOSE_REASONS } from "@/lib/sample-data/service-centre-inquiry";
+import { afterDatabaseCommit } from "@/lib/databaseTransaction";
 
 /** Staff-side "log a call-in inquiry" — bound to InquiryNewButton's modal form. */
 export async function createInquiryAction(
@@ -19,6 +23,7 @@ export async function createInquiryAction(
   values: Record<string, unknown>
 ): Promise<void | { error?: string }> {
   partnerId = await requireSessionPartnerId(partnerId);
+  await assertRecordModuleAccess(partnerId, "service-centre-inquiry");
 
   const customerName = String(values.customerName ?? "").trim();
   const customerPhone = String(values.customerPhone ?? "").trim();
@@ -54,6 +59,40 @@ export async function createInquiryAction(
   redirect(`/partner/${partnerId}/service-centre/inquiries/${record.id}?created=1`);
 }
 
+/** Edits customer-entered inquiry fields without replacing status or conversion history. */
+export async function updateInquiryAction(
+  partnerId: string,
+  inquiryId: string,
+  values: Record<string, unknown>
+): Promise<void | { error: string }> {
+  partnerId = await requireSessionPartnerId(partnerId);
+  await assertRecordModuleAccess(partnerId, "service-centre-inquiry");
+  const customerName = String(values.customerName ?? "").trim();
+  const customerPhone = String(values.customerPhone ?? "").trim();
+  const customerEmail = String(values.customerEmail ?? "").trim();
+  if (!customerName || customerPhone.replace(/\D/g, "").length < 10) return { error: "Enter a customer name and a valid phone number." };
+  if (customerEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)) return { error: "Enter a valid email address." };
+  const allowed = ["customerName", "customerPhone", "customerEmail", "serviceType", "complaint", "brand", "model", "addressLine", "pincode", "preferredDate"];
+  const changes = Object.fromEntries(allowed.filter((key) => Object.hasOwn(values, key)).map((key) => [key, values[key]]));
+  const result = await withRecordLock("service-centre-inquiry-convert", `${partnerId}:${inquiryId}`, async () => {
+    const record = await getBusinessRecord(partnerId, "service-centre-inquiry", inquiryId);
+    if (!record) return { error: "Inquiry not found" };
+    if (effectiveInquiryStatus(record) !== "Open") return { error: "Only an Open inquiry can be edited" };
+    if (Object.hasOwn(changes, "pincode") && changes.pincode !== record["pincode"]) {
+      const pincode = String(changes.pincode ?? "").trim();
+      if (pincode && !/^\d{6}$/.test(pincode)) return { error: "Enter a valid six-digit pincode." };
+      const match = pincode ? await prisma.postalPincode.findFirst({ where: { pincode } }) : null;
+      changes.city = match?.district ?? "";
+      changes.state = match?.state ?? "";
+    }
+    await updateBusinessRecord(partnerId, "service-centre-inquiry", inquiryId, { ...record, ...changes, status: "Open" });
+    return null;
+  });
+  if (result) return result;
+  revalidatePath(`/partner/${partnerId}/service-centre/inquiries`);
+  redirect(`/partner/${partnerId}/service-centre/inquiries/${inquiryId}?updated=1`);
+}
+
 /** Closes an inquiry with a standardised reason — never deletes it, so the dashboard can still summarize why. */
 export async function closeInquiryAction(
   partnerId: string,
@@ -61,24 +100,45 @@ export async function closeInquiryAction(
   formData: FormData
 ): Promise<void | { error?: string }> {
   partnerId = await requireSessionPartnerId(partnerId);
+  await assertRecordModuleAccess(partnerId, "service-centre-inquiry");
   const reason = String(formData.get("closeReason") ?? "").trim();
-  if (!reason) return { error: "Select a close reason" };
+  if (!INQUIRY_CLOSE_REASONS.includes(reason as typeof INQUIRY_CLOSE_REASONS[number])) return { error: "Select a valid close reason" };
 
-  const record = await getBusinessRecord(partnerId, "service-centre-inquiry", inquiryId);
-  if (!record) return { error: "Inquiry not found" };
-  if (record["status"] !== "Open") return { error: "Only an Open inquiry can be closed" };
-
-  await updateBusinessRecord(partnerId, "service-centre-inquiry", inquiryId, {
-    ...record,
-    status: "Closed",
-    closeReason: reason,
-    closedAt: new Date().toISOString(),
+  const result = await withRecordLock("service-centre-inquiry-convert", `${partnerId}:${inquiryId}`, async () => {
+    const record = await getBusinessRecord(partnerId, "service-centre-inquiry", inquiryId);
+    if (!record) return { error: "Inquiry not found" };
+    if (effectiveInquiryStatus(record) !== "Open") return { error: "Only an Open inquiry can be closed" };
+    await updateBusinessRecord(partnerId, "service-centre-inquiry", inquiryId, {
+      ...record, status: "Closed", closeReason: reason, closedAt: new Date().toISOString(),
+    });
+    return null;
   });
+  if (result) return result;
 
   revalidatePath(`/partner/${partnerId}/service-centre/inquiries`);
   // ?updated=1 -> RecordDetail's own SuccessBanner (same convention every
   // other record edit in this app uses), so closing shows a real "updated"
   // confirmation instead of the panel just silently re-rendering.
+  redirect(`/partner/${partnerId}/service-centre/inquiries/${inquiryId}?updated=1`);
+}
+
+/** Cancel an unconverted inquiry while retaining its history for reporting. */
+export async function cancelInquiryAction(partnerId: string, inquiryId: string, reason: string): Promise<void | { error: string }> {
+  partnerId = await requireSessionPartnerId(partnerId);
+  await assertRecordModuleAccess(partnerId, "service-centre-inquiry");
+  const why = reason.trim();
+  if (!INQUIRY_CLOSE_REASONS.includes(why as typeof INQUIRY_CLOSE_REASONS[number])) return { error: "Select a valid cancellation reason" };
+  const result = await withRecordLock("service-centre-inquiry-convert", `${partnerId}:${inquiryId}`, async () => {
+    const record = await getBusinessRecord(partnerId, "service-centre-inquiry", inquiryId);
+    if (!record) return { error: "Inquiry not found" };
+    if (effectiveInquiryStatus(record) !== "Open") return { error: "Only an Open inquiry can be cancelled" };
+    await updateBusinessRecord(partnerId, "service-centre-inquiry", inquiryId, {
+      ...record, status: "Cancelled", cancelReason: why, cancelledAt: new Date().toISOString(),
+    });
+    return null;
+  });
+  if (result) return result;
+  revalidatePath(`/partner/${partnerId}/service-centre/inquiries`);
   redirect(`/partner/${partnerId}/service-centre/inquiries/${inquiryId}?updated=1`);
 }
 
@@ -110,12 +170,13 @@ export async function convertInquiryToWorkorderAction(
   overrides?: Record<string, string>
 ): Promise<void | { error?: string; missing?: { key: string; label: string }[] }> {
   partnerId = await requireSessionPartnerId(partnerId);
+  await assertRecordModuleAccess(partnerId, "service-centre-inquiry");
 
   // Serializes concurrent convert attempts for the SAME inquiry (double-
   // click on "Convert to Workorder" before the button disables) — without
   // it, two overlapping calls could both pass the `status !== "Open"`
   // guard below and both mint a jobId / create a workorder.
-  const jobId = await withRecordLock("service-centre-inquiry-convert", inquiryId, () =>
+  const jobId = await withRecordLock("service-centre-inquiry-convert", `${partnerId}:${inquiryId}`, () =>
     convertInquiryToWorkorderInner(partnerId, inquiryId, overrides)
   );
   if (typeof jobId !== "string") return jobId; // { error, missing? } — validation/not-found failure
@@ -132,7 +193,7 @@ async function convertInquiryToWorkorderInner(
 ): Promise<string | { error?: string; missing?: { key: string; label: string }[] }> {
   const inquiry = await getBusinessRecord(partnerId, "service-centre-inquiry", inquiryId);
   if (!inquiry) return { error: "Inquiry not found" };
-  if (inquiry["status"] !== "Open") return { error: "Only an Open inquiry can be converted" };
+  if (effectiveInquiryStatus(inquiry) !== "Open") return { error: "Only an Open inquiry can be converted" };
 
   const pincode = String(overrides?.customerPincode ?? inquiry["pincode"] ?? "").trim();
   // The inquiry already has city/state stored (createInquiryAction /
@@ -212,6 +273,7 @@ async function convertInquiryToWorkorderInner(
   await updateBusinessRecord(partnerId, "service-centre-inquiry", inquiryId, {
     ...inquiry,
     status: "Converted",
+    conversionType: "Workorder",
     convertedToWorkorderId: jobId,
     convertedAt: now.toISOString(),
   });
@@ -222,7 +284,7 @@ async function convertInquiryToWorkorderInner(
   // that was never actually booked.
   const partner = await getPartner(partnerId);
   if (partner) {
-    await sendWorkorderTelegramAlert(
+    await afterDatabaseCommit(async () => sendWorkorderTelegramAlert(
       partnerId,
       jobId,
       "newWorkorder",
@@ -242,8 +304,65 @@ async function convertInquiryToWorkorderInner(
         estimatedAmount: "",
         warrantyStatus: "",
       })
-    );
+    ));
   }
 
   return jobId;
+}
+
+export async function convertInquiryToSalesInvoiceAction(
+  partnerId: string,
+  inquiryId: string,
+  input: { description: string; quantity?: number; amount: number; taxRate: number; hsnCode?: string; invoiceType: "GST" | "Non-GST" }
+): Promise<void | { error: string }> {
+  partnerId = await requireSessionPartnerId(partnerId);
+  await assertRecordModuleAccess(partnerId, "service-centre-inquiry");
+  await assertRecordModuleAccess(partnerId, "billing");
+  const description = String(input.description ?? "").trim();
+  const quantity = Number(input.quantity ?? 1);
+  const hsnCode = String(input.hsnCode ?? "").trim();
+  const amount = Number(input.amount);
+  const taxRate = Number(input.taxRate);
+  if (!description || !Number.isFinite(amount) || amount <= 0 || !Number.isSafeInteger(Math.round(amount * 100)) || Math.abs(amount * 100 - Math.round(amount * 100)) > 1e-8) return { error: "Enter an item description and a positive amount with at most two decimal places." };
+  if (!Number.isSafeInteger(quantity) || quantity <= 0) return { error: "Enter a positive whole-number quantity." };
+  if (![0, 0.25, 3, 5, 12, 18, 28].includes(taxRate)) return { error: "Select a valid tax rate." };
+  if (!["GST", "Non-GST"].includes(input.invoiceType)) return { error: "Select a valid invoice type." };
+  const partner = await getPartner(partnerId);
+  if (input.invoiceType === "GST" && !partner?.gstin?.trim()) return { error: "A GST invoice requires this business's GSTIN." };
+  if (input.invoiceType === "GST" && !hsnCode) return { error: "Enter the item's HSN/SAC code for the GST invoice." };
+  if (input.invoiceType === "Non-GST" && taxRate !== 0) return { error: "A Non-GST invoice must use zero tax." };
+  const result = await withRecordLock("service-centre-inquiry-convert", `${partnerId}:${inquiryId}`, async () => {
+    const inquiry = await getBusinessRecord(partnerId, "service-centre-inquiry", inquiryId);
+    if (!inquiry) return { error: "Inquiry not found" };
+    if (effectiveInquiryStatus(inquiry) !== "Open") return { error: "Only an Open inquiry can be converted" };
+    if (!String(inquiry["customerName"] ?? "").trim() || String(inquiry["customerPhone"] ?? "").replace(/\D/g, "").length < 10) return { error: "Complete the customer's name and phone before invoicing." };
+    const invoiceType = resolveInvoiceDocumentType(input.invoiceType, Boolean(partner?.gstin?.trim()));
+    const numbering = invoiceNumberingConfig(invoiceType);
+    const invoiceNumber = await getNextNumber(numbering.documentType, partnerId, numbering.defaults);
+    const subtotalPaise = Math.round(amount * 100) * quantity;
+    if (!Number.isSafeInteger(subtotalPaise) || subtotalPaise <= 0) return { error: "The invoice amount is too large." };
+    const subtotal = subtotalPaise / 100;
+    const taxAmount = Math.round(subtotal * taxRate) / 100;
+    const totalAmount = Math.round((subtotal + taxAmount) * 100) / 100;
+    const now = new Date();
+    const invoice = await createBusinessRecord(partnerId, "billing", {
+      invoiceNumber, invoiceType, invoiceSource: "Service Centre", sourceInquiryId: inquiryId,
+      customer: String(inquiry["customerName"] ?? ""), customerPhone: String(inquiry["customerPhone"] ?? ""),
+      customerEmail: String(inquiry["customerEmail"] ?? ""), customerAddress: String(inquiry["addressLine"] ?? ""),
+      customerCity: String(inquiry["city"] ?? ""), customerState: String(inquiry["state"] ?? ""),
+      customerPincode: String(inquiry["pincode"] ?? ""), customerGstin: "",
+      issueDate: now.toISOString().slice(0, 10), paymentStatus: "Draft", amountPaid: 0, amountDue: totalAmount,
+      items: [{ description, quantity, unit: "pcs", unitPrice: amount, taxRate, hsnCode }],
+      lineItemsSummary: description, subtotal, taxAmount, totalAmount,
+    });
+    await updateBusinessRecord(partnerId, "service-centre-inquiry", inquiryId, {
+      ...inquiry, status: "Converted", conversionType: "Sales Invoice",
+      convertedToInvoiceId: String(invoice.id), convertedAt: now.toISOString(),
+    });
+    return String(invoice.id);
+  });
+  if (typeof result !== "string") return result;
+  revalidatePath(`/partner/${partnerId}/service-centre/inquiries`);
+  revalidatePath(`/partner/${partnerId}/billing`);
+  redirect(`/partner/${partnerId}/billing/${result}?created=1`);
 }

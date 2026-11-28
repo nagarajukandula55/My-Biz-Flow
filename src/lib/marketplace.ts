@@ -20,7 +20,8 @@
  * write, right at this layer's edge (same convention as src/lib/wholesaleData.ts).
  */
 import { prisma } from "@/lib/prisma";
-import { assertPartnerScope } from "@/lib/tenant";
+import { assertModuleAccess, assertPartnerCanWrite, assertPartnerScope } from "@/lib/tenant";
+import { withRecordLock } from "@/lib/withRecordLock";
 
 export function paiseToRupees(paise: number): number {
   return Math.round(paise) / 100;
@@ -53,6 +54,8 @@ export async function getOrCreateMarketplaceVendor(partnerId: string): Promise<M
 }
 
 export async function setMarketplaceVendorActive(partnerId: string, isActive: boolean): Promise<void> {
+  await assertModuleAccess(partnerId, "marketplace");
+  await assertPartnerCanWrite(partnerId);
   await getOrCreateMarketplaceVendor(partnerId);
   await prisma.marketplaceVendor.update({ where: { partnerId }, data: { isActive } });
 }
@@ -94,6 +97,11 @@ export async function getMarketplaceListing(partnerId: string, id: string): Prom
 }
 
 export async function createMarketplaceListing(partnerId: string, input: MarketplaceListingInput): Promise<MarketplaceListingRow> {
+  await assertModuleAccess(partnerId, "marketplace");
+  await assertPartnerCanWrite(partnerId);
+  if (!input.title.trim()) throw new Error("Listing title is required.");
+  if (!Number.isSafeInteger(input.price) || input.price <= 0) throw new Error("Listing price must be a positive amount in paise.");
+  if (!Number.isSafeInteger(input.stockQuantity) || input.stockQuantity < 0) throw new Error("Stock quantity must be a whole number greater than or equal to zero.");
   return prisma.marketplaceListing.create({
     data: {
       partnerId,
@@ -108,6 +116,11 @@ export async function createMarketplaceListing(partnerId: string, input: Marketp
 }
 
 export async function updateMarketplaceListing(partnerId: string, id: string, input: MarketplaceListingInput): Promise<void> {
+  await assertModuleAccess(partnerId, "marketplace");
+  await assertPartnerCanWrite(partnerId);
+  if (!input.title.trim()) throw new Error("Listing title is required.");
+  if (!Number.isSafeInteger(input.price) || input.price <= 0) throw new Error("Listing price must be a positive amount in paise.");
+  if (!Number.isSafeInteger(input.stockQuantity) || input.stockQuantity < 0) throw new Error("Stock quantity must be a whole number greater than or equal to zero.");
   const existing = await prisma.marketplaceListing.findUniqueOrThrow({ where: { id } });
   assertPartnerScope(partnerId, existing.partnerId);
   await prisma.marketplaceListing.update({
@@ -206,12 +219,16 @@ export async function createMarketplaceOrder(
   partnerId: string,
   input: CreateMarketplaceOrderInput
 ): Promise<{ order: MarketplaceOrderRow } | { error: string }> {
+  await assertModuleAccess(partnerId, "marketplace");
+  await assertPartnerCanWrite(partnerId);
   const listing = await prisma.marketplaceListing.findUnique({ where: { id: input.listingId } });
   if (!listing) return { error: "Listing not found." };
   assertPartnerScope(partnerId, listing.partnerId);
 
-  const quantity = Math.max(1, Math.round(Number(input.quantity) || 0));
-  const customerName = input.customerName.trim();
+  const quantity = Number(input.quantity);
+  if (!Number.isSafeInteger(quantity) || quantity <= 0) return { error: "Quantity must be a positive whole number." };
+  if (!listing.isActive) return { error: "This listing is not available for ordering." };
+  const customerName = String(input.customerName ?? "").trim();
   if (!customerName) return { error: "Customer name is required." };
 
   if (listing.stockQuantity < quantity) {
@@ -257,30 +274,61 @@ export async function updateMarketplaceOrderStatus(
   id: string,
   status: MarketplaceOrderStatusValue
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const existing = await prisma.marketplaceOrder.findUniqueOrThrow({ where: { id } });
-  assertPartnerScope(partnerId, existing.partnerId);
+  await assertModuleAccess(partnerId, "marketplace");
+  await assertPartnerCanWrite(partnerId);
+  if (!(MARKETPLACE_ORDER_STATUSES as readonly string[]).includes(status)) {
+    return { ok: false, error: "Invalid marketplace order status." };
+  }
 
-  if (status === "Confirmed" && existing.status !== "Confirmed") {
-    try {
-      await prisma.$transaction(async (tx) => {
-        const listing = await tx.marketplaceListing.findUniqueOrThrow({ where: { id: existing.listingId } });
+  const scoped = await prisma.marketplaceOrder.findUnique({ where: { id } });
+  if (!scoped) return { ok: false, error: "Order not found." };
+  assertPartnerScope(partnerId, scoped.partnerId);
+
+  try {
+    return await withRecordLock("marketplace-listing", scoped.listingId, async () => {
+      const existing = await prisma.marketplaceOrder.findUnique({ where: { id } });
+      if (!existing) return { ok: false, error: "Order not found." };
+      assertPartnerScope(partnerId, existing.partnerId);
+      if (existing.status === status) return { ok: true };
+
+      const allowedNext: Record<string, readonly MarketplaceOrderStatusValue[]> = {
+        Pending: ["Confirmed", "Cancelled"],
+        Confirmed: ["Shipped", "Cancelled"],
+        Shipped: ["Delivered"],
+        Delivered: [],
+        Cancelled: [],
+      };
+      if (!allowedNext[existing.status]?.includes(status)) {
+        return { ok: false, error: `Order cannot move from ${existing.status} to ${status}.` };
+      }
+
+      const listing = await prisma.marketplaceListing.findUnique({ where: { id: existing.listingId } });
+      if (!listing) return { ok: false, error: "Listing not found." };
+      assertPartnerScope(partnerId, listing.partnerId);
+
+      if (status === "Confirmed") {
+        if (!listing.isActive) return { ok: false, error: "This listing is no longer active." };
         if (listing.stockQuantity < existing.quantity) {
-          throw new Error(
-            `Insufficient stock for "${listing.title}": ${listing.stockQuantity} available, ${existing.quantity} required to confirm this order.`
-          );
+          return {
+            ok: false,
+            error: `Insufficient stock for "${listing.title}": ${listing.stockQuantity} available, ${existing.quantity} required to confirm this order.`,
+          };
         }
-        await tx.marketplaceListing.update({
+        await prisma.marketplaceListing.update({
           where: { id: listing.id },
           data: { stockQuantity: { decrement: existing.quantity } },
         });
-        await tx.marketplaceOrder.update({ where: { id }, data: { status } });
-      });
-      return { ok: true };
-    } catch (err) {
-      return { ok: false, error: err instanceof Error ? err.message : "Failed to confirm order." };
-    }
-  }
+      } else if (status === "Cancelled" && existing.status === "Confirmed") {
+        await prisma.marketplaceListing.update({
+          where: { id: listing.id },
+          data: { stockQuantity: { increment: existing.quantity } },
+        });
+      }
 
-  await prisma.marketplaceOrder.update({ where: { id }, data: { status } });
-  return { ok: true };
+      await prisma.marketplaceOrder.update({ where: { id }, data: { status } });
+      return { ok: true };
+    });
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Failed to update order." };
+  }
 }

@@ -38,7 +38,9 @@ export async function createWholesaleOrderAction(partnerId: string, values: { cu
     if (partner && customer) await sendPartnerTelegramAlert(partnerId, "wholesaleCreditLimitBreach", await wholesaleCreditLimitBreachMessage({ partnerBusinessName: partner.businessName, customerName: customer.name, amount: `₹${paiseToRupees(resolved.pricing.totalAmount)}`, outstanding: `₹${paiseToRupees(credit.outstanding)}`, creditLimit: `₹${paiseToRupees(credit.creditLimit)}` }));
     return { error: credit.error };
   }
-  const order = await createWholesaleOrder(partnerId, { customerId, priceTierId: values.priceTierId || null, orderDate, lines: resolved.lines, source: "Distributor" });
+  let order;
+  try { order = await createWholesaleOrder(partnerId, { customerId, priceTierId: values.priceTierId || null, orderDate, lines: resolved.lines, source: "Distributor" }); }
+  catch (error) { return { error: error instanceof Error ? error.message : "Could not create the purchase order." }; }
   const partner = await getPartner(partnerId);
   if (partner) await sendPartnerTelegramAlert(partnerId, "wholesaleLargeOrder", await wholesaleLargeOrderMessage({ partnerBusinessName: partner.businessName, orderNumber: order.orderNumber, customerName: order.customerName, amount: `₹${paiseToRupees(order.totalAmount)}` }));
   revalidatePath(`/partner/${partnerId}/wholesale-b2b`);
@@ -82,7 +84,9 @@ export async function recordWholesalePaymentAction(partnerId: string, orderId: s
   const amount = Math.round(Number(values.amount) * 100);
   try {
     const payment = await recordWholesalePayment(partnerId, orderId, { amount, method, reference: String(values.reference ?? "").slice(0, 120) });
-    await prisma.wholesaleOrderEvent.create({ data: { partnerId, orderId, eventType: "PaymentRecorded", actorType: "Distributor", actorId: partnerId, details: { paymentId: payment.id, amount, method, reference: values.reference || null } } });
+    if (!payment.replayed) {
+      await prisma.wholesaleOrderEvent.create({ data: { partnerId, orderId, eventType: "PaymentRecorded", actorType: "Distributor", actorId: partnerId, details: { paymentId: payment.payment.id, amount, method, reference: values.reference || null } } });
+    }
   } catch (error) { return { error: error instanceof Error ? error.message : "Could not record payment." }; }
   refresh(partnerId, orderId);
   return {};

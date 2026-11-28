@@ -1,7 +1,7 @@
 import type { Column, Row } from "@/components/DataTable";
 import type { RecordField } from "@/components/RecordDetail";
 import type { StatusVariant } from "@/components/StatusChip";
-import { paiseToRupees, type MarketplaceOrderRow } from "@/lib/marketplace";
+import type { MarketplaceOrderRow } from "@/lib/marketplace";
 
 // Field vocabulary for the Marketplace "Orders" pages (MarketplaceOrder,
 // Prisma-backed — see src/lib/marketplace.ts).
@@ -29,7 +29,7 @@ export function marketplaceOrderToRow(o: MarketplaceOrderRow): Row {
     customerName: o.customerName,
     customerContact: o.customerContact ?? "",
     quantity: o.quantity,
-    totalAmount: paiseToRupees(o.totalAmount),
+    totalAmount: Math.round(o.totalAmount) / 100,
     status: o.status,
     orderedAt: o.orderedAt.toISOString(),
   };

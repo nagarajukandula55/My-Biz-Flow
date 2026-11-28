@@ -53,8 +53,9 @@ export async function createEventBookingAction(partnerId: string, values: Bookin
   if (!values.startAt || !values.endAt) return { ok: false, message: "Start and end date/time are required." };
   if (new Date(values.endAt) <= new Date(values.startAt)) return { ok: false, message: "End must be after start." };
 
-  const input = toInput(values);
-  const result = await createEventBooking(partnerId, input);
+  let result;
+  try { result = await createEventBooking(partnerId, toInput(values)); }
+  catch (error) { return { ok: false, message: error instanceof Error ? error.message : "Could not create the booking." }; }
   if (!result.ok) {
     const conflictMsg = result.conflicts
       .map((c) => `${c.resourceName} is already booked on "${c.conflictingEventName}" (${c.conflictingBookingId})`)
@@ -76,8 +77,9 @@ export async function updateEventBookingAction(
   if (!values.startAt || !values.endAt) return { ok: false, message: "Start and end date/time are required." };
   if (new Date(values.endAt) <= new Date(values.startAt)) return { ok: false, message: "End must be after start." };
 
-  const input = toInput(values);
-  const result = await updateEventBooking(partnerId, bookingId, input);
+  let result;
+  try { result = await updateEventBooking(partnerId, bookingId, toInput(values)); }
+  catch (error) { return { ok: false, message: error instanceof Error ? error.message : "Could not update the booking." }; }
   if (!result.ok) {
     if (result.message) return { ok: false, message: result.message };
     const conflictMsg = result.conflicts

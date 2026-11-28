@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { StatusChip } from "@/components/StatusChip";
 import { Modal } from "@/components/Modal";
 import { SearchSelectModal, type SearchSelectOption } from "@/components/SearchSelectModal";
-import { DELIVERY_STAGES, type DeliveryStage } from "@/lib/logisticsFleet";
+import { DELIVERY_STAGES, type DeliveryStage } from "@/lib/logisticsFleetShared";
 import { assignDriverAction, advanceDeliveryStageAction } from "./actions";
 
 const STAGE_VARIANT: Record<DeliveryStage, "neutral" | "teal" | "success" | "danger"> = {
@@ -92,32 +92,39 @@ export function DeliveryLifecycle({
       return;
     }
     setBlockedMessage(null);
-    setStage(next);
     startPersist(async () => {
-      await advanceDeliveryStageAction(partnerId, tripId, next);
-      router.refresh();
+      try {
+        await advanceDeliveryStageAction(partnerId, tripId, next);
+        setStage(next);
+        router.refresh();
+      } catch (error) { setBlockedMessage(error instanceof Error ? error.message : "Could not update delivery."); }
     });
   }
 
   function confirmDelivered() {
-    if (!proofRecipient.trim()) return;
-    setStage("Delivered");
+    if (!proofRecipient.trim() || !proofNotes.trim()) return;
     setProofOpen(false);
     startPersist(async () => {
-      await advanceDeliveryStageAction(partnerId, tripId, "Delivered", {
-        recipientName: proofRecipient,
-        deliveryNotes: proofNotes,
-      });
-      router.refresh();
+      try {
+        await advanceDeliveryStageAction(partnerId, tripId, "Delivered", {
+          recipientName: proofRecipient,
+          deliveryNotes: proofNotes,
+        });
+        setStage("Delivered");
+        router.refresh();
+      } catch (error) { setBlockedMessage(error instanceof Error ? error.message : "Could not complete delivery."); }
     });
   }
 
   function confirmFailed() {
-    setStage("Failed");
+    if (!failReasonInput.trim()) return;
     setFailOpen(false);
     startPersist(async () => {
-      await advanceDeliveryStageAction(partnerId, tripId, "Failed", undefined, failReasonInput);
-      router.refresh();
+      try {
+        await advanceDeliveryStageAction(partnerId, tripId, "Failed", undefined, failReasonInput);
+        setStage("Failed");
+        router.refresh();
+      } catch (error) { setBlockedMessage(error instanceof Error ? error.message : "Could not mark delivery failed."); }
     });
   }
 
@@ -220,7 +227,7 @@ export function DeliveryLifecycle({
             <button type="button" className="btn-outline" onClick={() => setProofOpen(false)}>
               Cancel
             </button>
-            <button type="button" className="btn-accent" onClick={confirmDelivered} disabled={!proofRecipient.trim()}>
+            <button type="button" className="btn-accent" onClick={confirmDelivered} disabled={!proofRecipient.trim() || !proofNotes.trim()}>
               Confirm Delivered
             </button>
           </>
@@ -238,7 +245,7 @@ export function DeliveryLifecycle({
             />
           </div>
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-text-muted">Signature / Notes</label>
+            <label className="text-xs font-semibold uppercase tracking-wide text-text-muted">Signature / Notes *</label>
             <textarea
               value={proofNotes}
               onChange={(e) => setProofNotes(e.target.value)}
@@ -260,7 +267,7 @@ export function DeliveryLifecycle({
             <button type="button" className="btn-outline" onClick={() => setFailOpen(false)}>
               Cancel
             </button>
-            <button type="button" className="btn-accent" onClick={confirmFailed}>
+            <button type="button" className="btn-accent" onClick={confirmFailed} disabled={!failReasonInput.trim()}>
               Mark Failed
             </button>
           </>

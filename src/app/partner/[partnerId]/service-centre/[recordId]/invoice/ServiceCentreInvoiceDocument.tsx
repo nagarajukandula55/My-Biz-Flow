@@ -47,6 +47,7 @@ export function ServiceCentreInvoiceDocument({
   advanceExcess = 0,
   customerName,
   customerPhone,
+  customerAlternatePhone,
   customerEmail,
   customerGstin,
   customerAddress,
@@ -90,6 +91,7 @@ export function ServiceCentreInvoiceDocument({
   advanceExcess?: number;
   customerName: string;
   customerPhone?: string;
+  customerAlternatePhone?: string;
   customerEmail?: string;
   /** Present => the job was billed to a GST-registered party, i.e. B2B. */
   customerGstin?: string;
@@ -199,6 +201,7 @@ export function ServiceCentreInvoiceDocument({
       partnerAddress: companyAddress,
       customerName,
       customerPhone: customerPhone ?? "",
+      customerAlternatePhone: customerAlternatePhone ?? "",
       customerEmail: customerEmail ?? "",
       customerGstin: customerGstin ?? "",
       customerAddress: customerFullAddress,
@@ -307,6 +310,7 @@ export function ServiceCentreInvoiceDocument({
           <div className="ric-sectionTitle">BILL TO</div>
           <div>{safe(customerName)}</div>
           <div>{safe(customerPhone)}</div>
+          {customerAlternatePhone && <div>Alternate Contact No: {customerAlternatePhone}</div>}
           {customerEmail && <div>Email: {customerEmail}</div>}
           <div>{safe(customerFullAddress)}</div>
           {isB2B && (

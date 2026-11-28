@@ -8,7 +8,7 @@ const db=load('src/lib/databaseTransaction.ts',{'node:async_hooks':require('node
 const prisma=db.transactionAwareClient(base);
 const lock=load('src/lib/withRecordLock.ts',{'@/lib/prisma':{prisma},'@/lib/databaseTransaction':db});
 let owner=true;
-const common={'@/lib/prisma':{prisma},'@/lib/withRecordLock':lock,'@/lib/tenant':{assertModuleAccess:async()=>{},assertPartnerCanWrite:async()=>{}}};
+const common={'@/lib/prisma':{prisma},'@/lib/withRecordLock':lock,'@/lib/tenant':{assertModuleAccess:async()=>{},assertPartnerCanWrite:async()=>{}},'@/lib/listPagination':load('src/lib/listPagination.ts')};
 const accounting=load('src/lib/accounting.ts',common);
 const api=load('src/lib/accountingReversal.ts',{...common,'@/lib/accounting':accounting,'@/lib/requirePartnerSession':{requireSessionPartnerId:async()=>{if(!owner)throw Error('Owner required');}}});
 const partnerId='reversal-'+crypto.randomUUID();

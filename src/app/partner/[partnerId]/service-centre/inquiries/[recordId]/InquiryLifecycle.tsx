@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import type { Row } from "@/components/DataTable";
 import { StatusChip } from "@/components/StatusChip";
-import { closeInquiryAction, convertInquiryToWorkorderAction } from "../actions";
-import { INQUIRY_CLOSE_REASONS, INQUIRY_STATUS_VARIANT } from "@/lib/sample-data/service-centre-inquiry";
+import { cancelInquiryAction, convertInquiryToWorkorderAction, convertInquiryToSalesInvoiceAction } from "../actions";
+import { INQUIRY_CLOSE_REASONS, INQUIRY_STATUS_VARIANT, effectiveInquiryStatus } from "@/lib/sample-data/service-centre-inquiry";
 
 /**
  * Open -> Converted | Closed. Same shape as ClinicLifecycle.tsx: a status
@@ -18,16 +19,25 @@ export function InquiryLifecycle({
   partnerId,
   inquiryId,
   record,
+  canIssueGst,
 }: {
   partnerId: string;
   inquiryId: string;
   record: Row;
+  canIssueGst: boolean;
 }) {
-  const status = String(record["status"] ?? "Open");
+  const status = effectiveInquiryStatus(record);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [closeModalOpen, setCloseModalOpen] = useState(false);
   const [closeReason, setCloseReason] = useState("");
+  const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
+  const [invoiceDescription, setInvoiceDescription] = useState(String(record["complaint"] ?? ""));
+  const [invoiceAmount, setInvoiceAmount] = useState("");
+  const [invoiceQuantity, setInvoiceQuantity] = useState("1");
+  const [invoiceHsnCode, setInvoiceHsnCode] = useState("");
+  const [invoiceType, setInvoiceType] = useState<"GST" | "Non-GST">(canIssueGst ? "GST" : "Non-GST");
+  const [taxRate, setTaxRate] = useState(canIssueGst ? "18" : "0");
   // Set only when the inquiry doesn't already have everything a workorder
   // needs (missing address/city/state/pincode, most commonly) — the modal
   // below asks for exactly these fields, nothing more, then retries the
@@ -75,9 +85,23 @@ export function InquiryLifecycle({
     const formData = new FormData();
     formData.set("closeReason", closeReason);
     startTransition(async () => {
-      const result = await closeInquiryAction(partnerId, inquiryId, formData);
+      const result = await cancelInquiryAction(partnerId, inquiryId, String(formData.get("closeReason") ?? ""));
       if (result?.error) setError(result.error);
       else setCloseModalOpen(false);
+    });
+  }
+
+  function submitInvoice() {
+    setError(null);
+    startTransition(async () => {
+      try {
+        const result = await convertInquiryToSalesInvoiceAction(partnerId, inquiryId, {
+          description: invoiceDescription, quantity: Number(invoiceQuantity), amount: Number(invoiceAmount), taxRate: Number(taxRate), hsnCode: invoiceHsnCode, invoiceType,
+        });
+        if (result?.error) setError(result.error);
+      } catch (cause) {
+        setError(cause instanceof Error ? cause.message : "Could not create the sales invoice.");
+      }
     });
   }
 
@@ -92,12 +116,22 @@ export function InquiryLifecycle({
         {status === "Open" && (
           <div className="flex items-center gap-2">
             <button type="button" className="btn-outline" disabled={isPending} onClick={() => setCloseModalOpen(true)}>
-              Close
+              Cancel Inquiry
             </button>
             <button type="button" className="btn-accent" disabled={isPending} onClick={() => convert()}>
               Convert to Workorder
             </button>
+            <button type="button" className="btn-accent" disabled={isPending} onClick={() => setInvoiceModalOpen(true)}>
+              Convert to Sales Invoice
+            </button>
           </div>
+        )}
+        {status === "Converted" && Boolean(record["convertedToInvoiceId"] || record["convertedToWorkorderId"]) && (
+          <Link className="btn-outline" href={record["convertedToInvoiceId"]
+            ? `/partner/${partnerId}/billing/${String(record["convertedToInvoiceId"])}`
+            : `/partner/${partnerId}/service-centre/${String(record["convertedToWorkorderId"])}`}>
+            View {record["convertedToInvoiceId"] ? "Sales Invoice" : "Workorder"}
+          </Link>
         )}
       </div>
 
@@ -108,7 +142,7 @@ export function InquiryLifecycle({
       {closeModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <div className="w-full max-w-sm rounded-lg border border-border bg-bg-raised p-5">
-            <h3 className="font-display text-base font-bold text-text">Close Inquiry</h3>
+            <h3 className="font-display text-base font-bold text-text">Cancel Inquiry</h3>
             <label className="mt-3 block text-xs font-semibold uppercase tracking-wide text-text-muted">
               Reason
               <select
@@ -124,13 +158,51 @@ export function InquiryLifecycle({
                 ))}
               </select>
             </label>
+            {error && <p role="alert" className="mt-2 text-sm text-danger">{error}</p>}
             <div className="mt-4 flex justify-end gap-2">
               <button type="button" className="btn-outline" onClick={() => setCloseModalOpen(false)} disabled={isPending}>
                 Cancel
               </button>
               <button type="button" className="btn-accent" onClick={submitClose} disabled={isPending}>
-                Close Inquiry
+                Confirm Cancellation
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {invoiceModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-md rounded-lg border border-border bg-bg-raised p-5">
+            <h3 className="font-display text-base font-bold text-text">Create Sales Invoice</h3>
+            <p className="mt-1 text-sm text-text-muted">Review the item, amount, and tax before converting this inquiry. The invoice starts as Draft.</p>
+            <label className="mt-3 block text-sm text-text">Item or service description
+              <input value={invoiceDescription} onChange={(e) => setInvoiceDescription(e.target.value)} className="mt-1 w-full rounded border border-border bg-bg p-2" />
+            </label>
+            <label className="mt-3 block text-sm text-text">Quantity
+              <input type="number" min="1" step="1" value={invoiceQuantity} onChange={(e) => setInvoiceQuantity(e.target.value)} className="mt-1 w-full rounded border border-border bg-bg p-2" />
+            </label>
+            <label className="mt-3 block text-sm text-text">Unit price before tax
+              <input type="number" min="0.01" step="0.01" value={invoiceAmount} onChange={(e) => setInvoiceAmount(e.target.value)} className="mt-1 w-full rounded border border-border bg-bg p-2" />
+            </label>
+            <label className="mt-3 block text-sm text-text">Invoice type
+              <select value={invoiceType} onChange={(e) => { const type = e.target.value as "GST" | "Non-GST"; setInvoiceType(type); if (type === "Non-GST") setTaxRate("0"); }} className="mt-1 w-full rounded border border-border bg-bg p-2">
+                <option value="Non-GST">Non-GST</option>
+                {canIssueGst && <option value="GST">GST</option>}
+              </select>
+            </label>
+            {invoiceType === "GST" && <label className="mt-3 block text-sm text-text">GST rate
+              <select value={taxRate} onChange={(e) => setTaxRate(e.target.value)} className="mt-1 w-full rounded border border-border bg-bg p-2">
+                {[0, 0.25, 3, 5, 12, 18, 28].map((rate) => <option key={rate} value={rate}>{rate}%</option>)}
+              </select>
+            </label>}
+            {invoiceType === "GST" && <label className="mt-3 block text-sm text-text">HSN/SAC code
+              <input value={invoiceHsnCode} onChange={(e) => setInvoiceHsnCode(e.target.value)} className="mt-1 w-full rounded border border-border bg-bg p-2" />
+            </label>}
+            {error && <p role="alert" className="mt-2 text-sm text-danger">{error}</p>}
+            <div className="mt-4 flex justify-end gap-2">
+              <button type="button" className="btn-outline" disabled={isPending} onClick={() => setInvoiceModalOpen(false)}>Back</button>
+              <button type="button" className="btn-accent" disabled={isPending} onClick={submitInvoice}>Create Draft Invoice</button>
             </div>
           </div>
         </div>
@@ -156,6 +228,7 @@ export function InquiryLifecycle({
                 </label>
               ))}
             </div>
+            {error && <p role="alert" className="mt-2 text-sm text-danger">{error}</p>}
             <div className="mt-4 flex justify-end gap-2">
               <button type="button" className="btn-outline" onClick={() => setMissingFields(null)} disabled={isPending}>
                 Cancel

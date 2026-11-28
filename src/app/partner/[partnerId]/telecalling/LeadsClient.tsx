@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { StatusChip } from "@/components/StatusChip";
 import { createLeadAction, importLeadsAction, assignLeadAction, bulkAssignLeadsAction, listTerritoryCitiesAction } from "@/lib/telecalling/actions";
-import { LEAD_STATUSES } from "@/lib/telecalling/leadsData";
+import { LEAD_STATUSES } from "@/lib/telecalling/shared";
 import { downloadCsvTemplate } from "@/lib/downloadCsvTemplate";
 
 type Lead = {

@@ -1,7 +1,7 @@
 import type { Column, Row } from "@/components/DataTable";
 import type { RecordField } from "@/components/RecordDetail";
 import type { FormFieldDef } from "@/components/RecordForm";
-import { paiseToRupees, type WholesaleCustomerRow } from "@/lib/wholesaleData";
+import type { WholesaleCustomerRow } from "@/lib/wholesaleData";
 
 // Field vocabulary for the Wholesale B2B "Customers" sub-page (WholesaleCustomer,
 // Prisma-backed — see src/lib/wholesaleData.ts). Money fields render in rupees;
@@ -31,7 +31,7 @@ export function wholesaleCustomerToRow(c: WholesaleCustomerRow): Row {
     name: c.name,
     contact: c.contact ?? "",
     gstin: c.gstin ?? "",
-    creditLimit: paiseToRupees(c.creditLimit),
+    creditLimit: Math.round(c.creditLimit) / 100,
     creditTermDays: c.creditTermDays,
     isActive: c.isActive,
   };

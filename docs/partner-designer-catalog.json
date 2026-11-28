@@ -2616,6 +2616,17 @@
     "sourceFile": "src/app/partner/[partnerId]/hotel/page.tsx"
   },
   {
+    "id": "hotel.offline-drafts",
+    "moduleSlug": "hotel",
+    "title": "Hotel - Offline Reservation Drafts",
+    "path": "/partner/[partnerId]/hotel/offline-drafts",
+    "kind": "form",
+    "superAdminOnly": false,
+    "customizableRegions": [],
+    "explanation": "Review locally saved reservation requests. Sync rechecks room availability, dates, guest capacity, tax settings, and current rates online; payments and check-in/out require a connection.",
+    "sourceFile": "src/app/partner/[partnerId]/hotel/offline-drafts/page.tsx"
+  },
+  {
     "id": "hotel.rooms",
     "moduleSlug": "hotel",
     "title": "Hotel rooms and housekeeping",
@@ -4842,25 +4853,12 @@
   {
     "id": "restaurant-pos.create",
     "moduleSlug": "restaurant-pos",
-    "title": "Restaurant POS — Create",
+    "title": "Restaurant POS - New Order",
     "path": "/partner/[partnerId]/restaurant-pos/new",
     "kind": "form",
     "superAdminOnly": false,
-    "customizableRegions": [
-      {
-        "key": "form-fields",
-        "label": "Form fields"
-      },
-      {
-        "key": "validation-rules",
-        "label": "Validation rules"
-      },
-      {
-        "key": "default-values",
-        "label": "Default values"
-      }
-    ],
-    "explanation": "A config-driven creation form for a new order in the restaurant-pos module, built from the module's real field set via the shared RecordForm component. Submission is a client-side demo stub — no backend is wired up in this pass.",
+    "customizableRegions": [],
+    "explanation": "Routes staff to the live table floor, where orders are created with configured menu items and kitchen tracking.",
     "sourceFile": "src/app/partner/[partnerId]/restaurant-pos/new/page.tsx"
   },
   {
@@ -4884,32 +4882,35 @@
         "label": "Related records rail"
       }
     ],
-    "explanation": "Read-only detail view of a single order, rendered via the shared RecordDetail component (field grid + activity timeline), with Edit and Delete actions in the header.",
+    "explanation": "Read-only detail view of a single persistent table order and its kitchen and billing status.",
     "sourceFile": "src/app/partner/[partnerId]/restaurant-pos/[recordId]/page.tsx"
   },
   {
     "id": "restaurant-pos.edit",
     "moduleSlug": "restaurant-pos",
-    "title": "Restaurant POS — Edit",
+    "title": "Restaurant POS - Edit Order",
     "path": "/partner/[partnerId]/restaurant-pos/[recordId]/edit",
     "kind": "form",
     "superAdminOnly": false,
+    "customizableRegions": [],
+    "explanation": "Routes staff to the live order screen. Order lines and payment state are changed through the table workflow to preserve KOT and billing history.",
+    "sourceFile": "src/app/partner/[partnerId]/restaurant-pos/[recordId]/edit/page.tsx"
+  },
+  {
+    "id": "restaurant-pos.kitchen",
+    "moduleSlug": "restaurant-pos",
+    "title": "Restaurant Kitchen Queue",
+    "path": "/partner/[partnerId]/restaurant-pos/kitchen",
+    "kind": "list",
+    "superAdminOnly": false,
     "customizableRegions": [
       {
-        "key": "form-fields",
-        "label": "Form fields"
-      },
-      {
-        "key": "validation-rules",
-        "label": "Validation rules"
-      },
-      {
-        "key": "default-values",
-        "label": "Default values"
+        "key": "kitchen-ticket-fields",
+        "label": "Kitchen tickets"
       }
     ],
-    "explanation": "The same config-driven RecordForm pre-populated with an existing order's sample data, letting a user edit and save changes (demo stub, no persistence yet).",
-    "sourceFile": "src/app/partner/[partnerId]/restaurant-pos/[recordId]/edit/page.tsx"
+    "explanation": "Shows all sent kitchen tickets for active orders and refreshes every 15 seconds. Kitchen staff can mark completed tickets served from this screen.",
+    "sourceFile": "src/app/partner/[partnerId]/restaurant-pos/kitchen/page.tsx"
   },
   {
     "id": "restaurant-pos.list",
@@ -4932,8 +4933,51 @@
         "label": "List / Kanban view options"
       }
     ],
-    "explanation": "Lists every order record for the restaurant-pos module in a sortable table, with a \"+ New\" action to create one and row-click navigation into the record's detail view.",
+    "explanation": "Lists persistent restaurant order history. New orders start from a configurable service point such as a table, hut, cabin, or room.",
     "sourceFile": "src/app/partner/[partnerId]/restaurant-pos/page.tsx"
+  },
+  {
+    "id": "restaurant-pos.menu",
+    "moduleSlug": "restaurant-pos",
+    "title": "Restaurant Menu",
+    "path": "/partner/[partnerId]/restaurant-pos/menu",
+    "kind": "form",
+    "superAdminOnly": false,
+    "customizableRegions": [
+      {
+        "key": "menu-items",
+        "label": "Menu items and prices"
+      }
+    ],
+    "explanation": "Manage restaurant-specific menu items, categories, prices and tax rates. Changes apply to new order lines; existing orders retain the price and tax captured when items were added.",
+    "sourceFile": "src/app/partner/[partnerId]/restaurant-pos/menu/page.tsx"
+  },
+  {
+    "id": "restaurant-pos.offline-drafts",
+    "moduleSlug": "restaurant-pos",
+    "title": "Restaurant - Offline Drafts",
+    "path": "/partner/[partnerId]/restaurant-pos/offline-drafts",
+    "kind": "form",
+    "superAdminOnly": false,
+    "customizableRegions": [],
+    "explanation": "Review locally saved restaurant order drafts. Sync validates table availability and current menu pricing online before creating orders, bills, or kitchen tickets.",
+    "sourceFile": "src/app/partner/[partnerId]/restaurant-pos/offline-drafts/page.tsx"
+  },
+  {
+    "id": "restaurant-pos.settings",
+    "moduleSlug": "restaurant-pos",
+    "title": "Restaurant setup",
+    "path": "/partner/[partnerId]/restaurant-pos/settings",
+    "kind": "form",
+    "superAdminOnly": false,
+    "customizableRegions": [
+      {
+        "key": "operating-preferences",
+        "label": "Service-point and kitchen settings"
+      }
+    ],
+    "explanation": "Set the custom name used for tables, rooms, huts, or other order locations, and choose whether to use the internal kitchen queue.",
+    "sourceFile": "src/app/partner/[partnerId]/restaurant-pos/settings/page.tsx"
   },
   {
     "id": "restaurant-pos.table-order",
@@ -4949,12 +4993,17 @@
   {
     "id": "restaurant-pos.tables",
     "moduleSlug": "restaurant-pos",
-    "title": "Restaurant POS — Table Floor",
+    "title": "Restaurant POS - Table Floor",
     "path": "/partner/[partnerId]/restaurant-pos/tables",
     "kind": "list",
     "superAdminOnly": false,
-    "customizableRegions": [],
-    "explanation": "The real front-of-house floor view: every table on a fixed floor plan, showing Free vs an order's live status (Open/In kitchen/Served). Clicking a table opens its live cart (tables/[tableNumber]) to add items, send a KOT to the kitchen, and settle the bill — the generic KOT list at restaurant-pos/ stays as the historical order log.",
+    "customizableRegions": [
+      {
+        "key": "table-inventory",
+        "label": "Restaurant tables"
+      }
+    ],
+    "explanation": "Manage the active restaurant table floor. Tables with open orders cannot be removed; archived tables can be restored by adding the same name again.",
     "sourceFile": "src/app/partner/[partnerId]/restaurant-pos/tables/page.tsx"
   },
   {

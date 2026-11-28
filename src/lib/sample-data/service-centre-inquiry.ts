@@ -15,17 +15,29 @@ import { SERVICE_TYPES, serviceTypeLabel } from "@/lib/serviceTypes";
 // so the dashboard can actually summarize WHY inquiries don't turn into
 // business, not just that they didn't.
 
-export const INQUIRY_STATUSES = ["Open", "Converted", "Closed"] as const;
+export const INQUIRY_STATUSES = ["Open", "Converted", "Closed", "Cancelled"] as const;
 export type InquiryStatus = (typeof INQUIRY_STATUSES)[number];
+
+/** Older generic edits could drop status; infer it from retained transition evidence. */
+export function effectiveInquiryStatus(record: Record<string, unknown>): InquiryStatus {
+  const status = String(record["status"] ?? "");
+  if (INQUIRY_STATUSES.includes(status as InquiryStatus)) return status as InquiryStatus;
+  if (record["convertedToInvoiceId"] || record["convertedToWorkorderId"] || record["convertedAt"]) return "Converted";
+  if (record["cancelledAt"]) return "Cancelled";
+  if (record["closedAt"]) return "Closed";
+  return "Open";
+}
 
 export const INQUIRY_STATUS_VARIANT: Record<string, "neutral" | "teal" | "success" | "warning" | "danger"> = {
   Open: "teal",
   Converted: "success",
   Closed: "neutral",
+  Cancelled: "danger",
 };
 
 /** Standardised close reasons — a dropdown, not free text, so the dashboard can summarize by reason. */
 export const INQUIRY_CLOSE_REASONS = [
+  "Customer cancelled",
   "Customer not interested",
   "Price declined",
   "Went to another service centre",
@@ -70,6 +82,7 @@ export const inquiryFormFields: FormFieldDef[] = [
 ];
 
 export function getInquiryDetailFields(record: Row): RecordField[] {
+  record = { ...record, status: effectiveInquiryStatus(record) };
   return [
     { label: "Inquiry No", value: record["id"], type: "text" },
     { label: "Customer Name", value: record["customerName"], type: "text" },
@@ -91,13 +104,17 @@ export function getInquiryDetailFields(record: Row): RecordField[] {
     ...(record["status"] === "Closed"
       ? [{ label: "Close Reason", value: record["closeReason"], type: "text" as const }]
       : []),
+    ...(record["status"] === "Cancelled"
+      ? [{ label: "Cancellation Reason", value: record["cancelReason"], type: "text" as const }]
+      : []),
     ...(record["status"] === "Converted"
-      ? [{ label: "Converted To Workorder", value: record["convertedToWorkorderId"], type: "text" as const }]
+      ? [{ label: record["convertedToInvoiceId"] ? "Converted To Sales Invoice" : "Converted To Workorder", value: record["convertedToInvoiceId"] ?? record["convertedToWorkorderId"], type: "text" as const }]
       : []),
   ];
 }
 
 export function getInquiryTimeline(record: Row): TimelineEntry[] {
+  record = { ...record, status: effectiveInquiryStatus(record) };
   const entries: TimelineEntry[] = [
     {
       id: "t1",
@@ -114,10 +131,18 @@ export function getInquiryTimeline(record: Row): TimelineEntry[] {
       actor: "Staff",
     });
   }
+  if (record["status"] === "Cancelled") {
+    entries.push({
+      id: "t2",
+      label: `Cancelled - ${record["cancelReason"] ?? "No reason given"}`,
+      timestamp: String(record["cancelledAt"] ?? ""),
+      actor: "Staff",
+    });
+  }
   if (record["status"] === "Converted") {
     entries.push({
       id: "t2",
-      label: `Converted to workorder ${record["convertedToWorkorderId"] ?? ""}`,
+      label: record["convertedToInvoiceId"] ? `Converted to sales invoice ${record["convertedToInvoiceId"]}` : `Converted to workorder ${record["convertedToWorkorderId"] ?? ""}`,
       timestamp: String(record["convertedAt"] ?? ""),
       actor: "Staff",
     });

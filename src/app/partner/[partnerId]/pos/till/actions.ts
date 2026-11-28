@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requirePosStaffAction } from "@/lib/pos/posAuth";
+import { requirePosManager, requirePosStaffAction } from "@/lib/pos/posAuth";
 import { openTillSession, closeTillSession } from "@/lib/pos/posTill";
 
 export async function openTillSessionAction(
@@ -9,6 +9,7 @@ export async function openTillSessionAction(
   formData: FormData
 ): Promise<void | { error?: string }> {
   const staff = await requirePosStaffAction(partnerId);
+  requirePosManager(staff);
   const locationId = String(formData.get("locationId") ?? "").trim();
   const openingFloat = Number(formData.get("openingFloat") ?? 0);
 
@@ -29,6 +30,7 @@ export async function closeTillSessionAction(
   formData: FormData
 ): Promise<void | { error?: string }> {
   const staff = await requirePosStaffAction(partnerId);
+  requirePosManager(staff);
   const sessionId = String(formData.get("sessionId") ?? "").trim();
   const countedCash = Number(formData.get("countedCash") ?? 0);
   const notes = String(formData.get("notes") ?? "").trim();

@@ -2,7 +2,7 @@ import type { Column, Row } from "@/components/DataTable";
 import type { RecordField } from "@/components/RecordDetail";
 import type { FormFieldDef } from "@/components/RecordForm";
 import type { StatusVariant } from "@/components/StatusChip";
-import { paiseToRupees, type PropertyRow } from "@/lib/realEstateData";
+import type { PropertyRow } from "@/lib/realEstateData";
 
 // Field vocabulary for the Real Estate "Properties" sub-page (Property,
 // Prisma-backed — see src/lib/realEstateData.ts). Money fields render in
@@ -47,7 +47,7 @@ export function propertyToRow(p: PropertyRow): Row {
     address: p.address,
     latitude: p.latitude ?? "",
     longitude: p.longitude ?? "",
-    price: paiseToRupees(p.price),
+    price: Math.round(p.price) / 100,
     areaSqft: p.areaSqft ?? "",
     bedrooms: p.bedrooms ?? "",
     listingStatus: p.listingStatus,

@@ -36,7 +36,10 @@ export default async function PosReportsPage({
   params: { partnerId: string };
   searchParams?: { from?: string; to?: string };
 }) {
-  await requirePosStaff(params.partnerId);
+  const staff = await requirePosStaff(params.partnerId);
+  if (staff.role !== "Manager") {
+    return <AppShell topbarTitle="POS - Reports"><p className="mt-6 rounded-md border border-border bg-bg-raised p-5 text-sm text-text-muted">Manager access is required to view POS sales reports.</p></AppShell>;
+  }
   const tierGate = await renderTierGate(params.partnerId, "pos.reports", "Reports");
   if (tierGate) return <AppShell topbarTitle="POS — Reports">{tierGate}</AppShell>;
   const { from, to } = searchParams ?? {};

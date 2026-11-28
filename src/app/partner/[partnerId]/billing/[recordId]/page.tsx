@@ -52,11 +52,14 @@ export default async function BillingDetailPage({
   // heading should show that instead.
   const displayInvoiceNumber = String(record["invoiceNumber"] ?? recordLabel);
   const payments = await listBusinessRecords(params.partnerId, "billing-payments");
-  const { paid, balance, payments: linkedPayments } = getInvoiceBalance(
+  const paymentBalance = getInvoiceBalance(
     payments,
     recordLabel,
     Number(record["totalAmount"] ?? 0)
   );
+  const paid = paymentBalance.payments.length ? paymentBalance.paid : Number(record["amountPaid"] ?? (record["paymentStatus"] === "Paid" ? record["totalAmount"] : 0));
+  const balance = Math.max(0, Number(record["totalAmount"] ?? 0) - paid);
+  const linkedPayments = paymentBalance.payments;
 
   return (
     <AppShell topbarTitle={mod?.label ?? "Billing"}>
@@ -84,12 +87,18 @@ export default async function BillingDetailPage({
                 >
                   View document
                 </Link>
-                <Link
+                {!record["sourcePosSaleId"] && <Link
                   href={`/partner/${params.partnerId}/billing/${params.recordId}/edit`}
                   className="btn-outline"
                 >
                   Edit
-                </Link>
+                </Link>}
+                {Boolean(record["posCreditNoteId"]) && <Link
+                  href={`/partner/${params.partnerId}/billing/credit-notes/${String(record["posCreditNoteId"])}/document`}
+                  className="btn-outline"
+                >
+                  Credit note
+                </Link>}
                 <DeleteBusinessRecordButton
                   partnerId={params.partnerId}
                   moduleSlug="billing"
@@ -102,6 +111,7 @@ export default async function BillingDetailPage({
         />
 
         <div className="mt-6 rounded-lg border border-border bg-bg-raised p-4">
+          {Number(record["amountRefunded"] ?? 0) > 0 && <p className="mb-3 text-sm text-text-muted">Refunded: {formatCurrencyINR(Number(record["amountRefunded"]))}. The original payment remains in the history below.</p>}
           <div className="flex items-center justify-between text-sm">
             <div className="flex gap-6">
               <div>

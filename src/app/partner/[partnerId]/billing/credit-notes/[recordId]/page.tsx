@@ -45,7 +45,7 @@ export default async function CreditNoteDetailPage({
     creditNoteColumns
   );
   const timeline = getCreditNoteTimeline();
-  const recordLabel = String(record["id"] ?? params.recordId);
+  const recordLabel = String(record["noteNumber"] ?? record["id"] ?? params.recordId);
 
   return (
     <AppShell topbarTitle="Credit / Debit Notes">
@@ -69,9 +69,9 @@ export default async function CreditNoteDetailPage({
                 <Link href={`/partner/${params.partnerId}/billing/credit-notes/${params.recordId}/document`} className="btn-outline">
                   View document
                 </Link>
-                <Link href={`/partner/${params.partnerId}/billing/credit-notes/${params.recordId}/edit`} className="btn-outline">
+                {!record["sourcePosSaleId"] && <Link href={`/partner/${params.partnerId}/billing/credit-notes/${params.recordId}/edit`} className="btn-outline">
                   Edit
-                </Link>
+                </Link>}
                 <DeleteBusinessRecordButton
                   partnerId={params.partnerId}
                   moduleSlug="billing-credit-notes"

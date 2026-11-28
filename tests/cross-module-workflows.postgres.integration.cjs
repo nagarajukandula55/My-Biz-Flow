@@ -13,7 +13,8 @@ const foreignId = partnerId + '-other';
 let deliveries = 0;
 const education = load('src/lib/education.ts', {
   '@/lib/prisma': { prisma }, '@/lib/withRecordLock': lock, '@/lib/databaseTransaction': db,
-  '@/lib/tenant': { assertPartnerScope: (expected, actual) => { if (expected !== actual) throw Error('Partner scope mismatch'); } },
+  '@/lib/tenant': { assertPartnerScope: (expected, actual) => { if (expected !== actual) throw Error('Partner scope mismatch'); }, assertPartnerCanWrite: async () => {} },
+  '@/lib/recordEntitlement': { assertRecordModuleAccess: async () => {} },
   '@/lib/partnerData': { getPartner: async () => ({ businessName: 'Synthetic school' }) },
   '@/lib/telegram': { sendPartnerTelegramAlert: async () => { assert.equal(db.inDatabaseTransaction(), false); deliveries++; } },
   '@/lib/telegramTemplates': { educationEnrollmentConfirmedMessage: async () => 'Synthetic enrollment' },
@@ -70,7 +71,7 @@ test('Education rollback does not send confirmation or retain enrollment', async
   assert.equal((await education.listEnrollmentsForBatch(partnerId, batch.id)).length, 0);
 });
 
-const manufacturing = load('src/lib/manufacturing.ts', { '@/lib/prisma': { prisma }, '@/lib/withRecordLock': lock, '@/lib/manufacturingTypes': load('src/lib/manufacturingTypes.ts') });
+const manufacturing = load('src/lib/manufacturing.ts', { '@/lib/prisma': { prisma }, '@/lib/withRecordLock': lock, '@/lib/manufacturingTypes': load('src/lib/manufacturingTypes.ts'), '@/lib/tenant': { assertPartnerCanWrite: async () => {} }, '@/lib/recordEntitlement': { assertRecordModuleAccess: async () => {} } });
 const manufacturingActions = load('src/app/partner/[partnerId]/manufacturing/actions.ts', {
   '@/lib/manufacturing': manufacturing,
   '@/lib/manufacturingStockPolicy': {}, '@/lib/inventoryAction': {}, '@/lib/databaseTransaction': db,
@@ -81,7 +82,7 @@ const manufacturingActions = load('src/app/partner/[partnerId]/manufacturing/act
 
 test('Manufacturing keeps BOM and work center within tenant and records atomic immutable completion history', async () => {
   const bom = await manufacturing.createBom(partnerId, { productName: 'Synthetic product', lines: [{ materialId: 'synthetic-material', materialLabel: 'Material', quantity: 2, unitCost: 100 }] });
-  const foreignBom = await manufacturing.createBom(foreignId, { productName: 'Private product', lines: [] });
+  const foreignBom = await manufacturing.createBom(foreignId, { productName: 'Private product', lines: [{ materialId: 'private-material', materialLabel: 'Private', quantity: 1, unitCost: 100 }] });
   const center = await manufacturing.createWorkCenter(partnerId, { name: 'Assembly' });
   const foreignCenter = await manufacturing.createWorkCenter(foreignId, { name: 'Private assembly' });
   const input = { productName: 'Synthetic product', bomId: bom.id, workCenterId: center.id, quantityPlanned: 5 };

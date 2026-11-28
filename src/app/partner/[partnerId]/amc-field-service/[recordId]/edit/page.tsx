@@ -36,7 +36,7 @@ export default async function EditAmcFieldServicePage({ params }: { params: { pa
     contractEndDate: contract.contractEndDate.toISOString().slice(0, 10),
     renewalTermMonths: contract.renewalTermMonths,
     slaHours: contract.slaHours,
-    contractValue: contract.contractValue,
+    contractValue: contract.contractValue / 100,
   };
 
   return (

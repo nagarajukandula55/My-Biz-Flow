@@ -96,6 +96,7 @@ export default async function ServiceCentreInvoicePage({
       collectedByName={record["collectedByName"] ? String(record["collectedByName"]) : undefined}
       customerName={String(record["customer"] ?? "Walk-in Customer")}
       customerPhone={String(record["customerPhone"] ?? "")}
+      customerAlternatePhone={String(record["customerAlternatePhone"] ?? "")}
       customerEmail={String(record["customerEmail"] ?? "")}
       customerGstin={String(record["customerGstin"] ?? "")}
       customerAddress={String(record["customerAddress"] ?? "")}

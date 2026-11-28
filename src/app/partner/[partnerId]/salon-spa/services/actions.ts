@@ -4,13 +4,14 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
 import { createSalonService, updateSalonService } from "@/lib/salonSpa/servicesData";
+import { rupeesToSalonPaise } from "@/lib/salonSpa/money";
 
 export async function createSalonServiceAction(partnerId: string, values: Record<string, unknown>): Promise<void> {
   partnerId = await requireSessionPartnerId(partnerId);
   const service = await createSalonService(partnerId, {
     name: String(values["name"] ?? ""),
     durationMinutes: Number(values["durationMinutes"]) || 30,
-    price: Number(values["price"]) || 0,
+    price: rupeesToSalonPaise(values["price"]),
   });
   revalidatePath(`/partner/${partnerId}/salon-spa/services`);
   redirect(`/partner/${partnerId}/salon-spa/services/${service.id}`);
@@ -21,7 +22,7 @@ export async function updateSalonServiceAction(partnerId: string, recordId: stri
   await updateSalonService(partnerId, recordId, {
     name: String(values["name"] ?? ""),
     durationMinutes: Number(values["durationMinutes"]) || 30,
-    price: Number(values["price"]) || 0,
+    price: rupeesToSalonPaise(values["price"]),
     isActive: Boolean(values["isActive"]),
   });
   revalidatePath(`/partner/${partnerId}/salon-spa/services`);

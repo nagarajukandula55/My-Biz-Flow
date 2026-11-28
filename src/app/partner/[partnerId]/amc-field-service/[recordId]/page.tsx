@@ -50,7 +50,7 @@ export default async function AmcFieldServiceDetailPage({
     contractStartDate: contract.contractStartDate.toISOString().slice(0, 10),
     contractEndDate: contract.contractEndDate.toISOString().slice(0, 10),
     slaHours: contract.slaHours,
-    contractValue: contract.contractValue,
+    contractValue: contract.contractValue / 100,
     status: contract.serviceVisits[0]?.status ?? "Scheduled",
     contractStatus: contract.contractStatus,
     checkInLatitude: contract.serviceVisits[0]?.checkInLatitude ?? null,
@@ -71,7 +71,7 @@ export default async function AmcFieldServiceDetailPage({
 
   const userRecords = await listBusinessRecords(params.partnerId, "users");
   const technicianOptions = userRecords
-    .filter((r) => r["status"] === "Active")
+    .filter((r) => r["status"] === "Active" && r["role"] === "Technician")
     .map((r) => ({ value: String(r["id"]), label: String(r["id"]) }));
 
   return (

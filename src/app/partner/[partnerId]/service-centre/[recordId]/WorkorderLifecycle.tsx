@@ -230,6 +230,7 @@ export function WorkorderLifecycle({
   recordLabel,
   customerName,
   customerPhone,
+  customerAlternatePhone,
   imeiOrSerialNumber,
   faultDescription,
   loggedBy,
@@ -283,6 +284,7 @@ export function WorkorderLifecycle({
   recordLabel: string;
   customerName?: string;
   customerPhone?: string;
+  customerAlternatePhone?: string;
   imeiOrSerialNumber?: string;
   faultDescription?: string;
   loggedBy?: string;
@@ -1749,6 +1751,17 @@ export function WorkorderLifecycle({
               </div>
             ) : (
               <div className="mt-0.5 text-sm text-text">{customerPhone || "—"}</div>
+            )}
+          </div>
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">Alternate Contact No.</div>
+            {stage === "Closed" && customerAlternatePhone && !customerDataUnlocked ? (
+              <div className="mt-0.5 flex items-center gap-2">
+                <span className="text-sm text-text">{maskPhone(customerAlternatePhone)}</span>
+                <button type="button" onClick={() => setContactUnlockOpen(true)} className="text-xs font-semibold text-teal hover:underline">Unlock</button>
+              </div>
+            ) : (
+              <div className="mt-0.5 text-sm text-text">{customerAlternatePhone || "-"}</div>
             )}
           </div>
           <div>

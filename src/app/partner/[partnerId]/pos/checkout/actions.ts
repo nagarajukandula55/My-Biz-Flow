@@ -5,11 +5,12 @@ import { revalidatePath } from "next/cache";
 import { createBusinessRecord, getBusinessRecord, updateBusinessRecord, listBusinessRecords } from "@/lib/businessRecords";
 import { computeSaleTotals, extractSaleFromRecord, type SaleLine, type Tender } from "@/lib/sample-data/pos";
 import type { LineItem } from "@/lib/sample-data/billing";
-import { requirePosStaffAction } from "@/lib/pos/posAuth";
+import { requirePosManager, requirePosStaffAction } from "@/lib/pos/posAuth";
 import { withRecordLock } from "@/lib/withRecordLock";
-import { validatePosInput, planPosStock } from "@/lib/pos/stockPolicy";
+import { validatePosInput, planPosStock, allocatePosPayments } from "@/lib/pos/stockPolicy";
 import { getOpenTillSession } from "@/lib/pos/posTill";
 import { assertSerializedUnitsAvailable, consumeSerializedUnits, restoreSerializedUnits } from "@/lib/stockLots";
+import { recordPosBillingReversal } from "@/lib/pos/posBillingReversal";
 
 export type CompleteSaleInput = {
   lines: SaleLine[];
@@ -126,11 +127,27 @@ export async function completeSaleAction(partnerId: string, input: CompleteSaleI
     subtotal: totals.subtotal,
     taxAmount: totals.taxAmount,
     totalAmount: totals.totalAmount,
+    amountPaid: totals.totalAmount,
+    amountDue: 0,
     paymentStatus: "Paid",
     paymentMode: input.tenders[0]?.method,
     sourcePosSaleId: sale.id,
     invoiceSource: "POS Sale",
   });
+
+  // Payment history drives the Billing invoice detail and contact statement.
+  // Cash change is returned immediately, so only the net cash received is
+  // recorded; non-cash tender rows retain their full charged amounts.
+  for (const receipt of allocatePosPayments(input.tenders, totals.totalAmount)) {
+    await createBusinessRecord(partnerId, "billing-payments", {
+      invoiceId: invoice.id,
+      contact: "Walk-in Customer",
+      amount: receipt.amount,
+      mode: receipt.method,
+      date: new Date().toISOString().slice(0, 10),
+      sourcePosSaleId: sale.id,
+    });
+  }
 
   await updateBusinessRecord(partnerId, "pos", String(sale.id), { ...sale, invoiceId: invoice.id });
 
@@ -142,15 +159,12 @@ export async function completeSaleAction(partnerId: string, input: CompleteSaleI
 }
 
 /**
- * Voids a Completed sale — restores deducted stock and marks the sale
- * Voided. Does not touch the linked Billing invoice (a real credit-note/
- * refund flow is Billing's own scope) — leaves a clear void marker so
- * reports read correctly. Open to any logged-in POS staff for now (not
- * Manager-gated) — a natural follow-up once a real permission matrix is
- * wanted, same posture requirePosManager already exists for elsewhere.
+ * Voids a cash-only sale in its original open till and records its Billing
+ * credit note in the same transaction as the stock reversal.
  */
 export async function voidSaleAction(partnerId: string, saleId: string, reason: string): Promise<void> {
   const staff = await requirePosStaffAction(partnerId);
+  requirePosManager(staff);
   await withRecordLock("inventory-partner", partnerId, async () => {
   const record = await getBusinessRecord(partnerId, "pos", saleId);
   if (!record) return;
@@ -159,6 +173,17 @@ export async function voidSaleAction(partnerId: string, saleId: string, reason: 
   const till = await getOpenTillSession(staff.posAccountId, String(record["locationId"] ?? ""));
   if (!till || till.id !== record["posTillSessionId"]) throw new Error("This sale belongs to a closed till; use the reviewed return workflow.");
   if (record["hasReturn"]) throw new Error("A returned sale cannot also be voided; review its refund history.");
+  if (!sale.tenders.length || sale.tenders.some((t) => t.method !== "Cash")) {
+    throw new Error("Only cash-only sales can be voided. Use the reviewed return workflow for other payments.");
+  }
+  const invoiceId = String(record["invoiceId"] ?? "");
+  if (!invoiceId) throw new Error("The linked Billing invoice is missing; review before voiding.");
+  const reversed = await recordPosBillingReversal({
+    partnerId, saleId, invoiceId,
+    lines: sale.lines.map((line) => ({ line, qty: line.qty })),
+    refundMethod: "Cash", refundReference: "", reason: reason || "Cash sale voided",
+  });
+  if (Math.abs(reversed.totalAmount - sale.totalAmount) > 0.001) throw new Error("Void credit note and sale totals differ.");
 
   if (sale.stockDeducted) {
     for (const line of sale.lines) {
@@ -178,6 +203,8 @@ export async function voidSaleAction(partnerId: string, saleId: string, reason: 
     status: "Voided",
     voidedAt: new Date().toISOString(),
     voidReason: reason || "Voided by cashier",
+    creditNoteId: reversed.noteId,
+    returnedAmount: reversed.totalAmount,
   });
   });
 

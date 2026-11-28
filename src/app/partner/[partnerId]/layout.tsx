@@ -12,6 +12,8 @@ import { computeAlerts } from "@/lib/alerts";
 import { getPartner } from "@/lib/partnerData";
 import { env } from "@/lib/env";
 import { getVisibleModuleSlugs } from "@/lib/designer/entitlements";
+import { MODULES } from "@/lib/designer/modules";
+import { notFound } from "next/navigation";
 import { getTelegramSettingsForShell, getWorkspaceSummaryForShell } from "@/lib/shellUsageCache";
 import type { Alert } from "@/lib/alerts";
 import { prisma } from "@/lib/prisma";
@@ -135,6 +137,14 @@ export default async function PartnerLayout({
 
   const session = await requirePartnerSessionForPage(params.partnerId);
 
+  // The sidebar is only navigation. A direct URL (including a print URL)
+  // must obey the same live entitlement, even when its module has no layout
+  // of its own. Server Actions still need independent authorization.
+  const routeSegment = pathname?.slice(`/partner/${params.partnerId}/`.length).split("/")[0];
+  const routeModule = MODULES.find((module) => module.slug === routeSegment);
+  const visibleModules = routeModule ? await getVisibleModuleSlugs(params.partnerId) : null;
+  if (routeModule && !visibleModules?.includes(routeModule.slug)) notFound();
+
   if (session.kind === "owner" || session.kind === "admin") {
     const managedDealer = await prisma.distributorDealerRelationship.findUnique({ where: { dealerPartnerId: params.partnerId }, select: { id: true } });
     if (managedDealer && !pathname?.startsWith(`/partner/${params.partnerId}/admin/subscription`)) {
@@ -180,7 +190,7 @@ export default async function PartnerLayout({
   // reject, but only that one Promise.all entry fails to resolve/timeout
   // together with the others now surfaces cleanly instead of masking
   // itself as this file's own logic.
-  const modules = await getVisibleModuleSlugs(params.partnerId);
+  const modules = visibleModules ?? await getVisibleModuleSlugs(params.partnerId);
   const serviceCentre = modules.includes("service-centre");
   const [navGroups, alerts, partner, telegramSettings] = await Promise.all([
     getPartnerAdminNavGroupsForShell(params.partnerId),

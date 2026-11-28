@@ -1,5 +1,5 @@
 import { withRecordLock } from "@/lib/withRecordLock";
-import { assertPartnerCanWrite } from "@/lib/tenant";
+import { assertModuleAccess, assertPartnerCanWrite } from "@/lib/tenant";
 import { requireBookingWindow, requirePaise } from "@/lib/bookingValidation";
 /**
  * Data-access layer for the Clinic module's Prisma-backed tables (Patient,
@@ -38,13 +38,21 @@ export const APPOINTMENT_STATUSES: AppointmentStatus[] = [
 
 export const DEFAULT_APPOINTMENT_DURATION_MINUTES = 30;
 
+const requireClinicRead = (partnerId: string) => assertModuleAccess(partnerId, "clinic");
+async function requireClinicWrite(partnerId: string) {
+  await requireClinicRead(partnerId);
+  await assertPartnerCanWrite(partnerId);
+}
+
 // --- Patients ---------------------------------------------------------------
 
 export async function listPatients(partnerId: string) {
+  await requireClinicRead(partnerId);
   return prisma.patient.findMany({ where: { partnerId }, orderBy: { name: "asc" } });
 }
 
 export async function getPatient(partnerId: string, id: string) {
+  await requireClinicRead(partnerId);
   const patient = await prisma.patient.findUnique({
     where: { id },
     include: {
@@ -62,10 +70,12 @@ export async function createPatient(
   partnerId: string,
   data: { name: string; phone?: string; email?: string; insuranceProvider?: string }
 ) {
+  await requireClinicWrite(partnerId);
+  if (!data.name?.trim()) throw new Error("Patient name is required.");
   return prisma.patient.create({
     data: {
       partnerId,
-      name: data.name,
+      name: data.name.trim(),
       phone: data.phone || null,
       email: data.email || null,
       insuranceProvider: data.insuranceProvider || null,
@@ -78,12 +88,14 @@ export async function updatePatient(
   id: string,
   data: { name: string; phone?: string; email?: string; insuranceProvider?: string }
 ) {
+  await requireClinicWrite(partnerId);
+  if (!data.name?.trim()) throw new Error("Patient name is required.");
   const existing = await prisma.patient.findUnique({ where: { id } });
   if (!existing || existing.partnerId !== partnerId) throw new Error("Patient not found.");
   return prisma.patient.update({
     where: { id },
     data: {
-      name: data.name,
+      name: data.name.trim(),
       phone: data.phone || null,
       email: data.email || null,
       insuranceProvider: data.insuranceProvider || null,
@@ -94,6 +106,7 @@ export async function updatePatient(
 // --- Appointments -------------------------------------------------------------
 
 export async function listAppointments(partnerId: string) {
+  await requireClinicRead(partnerId);
   return prisma.appointment.findMany({
     where: { partnerId },
     orderBy: { appointmentDateTime: "desc" },
@@ -102,6 +115,7 @@ export async function listAppointments(partnerId: string) {
 }
 
 export async function listAppointmentsInRange(partnerId: string, rangeStart: Date, rangeEnd: Date) {
+  await requireClinicRead(partnerId);
   return prisma.appointment.findMany({
     where: { partnerId, appointmentDateTime: { gte: rangeStart, lt: rangeEnd } },
     orderBy: { appointmentDateTime: "asc" },
@@ -110,6 +124,7 @@ export async function listAppointmentsInRange(partnerId: string, rangeStart: Dat
 }
 
 export async function getAppointment(partnerId: string, id: string) {
+  await requireClinicRead(partnerId);
   const appointment = await prisma.appointment.findUnique({
     where: { id },
     include: { patient: true, prescriptions: { orderBy: { createdAt: "desc" } } },
@@ -140,6 +155,7 @@ export async function checkDoctorConflict(
   durationMinutes: number,
   excludeAppointmentId?: string
 ): Promise<DoctorConflict | null> {
+  await requireClinicRead(partnerId);
   if (!doctor || Number.isNaN(appointmentDateTime.getTime())) return null;
   const { start, end } = windowFor(appointmentDateTime, durationMinutes || DEFAULT_APPOINTMENT_DURATION_MINUTES);
 
@@ -185,7 +201,7 @@ export async function createAppointment(
   partnerId: string,
   input: CreateAppointmentInput
 ): Promise<{ ok: true; id: string } | { ok: false; conflict: DoctorConflict }> {
-  await assertPartnerCanWrite(partnerId);
+  await requireClinicWrite(partnerId);
   return withRecordLock("clinic-bookings", partnerId, async () => {
     const durationMinutes = await validateAppointment(partnerId, input);
     const conflict = input.status === "Cancelled" ? null : await checkDoctorConflict(partnerId, input.doctor, input.appointmentDateTime, durationMinutes);
@@ -214,10 +230,11 @@ export async function updateAppointment(
   id: string,
   input: UpdateAppointmentInput
 ): Promise<{ ok: true } | { ok: false; conflict: DoctorConflict }> {
-  await assertPartnerCanWrite(partnerId);
+  await requireClinicWrite(partnerId);
   return withRecordLock("clinic-bookings", partnerId, async () => {
     const existing = await prisma.appointment.findUnique({ where: { id } });
     if (!existing || existing.partnerId !== partnerId) throw new Error("Appointment not found.");
+    if (existing.status === "Completed" || existing.invoiceId) throw new Error("Completed or invoiced visits cannot be edited; preserve their clinical and billing history.");
 
     const durationMinutes = await validateAppointment(partnerId, input);
     const conflict = (input.status ?? existing.status) === "Cancelled" ? null : await checkDoctorConflict(partnerId, input.doctor, input.appointmentDateTime, durationMinutes, id);
@@ -241,10 +258,11 @@ export async function updateAppointment(
 
 export async function setAppointmentStatus(partnerId: string, id: string, status: AppointmentStatus): Promise<void> {
   if (!APPOINTMENT_STATUSES.includes(status)) throw new Error("Invalid appointment status.");
-  await assertPartnerCanWrite(partnerId);
+  await requireClinicWrite(partnerId);
   return withRecordLock("clinic-bookings", partnerId, async () => {
     const existing = await prisma.appointment.findUnique({ where: { id } });
     if (!existing || existing.partnerId !== partnerId) throw new Error("Appointment not found.");
+    if (existing.status === "Completed" && status !== "Completed") throw new Error("Completed visits cannot be reopened; preserve their clinical and billing history.");
     if (status !== "Cancelled") {
       const conflict = await checkDoctorConflict(partnerId, existing.doctor, existing.appointmentDateTime, existing.durationMinutes, id);
       if (conflict) throw new Error("Doctor already has an appointment in this time window.");
@@ -254,14 +272,11 @@ export async function setAppointmentStatus(partnerId: string, id: string, status
 }
 
 export async function deleteAppointment(partnerId: string, id: string): Promise<void> {
-  await assertPartnerCanWrite(partnerId);
+  await requireClinicWrite(partnerId);
   return withRecordLock("clinic-bookings", partnerId, async () => {
     const existing = await prisma.appointment.findUnique({ where: { id } });
     if (!existing || existing.partnerId !== partnerId) return;
-    await prisma.$transaction([
-      prisma.prescription.deleteMany({ where: { appointmentId: id } }),
-      prisma.appointment.delete({ where: { id } }),
-    ]);
+    throw new Error("Appointments cannot be deleted. Cancel the appointment to retain its history.");
   });
 }
 
@@ -273,11 +288,13 @@ export async function deleteAppointment(partnerId: string, id: string): Promise<
  * even after a later visit is also completed.
  */
 export async function completeAppointment(partnerId: string, id: string, prescriptionNotes: string): Promise<void> {
-  await assertPartnerCanWrite(partnerId);
+  await requireClinicWrite(partnerId);
   return withRecordLock("clinic-bookings", partnerId, async () => {
     const existing = await prisma.appointment.findUnique({ where: { id } });
     if (!existing || existing.partnerId !== partnerId) throw new Error("Appointment not found.");
+    if (existing.status === "Completed") return;
     if (existing.status === "Cancelled") throw new Error("Reopen the appointment before completing it.");
+    if (existing.status === "No-show") throw new Error("Reschedule a no-show before completing it.");
     await prisma.$transaction([
       prisma.appointment.update({ where: { id }, data: { status: "Completed" } }),
       ...(prescriptionNotes.trim()
@@ -299,25 +316,28 @@ function formatPaise(paise: number): string {
  * Billing shape, same guard against double-invoicing).
  */
 export async function createInvoiceFromAppointment(partnerId: string, id: string): Promise<void> {
-  await assertPartnerCanWrite(partnerId);
+  await requireClinicWrite(partnerId);
   return withRecordLock("clinic-bookings", partnerId, async () => {
     const appointment = await getAppointment(partnerId, id);
     if (!appointment) return;
     if (appointment.status !== "Completed") return;
     if (appointment.invoiceId) return; // already invoiced — don't double-create
+    if (appointment.consultationFee <= 0) throw new Error("A zero-fee visit does not need a Billing invoice.");
 
-    const consultationFee = Math.round(appointment.consultationFee / 100); // rupees, Billing's BusinessRecord shape stores rupees
-    const taxAmount = Math.round(consultationFee * 0.18);
-    const totalAmount = consultationFee + taxAmount;
+    const consultationFee = appointment.consultationFee / 100; // exact rupees, including paise
+    const taxAmount = 0; // Healthcare consultation is handled as an exempt service.
+    const totalAmount = consultationFee;
 
     const invoice = await createBusinessRecord(partnerId, "billing", {
       customer: appointment.patient.name,
       issueDate: new Date().toISOString().slice(0, 10),
       dueDate: new Date().toISOString().slice(0, 10),
       lineItemsSummary: `Consultation — ${appointment.doctor}`,
+      items: [{ description: `Healthcare consultation - ${appointment.doctor}`, quantity: 1, unit: "visit", unitPrice: consultationFee, taxRate: 0 }],
       subtotal: consultationFee,
       taxAmount,
       totalAmount,
+      invoiceType: "Non-GST",
       paymentStatus: "Draft",
       paymentMode: undefined,
       sourceAppointmentId: id,

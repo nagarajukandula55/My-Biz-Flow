@@ -9,7 +9,7 @@ const db = load('src/lib/databaseTransaction.ts', { 'node:async_hooks': require(
 const prisma = db.transactionAwareClient(base);
 const lock = load('src/lib/withRecordLock.ts', { '@/lib/prisma': { prisma }, '@/lib/databaseTransaction': db });
 let owner = true;
-const common = { '@/lib/prisma': { prisma }, '@/lib/withRecordLock': lock, '@/lib/tenant': { assertModuleAccess: async()=>{}, assertPartnerCanWrite:async()=>{} }, '@/lib/requirePartnerSession': { requireSessionPartnerId: async()=>{if(!owner)throw Error('Owner required');} } };
+const common = { '@/lib/prisma': { prisma }, '@/lib/withRecordLock': lock, '@/lib/tenant': { assertModuleAccess: async()=>{}, assertPartnerCanWrite:async()=>{} }, '@/lib/requirePartnerSession': { requireSessionPartnerId: async()=>{if(!owner)throw Error('Owner required');} }, '@/lib/listPagination':load('src/lib/listPagination.ts') };
 const hrms = load('src/lib/hrms.ts', { ...common, 'node:crypto':crypto, '@/lib/databaseTransaction':db, '@/lib/format':load('src/lib/format.ts'), '@/lib/telegram':{sendPartnerTelegramAlert:async()=>{}}, '@/lib/partnerData':{getPartner:async()=>null}, '@/lib/telegramTemplates':{}, '@/lib/email/moduleEmails':{} });
 const payroll = load('src/lib/hrmsAttendancePayroll.ts', { ...common, 'node:crypto':crypto, '@/lib/hrms':hrms, '@/lib/hrmsPayrollCalculation':load('src/lib/hrmsPayrollCalculation.ts') });
 const partnerId = 'payroll-qa-' + crypto.randomUUID();

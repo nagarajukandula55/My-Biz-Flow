@@ -2,7 +2,7 @@ import type { Column, Row } from "@/components/DataTable";
 import type { RecordField, TimelineEntry, RelatedRecord } from "@/components/RecordDetail";
 import type { StatusVariant } from "@/components/StatusChip";
 import type { FormFieldDef } from "@/components/RecordForm";
-import { WHOLESALE_ORDER_STATUSES } from "@/lib/wholesaleData";
+import { WHOLESALE_ORDER_STATUSES } from "@/lib/wholesaleStatuses";
 
 // Order field vocabulary for the wholesale-b2b module's main order list —
 // now Prisma-backed (WholesaleOrder/WholesaleOrderLine, see

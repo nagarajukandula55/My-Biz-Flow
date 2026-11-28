@@ -62,6 +62,7 @@ export default async function ServiceCentreEstimatePage({
       termsText={resolveDocumentTerms(partner, "estimate")}
       customerName={text("customer") || "—"}
       customerPhone={text("customerPhone")}
+      customerAlternatePhone={text("customerAlternatePhone")}
       customerEmail={text("customerEmail")}
       customerAddress={customerAddress || undefined}
       brand={text("brandName")}

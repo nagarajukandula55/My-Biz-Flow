@@ -8,7 +8,6 @@ import { requirePartnerSessionForPage } from "@/lib/requirePartnerSession";
 import { getAppointment } from "@/lib/clinic";
 import type { StatusVariant } from "@/components/StatusChip";
 import { AppointmentLifecycle } from "./AppointmentLifecycle";
-import { DeleteAppointmentButton } from "./DeleteAppointmentButton";
 
 registerPage({
   id: "clinic.appointments.detail",
@@ -101,10 +100,9 @@ export default async function ClinicAppointmentDetailPage({
                   <Link href={`/partner/${params.partnerId}/clinic/patients/${appointment.patientId}`} className="btn-outline">
                     View Patient
                   </Link>
-                  <Link href={`/partner/${params.partnerId}/clinic/appointments/${appointment.id}/edit`} className="btn-outline">
+                  {appointment.status !== "Completed" && !appointment.invoiceId && <Link href={`/partner/${params.partnerId}/clinic/appointments/${appointment.id}/edit`} className="btn-outline">
                     Edit
-                  </Link>
-                  <DeleteAppointmentButton partnerId={params.partnerId} appointmentId={appointment.id} label={recordLabel} />
+                  </Link>}
                 </div>
               </div>
             }

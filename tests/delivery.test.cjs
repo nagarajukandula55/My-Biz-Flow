@@ -31,14 +31,16 @@ test('SMS and WhatsApp report acceptance only from a successful provider respons
 });
 
 test('telecalling records failed and unconfigured sends honestly',async()=>{
- let configured=true,accepted=false,record,network=0;
+ let configured=true,accepted=false,record,network=0,enabled=true,writable=true;
  const api=load('src/lib/telecalling/messaging.ts',{
   '@/lib/prisma':{prisma:{
    lead:{findUniqueOrThrow:async()=>({id:'lead',partnerId:'p1',name:'Lead',phone:'phone'})},
    messageTemplate:{findUniqueOrThrow:async()=>({id:'template',partnerId:'p1',channel:'whatsapp',body:'text',metaTemplateName:'approved_template'})},
    partnerStaff:{findFirst:async()=>({id:'agent'})},messageLog:{create:async({data})=>{record=data;}},
   }},
-  '@/lib/tenant':{assertPartnerScope:(a,b)=>assert.equal(a,b)},'@/lib/telecalling/templatesData':{fillTemplate:()=> 'text',extractTemplateParamsInOrder:()=>[]},
+  '@/lib/tenant':{assertPartnerScope:(a,b)=>assert.equal(a,b),assertPartnerCanWrite:async()=>{if(!writable)throw Error('trial expired');}},
+  '@/lib/recordEntitlement':{assertRecordModuleAccess:async()=>{if(!enabled)throw Error('module disabled');}},
+  '@/lib/telecalling/templatesData':{fillTemplate:()=> 'text',extractTemplateParamsInOrder:()=>[]},
   '@/lib/telecalling/whatsappGate':{isTemplateApprovedForWhatsApp:async()=>true},
   '@/lib/env':{env:{whatsappBusinessPhoneNumberId:()=> configured?'phone':undefined,whatsappAccessToken:()=> 'key'}},
   '@/lib/whatsapp':{sendWhatsAppTemplateMessage:async()=>{network++;return accepted;}},'@/lib/sms':{},'@/lib/smsFlowMapping':{},
@@ -47,4 +49,7 @@ test('telecalling records failed and unconfigured sends honestly',async()=>{
  assert.equal((await send()).status,'failed');assert.equal(record.status,'failed');
  accepted=true;assert.equal((await send()).status,'accepted');
  configured=false;assert.equal((await send()).status,'not-configured');assert.equal(network,2);
+ enabled=false;await assert.rejects(send(),/module disabled/);
+ enabled=true;writable=false;await assert.rejects(send(),/trial expired/);
+ assert.equal(network,2);
 });

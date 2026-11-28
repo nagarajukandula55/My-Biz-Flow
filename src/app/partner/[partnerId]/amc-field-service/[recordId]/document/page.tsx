@@ -35,7 +35,7 @@ export default async function AmcFieldServiceDocumentPage({
     technicianName: latestVisit?.technicianName ?? "",
     contractEndDate: contract.contractEndDate.toISOString().slice(0, 10),
     slaHours: contract.slaHours,
-    contractValue: contract.contractValue,
+    contractValue: contract.contractValue / 100,
     status: latestVisit?.status ?? "Scheduled",
     contractStatus: contract.contractStatus,
     checkInLatitude: latestVisit?.checkInLatitude ?? null,

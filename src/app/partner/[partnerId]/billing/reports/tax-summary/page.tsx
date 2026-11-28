@@ -41,7 +41,10 @@ export default async function TaxSummaryPage({
   searchParams?: { from?: string; to?: string };
 }) {
   const { from, to } = searchParams ?? {};
-  const invoices = await listBusinessRecords(params.partnerId, "billing");
+  const [invoices, notes] = await Promise.all([
+    listBusinessRecords(params.partnerId, "billing"),
+    listBusinessRecords(params.partnerId, "billing-credit-notes"),
+  ]);
 
   const byRate = new Map<number, { taxableValue: number; taxCollected: number; invoiceIds: Set<string> }>();
   for (const inv of invoices) {
@@ -58,14 +61,29 @@ export default async function TaxSummaryPage({
       byRate.set(rate, entry);
     }
   }
+  for (const note of notes) {
+    if (!inRange(String(note["issueDate"] ?? ""), from, to)) continue;
+    const sign = note["noteType"] === "Credit Note" ? -1 : note["noteType"] === "Debit Note" ? 1 : 0;
+    if (!sign) continue;
+    const items = Array.isArray(note["items"]) ? note["items"] as LineItem[] : [];
+    for (const item of items) {
+      const rate = Number(item.taxRate ?? 0);
+      const value = Number(item.quantity) * Number(item.unitPrice);
+      if (!Number.isFinite(rate) || !Number.isFinite(value)) continue;
+      const entry = byRate.get(rate) ?? { taxableValue: 0, taxCollected: 0, invoiceIds: new Set<string>() };
+      entry.taxableValue += sign * value;
+      entry.taxCollected += sign * value * rate / 100;
+      byRate.set(rate, entry);
+    }
+  }
 
   const rows: Row[] = [...byRate.entries()]
     .sort((a, b) => a[0] - b[0])
     .map(([rate, v]) => ({
       taxRate: `${rate}%`,
       invoiceCount: v.invoiceIds.size,
-      taxableValue: v.taxableValue,
-      taxCollected: v.taxCollected,
+      taxableValue: Math.round(v.taxableValue * 100) / 100,
+      taxCollected: Math.round(v.taxCollected * 100) / 100,
     }));
 
   return (
@@ -96,7 +114,7 @@ export default async function TaxSummaryPage({
           )}
         </form>
         <div className="mt-4 flex items-center justify-between">
-          <p className="text-sm text-text-muted">GST rate-wise taxable value and tax collected across invoices in this date range.</p>
+          <p className="text-sm text-text-muted">GST rate-wise invoice values adjusted by credit and debit notes issued in this date range. Review filing eligibility separately.</p>
           <RecordCsvExportButton
             columns={TAX_COLUMNS.map((c) => c.key)}
             rows={rows}

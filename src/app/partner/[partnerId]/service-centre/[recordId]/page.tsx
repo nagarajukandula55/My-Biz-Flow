@@ -123,6 +123,7 @@ export default async function ServiceCentreDetailPage({
           recordLabel={recordLabel}
           customerName={typeof record["customer"] === "string" ? (record["customer"] as string) : undefined}
           customerPhone={typeof record["customerPhone"] === "string" ? (record["customerPhone"] as string) : undefined}
+          customerAlternatePhone={typeof record["customerAlternatePhone"] === "string" ? (record["customerAlternatePhone"] as string) : undefined}
           imeiOrSerialNumber={typeof record["imeiOrSerialNumber"] === "string" ? (record["imeiOrSerialNumber"] as string) : undefined}
           faultDescription={typeof record["faultDescription"] === "string" ? (record["faultDescription"] as string) : undefined}
           loggedBy={typeof record["loggedBy"] === "string" ? (record["loggedBy"] as string) : undefined}

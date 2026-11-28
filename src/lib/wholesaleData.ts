@@ -13,9 +13,20 @@
  * on write, right at this layer's edge.
  */
 import { prisma } from "@/lib/prisma";
-import { assertPartnerScope } from "@/lib/tenant";
+import { assertModuleAccess, assertPartnerCanWrite, assertPartnerScope } from "@/lib/tenant";
 import { getNextNumber } from "@/lib/designer/numbering";
 import type { Row } from "@/components/DataTable";
+import { buildPaginatedList, normalizeListPage, type ListPageOptions, type PaginatedList } from "@/lib/listPagination";
+import { withRecordLock } from "@/lib/withRecordLock";
+
+async function assertWholesaleRead(partnerId: string): Promise<void> {
+  await assertModuleAccess(partnerId, "wholesale-b2b");
+}
+
+async function assertWholesaleWrite(partnerId: string): Promise<void> {
+  await assertWholesaleRead(partnerId);
+  await assertPartnerCanWrite(partnerId);
+}
 
 export function paiseToRupees(paise: number): number {
   return Math.round(paise) / 100;
@@ -50,10 +61,12 @@ export type WholesaleCustomerRow = {
 };
 
 export async function listWholesaleCustomers(partnerId: string): Promise<WholesaleCustomerRow[]> {
+  await assertWholesaleRead(partnerId);
   return prisma.wholesaleCustomer.findMany({ where: { partnerId }, orderBy: { createdAt: "desc" } });
 }
 
 export async function getWholesaleCustomer(partnerId: string, id: string): Promise<WholesaleCustomerRow | null> {
+  await assertWholesaleRead(partnerId);
   const row = await prisma.wholesaleCustomer.findUnique({ where: { id } });
   if (!row) return null;
   assertPartnerScope(partnerId, row.partnerId);
@@ -64,6 +77,7 @@ export async function createWholesaleCustomer(
   partnerId: string,
   input: { name: string; contact?: string; email?: string; gstin?: string; addressLine?: string; city?: string; state?: string; pincode?: string; creditLimit: number; creditTermDays: number; defaultPriceTierId?: string | null; referredByCustomerId?: string | null; isActive: boolean }
 ): Promise<WholesaleCustomerRow> {
+  await assertWholesaleWrite(partnerId);
   if (input.defaultPriceTierId) {
     const tier = await prisma.priceTier.findUnique({ where: { id: input.defaultPriceTierId } });
     if (!tier || tier.partnerId !== partnerId) throw new Error("Selected price tier does not belong to this distributor.");
@@ -99,6 +113,7 @@ export async function updateWholesaleCustomer(
   id: string,
   input: { name: string; contact?: string; email?: string; gstin?: string; addressLine?: string; city?: string; state?: string; pincode?: string; creditLimit: number; creditTermDays: number; defaultPriceTierId?: string | null; isActive: boolean }
 ): Promise<void> {
+  await assertWholesaleWrite(partnerId);
   const existing = await prisma.wholesaleCustomer.findUniqueOrThrow({ where: { id } });
   assertPartnerScope(partnerId, existing.partnerId);
   if (input.defaultPriceTierId) {
@@ -136,10 +151,12 @@ export type PriceTierRow = {
 };
 
 export async function listPriceTiers(partnerId: string): Promise<PriceTierRow[]> {
+  await assertWholesaleRead(partnerId);
   return prisma.priceTier.findMany({ where: { partnerId }, orderBy: { name: "asc" } });
 }
 
 export async function getPriceTier(partnerId: string, id: string): Promise<PriceTierRow | null> {
+  await assertWholesaleRead(partnerId);
   const row = await prisma.priceTier.findUnique({ where: { id } });
   if (!row) return null;
   assertPartnerScope(partnerId, row.partnerId);
@@ -147,10 +164,12 @@ export async function getPriceTier(partnerId: string, id: string): Promise<Price
 }
 
 export async function createPriceTier(partnerId: string, input: { name: string; discountPercent: number }): Promise<PriceTierRow> {
+  await assertWholesaleWrite(partnerId);
   return prisma.priceTier.create({ data: { partnerId, name: input.name, discountPercent: input.discountPercent } });
 }
 
 export async function updatePriceTier(partnerId: string, id: string, input: { name: string; discountPercent: number }): Promise<void> {
+  await assertWholesaleWrite(partnerId);
   const existing = await prisma.priceTier.findUniqueOrThrow({ where: { id } });
   assertPartnerScope(partnerId, existing.partnerId);
   await prisma.priceTier.update({ where: { id }, data: { name: input.name, discountPercent: input.discountPercent } });
@@ -162,8 +181,9 @@ export async function updatePriceTier(partnerId: string, id: string, input: { na
 
 /** Enforced wholesale lifecycle. Statuses are advanced only by the action
  * for the current step; callers never receive a free-form status picker. */
-export const WHOLESALE_ORDER_STATUSES = ["Requested", "Processing", "Picking", "Packed", "Shipped", "Delivered", "Received", "Cancelled"] as const;
-export type WholesaleOrderStatusValue = (typeof WHOLESALE_ORDER_STATUSES)[number];
+import { WHOLESALE_ORDER_STATUSES, type WholesaleOrderStatusValue } from "@/lib/wholesaleStatuses";
+export { WHOLESALE_ORDER_STATUSES } from "@/lib/wholesaleStatuses";
+export type { WholesaleOrderStatusValue } from "@/lib/wholesaleStatuses";
 
 const ALLOWED_TRANSITIONS: Record<WholesaleOrderStatusValue, WholesaleOrderStatusValue[]> = {
   Requested: ["Processing", "Cancelled"],
@@ -197,14 +217,17 @@ export type WholesaleProductRow = {
 };
 
 export async function listWholesaleProducts(partnerId: string, activeOnly = false): Promise<WholesaleProductRow[]> {
+  await assertWholesaleRead(partnerId);
   return prisma.wholesaleProduct.findMany({ where: { partnerId, ...(activeOnly ? { isActive: true } : {}) }, orderBy: [{ isActive: "desc" }, { name: "asc" }] });
 }
 
 export async function createWholesaleProduct(partnerId: string, input: Omit<WholesaleProductRow, "id" | "partnerId">): Promise<WholesaleProductRow> {
+  await assertWholesaleWrite(partnerId);
   return prisma.wholesaleProduct.create({ data: { partnerId, ...input } });
 }
 
 export async function updateWholesaleProduct(partnerId: string, id: string, input: Omit<WholesaleProductRow, "id" | "partnerId">): Promise<void> {
+  await assertWholesaleWrite(partnerId);
   const existing = await prisma.wholesaleProduct.findUniqueOrThrow({ where: { id } });
   assertPartnerScope(partnerId, existing.partnerId);
   await prisma.wholesaleProduct.update({ where: { id }, data: input });
@@ -303,6 +326,7 @@ function toOrderRow(row: {
 const WHOLESALE_ORDERS_SAFETY_LIMIT = 500;
 
 export async function listWholesaleOrders(partnerId: string): Promise<WholesaleOrderRow[]> {
+  await assertWholesaleRead(partnerId);
   const rows = await prisma.wholesaleOrder.findMany({
     where: { partnerId },
     include: ORDER_INCLUDE,
@@ -312,7 +336,27 @@ export async function listWholesaleOrders(partnerId: string): Promise<WholesaleO
   return rows.map(toOrderRow);
 }
 
+export async function listWholesaleOrdersPaginated(
+  partnerId: string,
+  options: ListPageOptions = {}
+): Promise<PaginatedList<WholesaleOrderRow>> {
+  await assertWholesaleRead(partnerId);
+  const { page, pageSize } = normalizeListPage(options);
+  const total = await prisma.wholesaleOrder.count({ where: { partnerId } });
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const actualPage = Math.min(page, totalPages);
+  const rows = await prisma.wholesaleOrder.findMany({
+    where: { partnerId },
+    include: ORDER_INCLUDE,
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    skip: (actualPage - 1) * pageSize,
+    take: pageSize,
+  });
+  return buildPaginatedList(rows.map(toOrderRow), total, actualPage, pageSize);
+}
+
 export async function getWholesaleOrder(partnerId: string, id: string): Promise<WholesaleOrderRow | null> {
+  await assertWholesaleRead(partnerId);
   const row = await prisma.wholesaleOrder.findUnique({ where: { id }, include: ORDER_INCLUDE });
   if (!row) return null;
   assertPartnerScope(partnerId, row.partnerId);
@@ -344,6 +388,7 @@ export function calculateWholesaleOrder(lines: WholesaleOrderLineInput[], discou
 
 /** Resolve every price and GST rate from the distributor-owned catalogue. */
 export async function resolveWholesaleOrderLines(partnerId: string, customerId: string, requestedTierId: string | null | undefined, requestedLines: WholesaleOrderLineInput[]) {
+  await assertWholesaleRead(partnerId);
   const customer = await getWholesaleCustomer(partnerId, customerId);
   if (!customer || !customer.isActive) throw new Error("Select an active dealer account belonging to this distributor.");
   const tierId = requestedTierId || customer.defaultPriceTierId;
@@ -376,6 +421,7 @@ export async function resolveWholesaleOrderLines(partnerId: string, customerId: 
 // customer's outstanding balance and could let them exceed their credit
 // limit — correctness here requires the full set, not a capped page.
 export async function customerOutstandingBalance(partnerId: string, customerId: string, excludeOrderId?: string): Promise<number> {
+  await assertWholesaleRead(partnerId);
   const orders = await prisma.wholesaleOrder.findMany({
     where: {
       partnerId,
@@ -402,6 +448,7 @@ export async function checkCreditLimit(
   orderAmount: number,
   excludeOrderId?: string
 ): Promise<{ ok: true } | { ok: false; error: string; outstanding: number; creditLimit: number }> {
+  await assertWholesaleRead(partnerId);
   const customer = await prisma.wholesaleCustomer.findUniqueOrThrow({ where: { id: customerId } });
   assertPartnerScope(partnerId, customer.partnerId);
   if (customer.creditLimit <= 0) return { ok: true };
@@ -422,7 +469,11 @@ export async function createWholesaleOrder(
   partnerId: string,
   input: { customerId: string; priceTierId?: string | null; orderDate: Date; lines: WholesaleOrderLineInput[]; source?: string; requestedByDealerPartnerId?: string | null }
 ): Promise<WholesaleOrderRow> {
+  await assertWholesaleWrite(partnerId);
+  return withRecordLock("wholesale-customer-credit", `${partnerId}:${input.customerId}`, async () => {
   const { tier, tierId, lines, pricing } = await resolveWholesaleOrderLines(partnerId, input.customerId, input.priceTierId, input.lines);
+  const credit = await checkCreditLimit(partnerId, input.customerId, pricing.totalAmount);
+  if (!credit.ok) throw new Error(credit.error);
   const orderNumber = await getNextNumber("wholesale-b2b.order", partnerId, { prefix: "WSO" });
 
   const row = await prisma.wholesaleOrder.create({
@@ -451,23 +502,41 @@ export async function createWholesaleOrder(
     include: ORDER_INCLUDE,
   });
   return toOrderRow(row);
+  });
 }
 
 export async function recordWholesalePayment(partnerId: string, orderId: string, input: { amount: number; method: string; reference?: string; receivedAt?: Date }) {
-  const order = await prisma.wholesaleOrder.findUnique({ where: { id: orderId }, include: { payments: true } });
-  if (!order) throw new Error("Order not found.");
-  assertPartnerScope(partnerId, order.partnerId);
-  if (order.status === "Cancelled") throw new Error("Payments cannot be recorded against a cancelled order.");
-  if (!Number.isSafeInteger(input.amount) || input.amount <= 0) throw new Error("Payment amount must be greater than zero.");
-  const paid = order.payments.reduce((sum, payment) => sum + payment.amount, 0);
-  if (paid + input.amount > order.totalAmount) throw new Error("Payment cannot exceed the remaining order balance.");
-  return prisma.wholesalePayment.create({ data: { partnerId, orderId, amount: input.amount, method: input.method, reference: input.reference?.trim() || null, receivedAt: input.receivedAt ?? new Date() } });
+  await assertWholesaleWrite(partnerId);
+  return withRecordLock("wholesale-order", orderId, async () => {
+    const order = await prisma.wholesaleOrder.findFirst({ where: { id: orderId, partnerId }, include: { payments: true } });
+    if (!order) throw new Error("Order not found.");
+    if (order.status === "Cancelled") throw new Error("Payments cannot be recorded against a cancelled order.");
+    if (!Number.isSafeInteger(input.amount) || input.amount <= 0) throw new Error("Payment amount must be greater than zero.");
+    if (!["Cash", "UPI", "Bank transfer", "Cheque", "Other"].includes(input.method)) throw new Error("Select a valid payment method.");
+    const reference = input.reference?.trim().slice(0, 120) || null;
+    if (reference) {
+      const prior = order.payments.find((payment) => payment.reference === reference);
+      if (prior) {
+        if (prior.amount !== input.amount || prior.method !== input.method) throw new Error("This payment reference was already recorded with different details.");
+        return { payment: prior, replayed: true };
+      }
+    }
+    const paid = order.payments.reduce((sum, payment) => sum + payment.amount, 0);
+    if (paid + input.amount > order.totalAmount) throw new Error("Payment cannot exceed the remaining order balance.");
+    const payment = await prisma.wholesalePayment.create({ data: { partnerId, orderId, amount: input.amount, method: input.method, reference, receivedAt: input.receivedAt ?? new Date() } });
+    return { payment, replayed: false };
+  });
 }
 
 export async function updateWholesaleOrderStatus(partnerId: string, id: string, status: WholesaleOrderStatusValue): Promise<void> {
-  const existing = await prisma.wholesaleOrder.findUniqueOrThrow({ where: { id } });
-  assertPartnerScope(partnerId, existing.partnerId);
-  await prisma.wholesaleOrder.update({ where: { id }, data: { status } });
+  await assertWholesaleWrite(partnerId);
+  await withRecordLock("wholesale-order", id, async () => {
+    const existing = await prisma.wholesaleOrder.findFirst({ where: { id, partnerId } });
+    if (!existing) throw new Error("Order not found.");
+    if (existing.status === status) return;
+    if (!isAllowedStatusTransition(existing.status, status)) throw new Error(`Invalid order transition: ${existing.status} -> ${status}.`);
+    await prisma.wholesaleOrder.update({ where: { id }, data: { status } });
+  });
 }
 
 export function orderToRow(order: WholesaleOrderRow): Row {

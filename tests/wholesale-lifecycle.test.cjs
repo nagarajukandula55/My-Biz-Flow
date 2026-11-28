@@ -6,7 +6,10 @@ const wholesale = load('src/lib/wholesaleData.ts', {
   '@/lib/prisma': { prisma: {} },
   '@/lib/tenant': { assertPartnerScope: () => {} },
   '@/lib/designer/numbering': { getNextNumber: async () => 'WSO-1' },
+  '@/lib/withRecordLock': { withRecordLock: async (_scope, _id, work) => work() },
   '@/components/DataTable': {},
+  '@/lib/listPagination': load('src/lib/listPagination.ts'),
+  '@/lib/wholesaleStatuses':load('src/lib/wholesaleStatuses.ts'),
 });
 const inventory = load('src/lib/inventoryRead.ts', {
   '@/lib/businessRecords': {}, '@/components/DataTable': {},

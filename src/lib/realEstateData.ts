@@ -18,7 +18,11 @@
  * pipeline stage, not by a free-typed enquirer name.
  */
 import { prisma } from "@/lib/prisma";
-import { assertPartnerScope } from "@/lib/tenant";
+import { assertPartnerCanWrite, assertPartnerScope } from "@/lib/tenant";
+import { assertRecordModuleAccess } from "@/lib/recordEntitlement";
+
+async function readAccess(partnerId: string) { await assertRecordModuleAccess(partnerId, "real-estate"); }
+async function writeAccess(partnerId: string) { await readAccess(partnerId); await assertPartnerCanWrite(partnerId); }
 
 export function paiseToRupees(paise: number | null | undefined): number {
   if (paise === null || paise === undefined) return 0;
@@ -62,11 +66,23 @@ export type PropertyInput = {
   siteVisitDate?: Date | null;
 };
 
+function validateProperty(input: PropertyInput) {
+  if (!input.propertyType.trim() || !input.address.trim()) throw new Error("Property type and address are required.");
+  if (!Number.isSafeInteger(input.price) || input.price < 0) throw new Error("Property price must be a non-negative amount in paise.");
+  if (input.areaSqft != null && (!Number.isFinite(input.areaSqft) || input.areaSqft <= 0)) throw new Error("Enter a valid property area.");
+  if (input.bedrooms != null && (!Number.isSafeInteger(input.bedrooms) || input.bedrooms < 0)) throw new Error("Enter a valid bedroom count.");
+  if (input.latitude != null && (!Number.isFinite(input.latitude) || Math.abs(input.latitude) > 90)) throw new Error("Invalid latitude.");
+  if (input.longitude != null && (!Number.isFinite(input.longitude) || Math.abs(input.longitude) > 180)) throw new Error("Invalid longitude.");
+  if (input.siteVisitDate && !Number.isFinite(input.siteVisitDate.getTime())) throw new Error("Invalid site visit date.");
+}
+
 export async function listProperties(partnerId: string): Promise<PropertyRow[]> {
+  await readAccess(partnerId);
   return prisma.property.findMany({ where: { partnerId }, orderBy: { createdAt: "desc" } });
 }
 
 export async function getProperty(partnerId: string, id: string): Promise<PropertyRow | null> {
+  await readAccess(partnerId);
   const row = await prisma.property.findUnique({ where: { id } });
   if (!row) return null;
   assertPartnerScope(partnerId, row.partnerId);
@@ -74,6 +90,8 @@ export async function getProperty(partnerId: string, id: string): Promise<Proper
 }
 
 export async function createProperty(partnerId: string, input: PropertyInput): Promise<PropertyRow> {
+  await writeAccess(partnerId);
+  validateProperty(input);
   return prisma.property.create({
     data: {
       partnerId,
@@ -92,6 +110,8 @@ export async function createProperty(partnerId: string, input: PropertyInput): P
 }
 
 export async function updateProperty(partnerId: string, id: string, input: PropertyInput): Promise<void> {
+  await writeAccess(partnerId);
+  validateProperty(input);
   const existing = await prisma.property.findUniqueOrThrow({ where: { id } });
   assertPartnerScope(partnerId, existing.partnerId);
   await prisma.property.update({
@@ -116,7 +136,8 @@ export async function updateProperty(partnerId: string, id: string, input: Prope
  * ------------------------------------------------------------------ */
 
 export type LeadStage = "New" | "Site Visit Scheduled" | "Negotiation" | "Agreement Signed" | "Closed/Lost";
-export const LEAD_STAGES: LeadStage[] = ["New", "Site Visit Scheduled", "Negotiation", "Agreement Signed", "Closed/Lost"];
+import { LEAD_STAGES } from "@/lib/realEstateStages";
+export { LEAD_STAGES } from "@/lib/realEstateStages";
 
 export type EnquiryRow = {
   id: string;
@@ -167,6 +188,7 @@ function toEnquiryRow(row: {
 }
 
 export async function listEnquiries(partnerId: string): Promise<EnquiryRow[]> {
+  await readAccess(partnerId);
   const rows = await prisma.enquiry.findMany({
     where: { partnerId },
     orderBy: { createdAt: "desc" },
@@ -176,6 +198,7 @@ export async function listEnquiries(partnerId: string): Promise<EnquiryRow[]> {
 }
 
 export async function getEnquiry(partnerId: string, id: string): Promise<EnquiryRow | null> {
+  await readAccess(partnerId);
   const row = await prisma.enquiry.findUnique({
     where: { id },
     include: { property: { select: { address: true } } },
@@ -189,6 +212,9 @@ export async function createEnquiry(
   partnerId: string,
   input: { propertyId?: string | null; agentName?: string | null; stage?: LeadStage }
 ): Promise<EnquiryRow> {
+  await writeAccess(partnerId);
+  if (input.stage && !LEAD_STAGES.includes(input.stage)) throw new Error("Select a valid enquiry stage.");
+  if (input.propertyId && !(await getProperty(partnerId, input.propertyId))) throw new Error("Property not found for this business.");
   const row = await prisma.enquiry.create({
     data: {
       partnerId,
@@ -206,6 +232,9 @@ export async function updateEnquiry(
   id: string,
   input: { propertyId?: string | null; agentName?: string | null; stage?: LeadStage }
 ): Promise<void> {
+  await writeAccess(partnerId);
+  if (input.stage && !LEAD_STAGES.includes(input.stage)) throw new Error("Select a valid enquiry stage.");
+  if (input.propertyId && !(await getProperty(partnerId, input.propertyId))) throw new Error("Property not found for this business.");
   const existing = await prisma.enquiry.findUniqueOrThrow({ where: { id } });
   assertPartnerScope(partnerId, existing.partnerId);
   await prisma.enquiry.update({
@@ -238,6 +267,18 @@ export async function patchEnquiryLifecycle(
     closedLostReason?: string;
   }
 ): Promise<EnquiryRow> {
+  await writeAccess(partnerId);
+  if (patch.stage && !LEAD_STAGES.includes(patch.stage)) throw new Error("Select a valid enquiry stage.");
+  if (patch.siteVisitStart !== undefined || patch.siteVisitEnd !== undefined) {
+    const bothCleared = patch.siteVisitStart === null && patch.siteVisitEnd === null;
+    if (!bothCleared && (!patch.siteVisitStart || !patch.siteVisitEnd || !Number.isFinite(patch.siteVisitStart.getTime()) ||
+        !Number.isFinite(patch.siteVisitEnd.getTime()) || patch.siteVisitEnd <= patch.siteVisitStart)) {
+      throw new Error("Select a valid site visit start and end time.");
+    }
+  }
+  if (patch.dealValue != null && (!Number.isSafeInteger(patch.dealValue) || patch.dealValue < 0)) throw new Error("Invalid deal value.");
+  if (patch.commissionPct != null && (!Number.isFinite(patch.commissionPct) || patch.commissionPct < 0 || patch.commissionPct > 100)) throw new Error("Commission must be between 0 and 100 percent.");
+  if (patch.commissionAmount != null && (!Number.isSafeInteger(patch.commissionAmount) || patch.commissionAmount < 0)) throw new Error("Invalid commission amount.");
   const existing = await prisma.enquiry.findUniqueOrThrow({ where: { id } });
   assertPartnerScope(partnerId, existing.partnerId);
   const row = await prisma.enquiry.update({

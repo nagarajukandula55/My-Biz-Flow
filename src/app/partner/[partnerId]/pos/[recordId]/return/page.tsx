@@ -32,7 +32,6 @@ export default async function PosReturnPage({ params }: { params: { partnerId: s
     redirect(`/partner/${params.partnerId}/pos/${params.recordId}`);
   }
 
-  const locationId = String(record["locationId"] ?? "");
   const action = createPosReturnAction.bind(null, params.partnerId, params.recordId);
 
   return (
@@ -40,10 +39,9 @@ export default async function PosReturnPage({ params }: { params: { partnerId: s
       <div className="mx-auto max-w-2xl">
         <h1 className="font-display text-xl font-bold text-text">Return / Refund — {params.recordId}</h1>
         <p className="mt-1 text-sm text-text-muted">Enter a quantity to return for each line you're refunding.</p>
+        <p className="mt-1 text-sm text-text-muted">Complete any UPI, Card, or Wallet refund with its payment provider before recording it here. Enter its transaction reference below.</p>
 
         <form action={action} className="mt-6 space-y-4">
-          <input type="hidden" name="locationId" value={locationId} />
-
           <div className="overflow-x-auto rounded-lg border border-border bg-bg-raised">
             <table className="w-full min-w-[560px] border-collapse text-sm">
               <thead>
@@ -88,6 +86,11 @@ export default async function PosReturnPage({ params }: { params: { partnerId: s
               <option value="Card">Card</option>
               <option value="Wallet">Wallet</option>
             </select>
+          </label>
+
+          <label className="block text-xs font-semibold uppercase tracking-wide text-text-muted">
+            Refund transaction reference (required for UPI, Card, or Wallet)
+            <input name="refundReference" type="text" className="mt-1 block w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text" />
           </label>
 
           <label className="block text-xs font-semibold uppercase tracking-wide text-text-muted">

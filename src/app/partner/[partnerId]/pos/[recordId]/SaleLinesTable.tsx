@@ -9,12 +9,18 @@ import { voidSaleAction } from "../checkout/actions";
 export function SaleLinesTable({ partnerId, saleId, sale }: { partnerId: string; saleId: string; sale: PosSale }) {
   const [voidOpen, setVoidOpen] = useState(false);
   const [reason, setReason] = useState("");
+  const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
 
   function confirmVoid() {
     startTransition(async () => {
-      await voidSaleAction(partnerId, saleId, reason);
-      setVoidOpen(false);
+      setError("");
+      try {
+        await voidSaleAction(partnerId, saleId, reason);
+        setVoidOpen(false);
+      } catch (cause) {
+        setError(cause instanceof Error ? cause.message : "Could not void this sale.");
+      }
     });
   }
 
@@ -93,9 +99,9 @@ export function SaleLinesTable({ partnerId, saleId, sale }: { partnerId: string;
         }
       >
         <p className="text-sm text-text-muted">
-          This restores stock for every line item and marks the sale Voided. The linked Billing invoice is not
-          modified — a refund/credit note is handled from Billing separately.
+          Confirm the full cash refund has been paid from this open till. Voiding restores stock and issues a linked Billing credit note. For UPI, Card, Wallet, or mixed payments, use Return / Refund and record the completed refund reference.
         </p>
+        {error && <p role="alert" className="mt-2 text-sm text-danger">{error}</p>}
         <input
           type="text"
           value={reason}

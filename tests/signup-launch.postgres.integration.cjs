@@ -80,6 +80,9 @@ test('public signup action creates its owner and bundle keys before issuing the 
   '@/lib/partnerData':{...partnerData,updatePartnerSubscription:async()=>{throw Error('Unexpected subscription change without a selected plan');}},
   '@/lib/signupProvisioning':signup,'@/lib/designer/partnerTypesData':typeData,
   '@/lib/referrals':{resolveReferrer:async()=>undefined},'@/lib/email':{sendPartnerWelcomeEmail:async()=>{}},
+  '@/lib/dealerPortal':{verifyDealerReferralToken:async()=>undefined},
+  '@/lib/wholesaleReferrals':{getWholesaleReferralProgram:async()=>null},
+  '@/lib/wholesaleData':{getWholesaleCustomer:async()=>null},
   '@/lib/platformSettings':{notifyAdmins:async()=>{}},'@/lib/telegramTemplates':{newPartnerApplicationMessage:async()=>''},
   '@/lib/partnerSession':{createPartnerSessionToken:async partnerId=>{
    sessions.push(partnerId);

@@ -55,7 +55,7 @@ export default async function AmcFieldServicePage({ params }: { params: { partne
       technicianName: lifecycle.technicianName ?? "",
       contractEndDate: c.contractEndDate.toISOString().slice(0, 10),
       slaHours: c.slaHours,
-      contractValue: c.contractValue,
+      contractValue: c.contractValue / 100,
       status: lifecycle.serviceStatus,
       contractStatus: c.contractStatus,
       alerts,

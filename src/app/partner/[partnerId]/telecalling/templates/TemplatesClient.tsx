@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { createTemplateAction, deleteTemplateAction } from "@/lib/telecalling/actions";
-import { TEMPLATE_CATEGORIES } from "@/lib/telecalling/templatesData";
+import { TEMPLATE_CATEGORIES } from "@/lib/telecalling/shared";
 
 type Template = {
   id: string;

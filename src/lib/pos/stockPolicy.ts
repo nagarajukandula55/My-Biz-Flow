@@ -2,11 +2,12 @@ import type { Row } from "@/components/DataTable";
 import type { SaleLine, Tender } from "@/lib/sample-data/pos";
 
 export function validatePosInput(input: { lines: SaleLine[]; tenders: Tender[] }): void {
+  const validMoney = (value: number) => Number.isFinite(value) && value >= 0 && Number.isSafeInteger(Math.round(value * 100)) && Math.abs(value * 100 - Math.round(value * 100)) < 0.00001;
   if (!Array.isArray(input.lines) || !input.lines.length) throw new Error("Cart is empty.");
   for (const line of input.lines) {
-    if (!line || !line.sku || !Number.isFinite(line.qty) || line.qty <= 0 ||
-      !Number.isFinite(line.unitPrice) || line.unitPrice < 0 ||
-      !Number.isFinite(line.discount) || line.discount < 0 || line.discount > line.qty * line.unitPrice ||
+    if (!line || !line.sku || !Number.isSafeInteger(line.qty) || line.qty <= 0 ||
+      !validMoney(line.unitPrice) ||
+      !validMoney(line.discount) || line.discount > line.qty * line.unitPrice ||
       !Number.isFinite(line.taxRate) || line.taxRate < 0 || line.taxRate > 100 || !Number.isFinite(line.qty * line.unitPrice)) {
       throw new Error("Invalid sale quantity, price, discount or tax rate.");
     }
@@ -15,9 +16,30 @@ export function validatePosInput(input: { lines: SaleLine[]; tenders: Tender[] }
     }
   }
   if (!Array.isArray(input.tenders) || !input.tenders.length || input.tenders.some(tender =>
-    !tender || !["Cash", "UPI", "Card", "Wallet"].includes(tender.method) || !Number.isFinite(tender.amount) || tender.amount < 0)) {
+    !tender || !["Cash", "UPI", "Card", "Wallet"].includes(tender.method) || !validMoney(tender.amount))) {
     throw new Error("Invalid payment tender.");
   }
+}
+
+/** Net receipts after cash change; each row is what the Billing payment history actually received. */
+export function allocatePosPayments(tenders: Tender[], totalAmount: number): { method: Tender["method"]; amount: number }[] {
+  const tenderedPaise = tenders.reduce((sum, tender) => sum + Math.round(tender.amount * 100), 0);
+  const totalPaise = Math.round(totalAmount * 100);
+  let changePaise = tenderedPaise - totalPaise;
+  if (changePaise < 0) throw new Error("Payment is less than the sale total.");
+  if (changePaise > tenders.filter((t) => t.method === "Cash").reduce((sum, tender) => sum + Math.round(tender.amount * 100), 0)) {
+    throw new Error("Change cannot exceed cash tendered.");
+  }
+  const receipts = tenders.map((tender) => {
+    const tenderPaise = Math.round(tender.amount * 100);
+    const cashChange = tender.method === "Cash" ? Math.min(changePaise, tenderPaise) : 0;
+    changePaise -= cashChange;
+    return { method: tender.method, amount: (tenderPaise - cashChange) / 100 };
+  }).filter((receipt) => receipt.amount > 0);
+  if (changePaise !== 0 || receipts.reduce((sum, receipt) => sum + Math.round(receipt.amount * 100), 0) !== totalPaise) {
+    throw new Error("Recorded payments do not match the sale total.");
+  }
+  return receipts;
 }
 
 /** Aggregate repeated SKU lines before checking stock; reserved/defective stock is not sellable. */

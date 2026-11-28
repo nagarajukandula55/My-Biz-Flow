@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { StatusChip } from "@/components/StatusChip";
-import { LEGAL_MATTER_STATUSES, type LegalMatterStatus } from "@/lib/legal";
+import { LEGAL_MATTER_STATUSES, type LegalMatterStatus } from "@/lib/legalShared";
 import { setLegalMatterStatusAction } from "./actions";
 
 const STATUS_VARIANT: Record<LegalMatterStatus, "neutral" | "warning" | "teal" | "success" | "amber"> = {

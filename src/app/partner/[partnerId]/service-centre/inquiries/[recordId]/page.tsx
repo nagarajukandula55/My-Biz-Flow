@@ -11,6 +11,7 @@ import {
 } from "@/lib/sample-data/service-centre-inquiry";
 import { applyCustomizationsToDetailFields } from "@/lib/designer/customizations";
 import { getBusinessRecord } from "@/lib/businessRecords";
+import { getPartner } from "@/lib/partnerData";
 import { InquiryLifecycle } from "./InquiryLifecycle";
 
 registerPage({
@@ -40,6 +41,7 @@ export default async function InquiryDetailPage({
 }) {
   const record = await getBusinessRecord(params.partnerId, "service-centre-inquiry", params.recordId);
   if (!record) notFound();
+  const partner = await getPartner(params.partnerId);
   const fields = await applyCustomizationsToDetailFields(
     "service-centre.inquiries.detail",
     getInquiryDetailFields(record),
@@ -80,7 +82,7 @@ export default async function InquiryDetailPage({
                   </Link>
                 </div>
               </div>
-              <InquiryLifecycle partnerId={params.partnerId} inquiryId={params.recordId} record={record} />
+              <InquiryLifecycle partnerId={params.partnerId} inquiryId={params.recordId} record={record} canIssueGst={Boolean(partner?.gstin?.trim())} />
             </div>
           }
         />

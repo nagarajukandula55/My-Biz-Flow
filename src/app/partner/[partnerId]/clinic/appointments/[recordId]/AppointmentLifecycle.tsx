@@ -36,20 +36,27 @@ export function AppointmentLifecycle({
   const [prescriptionNotes, setPrescriptionNotes] = useState("");
   const [completeOpen, setCompleteOpen] = useState(false);
   const [invoice, setInvoice] = useState(invoiceId ?? undefined);
-  const [, startPersist] = useTransition();
+  const [error, setError] = useState("");
+  const [pending, startPersist] = useTransition();
 
   function submitCompletion() {
-    setStatus("Completed");
-    setCompleteOpen(false);
     startPersist(async () => {
-      await completeAppointmentAction(partnerId, appointmentId, prescriptionNotes);
+      setError("");
+      try {
+        await completeAppointmentAction(partnerId, appointmentId, prescriptionNotes);
+        setStatus("Completed");
+        setCompleteOpen(false);
+      } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not complete this visit."); }
     });
   }
 
   function createInvoice() {
     startPersist(async () => {
-      await createInvoiceFromAppointmentAction(partnerId, appointmentId);
-      setInvoice("pending"); // optimistic; page revalidation fills in the real id on next load
+      setError("");
+      try {
+        await createInvoiceFromAppointmentAction(partnerId, appointmentId);
+        setInvoice("pending"); // page revalidation fills in the real id on next load
+      } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not create the invoice."); }
     });
   }
 
@@ -61,13 +68,13 @@ export function AppointmentLifecycle({
           <StatusChip label={status} variant={STATUS_VARIANT[status] ?? "neutral"} />
         </div>
         <div className="flex items-center gap-3">
-          {status !== "Completed" && status !== "Cancelled" && (
-            <button type="button" className="btn-accent" onClick={() => setCompleteOpen(true)}>
+          {status !== "Completed" && status !== "Cancelled" && status !== "No-show" && (
+            <button type="button" className="btn-accent" disabled={pending} onClick={() => setCompleteOpen(true)}>
               Mark Completed
             </button>
           )}
           {status === "Completed" && !invoice && (
-            <button type="button" className="btn-outline" onClick={createInvoice}>
+            <button type="button" className="btn-outline" disabled={pending} onClick={createInvoice}>
               Create Invoice
             </button>
           )}
@@ -78,6 +85,7 @@ export function AppointmentLifecycle({
           )}
         </div>
       </div>
+      {error && <p role="alert" className="mt-2 text-sm text-danger">{error}</p>}
 
       <Modal
         open={completeOpen}
@@ -89,8 +97,8 @@ export function AppointmentLifecycle({
             <button type="button" className="btn-outline" onClick={() => setCompleteOpen(false)}>
               Cancel
             </button>
-            <button type="button" className="btn-accent" onClick={submitCompletion}>
-              Mark Completed
+            <button type="button" className="btn-accent" disabled={pending} onClick={submitCompletion}>
+              {pending ? "Saving..." : "Mark Completed"}
             </button>
           </>
         }

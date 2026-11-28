@@ -82,6 +82,7 @@ export default async function BillingDocumentPage({
       customerName={String(record["customer"] ?? "Customer")}
       customerCompany={record["customerCompany"] ? String(record["customerCompany"]) : undefined}
       customerPhone={record["customerPhone"] ? String(record["customerPhone"]) : undefined}
+      customerAlternatePhone={record["customerAlternatePhone"] ? String(record["customerAlternatePhone"]) : undefined}
       customerEmail={record["customerEmail"] ? String(record["customerEmail"]) : undefined}
       customerGstin={record["customerGstin"] ? String(record["customerGstin"]) : undefined}
       customerAddress={record["customerAddress"] ? String(record["customerAddress"]) : undefined}

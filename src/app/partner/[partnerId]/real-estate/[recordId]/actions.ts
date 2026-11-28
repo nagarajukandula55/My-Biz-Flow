@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireSessionPartnerId } from "@/lib/requirePartnerSession";
+import { withRecordLock } from "@/lib/withRecordLock";
 import {
   createEnquiry,
   getEnquiry,
@@ -92,23 +93,29 @@ export async function scheduleSiteVisitAction(
   siteVisitEnd: string
 ): Promise<{ ok: boolean; message?: string }> {
   partnerId = await requireSessionPartnerId(partnerId);
-  const check = await checkSiteVisitConflictAction(partnerId, listingId, agentId, siteVisitStart, siteVisitEnd);
-  if (check.conflict) {
-    return {
-      ok: false,
-      message: `${agentName || agentId} already has an overlapping site visit scheduled on enquiry ${check.conflictingListingId}. Choose a different time.`,
-    };
+  const agent = agentName.trim();
+  const start = new Date(siteVisitStart);
+  const end = new Date(siteVisitEnd);
+  if (!agent || !agentId.trim() || agentId.trim() !== agent || !Number.isFinite(start.getTime()) ||
+      !Number.isFinite(end.getTime()) || end <= start) {
+    return { ok: false, message: "Choose an agent and a valid site visit time window." };
   }
-  const existing = await getEnquiry(partnerId, listingId);
-  if (!existing) return { ok: false, message: "Enquiry not found." };
-  await patchEnquiryLifecycle(partnerId, listingId, {
-    agentName,
-    siteVisitStart: new Date(siteVisitStart),
-    siteVisitEnd: new Date(siteVisitEnd),
-    stage: existing.stage === "New" ? ("Site Visit Scheduled" as LeadStage) : undefined,
+  return withRecordLock("real-estate-agent", `${partnerId}:${agent.toLocaleLowerCase("en")}`, async () => {
+    const check = await checkSiteVisitConflictAction(partnerId, listingId, agent, siteVisitStart, siteVisitEnd);
+    if (check.conflict) {
+      return { ok: false, message: `${agent} already has an overlapping site visit scheduled on enquiry ${check.conflictingListingId}. Choose a different time.` };
+    }
+    const existing = await getEnquiry(partnerId, listingId);
+    if (!existing) return { ok: false, message: "Enquiry not found." };
+    await patchEnquiryLifecycle(partnerId, listingId, {
+      agentName: agent,
+      siteVisitStart: start,
+      siteVisitEnd: end,
+      stage: existing.stage === "New" ? ("Site Visit Scheduled" as LeadStage) : undefined,
+    });
+    revalidatePath(`/partner/${partnerId}/real-estate/${listingId}`);
+    return { ok: true };
   });
-  revalidatePath(`/partner/${partnerId}/real-estate/${listingId}`);
-  return { ok: true };
 }
 
 /**
@@ -125,16 +132,19 @@ export async function updateLeadStageAction(
   partnerId = await requireSessionPartnerId(partnerId);
   const existing = await getEnquiry(partnerId, listingId);
   if (!existing) return { ok: false, message: "Enquiry not found." };
+  if (!["New", "Site Visit Scheduled", "Negotiation", "Agreement Signed", "Closed/Lost"].includes(nextStage)) {
+    return { ok: false, message: "Select a valid enquiry stage." };
+  }
 
   const patch: Parameters<typeof patchEnquiryLifecycle>[2] = { stage: nextStage };
 
   if (nextStage === "Agreement Signed") {
     const dealValueRupees = Number(opts?.dealValue ?? 0);
     const commissionPct = Number(opts?.commissionPct ?? 0);
-    if (!dealValueRupees || dealValueRupees <= 0) {
+    if (!Number.isFinite(dealValueRupees) || dealValueRupees <= 0) {
       return { ok: false, message: "A deal value is required before marking the agreement signed." };
     }
-    if (!commissionPct || commissionPct <= 0) {
+    if (!Number.isFinite(commissionPct) || commissionPct <= 0 || commissionPct > 100) {
       return { ok: false, message: "Commission % is required before marking the agreement signed." };
     }
     const dealValue = rupeesToPaise(dealValueRupees);

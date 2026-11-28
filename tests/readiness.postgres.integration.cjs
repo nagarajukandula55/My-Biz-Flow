@@ -11,7 +11,7 @@ const lock = load('src/lib/withRecordLock.ts', { '@/lib/prisma': { prisma }, '@/
 const partnerId = 'readiness-' + crypto.randomUUID();
 const prefix = 'RT' + crypto.randomBytes(5).toString('hex');
 const tenant = { assertPartnerCanWrite: async () => {}, assertModuleAccess: async () => {}, PartnerScopeError: Error };
-const common = { '@/lib/prisma': { prisma }, '@/lib/withRecordLock': lock, '@/lib/tenant': tenant, '@/lib/bookingValidation': load('src/lib/bookingValidation.ts') };
+const common = { '@/lib/prisma': { prisma }, '@/lib/withRecordLock': lock, '@/lib/tenant': tenant, '@/lib/bookingValidation': load('src/lib/bookingValidation.ts'), '@/lib/listPagination': load('src/lib/listPagination.ts') };
 const accounting=load('src/lib/accounting.ts',common);
 const clinic = load('src/lib/clinic.ts', { ...common, '@/lib/businessRecords': { createBusinessRecord: async (partnerId, moduleSlug, data) => {
  const recordKey = crypto.randomUUID(); await prisma.businessRecord.create({data:{partnerId,moduleSlug,recordKey,data}}); return {id:recordKey};
@@ -47,7 +47,11 @@ test('rental receipts serialize competing payments, retain history and isolate r
 });
 const hrms = load('src/lib/hrms.ts', {...common, 'node:crypto':crypto, '@/lib/requirePartnerSession':{requireSessionPartnerId:async()=>{if(!ownerAllowed)throw Error('Owner required');}}, '@/lib/databaseTransaction':db, '@/lib/format':load('src/lib/format.ts'), '@/lib/telegram':{sendPartnerTelegramAlert:async()=>{}}, '@/lib/partnerData':{getPartner:async()=>null}, '@/lib/telegramTemplates':{}, '@/lib/email/moduleEmails':{}});
 let delivered = 0;
-const events = load('src/lib/eventBooking.ts', { ...common, '@/lib/businessRecords': {
+let eventModuleEnabled = true;
+const events = load('src/lib/eventBooking.ts', { ...common, '@/lib/tenant': {
+ assertPartnerCanWrite: async () => {},
+ assertModuleAccess: async (_id, moduleSlug) => { assert.equal(moduleSlug, 'event-booking'); if (!eventModuleEnabled) throw Error('Module disabled'); },
+}, '@/lib/businessRecords': {
  createBusinessRecord: async (partnerId,moduleSlug,data) => { const recordKey=crypto.randomUUID(); await prisma.businessRecord.create({data:{partnerId,moduleSlug,recordKey,data}}); return {id:recordKey}; },
  listBusinessRecords: async (partnerId,moduleSlug) => (await prisma.businessRecord.findMany({where:{partnerId,moduleSlug}})).map(row=>({...row.data,id:row.recordKey})),
 }, '@/lib/databaseTransaction': db,
@@ -181,7 +185,7 @@ test('Rentals schedules multiple maintenance windows and preserves independent p
  assert.equal((await rentals.getAgreement(partnerId,batch.id)).handover.condition,evidence.condition);
 });
 
-test('Events serialize venue/resource reservations and recheck conflicts on reopening', async () => {
+test('Events enforce access, serialize reservations and payments, and recheck conflicts on reopening', async () => {
  const venue = await prisma.venue.create({data:{partnerId,name:'Hall'}});
  const resource = await prisma.eventResource.create({data:{partnerId,name:'Projector'}});
  const input = {venueId:venue.id,eventName:'Test event',bookingType:'OneTime',startAt:start,endAt:end,customerName:'Test',totalAmount:10000,allocations:[{resourceId:resource.id,quantity:1}]};
@@ -196,9 +200,19 @@ test('Events serialize venue/resource reservations and recheck conflicts on reop
  await assert.rejects(events.createEventBooking(partnerId+'-other',input),/Venue/);
  await assert.rejects(events.createEventBooking(partnerId+'-other',{...input,venueId:null}),/Resource/);
  await assert.rejects(events.createEventBooking(partnerId,{...input,endAt:start}),/end/);
+ await assert.rejects(events.createEventBooking(partnerId,{...input,amountPaid:input.totalAmount+1}),/cannot exceed/);
  const prior=delivered;
  await Promise.all([events.recordEventBookingPayment(partnerId,replacement.id,10),events.recordEventBookingPayment(partnerId,replacement.id,20)]);
  assert.equal((await prisma.eventBooking.findUnique({where:{id:replacement.id}})).amountPaid,3000);
+ await assert.rejects(events.recordEventBookingPayment(partnerId,replacement.id,71),/remaining booking balance/);
+ await assert.rejects(events.updateEventBooking(partnerId,replacement.id,{...input,totalAmount:2000}),/lower than the amount already paid/);
+ await assert.rejects(events.updateEventBooking(partnerId,replacement.id,{...input,amountPaid:4000}),/payment or refund workflow/);
+ assert.equal((await prisma.eventBooking.findUnique({where:{id:replacement.id}})).amountPaid,3000);
+ eventModuleEnabled = false;
+ try {
+  await assert.rejects(events.listEventBookings(partnerId),/Module disabled/);
+  await assert.rejects(events.createVenue(partnerId,{name:'Blocked venue'}),/Module disabled/);
+ } finally { eventModuleEnabled = true; }
  assert.equal(delivered-prior,2);
  await assert.rejects(lock.withRecordLock('event-bookings',partnerId,async()=>{ await events.recordEventBookingPayment(partnerId,replacement.id,5); throw new Error('force rollback'); }),/rollback/);
  assert.equal(delivered-prior,2);

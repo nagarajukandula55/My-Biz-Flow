@@ -1,11 +1,11 @@
 import { AppShell } from "@/components/AppShell";
 import { registerPage } from "@/lib/designer/registry";
 import { RecordForm } from "@/components/RecordForm";
-import { inquiryFormFields } from "@/lib/sample-data/service-centre-inquiry";
+import { inquiryFormFields, effectiveInquiryStatus } from "@/lib/sample-data/service-centre-inquiry";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { notFound, redirect } from "next/navigation";
 import { getBusinessRecord } from "@/lib/businessRecords";
-import { updateBusinessRecordAction } from "@/lib/businessRecordActions";
+import { updateInquiryAction } from "../../actions";
 
 registerPage({
   id: "service-centre.inquiries.edit",
@@ -27,7 +27,7 @@ registerPage({
 export default async function EditInquiryPage({ params }: { params: { partnerId: string; recordId: string } }) {
   const record = await getBusinessRecord(params.partnerId, "service-centre-inquiry", params.recordId);
   if (!record) notFound();
-  if (record["status"] !== "Open") {
+  if (effectiveInquiryStatus(record) !== "Open") {
     redirect(`/partner/${params.partnerId}/service-centre/inquiries/${params.recordId}`);
   }
   const fields = await applyCustomizations("service-centre.inquiries.edit", inquiryFormFields);
@@ -44,13 +44,7 @@ export default async function EditInquiryPage({ params }: { params: { partnerId:
             submitLabel="Save changes"
             action={async (values: Record<string, unknown>) => {
               "use server";
-              return updateBusinessRecordAction(
-                params.partnerId,
-                "service-centre-inquiry",
-                params.recordId,
-                values,
-                "service-centre/inquiries"
-              );
+              return updateInquiryAction(params.partnerId, params.recordId, values);
             }}
           />
         </div>

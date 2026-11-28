@@ -5,7 +5,8 @@
  * before real provider keys are set.
  */
 import { prisma } from "@/lib/prisma";
-import { assertPartnerScope } from "@/lib/tenant";
+import { assertPartnerCanWrite, assertPartnerScope } from "@/lib/tenant";
+import { assertRecordModuleAccess } from "@/lib/recordEntitlement";
 import { getSmsFlowMapping } from "@/lib/smsFlowMapping";
 import { sendSms } from "@/lib/sms";
 import { sendWhatsAppTemplateMessage } from "@/lib/whatsapp";
@@ -22,6 +23,8 @@ export async function sendTemplateToLead(
   partnerId: string,
   input: { leadId: string; templateId: string; sentById: string; linkOverride?: string }
 ): Promise<{ status: "accepted" | "not-configured" | "failed"; body: string }> {
+  await assertRecordModuleAccess(partnerId, "telecalling");
+  await assertPartnerCanWrite(partnerId);
   const [lead, template] = await Promise.all([
     prisma.lead.findUniqueOrThrow({ where: { id: input.leadId } }),
     prisma.messageTemplate.findUniqueOrThrow({ where: { id: input.templateId } }),
@@ -82,6 +85,7 @@ export async function sendTemplateToLead(
 }
 
 export async function listMessagesForLead(leadId: string, partnerId: string) {
+  await assertRecordModuleAccess(partnerId, "telecalling");
   const lead = await prisma.lead.findUniqueOrThrow({ where: { id: leadId } });
   assertPartnerScope(partnerId, lead.partnerId);
   return prisma.messageLog.findMany({ where: { leadId }, orderBy: { createdAt: "desc" } });

@@ -112,7 +112,7 @@ test('POS invoice failure rolls back stock; concurrent sales cannot oversell', a
   'next/navigation':{redirect:url=>{throw new Error('REDIRECT '+url);}},'next/cache':{revalidatePath:()=>{}},
   '@/lib/businessRecords':{...records,createBusinessRecord:async(p,slug,data)=>{if(failInvoice&&slug==='billing')throw new Error('invoice failure');return records.createBusinessRecord(p,slug,data);}},
   '@/lib/sample-data/pos':load('src/lib/sample-data/pos.ts'),
-  '@/lib/pos/posAuth':{requirePosStaffAction:async()=>({id:'staff',name:'Test',staffCode:'TEST',posAccountId:'account'})},
+  '@/lib/pos/posAuth':{requirePosStaffAction:async()=>({id:'staff',name:'Test',staffCode:'TEST',posAccountId:'account',role:'Manager'}),requirePosManager:staff=>{if(staff.role!=='Manager')throw new Error('Only a Manager can do this.');}},
   '@/lib/pos/posTill':{getOpenTillSession:async()=>({id:'till'})},'@/lib/withRecordLock':lock,
   '@/lib/designer/numbering':{getNextNumber:async()=> 'TEST-INVOICE'},'@/lib/pos/stockPolicy':load('src/lib/pos/stockPolicy.ts'),
  });

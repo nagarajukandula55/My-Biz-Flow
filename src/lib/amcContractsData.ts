@@ -9,7 +9,37 @@
  * every read/write here takes partnerId and filters/checks by it.
  */
 import { prisma } from "@/lib/prisma";
-import { assertPartnerScope } from "@/lib/tenant";
+import { assertPartnerCanWrite, assertPartnerScope } from "@/lib/tenant";
+import { assertRecordModuleAccess } from "@/lib/recordEntitlement";
+
+const CONTRACT_STATUSES = ["Active", "Renewed", "Expired"];
+const VISIT_STATUSES = ["Scheduled", "Technician en route", "Checked in", "Completed", "Overdue"];
+async function readAccess(partnerId: string) { await assertRecordModuleAccess(partnerId, "amc-field-service"); }
+async function writeAccess(partnerId: string) { await readAccess(partnerId); await assertPartnerCanWrite(partnerId); }
+
+function validateContract(data: {
+  customer?: string; equipment?: string; contractStartDate?: Date; contractEndDate?: Date;
+  renewalTermMonths?: number; slaHours?: number; contractValue?: number; contractStatus?: string;
+}) {
+  if (data.customer !== undefined && !data.customer.trim()) throw new Error("Customer is required.");
+  if (data.equipment !== undefined && !data.equipment.trim()) throw new Error("Equipment is required.");
+  for (const date of [data.contractStartDate, data.contractEndDate]) {
+    if (date && !Number.isFinite(date.getTime())) throw new Error("Select valid contract dates.");
+  }
+  if (data.contractStartDate && data.contractEndDate && data.contractEndDate <= data.contractStartDate) throw new Error("Contract end must follow its start date.");
+  if (data.renewalTermMonths !== undefined && (!Number.isSafeInteger(data.renewalTermMonths) || data.renewalTermMonths < 1)) throw new Error("Renewal term must be a positive number of months.");
+  if (data.slaHours !== undefined && (!Number.isSafeInteger(data.slaHours) || data.slaHours < 1)) throw new Error("SLA hours must be positive.");
+  if (data.contractValue !== undefined && (!Number.isSafeInteger(data.contractValue) || data.contractValue < 0)) throw new Error("Contract value must be a non-negative amount in paise.");
+  if (data.contractStatus !== undefined && !CONTRACT_STATUSES.includes(data.contractStatus)) throw new Error("Select a valid contract status.");
+}
+
+function validateVisit(data: { serviceRequestRaisedAt?: Date | null; assignedAt?: Date | null; status?: string; checkInLatitude?: number | null; checkInLongitude?: number | null }) {
+  if (data.status && !VISIT_STATUSES.includes(data.status)) throw new Error("Select a valid service visit status.");
+  if (data.serviceRequestRaisedAt && !Number.isFinite(data.serviceRequestRaisedAt.getTime())) throw new Error("Select a valid visit date.");
+  if (data.assignedAt && !Number.isFinite(data.assignedAt.getTime())) throw new Error("Invalid assignment date.");
+  if (data.checkInLatitude != null && (!Number.isFinite(data.checkInLatitude) || Math.abs(data.checkInLatitude) > 90)) throw new Error("Invalid check-in latitude.");
+  if (data.checkInLongitude != null && (!Number.isFinite(data.checkInLongitude) || Math.abs(data.checkInLongitude) > 180)) throw new Error("Invalid check-in longitude.");
+}
 
 export type AmcContractRecord = {
   id: string;
@@ -44,6 +74,7 @@ export type ServiceVisitRecord = {
 export type AmcContractWithVisits = AmcContractRecord & { serviceVisits: ServiceVisitRecord[] };
 
 export async function listAmcContracts(partnerId: string): Promise<AmcContractRecord[]> {
+  await readAccess(partnerId);
   return prisma.amcContract.findMany({
     where: { partnerId },
     orderBy: { createdAt: "desc" },
@@ -52,6 +83,7 @@ export async function listAmcContracts(partnerId: string): Promise<AmcContractRe
 
 /** Same as listAmcContracts but with each contract's serviceVisits (newest first) — for the list page's alert badges. */
 export async function listAmcContractsWithVisits(partnerId: string): Promise<AmcContractWithVisits[]> {
+  await readAccess(partnerId);
   return prisma.amcContract.findMany({
     where: { partnerId },
     orderBy: { createdAt: "desc" },
@@ -61,6 +93,7 @@ export async function listAmcContractsWithVisits(partnerId: string): Promise<Amc
 
 /** Includes serviceVisits newest-first — [0] is the current/most-recent visit, if any. */
 export async function getAmcContract(partnerId: string, id: string): Promise<AmcContractWithVisits | null> {
+  await readAccess(partnerId);
   const record = await prisma.amcContract.findUnique({
     where: { id },
     include: { serviceVisits: { orderBy: { createdAt: "desc" } } },
@@ -84,6 +117,10 @@ export async function createAmcContract(
     renewedFromId?: string;
   }
 ): Promise<AmcContractRecord> {
+  await writeAccess(partnerId);
+  validateContract(data);
+  if (!data.customer.trim() || !data.equipment.trim() || !Number.isFinite(data.contractStartDate.getTime()) ||
+      !Number.isFinite(data.contractEndDate.getTime())) throw new Error("Customer, equipment, and valid contract dates are required.");
   return prisma.amcContract.create({
     data: {
       partnerId,
@@ -116,9 +153,15 @@ export async function updateAmcContract(
     renewedToId: string | null;
   }>
 ): Promise<AmcContractRecord> {
+  await writeAccess(partnerId);
+  validateContract(data);
   const existing = await prisma.amcContract.findUnique({ where: { id } });
   if (!existing) throw new Error(`AmcContract ${id} not found`);
   assertPartnerScope(partnerId, existing.partnerId);
+  if (data.contractStartDate || data.contractEndDate) validateContract({
+    contractStartDate: data.contractStartDate ?? existing.contractStartDate,
+    contractEndDate: data.contractEndDate ?? existing.contractEndDate,
+  });
   return prisma.amcContract.update({ where: { id }, data });
 }
 
@@ -140,9 +183,12 @@ export async function createServiceVisit(
     checkInLongitude: number;
   }>
 ): Promise<ServiceVisitRecord> {
+  await writeAccess(partnerId);
+  validateVisit(data);
   const contract = await prisma.amcContract.findUnique({ where: { id: contractId } });
   if (!contract) throw new Error(`AmcContract ${contractId} not found`);
   assertPartnerScope(partnerId, contract.partnerId);
+  if (contract.contractStatus !== "Active") throw new Error("Service visits require an active contract.");
   return prisma.serviceVisit.create({
     data: {
       contractId,
@@ -171,6 +217,8 @@ export async function updateServiceVisit(
     checkInLongitude: number | null;
   }>
 ): Promise<ServiceVisitRecord> {
+  await writeAccess(partnerId);
+  validateVisit(data);
   const existing = await prisma.serviceVisit.findUnique({ where: { id: visitId } });
   if (!existing) throw new Error(`ServiceVisit ${visitId} not found`);
   assertPartnerScope(partnerId, existing.partnerId);

@@ -11,6 +11,7 @@ import { applyInvoiceConsumption, finalizeInvoiceItems, hasInventoryLines, planI
 import { syncBomMaterialToInventoryStock } from "@/lib/inventoryStock";
 import { assertMaterialBarcodeAvailable, assertPosBarcodeAccess } from "@/lib/barcodeCatalog";
 import { assertPageTierAccess } from "@/lib/tenant";
+import { assertRecordModuleAccess } from "@/lib/recordEntitlement";
 
 // `barcodeType` is rendered with a harmless default (CODE128) by generic
 // forms. It must not turn a plain BOM-material save into a POS-only barcode
@@ -125,6 +126,11 @@ export async function createBusinessRecordAction(
   // module built directly on createBusinessRecord/updateBusinessRecord)
   // trusting the caller-supplied partnerId with nothing to enforce it.
   partnerId = await requireSessionPartnerId(partnerId);
+  await assertRecordModuleAccess(partnerId, moduleSlug);
+  if (moduleSlug === "service-centre-inquiry") throw new Error("Use the inquiry workflow to create inquiries.");
+  if (["billing", "billing-credit-notes"].includes(moduleSlug) && values["sourcePosSaleId"]) {
+    throw new Error("POS linked Billing records can only be issued by the POS workflow.");
+  }
   if (moduleSlug === "inventory-bom") {
     await assertBarcodeWriteAccess(partnerId, values);
     await assertMaterialBarcodeAvailable(partnerId, values);
@@ -245,6 +251,13 @@ export async function updateBusinessRecordAction(
   urlPath: string = moduleSlug
 ) {
   partnerId = await requireSessionPartnerId(partnerId);
+  await assertRecordModuleAccess(partnerId, moduleSlug);
+  if (moduleSlug === "service-centre-inquiry") throw new Error("Use the inquiry workflow to edit inquiries.");
+  if (["billing", "billing-credit-notes"].includes(moduleSlug)) {
+    const existing = await getBusinessRecord(partnerId, moduleSlug, recordKey);
+    if (!existing) throw new Error("Billing document not found.");
+    if (existing["sourcePosSaleId"] || values["sourcePosSaleId"]) throw new Error("POS issued Billing documents cannot be edited.");
+  }
   if (moduleSlug === "inventory-bom") {
     await assertBarcodeWriteAccess(partnerId, values);
     await assertMaterialBarcodeAvailable(partnerId, values, recordKey);
@@ -311,8 +324,13 @@ export async function patchBusinessRecordAction(
   patch: Record<string, unknown>
 ): Promise<void> {
   partnerId = await requireSessionPartnerId(partnerId);
+  await assertRecordModuleAccess(partnerId, moduleSlug);
+  if (moduleSlug === "service-centre-inquiry") throw new Error("Use the inquiry workflow to change inquiries.");
   const existing = await getBusinessRecord(partnerId, moduleSlug, recordKey);
   if (!existing) return;
+    if (["billing", "billing-credit-notes"].includes(moduleSlug) && (existing["sourcePosSaleId"] || patch["sourcePosSaleId"])) {
+      throw new Error("POS issued Billing documents cannot be edited.");
+    }
   await updateBusinessRecord(partnerId, moduleSlug, recordKey, { ...existing, ...patch });
   revalidatePath(`/partner/${partnerId}/${moduleSlug}/${recordKey}`);
 }

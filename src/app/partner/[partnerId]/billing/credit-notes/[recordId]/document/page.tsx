@@ -40,6 +40,7 @@ export default async function CreditNoteDocumentPage({
       record={record}
       columns={creditNoteColumns}
       sequenceIndex={sequenceIndex}
+      issuedNumber={typeof record["noteNumber"] === "string" ? record["noteNumber"] : undefined}
       lineItems={record["items"] as LineItem[] | undefined}
       termsText={resolveDocumentTerms(partner, "invoice")}
     />

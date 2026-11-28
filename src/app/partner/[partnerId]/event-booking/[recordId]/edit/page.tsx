@@ -52,6 +52,7 @@ export default async function EditEventBookingPage({ params }: { params: { partn
               allocations: booking.resourceAllocations.map((a) => ({ resourceId: a.resourceId, quantity: a.quantity })),
             }}
             submitLabel="Save changes"
+            amountPaidReadOnly
             action={updateEventBookingAction.bind(null, params.partnerId, params.recordId)}
           />
         </div>

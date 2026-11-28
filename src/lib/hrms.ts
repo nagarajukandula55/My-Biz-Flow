@@ -27,6 +27,7 @@ import {
   hrmsPayrollCompletedMessage,
 } from "@/lib/telegramTemplates";
 import { sendHrmsLeaveDecidedEmail, sendHrmsPayrollCompletedEmail } from "@/lib/email/moduleEmails";
+import { buildPaginatedList, normalizeListPage, type ListPageOptions, type PaginatedList } from "@/lib/listPagination";
 
 // --- Employees ---------------------------------------------------------
 
@@ -433,6 +434,24 @@ export async function listLeaveRequests(partnerId: string, employeeId?: string) 
   });
 }
 
+export async function listLeaveRequestsPaginated(
+  partnerId: string,
+  options: ListPageOptions & { employeeId?: string } = {}
+): Promise<PaginatedList<Awaited<ReturnType<typeof listLeaveRequests>>[number]>> {
+  const { page, pageSize } = normalizeListPage(options);
+  const where = { employee: { partnerId }, ...(options.employeeId ? { employeeId: options.employeeId } : {}) };
+  const total = await prisma.leaveRequest.count({ where });
+  const actualPage = Math.min(page, Math.max(1, Math.ceil(total / pageSize)));
+  const rows = await prisma.leaveRequest.findMany({
+    where,
+    include: { employee: true },
+    orderBy: [{ appliedAt: "desc" }, { id: "desc" }],
+    skip: (actualPage - 1) * pageSize,
+    take: pageSize,
+  });
+  return buildPaginatedList(rows, total, actualPage, pageSize);
+}
+
 export async function createLeaveRequest(
   partnerId: string,
   data: { employeeId: string; leaveType: string; startDate: Date; endDate: Date; reason?: string }
@@ -552,6 +571,24 @@ export async function listPayslips(partnerId: string, employeeId?: string) {
     orderBy: [{ year: "desc" }, { month: "desc" }],
     take: PAYSLIPS_SAFETY_LIMIT,
   });
+}
+
+export async function listPayslipsPaginated(
+  partnerId: string,
+  options: ListPageOptions & { employeeId?: string } = {}
+): Promise<PaginatedList<Awaited<ReturnType<typeof listPayslips>>[number]>> {
+  const { page, pageSize } = normalizeListPage(options);
+  const where = { employee: { partnerId }, ...(options.employeeId ? { employeeId: options.employeeId } : {}) };
+  const total = await prisma.payslip.count({ where });
+  const actualPage = Math.min(page, Math.max(1, Math.ceil(total / pageSize)));
+  const rows = await prisma.payslip.findMany({
+    where,
+    include: { employee: true },
+    orderBy: [{ year: "desc" }, { month: "desc" }, { id: "desc" }],
+    skip: (actualPage - 1) * pageSize,
+    take: pageSize,
+  });
+  return buildPaginatedList(rows, total, actualPage, pageSize);
 }
 
 /** Creates or replaces a Payslip for an employee/month/year (unique constraint — an

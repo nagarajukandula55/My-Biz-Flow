@@ -4,6 +4,7 @@ import type { StatusVariant } from "@/components/StatusChip";
 import type { FormFieldDef } from "@/components/RecordForm";
 import type { SalonAppointmentRecord } from "@/lib/salonSpa/appointmentsData";
 import type { SalonServiceRecord } from "@/lib/salonSpa/servicesData";
+import { salonPaiseToRupees } from "@/lib/salonSpa/money";
 
 // Field/column definitions for the Salon & Spa module — real data now comes
 // from SalonAppointment/SalonService (Prisma), not BusinessRecord/static
@@ -50,7 +51,7 @@ export const salonSpaFormFields: FormFieldDef[] = [
 /** Injects the partner's real active services as the Service field's options (value = service id). */
 export function buildSalonSpaFormFields(services: SalonServiceRecord[]): FormFieldDef[] {
   const options = services.map((s) => s.id);
-  const optionLabels = Object.fromEntries(services.map((s) => [s.id, `${s.name} — ₹${s.price} (${s.durationMinutes} min)`]));
+  const optionLabels = Object.fromEntries(services.map((s) => [s.id, `${s.name} - ₹${salonPaiseToRupees(s.price).toFixed(2)} (${s.durationMinutes} min)`]));
   return salonSpaFormFields.map((f) => (f.key === "serviceId" ? { ...f, options, optionLabels } : f));
 }
 
@@ -76,12 +77,12 @@ export function salonAppointmentToRow(r: SalonAppointmentRecord): Row {
     serviceName: r.serviceName,
     stylist: r.stylist,
     durationMinutes: r.durationMinutes,
-    price: r.price,
+    price: salonPaiseToRupees(r.price),
     status: r.status,
     appointmentDate: r.appointmentDate.toISOString(),
     branch: r.branch ?? "",
     commissionPercent: r.commissionPercent ?? "",
-    commissionAmount: r.commissionAmount ?? "",
+    commissionAmount: r.commissionAmount == null ? "" : salonPaiseToRupees(r.commissionAmount),
     invoiceId: r.invoiceId ?? "",
   };
 }
@@ -91,7 +92,7 @@ export function salonServiceToRow(s: SalonServiceRecord): Row {
     id: s.id,
     name: s.name,
     durationMinutes: s.durationMinutes,
-    price: s.price,
+    price: salonPaiseToRupees(s.price),
     isActive: s.isActive ? "Yes" : "No",
   };
 }

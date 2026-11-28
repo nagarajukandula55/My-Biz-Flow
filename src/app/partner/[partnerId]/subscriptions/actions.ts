@@ -69,9 +69,9 @@ export async function deleteSubscriberAction(partnerId: string, subscriberId: st
  * amounts — always uses the server-held planAmount) and advances
  * nextBillingDate by one cycle.
  */
-export async function recordPaymentAction(partnerId: string, membershipId: string): Promise<void> {
+export async function recordPaymentAction(partnerId: string, membershipId: string, expectedCycleDate: string, paymentMode: string): Promise<void> {
   partnerId = await requireSessionPartnerId(partnerId);
-  await recordSubscriberPayment(partnerId, membershipId);
+  await recordSubscriberPayment(partnerId, membershipId, expectedCycleDate, paymentMode);
   revalidatePath(`/partner/${partnerId}/subscriptions/${membershipId}`);
   revalidatePath(`/partner/${partnerId}/subscriptions`);
 }

@@ -1,7 +1,7 @@
 import type { Column, Row } from "@/components/DataTable";
 import type { RecordField } from "@/components/RecordDetail";
 import type { FormFieldDef } from "@/components/RecordForm";
-import { paiseToRupees, type MarketplaceListingRow } from "@/lib/marketplace";
+import type { MarketplaceListingRow } from "@/lib/marketplace";
 
 // Field vocabulary for the Marketplace "Listings" pages (MarketplaceListing,
 // Prisma-backed — see src/lib/marketplace.ts). Money fields render in
@@ -35,7 +35,7 @@ export function marketplaceListingToRow(l: MarketplaceListingRow): Row {
     title: l.title,
     description: l.description ?? "",
     category: l.category ?? "",
-    price: paiseToRupees(l.price),
+    price: Math.round(l.price) / 100,
     stockQuantity: l.stockQuantity,
     isActive: l.isActive,
   };

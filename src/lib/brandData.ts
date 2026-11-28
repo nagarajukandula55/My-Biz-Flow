@@ -26,7 +26,17 @@
  * src/lib/sample-data/warehouse.ts's own doc comments).
  */
 import { prisma } from "@/lib/prisma";
-import { assertPartnerScope } from "@/lib/tenant";
+import { assertPartnerCanWrite, assertPartnerScope } from "@/lib/tenant";
+import { assertRecordModuleAccess } from "@/lib/recordEntitlement";
+
+async function readAccess(partnerId: string) { await assertRecordModuleAccess(partnerId, "brand"); }
+async function writeAccess(partnerId: string) { await readAccess(partnerId); await assertPartnerCanWrite(partnerId); }
+
+async function requireOwnedBrand(partnerId: string, brandId: string): Promise<BrandRow> {
+  const brand = await getBrand(partnerId, brandId);
+  if (!brand) throw new Error("Brand not found for this business.");
+  return brand;
+}
 
 export function paiseToRupees(paise: number): number {
   return Math.round(paise) / 100;
@@ -49,10 +59,12 @@ export type BrandRow = {
 };
 
 export async function listBrands(partnerId: string): Promise<BrandRow[]> {
+  await readAccess(partnerId);
   return prisma.brand.findMany({ where: { partnerId }, orderBy: { createdAt: "desc" } });
 }
 
 export async function getBrand(partnerId: string, id: string): Promise<BrandRow | null> {
+  await readAccess(partnerId);
   const row = await prisma.brand.findUnique({ where: { id } });
   if (!row) return null;
   assertPartnerScope(partnerId, row.partnerId);
@@ -63,8 +75,10 @@ export async function createBrand(
   partnerId: string,
   input: { name: string; isActive: boolean }
 ): Promise<BrandRow> {
+  await writeAccess(partnerId);
+  if (!input.name.trim()) throw new Error("Brand name is required.");
   return prisma.brand.create({
-    data: { partnerId, name: input.name, isActive: input.isActive },
+    data: { partnerId, name: input.name.trim(), isActive: input.isActive },
   });
 }
 
@@ -73,11 +87,13 @@ export async function updateBrand(
   id: string,
   input: { name: string; isActive: boolean }
 ): Promise<void> {
+  await writeAccess(partnerId);
+  if (!input.name.trim()) throw new Error("Brand name is required.");
   const existing = await prisma.brand.findUniqueOrThrow({ where: { id } });
   assertPartnerScope(partnerId, existing.partnerId);
   await prisma.brand.update({
     where: { id },
-    data: { name: input.name, isActive: input.isActive },
+    data: { name: input.name.trim(), isActive: input.isActive },
   });
 }
 
@@ -104,12 +120,13 @@ export async function listLocationsForBrand(partnerId: string, brandId: string):
   // locations — a Location's own partnerId can differ (see file header),
   // so this is the real scope check for "can this session see this
   // brand's locations" rather than filtering rows by partnerId directly.
-  await getBrand(partnerId, brandId);
+  await requireOwnedBrand(partnerId, brandId);
   return prisma.location.findMany({ where: { brandId }, orderBy: { createdAt: "desc" } });
 }
 
 /** Every Location across every Brand this partner owns — for the rollup and the flat "all locations" list. */
 export async function listLocationsForPartnerBrands(partnerId: string): Promise<LocationRow[]> {
+  await readAccess(partnerId);
   return prisma.location.findMany({
     where: { brand: { partnerId } },
     orderBy: { createdAt: "desc" },
@@ -117,9 +134,9 @@ export async function listLocationsForPartnerBrands(partnerId: string): Promise<
 }
 
 export async function getLocation(partnerId: string, brandId: string, id: string): Promise<LocationRow | null> {
+  await requireOwnedBrand(partnerId, brandId);
   const row = await prisma.location.findUnique({ where: { id } });
   if (!row || row.brandId !== brandId) return null;
-  await getBrand(partnerId, brandId); // throws PartnerScopeError if the brand isn't this partner's
   return row;
 }
 
@@ -133,8 +150,17 @@ export type LocationInput = {
   openedDate?: Date | null;
 };
 
+function validateLocation(input: LocationInput) {
+  if (!input.locationName.trim() || !input.city.trim()) throw new Error("Location name and city are required.");
+  if (!Number.isSafeInteger(input.monthlyRevenue) || input.monthlyRevenue < 0) throw new Error("Monthly revenue must be a non-negative amount in paise.");
+  if (!input.status.trim()) throw new Error("Location status is required.");
+  if (input.openedDate && !Number.isFinite(input.openedDate.getTime())) throw new Error("Select a valid opening date.");
+}
+
 export async function createLocation(partnerId: string, brandId: string, input: LocationInput): Promise<LocationRow> {
-  await getBrand(partnerId, brandId);
+  await writeAccess(partnerId);
+  validateLocation(input);
+  await requireOwnedBrand(partnerId, brandId);
   return prisma.location.create({
     data: {
       brandId,
@@ -156,7 +182,9 @@ export async function updateLocation(
   id: string,
   input: LocationInput
 ): Promise<void> {
-  await getBrand(partnerId, brandId);
+  await writeAccess(partnerId);
+  validateLocation(input);
+  await requireOwnedBrand(partnerId, brandId);
   const existing = await prisma.location.findUniqueOrThrow({ where: { id } });
   if (existing.brandId !== brandId) {
     throw new Error(`Location "${id}" does not belong to brand "${brandId}".`);

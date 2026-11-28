@@ -2,8 +2,7 @@ import type { Column, Row } from "@/components/DataTable";
 import type { RecordField, TimelineEntry, RelatedRecord } from "@/components/RecordDetail";
 import type { StatusVariant } from "@/components/StatusChip";
 import type { FormFieldDef } from "@/components/RecordForm";
-import { getWarehouseOptionsForPartner } from "./warehouse";
-import { paiseToRupees, type BrandRow, type BrandRollup, type LocationRow } from "@/lib/brandData";
+import type { BrandRow, BrandRollup, LocationRow } from "@/lib/brandData";
 
 // Field vocabulary for the Brand module (Brand + Location, Prisma-backed —
 // see src/lib/brandData.ts). Real backend as of the 2026-09-25 second-pass
@@ -83,20 +82,6 @@ export const locationColumns: Column[] = [
   { key: "openedDate", label: "Opened Date", type: "date" },
 ];
 
-/** Partner-scoped — Mapped Warehouse pulls THIS partner's own real warehouses (see getWarehouseOptionsForPartner's doc comment), never a fixed demo list. */
-export async function getLocationFormFields(partnerId: string): Promise<FormFieldDef[]> {
-  const warehouseOptions = await getWarehouseOptionsForPartner(partnerId);
-  return [
-    { key: "locationName", label: "Location Name", type: "text", required: true },
-    { key: "city", label: "City", type: "text", required: true },
-    { key: "modulesEnabled", label: "Modules Enabled", type: "textarea", required: false },
-    { key: "mappedWarehouseId", label: "Mapped Warehouse", type: "select", required: false, options: warehouseOptions.map((o) => o.label) },
-    { key: "monthlyRevenue", label: "Monthly Revenue (₹)", type: "currency", required: false },
-    { key: "status", label: "Status", type: "select", required: true, options: [...BRAND_STATUSES] },
-    { key: "openedDate", label: "Opened Date", type: "date", required: false },
-  ];
-}
-
 export function locationToRow(l: LocationRow): Row {
   return {
     id: l.id,
@@ -105,7 +90,7 @@ export function locationToRow(l: LocationRow): Row {
     city: l.city,
     modulesEnabled: l.modulesEnabled ?? "",
     mappedWarehouseId: l.mappedWarehouseId ?? "",
-    monthlyRevenue: paiseToRupees(l.monthlyRevenue),
+    monthlyRevenue: Math.round(l.monthlyRevenue) / 100,
     status: l.status,
     openedDate: l.openedDate ? l.openedDate.toISOString().slice(0, 10) : "",
   };

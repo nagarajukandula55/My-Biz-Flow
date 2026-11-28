@@ -193,7 +193,7 @@ export function getBillingRecord(recordId: string): Row {
 export function getBillingDetailFields(record: Row): RecordField[] {
   const r = record;
   const hasCustomerBlock = Boolean(
-    r["customerCompany"] || r["customerPhone"] || r["customerEmail"] || r["customerAddress"] ||
+    r["customerCompany"] || r["customerPhone"] || r["customerAlternatePhone"] || r["customerEmail"] || r["customerAddress"] ||
     r["customerCity"] || r["customerState"] || r["customerPincode"] || r["customerGstin"]
   );
   const supplyType = r["supplyType"] ? String(r["supplyType"]) : undefined;
@@ -205,6 +205,7 @@ export function getBillingDetailFields(record: Row): RecordField[] {
           { label: "Customer Company", value: r["customerCompany"], type: "text" as const },
           { label: "Customer GSTIN", value: r["customerGstin"], type: "text" as const },
           { label: "Customer Phone", value: r["customerPhone"], type: "phone" as const },
+          { label: "Alternate Contact No", value: r["customerAlternatePhone"], type: "phone" as const },
           { label: "Customer Email", value: r["customerEmail"], type: "text" as const },
           { label: "Billing Address", value: r["customerAddress"], type: "text" as const },
           { label: "City", value: r["customerCity"], type: "text" as const },

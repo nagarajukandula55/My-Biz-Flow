@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState, useTransition } from "react";
 import { StatusChip, type StatusVariant } from "@/components/StatusChip";
 import { logCallAction, sendTemplateAction, assignLeadAction } from "@/lib/telecalling/actions";
-import { CALL_OUTCOMES } from "@/lib/telecalling/callsData";
+import { CALL_OUTCOMES } from "@/lib/telecalling/shared";
 
 type Lead = {
   id: string;

@@ -9,24 +9,15 @@
 import { prisma } from "@/lib/prisma";
 import { assertPartnerScope } from "@/lib/tenant";
 import { getPartnerStaff, listActivePartnerStaff } from "@/lib/partnerStaff";
+import { LEAD_STATUSES, TERMINAL_LEAD_STATUSES, type LeadStatus } from "@/lib/telecalling/shared";
+export { LEAD_STATUSES, TERMINAL_LEAD_STATUSES } from "@/lib/telecalling/shared";
+export type { LeadStatus } from "@/lib/telecalling/shared";
 
-export const LEAD_STATUSES = [
-  "New",
-  "Contacted",
-  "Interested",
-  "FollowUpRequired",
-  "Accepted",
-  "Closed",
-  "Lost",
-  "DoNotCall",
-] as const;
-export type LeadStatus = (typeof LEAD_STATUSES)[number];
 
 /** Statuses that mean "this lead is done" — filtered out of an agent's
  * active call queue (listLeadsForAgent) and shown instead under the
  * queue's "Closed" tab (see QueueClient.tsx), so a working list only ever
  * shows leads that still need action. */
-export const TERMINAL_LEAD_STATUSES = ["Accepted", "Closed", "Lost", "DoNotCall"] as const;
 
 export type LeadRecord = {
   id: string;

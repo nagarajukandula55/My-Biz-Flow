@@ -1,5 +1,18 @@
 import { AppShell } from "@/components/AppShell";
 import { OfflineDraftsClient } from "../../inventory/offline-drafts/OfflineDraftsClient";
+import { registerPage } from "@/lib/designer/registry";
+
+registerPage({
+  id: "restaurant-pos.offline-drafts",
+  moduleSlug: "restaurant-pos",
+  title: "Restaurant - Offline Drafts",
+  path: "/partner/[partnerId]/restaurant-pos/offline-drafts",
+  kind: "form",
+  superAdminOnly: false,
+  customizableRegions: [],
+  explanation: "Review locally saved restaurant order drafts. Sync validates table availability and current menu pricing online before creating orders, bills, or kitchen tickets.",
+  sourceFile: "src/app/partner/[partnerId]/restaurant-pos/offline-drafts/page.tsx",
+});
 
 export const dynamic = "force-dynamic";
 export default function RestaurantOfflineDraftsPage({ params }: { params: { partnerId: string } }) {

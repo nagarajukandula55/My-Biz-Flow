@@ -5,9 +5,10 @@ import { registerPage } from "@/lib/designer/registry";
 import Link from "next/link";
 import { StatusChip } from "@/components/StatusChip";
 import { requirePartnerSessionForPage } from "@/lib/requirePartnerSession";
-import { listLeaveRequests } from "@/lib/hrms";
+import { listLeaveRequestsPaginated } from "@/lib/hrms";
 import { LeaveDecisionButtons } from "./LeaveDecisionButtons";
 import { formatDate } from "@/lib/format";
+import { PaginationControls, buildPageQueryString } from "@/components/PaginationControls";
 
 registerPage({
   id: "hrms.leave.list",
@@ -23,12 +24,13 @@ registerPage({
 
 export const dynamic = "force-dynamic";
 
-export default async function LeavePage({ params }: { params: { partnerId: string } }) {
+export default async function LeavePage({ params, searchParams }: { params: { partnerId: string }; searchParams: { page?: string } }) {
   await requirePartnerSessionForPage(params.partnerId);
   const tierGate = await renderTierGate(params.partnerId, "hrms.leave.list", "Leave");
   if (tierGate) return <AppShell topbarTitle="Leave — HRMS / Payroll">{tierGate}</AppShell>;
   const mod = await getModule("hrms");
-  const leaveRequests = await listLeaveRequests(params.partnerId);
+  const result = await listLeaveRequestsPaginated(params.partnerId, { page: Number(searchParams.page) || 1 });
+  const leaveRequests = result.rows;
 
   return (
     <AppShell
@@ -40,7 +42,7 @@ export default async function LeavePage({ params }: { params: { partnerId: strin
       }
     >
       <div>
-        {leaveRequests.length === 0 && <p className="text-sm text-text-muted">No leave requests yet.</p>}
+        {result.total === 0 && <p className="text-sm text-text-muted">No leave requests yet.</p>}
         <div className="space-y-2">
           {leaveRequests.map((l) => (
             <div key={l.id} className="flex items-center justify-between rounded-md border border-border bg-bg-raised px-4 py-3 text-sm">
@@ -58,6 +60,7 @@ export default async function LeavePage({ params }: { params: { partnerId: strin
             </div>
           ))}
         </div>
+        <PaginationControls page={result.page} totalPages={result.totalPages} total={result.total} pageSize={result.pageSize} buildHref={(page) => `/partner/${params.partnerId}/hrms/leave${buildPageQueryString(searchParams, { page: String(page) })}`} />
       </div>
     </AppShell>
   );

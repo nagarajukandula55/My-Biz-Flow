@@ -13,19 +13,25 @@
 import { prisma } from "@/lib/prisma";
 import { withRecordLock } from "@/lib/withRecordLock";
 import { afterDatabaseCommit } from "@/lib/databaseTransaction";
-import { assertPartnerScope } from "@/lib/tenant";
+import { assertPartnerCanWrite, assertPartnerScope } from "@/lib/tenant";
+import { assertRecordModuleAccess } from "@/lib/recordEntitlement";
 import { sendPartnerTelegramAlert } from "@/lib/telegram";
 import { getPartner } from "@/lib/partnerData";
 import { educationEnrollmentConfirmedMessage } from "@/lib/telegramTemplates";
 import { sendEducationEnrollmentConfirmedEmail } from "@/lib/email/moduleEmails";
 
+async function readAccess(partnerId: string) { await assertRecordModuleAccess(partnerId, "education"); }
+async function writeAccess(partnerId: string) { await readAccess(partnerId); await assertPartnerCanWrite(partnerId); }
+
 // --- Courses ---------------------------------------------------------
 
 export async function listCourses(partnerId: string) {
+  await readAccess(partnerId);
   return prisma.course.findMany({ where: { partnerId }, orderBy: { name: "asc" } });
 }
 
 export async function getCourse(partnerId: string, id: string) {
+  await readAccess(partnerId);
   const course = await prisma.course.findUnique({ where: { id } });
   if (!course) return null;
   assertPartnerScope(partnerId, course.partnerId);
@@ -36,6 +42,9 @@ export async function createCourse(
   partnerId: string,
   data: { name: string; durationWeeks?: number | null; fee: number; isActive?: boolean }
 ) {
+  await writeAccess(partnerId);
+  if (!data.name.trim() || !Number.isSafeInteger(data.fee) || data.fee < 0 ||
+      (data.durationWeeks != null && (!Number.isSafeInteger(data.durationWeeks) || data.durationWeeks < 1))) throw new Error("Course requires a name, valid paise fee and positive duration.");
   return prisma.course.create({
     data: {
       partnerId,
@@ -52,6 +61,9 @@ export async function updateCourse(
   id: string,
   data: { name?: string; durationWeeks?: number | null; fee?: number; isActive?: boolean }
 ) {
+  await writeAccess(partnerId);
+  if (data.name !== undefined && !data.name.trim()) throw new Error("Course name is required.");
+  if (data.fee !== undefined && (!Number.isSafeInteger(data.fee) || data.fee < 0)) throw new Error("Course fee must be a non-negative amount in paise.");
   const existing = await getCourse(partnerId, id); // throws on cross-tenant / null-safe below
   if (!existing) return null;
   return prisma.course.update({ where: { id }, data });
@@ -60,10 +72,12 @@ export async function updateCourse(
 // --- Students ----------------------------------------------------------
 
 export async function listStudents(partnerId: string) {
+  await readAccess(partnerId);
   return prisma.student.findMany({ where: { partnerId }, orderBy: { createdAt: "desc" } });
 }
 
 export async function getStudent(partnerId: string, id: string) {
+  await readAccess(partnerId);
   const student = await prisma.student.findUnique({ where: { id } });
   if (!student) return null;
   assertPartnerScope(partnerId, student.partnerId);
@@ -74,6 +88,8 @@ export async function createStudent(
   partnerId: string,
   data: { name: string; contact?: string | null; email?: string | null; guardianName?: string | null; guardianContact?: string | null }
 ) {
+  await writeAccess(partnerId);
+  if (!data.name.trim()) throw new Error("Student name is required.");
   return prisma.student.create({
     data: {
       partnerId,
@@ -91,6 +107,8 @@ export async function updateStudent(
   id: string,
   data: { name?: string; contact?: string | null; email?: string | null; guardianName?: string | null; guardianContact?: string | null }
 ) {
+  await writeAccess(partnerId);
+  if (data.name !== undefined && !data.name.trim()) throw new Error("Student name is required.");
   const existing = await getStudent(partnerId, id);
   if (!existing) return null;
   return prisma.student.update({ where: { id }, data });
@@ -99,6 +117,7 @@ export async function updateStudent(
 // --- Batches -------------------------------------------------------------
 
 export async function listBatches(partnerId: string) {
+  await readAccess(partnerId);
   return prisma.batch.findMany({
     where: { partnerId },
     include: { course: true },
@@ -107,6 +126,7 @@ export async function listBatches(partnerId: string) {
 }
 
 export async function getBatch(partnerId: string, id: string) {
+  await readAccess(partnerId);
   const batch = await prisma.batch.findUnique({
     where: { id },
     include: { course: true },
@@ -127,6 +147,11 @@ export async function createBatch(
     capacity?: number | null;
   }
 ) {
+  await writeAccess(partnerId);
+  if (!data.batchName.trim()) throw new Error("Batch name is required.");
+  if ((data.startDate && !Number.isFinite(data.startDate.getTime())) ||
+      (data.endDate && !Number.isFinite(data.endDate.getTime())) ||
+      (data.startDate && data.endDate && data.endDate < data.startDate)) throw new Error("Select valid batch dates.");
   const course = await getCourse(partnerId, data.courseId);
   if (!course) throw new Error("Course not found for this partner.");
   if (data.capacity != null && (!Number.isSafeInteger(data.capacity) || data.capacity < 1)) throw new Error("Capacity must be a positive whole number.");
@@ -148,6 +173,8 @@ export async function updateBatch(
   id: string,
   data: { courseId?: string; batchName?: string; startDate?: Date | null; endDate?: Date | null; status?: string; capacity?: number | null }
 ) {
+  await writeAccess(partnerId);
+  if (data.batchName !== undefined && !data.batchName.trim()) throw new Error("Batch name is required.");
   return withRecordLock("education-batch", id, async () => {
   const existing = await getBatch(partnerId, id);
   if (!existing) return null;
@@ -168,6 +195,7 @@ export async function countActiveEnrollments(batchId: string): Promise<number> {
 }
 
 export async function listEnrollmentsForBatch(partnerId: string, batchId: string) {
+  await readAccess(partnerId);
   const batch = await getBatch(partnerId, batchId); // throws/null-checks tenant scope
   if (!batch) return [];
   return prisma.enrollment.findMany({
@@ -179,6 +207,7 @@ export async function listEnrollmentsForBatch(partnerId: string, batchId: string
 
 /** Students not already actively enrolled in this batch — the enroll form's candidate list. */
 export async function listAvailableStudentsForBatch(partnerId: string, batchId: string) {
+  await readAccess(partnerId);
   const batch = await getBatch(partnerId, batchId);
   if (!batch) return [];
   const enrolled = await prisma.enrollment.findMany({
@@ -205,6 +234,7 @@ export class BatchAtCapacityError extends Error {
  * Fires the educationEnrollmentConfirmed Telegram alert live on success.
  */
 export async function createEnrollment(partnerId: string, batchId: string, studentId: string) {
+  await writeAccess(partnerId);
   return withRecordLock("education-batch", batchId, async () => {
   const batch = await getBatch(partnerId, batchId);
   if (!batch) throw new Error("Batch not found for this partner.");
@@ -251,6 +281,7 @@ export async function createEnrollment(partnerId: string, batchId: string, stude
 }
 
 export async function updateEnrollmentStatus(partnerId: string, enrollmentId: string, status: string) {
+  await writeAccess(partnerId);
   if (!["Active", "Dropped", "Completed"].includes(status)) throw new Error("Invalid enrollment status.");
   const scope = await getEnrollmentScoped(partnerId, enrollmentId);
   if (!scope) return null;
@@ -276,6 +307,7 @@ async function getEnrollmentScoped(partnerId: string, enrollmentId: string) {
 // --- Fee installments --------------------------------------------------
 
 export async function listFeeInstallmentsForEnrollment(partnerId: string, enrollmentId: string) {
+  await readAccess(partnerId);
   const enrollment = await getEnrollmentScoped(partnerId, enrollmentId);
   if (!enrollment) return [];
   return prisma.feeInstallment.findMany({ where: { enrollmentId }, orderBy: { dueDate: "asc" } });
@@ -286,6 +318,7 @@ export async function addFeeInstallment(
   enrollmentId: string,
   data: { dueDate: Date; amount: number }
 ) {
+  await writeAccess(partnerId);
   const enrollment = await getEnrollmentScoped(partnerId, enrollmentId);
   if (!enrollment) throw new Error("Enrollment not found for this partner.");
   if (!Number.isSafeInteger(data.amount) || data.amount <= 0) throw new Error("Fee must be a positive amount in paise.");
@@ -296,6 +329,7 @@ export async function addFeeInstallment(
 }
 
 export async function markFeeInstallmentPaid(partnerId: string, installmentId: string, paidAmount: number) {
+  await writeAccess(partnerId);
   return withRecordLock("education-fee", installmentId, async () => {
   const installment = await prisma.feeInstallment.findUnique({
     where: { id: installmentId },
@@ -323,6 +357,7 @@ export function summarizeFeeInstallments(installments: { amount: number; paidAmo
 // --- Class attendance ----------------------------------------------------
 
 export async function listClassAttendanceForBatchDate(partnerId: string, batchId: string, date: Date) {
+  await readAccess(partnerId);
   const batch = await getBatch(partnerId, batchId);
   if (!batch) return [];
   const start = new Date(date);
@@ -348,6 +383,7 @@ export async function upsertClassAttendance(
   date: Date,
   status: "Present" | "Absent" | "Late"
 ) {
+  await writeAccess(partnerId);
   if (!Number.isFinite(date.getTime())) throw new Error("Invalid attendance date.");
   if (!["Present", "Absent", "Late"].includes(status)) throw new Error("Invalid attendance status.");
   return withRecordLock("education-batch", batchId, async () => {

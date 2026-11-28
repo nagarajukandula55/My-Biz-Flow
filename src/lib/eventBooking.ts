@@ -1,5 +1,5 @@
 import { withRecordLock } from "@/lib/withRecordLock";
-import { assertPartnerCanWrite } from "@/lib/tenant";
+import { assertModuleAccess, assertPartnerCanWrite } from "@/lib/tenant";
 import { requireBookingWindow, requirePaise } from "@/lib/bookingValidation";
 import { afterDatabaseCommit } from "@/lib/databaseTransaction";
 /**
@@ -23,7 +23,17 @@ import { createBusinessRecord, listBusinessRecords } from "@/lib/businessRecords
 import { EVENT_BOOKING_STATUSES, type EventBookingStatus, type EventBookingType } from "@/lib/eventBookingTypes";
 export { EVENT_BOOKING_STATUSES, type EventBookingStatus, type EventBookingType } from "@/lib/eventBookingTypes";
 
+async function eventRead(partnerId: string): Promise<void> {
+  await assertModuleAccess(partnerId, "event-booking");
+}
+
+async function eventWrite(partnerId: string): Promise<void> {
+  await eventRead(partnerId);
+  await assertPartnerCanWrite(partnerId);
+}
+
 export async function sendUpcomingEventReminders(partnerId: string, now = new Date()): Promise<number> {
+  await eventRead(partnerId);
   const end = new Date(now.getTime() + 24 * 60 * 60 * 1000);
   const bookings = await listEventBookingsInRange(partnerId, now, end);
   const sent = await listBusinessRecords(partnerId, "event-starting-reminder");
@@ -40,16 +50,20 @@ export async function sendUpcomingEventReminders(partnerId: string, now = new Da
 // --- Venues ---------------------------------------------------------------
 
 export async function listVenues(partnerId: string) {
+  await eventRead(partnerId);
   return prisma.venue.findMany({ where: { partnerId }, orderBy: { name: "asc" } });
 }
 
 export async function getVenue(partnerId: string, id: string) {
+  await eventRead(partnerId);
   const venue = await prisma.venue.findUnique({ where: { id } });
   if (!venue || venue.partnerId !== partnerId) return null;
   return venue;
 }
 
 export async function createVenue(partnerId: string, data: { name: string; address?: string; capacity?: number }) {
+  await eventWrite(partnerId);
+  if (!data.name.trim() || (data.capacity !== undefined && (!Number.isSafeInteger(data.capacity) || data.capacity <= 0))) throw new Error("Enter a venue name and a positive whole-number capacity.");
   return prisma.venue.create({
     data: { partnerId, name: data.name, address: data.address || null, capacity: data.capacity ?? null },
   });
@@ -60,8 +74,10 @@ export async function updateVenue(
   id: string,
   data: { name: string; address?: string; capacity?: number; isActive?: boolean }
 ) {
+  await eventWrite(partnerId);
   const existing = await getVenue(partnerId, id);
   if (!existing) throw new Error("Venue not found.");
+  if (!data.name.trim() || (data.capacity !== undefined && (!Number.isSafeInteger(data.capacity) || data.capacity <= 0))) throw new Error("Enter a venue name and a positive whole-number capacity.");
   return prisma.venue.update({
     where: { id },
     data: { name: data.name, address: data.address || null, capacity: data.capacity ?? null, isActive: data.isActive ?? existing.isActive },
@@ -71,16 +87,20 @@ export async function updateVenue(
 // --- Event resources -------------------------------------------------------
 
 export async function listEventResources(partnerId: string) {
+  await eventRead(partnerId);
   return prisma.eventResource.findMany({ where: { partnerId }, orderBy: { name: "asc" } });
 }
 
 export async function getEventResource(partnerId: string, id: string) {
+  await eventRead(partnerId);
   const resource = await prisma.eventResource.findUnique({ where: { id } });
   if (!resource || resource.partnerId !== partnerId) return null;
   return resource;
 }
 
 export async function createEventResource(partnerId: string, data: { name: string; category?: string }) {
+  await eventWrite(partnerId);
+  if (!data.name.trim()) throw new Error("Resource name is required.");
   return prisma.eventResource.create({ data: { partnerId, name: data.name, category: data.category || null } });
 }
 
@@ -89,8 +109,10 @@ export async function updateEventResource(
   id: string,
   data: { name: string; category?: string; isActive?: boolean }
 ) {
+  await eventWrite(partnerId);
   const existing = await getEventResource(partnerId, id);
   if (!existing) throw new Error("Resource not found.");
+  if (!data.name.trim()) throw new Error("Resource name is required.");
   return prisma.eventResource.update({
     where: { id },
     data: { name: data.name, category: data.category || null, isActive: data.isActive ?? existing.isActive },
@@ -100,6 +122,7 @@ export async function updateEventResource(
 // --- Bookings ---------------------------------------------------------------
 
 export async function listEventBookings(partnerId: string) {
+  await eventRead(partnerId);
   return prisma.eventBooking.findMany({
     where: { partnerId },
     orderBy: { startAt: "desc" },
@@ -108,6 +131,7 @@ export async function listEventBookings(partnerId: string) {
 }
 
 export async function listEventBookingsInRange(partnerId: string, rangeStart: Date, rangeEnd: Date) {
+  await eventRead(partnerId);
   return prisma.eventBooking.findMany({
     where: {
       partnerId,
@@ -122,6 +146,7 @@ export async function listEventBookingsInRange(partnerId: string, rangeStart: Da
 }
 
 export async function getEventBooking(partnerId: string, id: string) {
+  await eventRead(partnerId);
   const booking = await prisma.eventBooking.findUnique({
     where: { id },
     include: { venue: true, resourceAllocations: { include: { resource: true } } },
@@ -153,6 +178,7 @@ export async function checkResourceConflicts(
   allocations: ResourceAllocationInput[],
   excludeBookingId?: string
 ): Promise<ResourceConflict[]> {
+  await eventRead(partnerId);
   const resourceIds = allocations.map((a) => a.resourceId).filter(Boolean);
   if (resourceIds.length === 0) return [];
 
@@ -202,6 +228,7 @@ async function validateEvent(partnerId: string, input: CreateEventBookingInput):
   requireBookingWindow(input.startAt, input.endAt);
   requirePaise(input.totalAmount);
   if (input.amountPaid !== undefined) requirePaise(input.amountPaid);
+  if ((input.amountPaid ?? 0) > input.totalAmount) throw new Error("Amount paid cannot exceed the booking total.");
   if (input.status && !EVENT_BOOKING_STATUSES.includes(input.status)) throw new Error("Invalid booking status.");
   if (!['OneTime', 'Recurring'].includes(input.bookingType)) throw new Error("Invalid booking type.");
   if (input.venueId && !await prisma.venue.findFirst({ where: { id: input.venueId, partnerId }, select: { id: true } })) throw new Error("Venue not found.");
@@ -231,7 +258,7 @@ export async function createEventBooking(
   partnerId: string,
   input: CreateEventBookingInput
 ): Promise<{ ok: true; id: string } | { ok: false; conflicts: ResourceConflict[] }> {
-  await assertPartnerCanWrite(partnerId);
+  await eventWrite(partnerId);
   return withRecordLock("event-bookings", partnerId, async () => {
     const allocations = await validateEvent(partnerId, input);
     const conflicts = input.status === "Cancelled" ? [] : await bookingConflicts(partnerId, input, allocations);
@@ -266,7 +293,7 @@ export async function updateEventBooking(
   id: string,
   input: UpdateEventBookingInput
 ): Promise<{ ok: true } | { ok: false; conflicts: ResourceConflict[]; message?: string }> {
-  await assertPartnerCanWrite(partnerId);
+  await eventWrite(partnerId);
   return withRecordLock("event-bookings", partnerId, async () => {
     const existing = await getEventBooking(partnerId, id);
     if (!existing) return { ok: false, conflicts: [], message: "Booking not found." };
@@ -277,6 +304,10 @@ export async function updateEventBooking(
 
     const wasStatus = existing.status;
     const wasAmountPaid = existing.amountPaid;
+    const nextTotalAmount = input.totalAmount;
+    const nextAmountPaid = input.amountPaid ?? existing.amountPaid;
+    if (nextAmountPaid !== existing.amountPaid) throw new Error("Use the payment or refund workflow to change recorded payments.");
+    if (nextAmountPaid > nextTotalAmount) throw new Error("Booking total cannot be lower than the amount already paid.");
 
     await prisma.$transaction([
       prisma.eventResourceAllocation.deleteMany({ where: { eventBookingId: id } }),
@@ -292,7 +323,7 @@ export async function updateEventBooking(
           customerContact: input.customerContact || null,
           status: input.status ?? existing.status,
           totalAmount: input.totalAmount,
-          amountPaid: input.amountPaid ?? existing.amountPaid,
+          amountPaid: existing.amountPaid,
           resourceAllocations: { create: allocations.map((a) => ({ resourceId: a.resourceId, quantity: a.quantity })) },
         },
       }),
@@ -303,7 +334,7 @@ export async function updateEventBooking(
       prevStatus: wasStatus,
       nextStatus: input.status ?? existing.status,
       prevAmountPaid: wasAmountPaid,
-      nextAmountPaid: input.amountPaid ?? existing.amountPaid,
+      nextAmountPaid: existing.amountPaid,
     });
 
     return { ok: true };
@@ -314,7 +345,7 @@ export async function updateEventBooking(
  * buttons, distinct from the full edit form) — still goes through the same
  * alert hook as a full edit. */
 export async function setEventBookingStatus(partnerId: string, id: string, status: EventBookingStatus): Promise<void> {
-  await assertPartnerCanWrite(partnerId);
+  await eventWrite(partnerId);
   return withRecordLock("event-bookings", partnerId, async () => {
     const existing = await getEventBooking(partnerId, id);
     if (!existing) throw new Error("Booking not found.");
@@ -335,13 +366,15 @@ export async function setEventBookingStatus(partnerId: string, id: string, statu
  * a booking's amountPaid, then fires the paymentReceived alert if it
  * actually increased. */
 export async function recordEventBookingPayment(partnerId: string, id: string, additionalAmountRupees: number): Promise<void> {
-  await assertPartnerCanWrite(partnerId);
+  await eventWrite(partnerId);
   return withRecordLock("event-bookings", partnerId, async () => {
     if (!Number.isFinite(additionalAmountRupees) || Math.round(additionalAmountRupees * 100) <= 0) throw new Error("Payment amount must be greater than zero.");
     const existing = await getEventBooking(partnerId, id);
     if (!existing) throw new Error("Booking not found.");
     const nextAmountPaid = existing.amountPaid + Math.round(additionalAmountRupees * 100);
     requirePaise(nextAmountPaid);
+    if (existing.status === "Cancelled") throw new Error("Cannot record payment against a cancelled booking.");
+    if (nextAmountPaid > existing.totalAmount) throw new Error("Payment exceeds the remaining booking balance.");
     await prisma.eventBooking.update({ where: { id }, data: { amountPaid: nextAmountPaid } });
     await maybeSendLifecycleAlerts(partnerId, id, {
       eventName: existing.eventName,
@@ -354,7 +387,7 @@ export async function recordEventBookingPayment(partnerId: string, id: string, a
 }
 
 export async function deleteEventBooking(partnerId: string, id: string): Promise<void> {
-  await assertPartnerCanWrite(partnerId);
+  await eventWrite(partnerId);
   return withRecordLock("event-bookings", partnerId, async () => {
     const existing = await getEventBooking(partnerId, id);
     if (!existing) return;

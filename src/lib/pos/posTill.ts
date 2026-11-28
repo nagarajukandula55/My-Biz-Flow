@@ -39,6 +39,12 @@ export async function openTillSession(input: {
   if (!Number.isFinite(input.openingFloat) || input.openingFloat < 0) throw new Error("Invalid opening cash float.");
   const account = await prisma.posAccount.findUnique({ where: { id: input.posAccountId } });
   if (account?.partnerId !== input.partnerId) throw new Error("Till does not belong to this partner.");
+  const staff = await prisma.posStaff.findFirst({ where: { id: input.openedByStaffId, posAccountId: input.posAccountId, status: "Active", role: "Manager" } });
+  if (!staff) throw new Error("Only an active Manager from this POS account can open a till.");
+  const locations = await listBusinessRecords(input.partnerId, "brand");
+  if (!locations.some((row) => String(row["id"]) === input.locationId && (row["status"] ?? "Active") === "Active" && row["mappedWarehouse"])) {
+    throw new Error("Select an active outlet mapped to an inventory warehouse.");
+  }
   const existing = await getOpenTillSession(input.posAccountId, input.locationId);
   if (existing) {
     throw new Error(`A till is already open at this outlet (opened ${existing.openedAt.toISOString()}) — close it before opening another.`);
@@ -99,9 +105,10 @@ export async function closeTillSession(input: {
 }) {
   return withRecordLock("inventory-partner", input.partnerId, async () => {
   const session = await prisma.posTillSession.findUnique({ where: { id: input.sessionId }, include: { posAccount: true } });
-  if (session?.posAccount.partnerId !== input.partnerId) throw new Error("Till does not belong to this partner.");
+  if (!session || session.posAccount.partnerId !== input.partnerId) throw new Error("Till does not belong to this partner.");
   if (!Number.isFinite(input.countedCash) || input.countedCash < 0) throw new Error("Invalid cash count.");
-  if (!session) throw new Error("Till session not found.");
+  const staff = await prisma.posStaff.findFirst({ where: { id: input.closedByStaffId, posAccountId: session.posAccountId, status: "Active", role: "Manager" } });
+  if (!staff) throw new Error("Only an active Manager from this POS account can close a till.");
   if (session.status !== "Open") throw new Error("This till session is already closed.");
 
   const expectedCash = await computeExpectedCash(input.partnerId, session);

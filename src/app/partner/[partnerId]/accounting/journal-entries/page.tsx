@@ -2,7 +2,8 @@ import { AppShell } from "@/components/AppShell";
 import Link from "next/link";
 import { registerPage } from "@/lib/designer/registry";
 import { formatDate, formatCurrencyINR } from "@/lib/format";
-import { listJournalEntries } from "@/lib/accounting";
+import { listJournalEntriesPaginated } from "@/lib/accounting";
+import { PaginationControls, buildPageQueryString } from "@/components/PaginationControls";
 
 registerPage({
   id: "accounting.journal-entries.list",
@@ -19,8 +20,9 @@ registerPage({
 
 export const dynamic = "force-dynamic";
 
-export default async function JournalEntriesPage({ params }: { params: { partnerId: string } }) {
-  const entries = await listJournalEntries(params.partnerId);
+export default async function JournalEntriesPage({ params, searchParams }: { params: { partnerId: string }; searchParams: { page?: string } }) {
+  const result = await listJournalEntriesPaginated(params.partnerId, { page: Number(searchParams.page) || 1 });
+  const entries = result.rows;
 
   return (
     <AppShell
@@ -69,6 +71,7 @@ export default async function JournalEntriesPage({ params }: { params: { partner
             </tbody>
           </table>
         </div>
+        <PaginationControls page={result.page} totalPages={result.totalPages} total={result.total} pageSize={result.pageSize} buildHref={(page) => `/partner/${params.partnerId}/accounting/journal-entries${buildPageQueryString(searchParams, { page: String(page) })}`} />
       </div>
     </AppShell>
   );

@@ -41,6 +41,7 @@ export async function DocumentView({
   record,
   columns,
   sequenceIndex,
+  issuedNumber,
   lineItems,
   printSizes = ["a4"],
   fieldKeys,
@@ -62,6 +63,8 @@ export async function DocumentView({
   record: Row;
   columns: Column[];
   sequenceIndex: number;
+  /** Immutable document number captured on issue; legacy records still use their display sequence. */
+  issuedNumber?: string;
   /** Optional itemized breakdown (currently: Billing invoices) — rendered
    * as its own table instead of the flat field grid when present and no
    * custom template overrides the layout. */
@@ -129,7 +132,7 @@ export async function DocumentView({
 }) {
   const customTemplate = await getDocumentTemplate(pageId);
   const scheme = await getEffectiveScheme(documentType, partnerId);
-  const documentNumber = formatNumber(scheme, scheme.sequenceStart + sequenceIndex);
+    const documentNumber = issuedNumber || formatNumber(scheme, scheme.sequenceStart + sequenceIndex);
   const templateRecord = { ...record, documentNumber };
   const trackingQrDataUrl = trackingCode ? await generateTrackingQrDataUrl(partnerId, trackingCode) : null;
   const upiQrDataUrl = upiPayment?.vpa

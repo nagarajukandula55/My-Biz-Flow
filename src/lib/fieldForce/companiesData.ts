@@ -7,33 +7,12 @@
  */
 import { prisma } from "@/lib/prisma";
 import { assertPartnerScope } from "@/lib/tenant";
+import { COMPANY_UPLOAD_FIELDS, REQUIRED_COMPANY_UPLOAD_FIELDS, type CompanyUploadField } from "@/lib/fieldForce/companyUploadFields";
+export { COMPANY_UPLOAD_FIELDS, REQUIRED_COMPANY_UPLOAD_FIELDS } from "@/lib/fieldForce/companyUploadFields";
+export type { CompanyUploadField } from "@/lib/fieldForce/companyUploadFields";
 
 /** Our internal field names a company's CSV columns map onto. */
-export const COMPANY_UPLOAD_FIELDS = [
-  "customerName",
-  "customerPhone",
-  "addressLine1",
-  "city",
-  "state",
-  "pincode",
-  "serviceName",
-  "brand",
-  "model",
-  "variant",
-  "scheduledAt",
-  "notes",
-] as const;
-export type CompanyUploadField = (typeof COMPANY_UPLOAD_FIELDS)[number];
 /** Only these are required per row — email/landmark/notes-style extras aren't part of this set at all (kept out of the mapping target list, not optional within it). */
-export const REQUIRED_COMPANY_UPLOAD_FIELDS: CompanyUploadField[] = [
-  "customerName",
-  "customerPhone",
-  "addressLine1",
-  "city",
-  "state",
-  "pincode",
-  "serviceName",
-];
 
 export type CompanyRecord = {
   id: string;

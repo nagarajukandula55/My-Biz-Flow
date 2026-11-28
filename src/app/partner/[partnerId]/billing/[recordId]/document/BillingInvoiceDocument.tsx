@@ -52,6 +52,7 @@ export async function BillingInvoiceDocument({
   customerName,
   customerCompany,
   customerPhone,
+    customerAlternatePhone,
   customerEmail,
   customerGstin,
   customerAddress,
@@ -93,6 +94,7 @@ export async function BillingInvoiceDocument({
   customerName: string;
   customerCompany?: string;
   customerPhone?: string;
+    customerAlternatePhone?: string;
   customerEmail?: string;
   /** Present => the customer is a GST-registered party, i.e. B2B. */
   customerGstin?: string;
@@ -200,6 +202,7 @@ export async function BillingInvoiceDocument({
       customerName,
       customerCompany: customerCompany ?? "",
       customerPhone: customerPhone ?? "",
+        customerAlternatePhone: customerAlternatePhone ?? "",
       customerEmail: customerEmail ?? "",
       customerGstin: customerGstin ?? "",
       customerAddress: customerAddress ?? "",
@@ -313,6 +316,7 @@ export async function BillingInvoiceDocument({
                     </div>
                   )}
                   {customerPhone && <div className="text-text-muted">{customerPhone}</div>}
+                  {customerAlternatePhone && <div className="text-text-muted">Alternate Contact No: {customerAlternatePhone}</div>}
                   {customerEmail && <div className="text-text-muted">{customerEmail}</div>}
                   {customerGstin && <div className="font-mono text-text-muted">GSTIN: {customerGstin}</div>}
                 </div>

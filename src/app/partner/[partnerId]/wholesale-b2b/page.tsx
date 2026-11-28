@@ -5,8 +5,9 @@ import { registerPage } from "@/lib/designer/registry";
 import { WholesaleB2bClientTable } from "./WholesaleB2bClientTable";
 import { applyCustomizations } from "@/lib/designer/customizations";
 import { wholesaleB2bColumns } from "@/lib/sample-data/wholesale-b2b";
-import { listWholesaleOrders, orderToRow } from "@/lib/wholesaleData";
+import { listWholesaleOrders, listWholesaleOrdersPaginated, orderToRow } from "@/lib/wholesaleData";
 import { RecordCsvExportButton } from "@/components/RecordCsvExportButton";
+import { PaginationControls, buildPageQueryString } from "@/components/PaginationControls";
 
 registerPage({
   id: "wholesale-b2b.list",
@@ -24,11 +25,14 @@ registerPage({
 
 export const dynamic = "force-dynamic";
 
-export default async function WholesaleB2bPage({ params }: { params: { partnerId: string } }) {
+export default async function WholesaleB2bPage({ params, searchParams }: { params: { partnerId: string }; searchParams: { page?: string } }) {
   const mod = await getModule("wholesale-b2b");
   const columns = await applyCustomizations("wholesale-b2b.list", wholesaleB2bColumns);
-  const orders = await listWholesaleOrders(params.partnerId);
-  const rows = orders.map(orderToRow);
+  const [{ rows: pageOrders, ...pagination }, orders] = await Promise.all([
+    listWholesaleOrdersPaginated(params.partnerId, { page: Number(searchParams.page) || 1 }),
+    listWholesaleOrders(params.partnerId),
+  ]);
+  const rows = pageOrders.map(orderToRow);
 
   return (
     <AppShell
@@ -42,6 +46,7 @@ export default async function WholesaleB2bPage({ params }: { params: { partnerId
         <div className="mt-6">
           <WholesaleB2bClientTable partnerId={params.partnerId} columns={columns} rows={rows} />
         </div>
+        <PaginationControls page={pagination.page} totalPages={pagination.totalPages} total={pagination.total} pageSize={pagination.pageSize} buildHref={(page) => `/partner/${params.partnerId}/wholesale-b2b${buildPageQueryString(searchParams, { page: String(page) })}`} />
       </div>
     </AppShell>
   );

@@ -1,5 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict');
-const rules=require('./loadModule.cjs')('src/lib/hotelRules.ts');
+const rules=require('./loadModule.cjs')('src/lib/hotelRules.ts',{'@/lib/sample-data/geo':{INDIAN_STATES:[]}});
 test('Hotel legacy receipts remain Guest payments and extensions preserve fixed second-payer allocation',()=>{
   const legacy={roomChargePaise:100000,entries:[{reference:'legacy',kind:'Payment',label:'Cash',amountPaise:30000,at:'2026-01-01T00:00:00Z'}]};
   let balances=rules.hotelPayerBalances(legacy);

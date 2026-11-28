@@ -4,7 +4,7 @@ const {PrismaClient}=require('@prisma/client');const base=new PrismaClient();
 const db=load('src/lib/databaseTransaction.ts',{'node:async_hooks':require('node:async_hooks'),'@/lib/databaseClientContext':load('src/lib/databaseClientContext.ts')});
 const prisma=db.transactionAwareClient(base),lock=load('src/lib/withRecordLock.ts',{'@/lib/prisma':{prisma},'@/lib/databaseTransaction':db});
 const partnerId='billing-reconcile-'+crypto.randomUUID();let owner=true,enabled=true;
-const accounting=load('src/lib/accounting.ts',{'@/lib/prisma':{prisma},'@/lib/withRecordLock':lock,'@/lib/tenant':{assertModuleAccess:async()=>{},assertPartnerCanWrite:async()=>{}}});
+const accounting=load('src/lib/accounting.ts',{'@/lib/prisma':{prisma},'@/lib/withRecordLock':lock,'@/lib/tenant':{assertModuleAccess:async()=>{},assertPartnerCanWrite:async()=>{}},'@/lib/listPagination':load('src/lib/listPagination.ts')});
 const api=load('src/lib/billingReconciliation.ts',{'@/lib/accounting':accounting,'@/lib/prisma':{prisma},'@/lib/withRecordLock':lock,'@/lib/billingReconciliationRules':load('src/lib/billingReconciliationRules.ts'),'@/lib/requirePartnerSession':{requireSessionPartnerId:async()=>{if(!owner)throw Error('owner');}},'@/lib/tenant':{assertModuleAccess:async()=>{if(!enabled)throw Error('disabled');},assertPartnerCanWrite:async()=>{}}});
 test('invoice journals link once, detect drift, paginate and stay tenant scoped',async()=>{
  const accounts=await Promise.all(['Asset','Income','Liability'].map((accountType,i)=>prisma.chartOfAccount.create({data:{partnerId,accountCode:String(i),accountName:accountType,accountType}})));

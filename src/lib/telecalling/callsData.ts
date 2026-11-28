@@ -6,7 +6,9 @@
  */
 import { prisma } from "@/lib/prisma";
 import { assertPartnerScope } from "@/lib/tenant";
-import { type LeadStatus } from "@/lib/telecalling/leadsData";
+import { CALL_OUTCOMES, type CallOutcome, type LeadStatus } from "@/lib/telecalling/shared";
+export { CALL_OUTCOMES } from "@/lib/telecalling/shared";
+export type { CallOutcome } from "@/lib/telecalling/shared";
 import { sendWhatsAppTemplateMessage } from "@/lib/whatsapp";
 import { isWhatsappTriggerEnabled } from "@/lib/whatsappTriggers";
 import { SITE_URL } from "@/lib/seo";
@@ -14,16 +16,6 @@ import { SITE_URL } from "@/lib/seo";
 /** Meta-approved WhatsApp template name/language for the lead-accepted welcome message (WhatsApp Manager > Message templates) — {{1}}=lead name, {{2}}=site link, matching the order the template body was written in. */
 const LEAD_WELCOME_TEMPLATE = { name: "lead_welcome", languageCode: "en_US" };
 
-export const CALL_OUTCOMES = [
-  "Interested",
-  "NotReachable",
-  "FollowUpRequired",
-  "Accepted",
-  "Closed",
-  "DoNotCall",
-  "WrongNumber",
-] as const;
-export type CallOutcome = (typeof CALL_OUTCOMES)[number];
 
 /** Outcome -> the Lead.status it should advance to. Interested/NotReachable/
  * FollowUpRequired keep the lead in the agent's active queue; the rest are

@@ -22,6 +22,8 @@ export type MembershipPanelData = {
 export function MembershipActionsPanel({ partnerId, membership }: { partnerId: string; membership: MembershipPanelData }) {
   const router = useRouter();
   const [freezeOpen, setFreezeOpen] = useState(false);
+  const [paymentOpen, setPaymentOpen] = useState(false);
+  const [paymentMode, setPaymentMode] = useState("Cash");
   const [resumeDate, setResumeDate] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -87,8 +89,8 @@ export function MembershipActionsPanel({ partnerId, membership }: { partnerId: s
           <button
             type="button"
             className="btn-accent disabled:opacity-50"
-            disabled={!isActive || isPending}
-            onClick={() => run(() => recordPaymentAction(partnerId, membership.id))}
+            disabled={!isActive || !membership.nextBillingDate || isPending}
+            onClick={() => setPaymentOpen(true)}
           >
             Record Payment
           </button>
@@ -134,6 +136,28 @@ export function MembershipActionsPanel({ partnerId, membership }: { partnerId: s
         <p className="mt-3 text-xs text-text-muted">{membership.checkIns.length} total check-in{membership.checkIns.length === 1 ? "" : "s"}</p>
       </div>
 
+      <Modal
+        open={paymentOpen}
+        onClose={() => setPaymentOpen(false)}
+        title="Record received payment"
+        size="sm"
+        footer={<>
+          <button type="button" className="btn-outline" onClick={() => setPaymentOpen(false)}>Cancel</button>
+          <button type="button" className="btn-accent" disabled={isPending || !membership.nextBillingDate}
+            onClick={() => {
+              if (!membership.nextBillingDate) return;
+              run(() => recordPaymentAction(partnerId, membership.id, membership.nextBillingDate!, paymentMode));
+              setPaymentOpen(false);
+            }}>Confirm received</button>
+        </>}
+      >
+        <p className="text-sm text-text-muted">Confirm you have received ₹{(membership.planAmount / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 })} for the cycle dated {membership.nextBillingDate ?? "—"}. This marks the invoice paid.</p>
+        <label className="mt-3 block text-sm text-text" htmlFor="membership-payment-mode">Payment method</label>
+        <select id="membership-payment-mode" value={paymentMode} onChange={(event) => setPaymentMode(event.target.value)}
+          className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text">
+          <option>Cash</option><option>UPI</option><option>Card</option><option>Bank Transfer</option>
+        </select>
+      </Modal>
       <Modal
         open={freezeOpen}
         onClose={() => setFreezeOpen(false)}

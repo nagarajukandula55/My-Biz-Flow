@@ -7,6 +7,7 @@ import { RecordForm } from "@/components/RecordForm";
 import { salonServiceFormFields } from "@/lib/sample-data/salon-spa";
 import { getSalonService } from "@/lib/salonSpa/servicesData";
 import { updateSalonServiceAction } from "../actions";
+import { salonPaiseToRupees } from "@/lib/salonSpa/money";
 
 registerPage({
   id: "salon-spa.services.edit",
@@ -40,7 +41,7 @@ export default async function EditSalonServicePage({ params }: { params: { partn
         <div className="mt-6">
           <RecordForm
             fields={salonServiceFormFields}
-            initialValues={service}
+            initialValues={{ ...service, price: salonPaiseToRupees(service.price) }}
             submitLabel="Save changes"
             action={updateSalonServiceAction.bind(null, params.partnerId, params.recordId)}
           />
