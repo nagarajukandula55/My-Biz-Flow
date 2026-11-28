@@ -2,21 +2,22 @@ import { listBusinessRecords } from "@/lib/businessRecords";
 import { findOpenVisit, listAmcContractsWithVisits, computeSlaBreach } from "@/lib/amcContractsData";
 import { listWholesaleOrders } from "@/lib/wholesaleData";
 export type WorkflowInsight = { key: string; severity: "info" | "warning" | "urgent"; title: string; reason: string; href?: string };
-export async function getWorkflowInsights(partnerId: string): Promise<WorkflowInsight[]> {
+export async function getWorkflowInsights(partnerId: string, visibleModules: readonly string[]): Promise<WorkflowInsight[]> {
+  const enabled = new Set(visibleModules);
   const [billing, stock, rfqs, changes, workorders, wholesaleOrders, projects, selections, selectionResponses, amcContracts, wholesaleRecords, wholesaleDispatches, wholesaleFulfillment] = await Promise.all([
-    listBusinessRecords(partnerId, "billing"),
-    listBusinessRecords(partnerId, "inventory-stock"),
-    listBusinessRecords(partnerId, "inventory-rfq"),
-    listBusinessRecords(partnerId, "interior-change-order"),
-    listBusinessRecords(partnerId, "service-centre"),
-    listBusinessRecords(partnerId, "wholesale-b2b"),
-    listBusinessRecords(partnerId, "interior-design"),
-    listBusinessRecords(partnerId, "interior-selection"),
-    listBusinessRecords(partnerId, "interior-selection-response"),
-    listAmcContractsWithVisits(partnerId),
-    listWholesaleOrders(partnerId),
-    listBusinessRecords(partnerId, "wholesale-dispatch"),
-    listBusinessRecords(partnerId, "wholesale-fulfillment"),
+    enabled.has("billing") ? listBusinessRecords(partnerId, "billing") : [],
+    enabled.has("inventory") ? listBusinessRecords(partnerId, "inventory-stock") : [],
+    enabled.has("inventory") ? listBusinessRecords(partnerId, "inventory-rfq") : [],
+    enabled.has("interior-design") ? listBusinessRecords(partnerId, "interior-change-order") : [],
+    enabled.has("service-centre") ? listBusinessRecords(partnerId, "service-centre") : [],
+    enabled.has("wholesale-b2b") ? listBusinessRecords(partnerId, "wholesale-b2b") : [],
+    enabled.has("interior-design") ? listBusinessRecords(partnerId, "interior-design") : [],
+    enabled.has("interior-design") ? listBusinessRecords(partnerId, "interior-selection") : [],
+    enabled.has("interior-design") ? listBusinessRecords(partnerId, "interior-selection-response") : [],
+    enabled.has("amc-field-service") ? listAmcContractsWithVisits(partnerId) : [],
+    enabled.has("wholesale-b2b") ? listWholesaleOrders(partnerId) : [],
+    enabled.has("wholesale-b2b") ? listBusinessRecords(partnerId, "wholesale-dispatch") : [],
+    enabled.has("wholesale-b2b") ? listBusinessRecords(partnerId, "wholesale-fulfillment") : [],
   ]);
   const insights: WorkflowInsight[] = [];
   const overdue = billing.filter(row => String(row.paymentStatus) === "Overdue" || (Number(row.amountDue ?? 0) > 0 && String(row.dueDate ?? "") < new Date().toISOString().slice(0, 10)));

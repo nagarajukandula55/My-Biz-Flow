@@ -96,7 +96,7 @@ export default async function AnalyticsPage({ params }: { params: { partnerId: s
   ]);
   const revenueForecast = showBilling ? await getRevenueForecast(params.partnerId) : null;
   const fieldForce = showFieldForce ? await getFieldForceReport(params.partnerId) : null;
-  const workflowInsights = await getWorkflowInsights(params.partnerId);
+  const workflowInsights = await getWorkflowInsights(params.partnerId, visibleModules);
 
   // IST, not server-local time (UTC in production) — matters right at
   // month-boundary midnight IST, where UTC is still the previous day.

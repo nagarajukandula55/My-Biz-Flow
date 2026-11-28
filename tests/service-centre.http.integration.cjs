@@ -24,6 +24,10 @@ async function main() {
   const billingBody = await billingResponse.text();
   assert.equal(billingResponse.status, 200, 'Billing route template renders with children only');
   assert.ok(!billingBody.includes('"digest":'), 'Billing route has no server render error');
+  const analyticsResponse = await fetch(`${base}/partner/${id}/analytics`, { headers, redirect: 'manual' });
+  const analyticsBody = await analyticsResponse.text();
+  assert.equal(analyticsResponse.status, 200, 'Service Centre and Billing analytics render');
+  assert.ok(!analyticsBody.includes('"digest":'), 'Analytics has no server render error');
   async function html(route) {
     const response = await fetch(`${base}/partner/${id}/service-centre/${route}`, { headers, redirect: 'manual' });
     const body = await response.text();
